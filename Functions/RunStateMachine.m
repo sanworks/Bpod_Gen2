@@ -28,6 +28,9 @@ if BpodSystem.BonsaiSocket.Connected == 1
         BpodSocketServer('read', BonsaiBytesAvailable);
     end
 end
+if sum(BpodSystem.Modules.RelayActive) > 0
+    BpodSystem.StopModuleRelay();
+end
 RawTrialEvents = struct;
 if BpodSystem.EmulatorMode == 0
     if BpodSystem.SerialPort.bytesAvailable > 0

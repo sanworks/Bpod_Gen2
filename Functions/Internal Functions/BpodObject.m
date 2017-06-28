@@ -286,6 +286,7 @@ classdef BpodObject < handle
                 obj.Modules.Name = cell(1,nModules);
                 obj.Modules.nSerialEvents = ones(1,nModules)*(obj.HW.n.MaxSerialEvents/(nModules+1));
                 obj.Modules.EventNames = cell(1,nModules);
+                obj.Modules.RelayActive = zeros(1,nModules);
             else
                 % Get firmware version
                 obj.SerialPort.write('F', 'uint8');
@@ -390,9 +391,11 @@ classdef BpodObject < handle
         end
         function obj = LoadModules(obj)
             if obj.EmulatorMode == 0 && obj.Status.BeingUsed == 0
-                obj.StopModuleRelay();
+                
                 % Get info from modules
                 nModules = sum(obj.HW.Outputs=='U');
+                obj.Modules.RelayActive = zeros(1,nModules);
+                obj.StopModuleRelay();
                 obj.Modules.Connected = zeros(1,nModules);
                 obj.Modules.Name = cell(1,nModules);
                 obj.Modules.FirmwareVersion = zeros(1,nModules);
@@ -1119,11 +1122,13 @@ classdef BpodObject < handle
         function obj = BeingUsed(obj)
             error('Error: "BpodSystem.BeingUsed" is now "BpodSystem.Status.BeingUsed" - Please update your protocol!')
         end
-        function StopModuleRelay(obj) 
+        function StopModuleRelay(obj, varargin) 
+            for i = 1:length(obj.Modules.RelayActive)
+                obj.SerialPort.write(['J' i 0], 'uint8');
+            end
             RunningState = get(obj.Timers.PortRelayTimer, 'Running');
             if strcmp(RunningState, 'on')
                 stop(obj.Timers.PortRelayTimer);
-                obj.SerialPort.write(['J' 0 0], 'uint8');
                 while strcmp(RunningState, 'on')
                     RunningState = get(obj.Timers.PortRelayTimer, 'Running');
                     pause(.001);
@@ -1132,6 +1137,23 @@ classdef BpodObject < handle
             nAvailable = obj.SerialPort.bytesAvailable;
             if nAvailable > 0
                 trash = obj.SerialPort.read(nAvailable, 'uint8');
+            end
+            obj.Modules.RelayActive(1:end) = 0;
+        end
+        
+        function StartModuleRelay(obj, Module)
+            if ischar(Module)
+                ModuleNum = find(strcmp(Module, obj.Modules.Name));
+            end
+            if ~isempty(ModuleNum)
+                if (ModuleNum <= length(obj.Modules.Connected))
+                    if (sum(obj.Modules.RelayActive)) == 0
+                        obj.SerialPort.write(['J' ModuleNum-1 1], 'uint8');
+                        obj.Modules.RelayActive(ModuleNum) = 1;
+                    else
+                        error('Error: You must stop the active module relay with StopModuleRelay() before starting another one.')
+                    end
+                end
             end
         end
         
@@ -1213,6 +1235,7 @@ classdef BpodObject < handle
                 if panel > 1 
                     if obj.Status.BeingUsed == 0 && obj.GUIData.DefaultPanel(panel) == 1
                         obj.SerialPort.write(['J' panel-2 1], 'uint8');
+                        obj.Modules.RelayActive(panel-1) = 1;
                         % Start timer to scan port
                         start(obj.Timers.PortRelayTimer);
                     end

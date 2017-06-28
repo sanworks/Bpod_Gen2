@@ -26,6 +26,9 @@ if nargin > 1
         RunMessage = 'R';
     end
 end
+if sum(BpodSystem.Modules.RelayActive) > 0
+    BpodSystem.StopModuleRelay();
+end
 nStates = length(sma.StateNames);
 %% Check to make sure the Placeholder state was replaced
 if strcmp(sma.StateNames{1},'Placeholder')
