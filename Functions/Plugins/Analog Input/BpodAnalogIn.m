@@ -353,6 +353,15 @@ classdef BpodAnalogIn < handle
             data.x = 0:Period:(Period*double(nSamples)-Period);
         end
         
+        function setZero(obj, chan)
+            if sum((chan > obj.nPhysicalChannels)) > 0 || sum((chan < 1)) > 0
+                error(['Error setting Zero volts: channel must be in the range [0 ' num2str(obj.nPhysicalChannels) ']']);
+            end
+            for i = 1:length(chan)
+                obj.Port.write([213 'Z' chan(i)-1], 'uint8');
+            end
+        end
+        
         function Scope(obj)
             obj.scope;
         end

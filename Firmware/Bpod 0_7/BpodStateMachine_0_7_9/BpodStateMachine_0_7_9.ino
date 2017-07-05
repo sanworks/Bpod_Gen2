@@ -642,7 +642,7 @@ void handler() { // This is the timer handler function, which is called every (t
           #endif
          }
       break;
-      case 'U': // Recieve byte CODE from USB and send to hardware serial channel 1-5
+      case 'U': // Recieve serial message index from USB and send corresponding message to hardware serial channel 1-5
         Byte1 = USBCOM.readByte() - 1;
         Byte2 = USBCOM.readByte();
         Byte3 = SerialMessage_nBytes[Byte2][Byte1];
