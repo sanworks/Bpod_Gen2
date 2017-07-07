@@ -59,7 +59,8 @@ byte dacBytes[2] = {0};
 float frequency = 0;
 unsigned long frequencyInt = 0;
 uint16_t adcValue = 0;
-uint32_t ampValue = 10000; // Value of amplitude scaling (0:10,000) 0 = 150mV, 10,000 = 650mV
+uint32_t ampValue = 10000; // Value of amplitude scaling (0:10,000) 0 = 0mV, 10,000 = 650mV
+uint32_t lastAmpValue = 10000; // Previous value
 byte op = 0;
 boolean newOp = false;
 byte opSource = 0;
@@ -166,8 +167,18 @@ void loop() {
             ampValue = ModuleCOM.readUint32();
           break;
         }
-        dacVal = (uint16_t)(16383 - ((double)ampValue/10000)*16383);
-        dacWrite(dacVal);
+        if (ampValue > lastAmpValue) {
+          for (int i = lastAmpValue; i < ampValue; i+=2) {
+            dacVal = (uint16_t)(7608 - ((double)i/10000)*7608);
+            dacWrite(dacVal);
+          }
+        } else {
+          for (int i = lastAmpValue; i > ampValue; i-=2) {
+            dacVal = (uint16_t)(7608 - ((double)i/10000)*7608);
+            dacWrite(dacVal);
+          }
+        }
+        lastAmpValue = ampValue;
       break;
       case 'Q': // USB request to return current parameters
         USBCOM.writeUint32((uint32_t)(frequency*1000));
