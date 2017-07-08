@@ -112,7 +112,8 @@ byte currentBuffer = 0; // Current buffer being written to microSD
 
 
 // Other variables
-int16_t zeroCodeCorrection[nPhysicalChannels] = {0}; // Zero-code offset corrections for each channel
+int16_t zeroCodeCorrection[nPhysicalChannels][4] = {0}; // Zero-code offset corrections for each channel
+int16_t thisZCC = 0; // Temporary variable to store zero-code correction during computation
 uint32_t nSamplesAcquired = 0; // Number of samples acquired since logging started
 uint32_t maxSamplesToAcquire = 0; // maximum number of samples to acquire on startLogging command. 0 = infinite
 uint32_t sum = 0; // Sum for calculating zero-code correction
@@ -279,7 +280,6 @@ void handler(void) {
               USBCOM.readByteArray(voltageRanges, nPhysicalChannels);
               for (int i = 0; i < nPhysicalChannels; i++) {
                 AD.setRange(i, voltageRanges[i]);
-                zeroCodeCorrection[i] = 0;
               }
               USBCOM.writeByte(1); // Send confirm byte
             } else {
@@ -380,17 +380,20 @@ void handler(void) {
         }
       break;
 
-      case 'Z': // Measure and store a zero-code offset correction for 1 channel
+      case 'Z': // Measure and set zero-code offset correction for 1 channel (all references)
       if (opSource == 0) {
-        sum = 0;
         inByte = USBCOM.readByte();
-        if (voltageRanges[inByte] < 3) {
+        for (int ref = 0; ref < 3; ref++) {
+          sum = 0;
+          AD.setRange(inByte, ref);
           for (int z = 0; z < 100; z++) {
             AD.readADC();
             sum += AD.analogData.uint16[inByte];
           }
-          zeroCodeCorrection[inByte] = (int16_t)(4096-(sum/100));
+          thisZCC = (int16_t)(4096-(sum/100));
+          zeroCodeCorrection[inByte][ref] = thisZCC;
         }
+        AD.setRange(inByte, voltageRanges[inByte]);
       }
       break;
     }// end switch(opCode)
@@ -399,7 +402,7 @@ void handler(void) {
   AD.readADC(); // Reads all active channels and stores the result in a buffer in the AD object: AD.analogData[]
   
   for (int i = 0; i < nActiveChannels; i++) { // Detect threshold crossings and send to targets
-    AD.analogData.uint16[i] += zeroCodeCorrection[i];
+    AD.analogData.uint16[i] += zeroCodeCorrection[i][voltageRanges[i]];
     if (eventChannels[i]) { // If event reporting is enabled for this channel
       thresholdEventDetected[i] = false;
       if (eventEnabled[i]) { // Check for threshold crossing

@@ -338,9 +338,22 @@ classdef BpodAnalogIn < handle
             end
             % Send 'Retrieve' command to the AM
             obj.Port.write([obj.opMenuByte 'D'], 'uint8');
-            nSamples = obj.Port.read(1, 'uint32');
-            nValues = obj.nActiveChannels*nSamples;
-            RawData = obj.Port.read(nValues, 'uint16');
+            nSamples = double(obj.Port.read(1, 'uint32'));
+            nValues = double(obj.nActiveChannels*nSamples);
+            MaxReadSize = 50000;
+            if nValues < MaxReadSize
+                RawData = obj.Port.read(nValues, 'uint16');
+            else 
+                RawData = uint16(zeros(1,nValues));
+                nReads = floor(nValues/MaxReadSize);
+                remainder = rem(nValues,MaxReadSize);
+                Pos = 1;
+                for i = 1:nReads
+                    RawData(Pos:Pos+MaxReadSize-1) = obj.Port.read(MaxReadSize, 'uint16');
+                    Pos = Pos + MaxReadSize;
+                end
+                RawData(Pos:Pos+remainder-1) = obj.Port.read(remainder, 'uint16');
+            end
             data = struct;
             data.y = zeros(obj.nActiveChannels, nSamples);
             ReshapedRawData = reshape(RawData, obj.nActiveChannels, nSamples);

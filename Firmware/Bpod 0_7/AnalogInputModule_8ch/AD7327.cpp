@@ -61,8 +61,7 @@ void AD7327::setNchannels(byte nChannels) {
 }
 
 void AD7327::setRange(byte channel, byte newRangeIndex) { // See AD7327 datasheet p.24
-  channel = ADChannelMap[channel];
-  rangeIndexes[channel] = newRangeIndex;
+  rangeIndexes[ADChannelLookup[channel]] = newRangeIndex;
   // Clear the selected sequence by writing to control register (must happen first; see AD7327 datasheet p.26)
   registerBuffer = 0; // Clear register buffer
   bitSet(registerBuffer, 15);

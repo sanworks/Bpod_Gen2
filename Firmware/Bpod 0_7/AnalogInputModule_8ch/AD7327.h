@@ -46,6 +46,7 @@ private:
   void writeRegisterBuffer();
   void setControlRegister();
   byte ADChannelMap[8] = {0, 1, 7, 6, 2, 3, 5, 4}; // ADC Channels as physically presented on the wire terminal connectors
+  byte ADChannelLookup[8] = {0, 1, 4, 5, 7, 6, 3, 2}; // Position of ADC channels in channel map
   byte rangeIndexes[8] = {0};
 };
 #endif
