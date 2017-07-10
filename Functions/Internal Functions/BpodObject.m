@@ -292,11 +292,15 @@ classdef BpodObject < handle
                 obj.SerialPort.write('F', 'uint8');
                 obj.FirmwareBuild = obj.SerialPort.read(1, 'uint16');
                 obj.MachineType = obj.SerialPort.read(1, 'uint16');
-                obsoleteFirmware = [7 8 9 10 11 12];
-                if sum(obsoleteFirmware == obj.FirmwareBuild) > 0
+                currentFirmware = 14;
+                if obj.FirmwareBuild ~= currentFirmware
                     obj.SerialPort.write('Z');
                     obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
-                    error('Old firmware detected. Please update Bpod firmware, restart MATLAB and try again.')
+                    if obj.FirmwareBuild < currentFirmware
+                        error('Old firmware detected. Please update Bpod firmware, restart MATLAB and try again.')
+                    else
+                        error('The firmware on the Bpod state machine is newer than your Bpod software for MATLAB. Please update your software and try again.')
+                    end
                 end
                 % Request hardware description
                 obj.SerialPort.write('H', 'uint8');
@@ -662,9 +666,12 @@ classdef BpodObject < handle
             sma.GlobalTimers = struct;
             sma.GlobalTimers.Duration = zeros(1,obj.HW.n.GlobalTimers);
             sma.GlobalTimers.OnsetDelay = zeros(1,obj.HW.n.GlobalTimers);
+            sma.GlobalTimers.LoopInterval = zeros(1,obj.HW.n.GlobalTimers);
             sma.GlobalTimers.OutputChannel = ones(1,obj.HW.n.GlobalTimers)*255; % Default channel code of 255 is "no channel".
             sma.GlobalTimers.OnMessage = zeros(1,obj.HW.n.GlobalTimers);
             sma.GlobalTimers.OffMessage = zeros(1,obj.HW.n.GlobalTimers);
+            sma.GlobalTimers.LoopMode = zeros(1,obj.HW.n.GlobalTimers); % Set to 1 if timer loops until canceled or trial-end
+            sma.GlobalTimers.SendEvents = ones(1,obj.HW.n.GlobalTimers); % Set to 0 to disable global timer events (if looping at high freq)
             sma.GlobalTimers.IsSet = zeros(1,obj.HW.n.GlobalTimers); % Changed to 1 when the timer is set with SetGlobalTimer
             sma.GlobalCounterMatrix = ones(1,obj.HW.n.GlobalCounters);
             sma.GlobalCounterEvents = ones(1,obj.HW.n.GlobalCounters)*255; % Default event of 255 is code for "no event attached".

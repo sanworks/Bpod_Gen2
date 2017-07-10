@@ -22,7 +22,8 @@ global BpodSystem
 % TimerNumber = the ID of the global timer to set. Valid timer IDs are usually 1-5 (depending on firmware, there may be more). 
 
 % Optional arguments: (..., Duration, myduration, OnsetDelay, mydelay, Channel, mychannel, ... 
-%                      OnMessage, my_onmessage, OffMessage, my_offmessage)
+%                      OnMessage, my_onmessage, OffMessage, my_offmessage, LoopMode, my_loopmode,...
+%                      SendEvents, y_n, LoopInterval, myInterval)
 % For execution speed, Unused optional arguments prior to the last non-default must be specified as 0 (default).
 %
 % Duration = Duration from timer start to timer stop in seconds (default = 0s).
@@ -37,6 +38,10 @@ global BpodSystem
 %     but longer strings can be loaded for each byte prior to running the state machine with LoadSerialMessages()
 % OffMessage = (for serial channels only) - the index of a byte message to
 %     send to the module when the timer elapses.
+% LoopMode = 0 if a one-shot timer, 1 if the timer loops until stopped with the GlobalTimerCancel action (or trial end)
+% SendEvents = 0 to disable wave onset and offset events (useful if looping at high frequency to control something)
+% LoopInterval = Configurable interval between global timer loop iterations (default = 0s). 
+%
 %
 % Example usage:
 % sma = SetGlobalTimer(sma, 1, 0.025); % sets timer 1 for 25ms (legacy syntax supported)
@@ -81,14 +86,29 @@ else
 end
 OnMessage = 0;
 OffMessage = 0;
+LoopMode = 0;
+SendEvents = 1;
+LoopInterval = 0;
 if nargin > 10
     OnMessage = varargin{9};
 end
 if nargin > 12
     OffMessage = varargin{11};
 end
+if nargin > 14
+    LoopMode = varargin{13};
+end
+if nargin > 16
+    SendEvents = varargin{15};
+end
+if nargin > 18
+    LoopInterval = varargin{17};
+end
 sma.GlobalTimers.OnsetDelay(TimerID) = OnsetDelay;
 sma.GlobalTimers.OutputChannel(TimerID) = OutputChannelIndex;
 sma.GlobalTimers.OnMessage(TimerID) = OnMessage;
 sma.GlobalTimers.OffMessage(TimerID) = OffMessage;
+sma.GlobalTimers.LoopMode(TimerID) = LoopMode;
+sma.GlobalTimers.SendEvents(TimerID) = SendEvents;
+sma.GlobalTimers.LoopInterval(TimerID) = LoopInterval;
 sma.GlobalTimers.IsSet(TimerID) = 1;

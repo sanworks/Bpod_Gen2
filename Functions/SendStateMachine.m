@@ -224,6 +224,8 @@ GlobalTimerOnMessages = uint8(GlobalTimerOnMessages);
 GlobalTimerOffMessages = sma.GlobalTimers.OffMessage;
 GlobalTimerOffMessages(GlobalTimerOffMessages==0) = 255;
 GlobalTimerOffMessages = uint8(GlobalTimerOffMessages);
+GlobalTimerLoopMode = uint8(sma.GlobalTimers.LoopMode);
+SendGlobalTimerEvents = uint8(sma.GlobalTimers.SendEvents);
 GlobalCounterAttachedEvents = uint8(sma.GlobalCounterEvents-1);
 GlobalCounterThresholds = uint32(sma.GlobalCounterThresholds);
 
@@ -231,13 +233,14 @@ GlobalCounterThresholds = uint32(sma.GlobalCounterThresholds);
 StateTimers = uint32(sma.StateTimers*BpodSystem.HW.CycleFrequency);
 GlobalTimers = uint32(sma.GlobalTimers.Duration*BpodSystem.HW.CycleFrequency);
 GlobalTimerDelays = uint32(sma.GlobalTimers.OnsetDelay*BpodSystem.HW.CycleFrequency);
+GlobalTimerLoopIntervals = uint32(sma.GlobalTimers.LoopInterval*BpodSystem.HW.CycleFrequency);
 %% Add input channel configuration
 %InputChannelConfig = [BpodSystem.InputsEnabled.PortsEnabled];
 
 %% Create vectors of 8-bit and 32-bit data
 
-EightBitMatrix = ['C' nStates StateTimerMatrix InputMatrix OutputMatrix GlobalTimerStartMatrix GlobalTimerEndMatrix GlobalCounterMatrix ConditionMatrix GlobalTimerChannels GlobalTimerOnMessages GlobalTimerOffMessages GlobalCounterAttachedEvents ConditionChannels ConditionValues];
-ThirtyTwoBitMatrix = [StateTimers GlobalTimers GlobalTimerDelays GlobalCounterThresholds];
+EightBitMatrix = ['C' nStates StateTimerMatrix InputMatrix OutputMatrix GlobalTimerStartMatrix GlobalTimerEndMatrix GlobalCounterMatrix ConditionMatrix GlobalTimerChannels GlobalTimerOnMessages GlobalTimerOffMessages GlobalTimerLoopMode SendGlobalTimerEvents GlobalCounterAttachedEvents ConditionChannels ConditionValues];
+ThirtyTwoBitMatrix = [StateTimers GlobalTimers GlobalTimerDelays GlobalTimerLoopIntervals GlobalCounterThresholds];
 
 if BpodSystem.EmulatorMode == 0
     %% Send state matrix to Bpod device

@@ -177,6 +177,20 @@ for x = 1:2:length(OutputActions)
         TargetEventCode = find(strcmp(OutputActions{x}, OutputChannelNames));
         if ~isempty(TargetEventCode)
             Value = OutputActions{x+1};
+            if ischar(Value) % Assume binary string, convert to decimal
+                if (sum(Value == '0') + sum(Value == '1')) == length(Value) 
+                    Value = bin2dec(Value);
+                else
+                    error('Error: Values for output actions must be either a byte or a binary string.')
+                end
+            else
+               if (TargetEventCode == BpodSystem.HW.Pos.GlobalTimerTrig) || (TargetEventCode == BpodSystem.HW.Pos.GlobalTimerCancel)
+                    % For backwards compatability, integers specifying
+                    % global timers convert to equivalent binary decimals. To
+                    % specify binary, use a string of bits.
+                    Value = 2^(Value-1);
+               end 
+            end
             sma.OutputMatrix(CurrentState,TargetEventCode) = Value;
         else
             error(['Check spelling of your output actions for state: ' StateName '.']);
