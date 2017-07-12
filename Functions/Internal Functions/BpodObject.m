@@ -293,13 +293,15 @@ classdef BpodObject < handle
                 obj.FirmwareBuild = obj.SerialPort.read(1, 'uint16');
                 obj.MachineType = obj.SerialPort.read(1, 'uint16');
                 currentFirmware = 14;
-                if obj.FirmwareBuild ~= currentFirmware
-                    obj.SerialPort.write('Z');
-                    obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
-                    if obj.FirmwareBuild < currentFirmware
-                        error('Old firmware detected. Please update Bpod firmware, restart MATLAB and try again.')
-                    else
-                        error('The firmware on the Bpod state machine is newer than your Bpod software for MATLAB. Please update your software and try again.')
+                if obj.FirmwareBuild ~= 5
+                    if obj.FirmwareBuild ~= currentFirmware
+                        obj.SerialPort.write('Z');
+                        obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
+                        if obj.FirmwareBuild < currentFirmware
+                            error('Old firmware detected. Please update Bpod firmware, restart MATLAB and try again.')
+                        else
+                            error('The firmware on the Bpod state machine is newer than your Bpod software for MATLAB. Please update your software and try again.')
+                        end
                     end
                 end
                 % Request hardware description
