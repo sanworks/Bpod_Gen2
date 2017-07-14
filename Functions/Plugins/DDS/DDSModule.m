@@ -24,6 +24,7 @@ classdef DDSModule < handle
         Amplitude = 1; % Last amplitude set from plugin object, in range [0 1] where 0 = 150mV p2p and 1 = 650mV p2p
         Waveform = 'Sine'; % 'Sine' or 'Triangle'
         MapFcn = 'Exp'; % Input bits from module serial channel mapped to frequency by either 'Linear' or 'Exp'
+        InputBitRange = [0 65535];
         OutputMapRange = [20 17000]; % Range of output frequency mapping function (Hz)
     end
     properties (SetAccess = protected)
@@ -59,6 +60,25 @@ classdef DDSModule < handle
                 end
             end
             obj.Frequency = freq;
+        end
+        function set.InputBitRange(obj, newRange)
+            if length(newRange) ~= 2
+                error('Error: input bit range must be a vector of 2 numbers - the lower and upper bound (bits)')
+            end
+            if newRange(1) < 0 || newRange(2) > 65536
+                error('Error: input bit range must cannot exceed [0 65536]')
+            end
+            if newRange(1) > newRange(2)
+                error('Error: input bit range vector must increase: [LowBound HighBound]')
+            end
+            if obj.Initialized
+                obj.Port.write('B', 'uint8', newRange, 'uint16');
+                Confirmed = obj.Port.read(1, 'uint8');
+                if Confirmed ~= 1
+                    error('Error setting input bit range. Confirm code not returned.');
+                end
+            end
+            obj.InputBitRange = newRange;
         end
         function set.OutputMapRange(obj, newRange)
             if length(newRange) ~= 2
@@ -141,6 +161,7 @@ classdef DDSModule < handle
             obj.Amplitude = (double(obj.Port.read(1, 'uint32'))/1000)/10000;
             obj.Waveform = obj.ValidWaveforms{obj.Port.read(1, 'uint8')+1};
             obj.MapFcn = obj.ValidMapFunctions{obj.Port.read(1, 'uint8')+1};
+            obj.InputBitRange = double(obj.Port.read(2, 'uint16'));
             obj.OutputMapRange = double(obj.Port.read(2, 'uint32'))/1000;
         end
         function delete(obj)

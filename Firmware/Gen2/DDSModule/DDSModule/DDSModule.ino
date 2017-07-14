@@ -67,7 +67,9 @@ byte opSource = 0;
 byte currentFrequencyRegister = 0;
 byte mappingFunctionIndex = 1; // 0 = linear, 1 = exponential
 byte currentWaveform = 0; // 0 = sine, 1 = triangle
-unsigned long frequencyRange[2] = {20, 17000}; // low end, high end in kHz, Preset to human auditory range
+uint16_t inputBitRange[2] = {0, 65535}; // Range of bits to expect on input channel (for mapping to frequency range)
+unsigned long outputFrequencyRange[2] = {20, 17000}; // Mapped output frequency range. low end, high end in kHz, Preset to human auditory range
+
 
 void setup() {
   Serial1.begin(1312500);
@@ -145,10 +147,10 @@ void loop() {
         }
         switch (mappingFunctionIndex) {
           case 0:
-            frequency = linearMap(adcValue, 0, 65535, frequencyRange[0], frequencyRange[1]);
+            frequency = linearMap(adcValue, inputBitRange[0], inputBitRange[1], outputFrequencyRange[0], outputFrequencyRange[1]);
           break;
           case 1:
-            frequency = expMap(adcValue, 0, 65535, frequencyRange[0], frequencyRange[1]);
+            frequency = expMap(adcValue, inputBitRange[0], inputBitRange[1], outputFrequencyRange[0], outputFrequencyRange[1]);
           break;
         }
         myDDS.setFrequency(0, frequency);
@@ -185,26 +187,34 @@ void loop() {
         USBCOM.writeUint32((uint32_t)(ampValue*1000));
         USBCOM.writeByte(currentWaveform);
         USBCOM.writeByte(mappingFunctionIndex);
-        USBCOM.writeUint32(frequencyRange[0]*1000);
-        USBCOM.writeUint32(frequencyRange[1]*1000);
+        USBCOM.writeUint16(inputBitRange[0]);
+        USBCOM.writeUint16(inputBitRange[1]);
+        USBCOM.writeUint32(outputFrequencyRange[0]*1000);
+        USBCOM.writeUint32(outputFrequencyRange[1]*1000);
       break;
       case 'V': // USB request to return frequency
         USBCOM.writeUint32((uint32_t)(frequency*1000));
       break;
+      case 'B': // Set bit-range to expect on input channel
+        if (opSource == 0) {
+          USBCOM.readUint16Array(inputBitRange, 2);
+          USBCOM.writeByte(1);
+        }
+      break;
       case 'R': // Set frequency output range
         switch (opSource) {
           case 0:
-            frequencyRange[0] = USBCOM.readUint32();
-            frequencyRange[1] = USBCOM.readUint32();
+            outputFrequencyRange[0] = USBCOM.readUint32();
+            outputFrequencyRange[1] = USBCOM.readUint32();
             USBCOM.writeByte(1);
           break;
           case 1:
-            frequencyRange[0] = StateMachineCOM.readUint32();
-            frequencyRange[1] = StateMachineCOM.readUint32();
+            outputFrequencyRange[0] = StateMachineCOM.readUint32();
+            outputFrequencyRange[1] = StateMachineCOM.readUint32();
           break;
           case 2:
-            frequencyRange[0] = ModuleCOM.readUint32();
-            frequencyRange[1] = ModuleCOM.readUint32();
+            outputFrequencyRange[0] = ModuleCOM.readUint32();
+            outputFrequencyRange[1] = ModuleCOM.readUint32();
           break;
         }
       break;

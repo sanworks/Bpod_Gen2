@@ -47,7 +47,10 @@ void AD7327::readADC(){
   for (int i = 0; i < nChannelsToRead; i++) {
     digitalWrite(ChipSelect, LOW); // take the Chip Select pin low to select the ADC.
     analogData.uint16[ADChannelMap[i]] = SPI.transfer16(0);
-    digitalWrite(ChipSelect, HIGH); // take the Chip Select pin high to de-select the ADC.
+    // Next, loop the CS digitalWrite to stall for less than 1 microsecond. Doing this prevents occasional ~5mV conversion artifacts on ch2-8.
+    for (int j = 0; j < 10; j++) { 
+      digitalWrite(ChipSelect, HIGH); // take the Chip Select pin high to de-select the ADC.
+    }
     bitClear(analogData.uint16[ADChannelMap[i]], 15); 
     bitClear(analogData.uint16[ADChannelMap[i]], 14); 
     bitClear(analogData.uint16[ADChannelMap[i]], 13);

@@ -60,6 +60,7 @@ byte DigitalPin2 = 19;
 SPISettings ADCSettings(10000000, MSBFIRST, SPI_MODE2);
 IntervalTimer hardwareTimer; // Hardware timer to ensure even sampling
 File DataFile; // File on microSD card, to store waveform data
+File CalFile; // File on microSD card, to store calibration data
 
 // Op menu variable
 byte opCode = 0; // Serial inputs access an op menu. The op code byte stores the intended operation.
@@ -112,12 +113,17 @@ byte currentBuffer = 0; // Current buffer being written to microSD
 
 
 // Other variables
-int16_t zeroCodeCorrection[nPhysicalChannels][4] = {0}; // Zero-code offset corrections for each channel
+int16_t zeroCodeOffset[4] = {0, 0, 0, 0}; // Zero-code offset corrections for each channel
 int16_t thisZCC = 0; // Temporary variable to store zero-code correction during computation
 uint32_t nSamplesAcquired = 0; // Number of samples acquired since logging started
 uint32_t maxSamplesToAcquire = 0; // maximum number of samples to acquire on startLogging command. 0 = infinite
 uint32_t sum = 0; // Sum for calculating zero-code correction
 boolean writeFlag = false; // True if a write buffer contains samples to be written to SD
+byte streamPrefix = 'R'; // Byte sent before each sample of data when streaming to output module
+union { // Union for conversion of calibration values to <-> from SD card
+    byte byteArray[2];
+    int16_t int16;
+} typeBuffer;
 
 // Error messages stored in flash.
 #define error(msg) sd.errorHalt(F(msg))
@@ -125,10 +131,18 @@ boolean writeFlag = false; // True if a write buffer contains samples to be writ
 void setup() {
   pinMode(DigitalPin1, OUTPUT);
   digitalWrite(DigitalPin1, HIGH); // This allows a potentiometer to be powered from the board, for coarse diagnostics
-  Serial2.begin(7372800); // Select the highest value your CAT5e/CAT6 cable supports without dropped bytes: 1312500, 2457600, 3686400, 7372800
+  Serial2.begin(1312500); // Select the highest value your CAT5e/CAT6 cable supports without dropped bytes: 1312500, 2457600, 3686400, 7372800
   Serial3.begin(1312500);
   SPI.begin();
   SD.begin(); // Initialize microSD card
+  if (SD.exists("Cal.wfm")) {
+    CalFile = SD.open("Cal.wfm", FILE_READ);
+    for (int i = 0; i < 3; i++) {
+      CalFile.read(typeBuffer.byteArray, 2);
+      zeroCodeOffset[i] = typeBuffer.int16;
+    }
+    CalFile.close();
+  }
   SD.remove("Data.wfm");
   DataFile = SD.open("Data.wfm", FILE_WRITE);
   timerPeriod = (1/(double)samplingRate)*1000000;
@@ -216,14 +230,9 @@ void handler(void) {
           break;
           case 1:
             StreamSignalToModule = (boolean)readByteFromSource(opSource);
-            if (StreamSignalToModule) { // Send number of streaming channels to expect
-              inByte = 0;
-              for (int i = 0; i < nActiveChannels; i++) {
-                inByte += streamChan2Module[i];
+              if (opSource == 0) {
+                USBCOM.writeByte(1); // Send confirm byte
               }
-              OutputStreamCOM.writeByte('N');
-              OutputStreamCOM.writeByte(inByte);
-            }
           break;
         }
       break;
@@ -380,20 +389,35 @@ void handler(void) {
         }
       break;
 
-      case 'Z': // Measure and set zero-code offset correction for 1 channel (all references)
-      if (opSource == 0) {
-        inByte = USBCOM.readByte();
-        for (int ref = 0; ref < 3; ref++) {
-          sum = 0;
-          AD.setRange(inByte, ref);
-          for (int z = 0; z < 100; z++) {
-            AD.readADC();
-            sum += AD.analogData.uint16[inByte];
-          }
-          thisZCC = (int16_t)(4096-(sum/100));
-          zeroCodeCorrection[inByte][ref] = thisZCC;
+      case 'P': // Set output stream prefix byte (sent once before each sample)
+        if (opSource == 0) {
+          streamPrefix = USBCOM.readByte();
+          USBCOM.writeByte(1); // Send confirm byte
         }
-        AD.setRange(inByte, voltageRanges[inByte]);
+      break;
+
+      case 'Z': // Measure and set zero-code offset (first, connect a wire between channel 1 signal and ground; ch1 on device = ch0 in code)
+      if ((opSource == 0) && (!LoggingDataToSD)) {
+        for (int i = 0; i < 3; i++) {
+          AD.setRange(0, i);
+          sum = 0;
+          for (int j = 0; j < 100; j++) {
+            AD.readADC();
+            sum += AD.analogData.uint16[0];
+          }
+          thisZCC = (int16_t)(4095-(sum/100));
+          zeroCodeOffset[i] = thisZCC;
+        }
+        AD.setRange(0, voltageRanges[0]);        
+        DataFile.close();
+        SD.remove("Cal.wfm");
+        CalFile = SD.open("Cal.wfm", FILE_WRITE);
+        for (int i = 0; i < 3; i++) {
+          typeBuffer.int16 = zeroCodeOffset[i];
+          CalFile.write(typeBuffer.byteArray, 2);
+        }
+        CalFile.close();
+        DataFile = SD.open("Data.wfm", FILE_WRITE);
       }
       break;
     }// end switch(opCode)
@@ -402,7 +426,7 @@ void handler(void) {
   AD.readADC(); // Reads all active channels and stores the result in a buffer in the AD object: AD.analogData[]
   
   for (int i = 0; i < nActiveChannels; i++) { // Detect threshold crossings and send to targets
-    AD.analogData.uint16[i] += zeroCodeCorrection[i][voltageRanges[i]];
+    AD.analogData.uint16[i] += zeroCodeOffset[voltageRanges[i]];
     if (eventChannels[i]) { // If event reporting is enabled for this channel
       thresholdEventDetected[i] = false;
       if (eventEnabled[i]) { // Check for threshold crossing
@@ -440,8 +464,7 @@ void handler(void) {
   
   if (LoggingDataToSD) {
     LogData();
-  }
-    
+  } 
   if (StreamSignalToUSB) { // Stream data to USB
     USBCOM.writeByte('R');
     for (int i = 0; i < nActiveChannels; i++) {
@@ -452,7 +475,7 @@ void handler(void) {
     USBCOM.flush();
   }
   if (StreamSignalToModule) {
-    OutputStreamCOM.writeByte('R');
+    OutputStreamCOM.writeByte(streamPrefix);
     for (int i = 0; i < nActiveChannels; i++) {
       if (streamChan2Module[i]) {
         OutputStreamCOM.writeUint16(AD.analogData.uint16[i]);

@@ -32,6 +32,7 @@ classdef BpodAnalogIn < handle
         ResetVoltages % Voltage must cross ResetValue (V) before another threshold event can occur
         SMeventsEnabled % Logical vector indicating channels that generate events
         Stream2Module % Logical vector indicating channels to stream to output module (raw data)
+        StreamPrefix % Prefix byte sent before each sample when streaming to output module
         nSamplesToLog = Inf; % Number of samples to log on trigger, 0 = infinite
     end
     
@@ -89,6 +90,7 @@ classdef BpodAnalogIn < handle
             obj.SMeventsEnabled = zeros(1,obj.nPhysicalChannels);
             obj.Stream2USB = zeros(1,obj.nPhysicalChannels);
             obj.Stream2Module = zeros(1,obj.nPhysicalChannels);
+            obj.StreamPrefix = 'R';
             
             obj.About.Port = 'ArCOM USB serial port object, to simplify data transactions with Arduino. See https://github.com/sanworks/ArCOM';
             obj.About.GUIhandles = 'A struct containing handles of the UI';
@@ -131,6 +133,17 @@ classdef BpodAnalogIn < handle
                 obj.confirmTransmission('sampling rate');
             end
             obj.SamplingRate = sf;
+        end
+        
+        function set.StreamPrefix(obj, prefix)
+            if obj.Initialized
+                if length(prefix) > 1 
+                    error(['Error setting prefix: the prefix must be a single byte.'])
+                end
+                obj.Port.write([obj.opMenuByte 'P' prefix], 'uint8');
+                obj.confirmTransmission('stream prefix');
+            end
+            obj.StreamPrefix = prefix;
         end
         
         function set.nActiveChannels(obj, nChannels)
@@ -248,8 +261,8 @@ classdef BpodAnalogIn < handle
         function startModuleStream(obj)
             if obj.Initialized
                 obj.Port.write([obj.opMenuByte 'S' 1 1], 'uint8');
-                obj.confirmTransmission('Module stream');
             end
+            obj.confirmTransmission('Module stream');
             obj.Status.ModuleStreamEnabled = 1;
         end
         
@@ -327,7 +340,7 @@ classdef BpodAnalogIn < handle
                     error('Error setting Stream2USB channels: value for each channel must be 0 or 1')
                 end
                 obj.Port.write([obj.opMenuByte 'C' obj.Stream2USB value], 'uint8');
-                obj.confirmTransmission('stream to USB');
+                obj.confirmTransmission('stream to Module');
             end
             obj.Stream2Module = value;
         end
@@ -366,13 +379,8 @@ classdef BpodAnalogIn < handle
             data.x = 0:Period:(Period*double(nSamples)-Period);
         end
         
-        function setZero(obj, chan)
-            if sum((chan > obj.nPhysicalChannels)) > 0 || sum((chan < 1)) > 0
-                error(['Error setting Zero volts: channel must be in the range [0 ' num2str(obj.nPhysicalChannels) ']']);
-            end
-            for i = 1:length(chan)
-                obj.Port.write([213 'Z' chan(i)-1], 'uint8');
-            end
+        function setZero(obj)
+            obj.Port.write([213 'Z'], 'uint8');
         end
         
         function Scope(obj)

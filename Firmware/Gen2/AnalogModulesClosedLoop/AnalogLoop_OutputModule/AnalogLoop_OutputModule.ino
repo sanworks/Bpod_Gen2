@@ -43,7 +43,7 @@
 
 // Module setup
 #define FirmwareVersion 1
-#define OutputModuleType 2 // 1 = 4-channel analog output module, 2 = 8-channel analog output module
+#define OutputModuleType 1 // 1 = 4-channel analog output module, 2 = 8-channel analog output module
 char moduleName[] = "AnlgLoopOut"; // Name of module for manual override UI and state machine assembler
 const byte nOutputChannels = 8; // Number of physical analog output channels (used to reserve memory, 8 will work for 4-channel module)
 byte nActiveChannels = 4; // Number of channels currently active (being mapped from input stream)
