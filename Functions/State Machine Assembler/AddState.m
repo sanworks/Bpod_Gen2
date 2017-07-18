@@ -156,10 +156,14 @@ for x = 1:2:length(OutputActions)
         Value = OutputActions{x+1};
         switch MetaAction
             case 1
-                Value = 2^(Value-1);
-                sma.OutputMatrix(CurrentState,BpodSystem.HW.Pos.Output_SPI) = Value;
+                if Value > 0
+                    Value = 2^(Value-1);
+                end
+                    sma.OutputMatrix(CurrentState,BpodSystem.HW.Pos.Output_SPI) = Value;
             case 2
-                sma.OutputMatrix(CurrentState,BpodSystem.HW.Pos.Output_PWM+Value-1) = 255;
+                if Value > 0
+                    sma.OutputMatrix(CurrentState,BpodSystem.HW.Pos.Output_PWM+Value-1) = 255;
+                end
             case 3
                 for i = 1:BpodSystem.HW.n.Ports
                     sma.OutputMatrix(CurrentState,BpodSystem.HW.Pos.Output_PWM+i-1) = bitget(Value, i)*255;
