@@ -670,10 +670,10 @@ classdef BpodObject < handle
             sma.GlobalTimers = struct;
             sma.GlobalTimers.Duration = zeros(1,obj.HW.n.GlobalTimers);
             sma.GlobalTimers.OnsetDelay = zeros(1,obj.HW.n.GlobalTimers);
-            sma.GlobalTimers.LoopInterval = zeros(1,obj.HW.n.GlobalTimers);
             sma.GlobalTimers.OutputChannel = ones(1,obj.HW.n.GlobalTimers)*255; % Default channel code of 255 is "no channel".
             sma.GlobalTimers.OnMessage = zeros(1,obj.HW.n.GlobalTimers);
             sma.GlobalTimers.OffMessage = zeros(1,obj.HW.n.GlobalTimers);
+            sma.GlobalTimers.LoopInterval = zeros(1,obj.HW.n.GlobalTimers);
             sma.GlobalTimers.LoopMode = zeros(1,obj.HW.n.GlobalTimers); % Set to 1 if timer loops until canceled or trial-end
             sma.GlobalTimers.SendEvents = ones(1,obj.HW.n.GlobalTimers); % Set to 0 to disable global timer events (if looping at high freq)
             sma.GlobalTimers.IsSet = zeros(1,obj.HW.n.GlobalTimers); % Changed to 1 when the timer is set with SetGlobalTimer

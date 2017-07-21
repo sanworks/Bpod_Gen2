@@ -30,8 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % - Directly manipulate its fields to change trial parameters on the device.
 % - Run R.stream to see streaming output (for testing purposes)
 % - Run P = R.currentPosition to return the current wheel position (for testing purposes).
-% - Run R.runTrial to manually start an experimental trial.
-% - Check R.runningTrial to find out if the trial is still running (0 = idle, 1 = running)
+% - Run R.runTrial to manually start an experimental trial (sets position to 0, enables thresholds).
 % - Run data = R.getLastTrialData once the trial is over, to return the trial outcome and wheel position record
 % - Run a trial from the Bpod state machine by sending byte 'T' over the hardware serial connection
 % - Serial event bytes during the trial will be sent to Bpod: 1 = left choice, 2 = right choice
@@ -42,10 +41,8 @@ classdef RotaryEncoderModule < handle
         Timer % MATLAB timer (for updating the UI)
         threshold1 = -40; % Threshold for left choice (in degrees, trials start at 180)
         threshold2 = 40; % Threshold for right choice (in degrees)
-        runningTrial = 0; % 0 if idle, 1 if running a trial
         outputStream = 'off';
         sendEvents = 'off';
-        autoSync = 1; % If 1, update params on device when parameter fields change. If 0, don't.
     end
     properties (Access = private)
         acquiring = 0; % 0 if idle, 1 if acquiring data
@@ -58,6 +55,7 @@ classdef RotaryEncoderModule < handle
         sweepStartTime = 0; % Time current UI sweep started
         displayPositions % UI y data
         displayTimes % UI x data
+        autoSync = 1; % If 1, update params on device when parameter fields change. If 0, don't.
     end
     methods
         function obj = RotaryEncoderModule(portString)
@@ -150,7 +148,6 @@ classdef RotaryEncoderModule < handle
             if ~remoteTrigger
                 obj.Port.write('T', 'uint8');
             end
-            obj.runningTrial = 1;
         end
         function startLogging(obj)
             obj.Port.write('L', 'uint8');
@@ -169,7 +166,6 @@ classdef RotaryEncoderModule < handle
                 TimeData = RawData(2:2:end);
                 Data.PosData = obj.pos2degrees(PosData);
                 Data.TimeData = double(TimeData)/1000;
-                obj.runningTrial = 0;
             else
                 error('Could not get trial data - no data was available.')
             end
