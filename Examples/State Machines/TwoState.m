@@ -1,6 +1,6 @@
 % Example state matrix: Two states
 
-sma = NewStateMatrix();
+sma = NewStateMachine();
 
 sma = AddState(sma, 'Name', 'Port1Lit', ...
     'Timer', 1,...

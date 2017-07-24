@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Sound Beach, New York, USA
+Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -19,7 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 classdef BpodObject < handle
     properties
-        FirmwareBuild % An integer specifying the firmware on the connected device
+        MachineType % 1 = Bpod 0.5, 2 = Bpod 0.7+, 3 = Pocket State Machine
+        FirmwareVersion % An integer specifying the firmware on the connected device
         SerialPort % ArCOM serial port object
         HW % Hardware description
         Modules % Connected UART serial module description
@@ -49,10 +50,10 @@ classdef BpodObject < handle
         BonsaiSocket % An object containing a TCP/IP socket for communication with Bonsai
         EmulatorMode % 0 if actual device connected, 1 if emulator
         HostOS % Holds a string naming the host operating system (i.e. 'Microsoft Windows XP')
-        MachineType % 1 = Arduino Due / Bpod 0.5, 0.7. 2 = Pocket State Machine
         Timers % A struct containing MATLAB timer objects
     end
     properties (Access = private)
+        CurrentFirmware = 15;
         SplashData % Splash screen frames
         LastHardwareState % Last known state of I/O lines and serial codes
         CycleMonitoring % 0 = off, 1 = on. Measures min and max actual hardware timer callback execution time
@@ -279,31 +280,27 @@ classdef BpodObject < handle
                 obj.HW.Outputs = 'UUUXSBBWWWPPPPPPPPGGG';
                 close(obj.GUIHandles.LaunchEmuFig);
                 disp('Connection aborted. Bpod started in Emulator mode.')
-                obj.FirmwareBuild = 9;
-                obj.MachineType = 1;
+                obj.FirmwareVersion = obj.CurrentFirmware;
+                obj.MachineType = 2;
                 nModules = sum(obj.HW.Outputs=='U');
                 obj.Modules.Connected = zeros(1,nModules);
                 obj.Modules.Name = cell(1,nModules);
                 obj.Modules.nSerialEvents = ones(1,nModules)*(obj.HW.n.MaxSerialEvents/(nModules+1));
                 obj.Modules.EventNames = cell(1,nModules);
                 obj.Modules.RelayActive = zeros(1,nModules);
+                obj.Modules.USBport = zeros(1,nModules);
             else
                 % Get firmware version
                 obj.SerialPort.write('F', 'uint8');
-                obj.FirmwareBuild = obj.SerialPort.read(1, 'uint16');
+                obj.FirmwareVersion = obj.SerialPort.read(1, 'uint16');
                 obj.MachineType = obj.SerialPort.read(1, 'uint16');
-                currentFirmware = 14;
-                if obj.MachineType == 1
-                    if obj.FirmwareBuild ~= 5
-                        if obj.FirmwareBuild ~= currentFirmware
-                            obj.SerialPort.write('Z');
-                            obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
-                            if obj.FirmwareBuild < currentFirmware
-                                error('Old firmware detected. Please update Bpod firmware, restart MATLAB and try again.')
-                            else
-                                error('The firmware on the Bpod state machine is newer than your Bpod software for MATLAB. Please update your software and try again.')
-                            end
-                        end
+                if obj.FirmwareVersion ~= obj.CurrentFirmware
+                    obj.SerialPort.write('Z');
+                    obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
+                    if obj.FirmwareVersion < obj.CurrentFirmware
+                        error('Old firmware detected. Please update Bpod firmware, restart MATLAB and try again.')
+                    else
+                        error('The firmware on the Bpod state machine is newer than your Bpod software for MATLAB. Please update your software and try again.')
                     end
                 end
                 % Request hardware description
@@ -328,10 +325,8 @@ classdef BpodObject < handle
                         obj.InputsEnabled(PortPos(1:3)) = 1;
                     end
                     obj.InputsEnabled(obj.HW.Inputs == 'B') = 1;
-                    if obj.MachineType == 1
-                        if obj.FirmwareBuild > 6 % Later versions use optoisolator for wire inputs - OK to activate
-                            obj.InputsEnabled(obj.HW.Inputs == 'W') = 1;
-                        end
+                    if obj.MachineType > 1 % v0.7+ uses optoisolators on wire channels; OK to enable by default
+                        obj.InputsEnabled(obj.HW.Inputs == 'W') = 1;
                     end
                 end
                 obj.SerialPort.write(['E' obj.InputsEnabled], 'uint8');
@@ -409,6 +404,7 @@ classdef BpodObject < handle
                 obj.Modules.FirmwareVersion = zeros(1,nModules);
                 obj.Modules.nSerialEvents = ones(1,nModules)*(floor(obj.HW.n.MaxSerialEvents/obj.HW.n.SerialChannels));
                 obj.Modules.EventNames = cell(1,nModules);
+                obj.Modules.USBport = cell(1,nModules);
                 obj.SerialPort.write('M', 'uint8');
                 pause(.1);
                 messageLength = obj.SerialPort.bytesAvailable;
@@ -490,6 +486,13 @@ classdef BpodObject < handle
                     obj.SetupStateMachine;
                     obj.refreshGUIPanels;
                     obj.FixPushbuttons;
+                    if isfield(obj.GUIHandles, 'SystemInfoFig')
+                        if ishandle(obj.GUIHandles.SystemInfoFig) % If info figure is open
+                            close(obj.GUIHandles.SystemInfoFig);
+                            BpodSystemInfo;
+                            figure(obj.GUIHandles.MainFig);
+                        end
+                    end
                 end
             end
         end
@@ -721,28 +724,30 @@ classdef BpodObject < handle
             obj.GUIData.PauseButton = imread('PauseButton.bmp');
             obj.GUIData.PauseRequestedButton = imread('PauseRequestedButton.bmp');
             obj.GUIData.StopButton = imread('StopButton.bmp');
-            obj.GUIHandles.RunButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [742 120 60 60], 'Callback', 'RunProtocol(''StartPause'')', 'CData', obj.GUIData.GoButton, 'TooltipString', 'Launch behavior session');
-            obj.GUIHandles.EndButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [742 40 60 60], 'Callback', 'RunProtocol(''Stop'')', 'CData', obj.GUIData.StopButton, 'TooltipString', 'End session');
+            obj.GUIHandles.RunButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [742 100 60 60], 'Callback', 'RunProtocol(''StartPause'')', 'CData', obj.GUIData.GoButton, 'TooltipString', 'Launch behavior session');
+            obj.GUIHandles.EndButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [742 20 60 60], 'Callback', 'RunProtocol(''Stop'')', 'CData', obj.GUIData.StopButton, 'TooltipString', 'End session');
             
             obj.GUIData.OffButton = imread('ButtonOff.bmp');
             obj.GUIData.OffButtonDark = imread('ButtonOff_dark.bmp');
             obj.GUIData.OnButton = imread('ButtonOn.bmp');
             obj.GUIData.OnButtonDark = imread('ButtonOn_dark.bmp');
-            obj.GUIData.SoftTriggerButton = imread('BpodSoftTrigger.bmp');
-            obj.GUIData.SoftTriggerActiveButton = imread('BpodSoftTrigger_active.bmp');
             obj.GUIData.SettingsButton = imread('SettingsButton.bmp');
             obj.GUIData.RefreshButton = imread('RefreshButton.bmp');
+            obj.GUIData.USBButton = imread('USBButton.bmp');
+            obj.GUIData.SystemInfoButton = imread('SystemInfoButton.bmp');
             obj.GUIData.DocButton = imread('DocButton.bmp');
             obj.GUIData.AddProtocolButton = imread('AddProtocolIcon.bmp');
             obj.GUIHandles.SettingsButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [778 275 29 29], 'Callback', 'BpodSettingsMenu', 'CData', obj.GUIData.SettingsButton, 'TooltipString', 'Settings and calibration');
             obj.GUIHandles.RefreshButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [733 275 29 29], 'Callback', @(h,e)obj.LoadModules(), 'CData', obj.GUIData.RefreshButton, 'TooltipString', 'Refresh modules');
+            obj.GUIHandles.SystemInfoButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [778 227 29 29], 'Callback', 'BpodSystemInfo', 'CData', obj.GUIData.SystemInfoButton, 'TooltipString', 'View system info');
+            obj.GUIHandles.USBButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [733 227 29 29], 'Callback', 'BpodUSBSettings', 'CData', obj.GUIData.USBButton, 'TooltipString', 'Configure module USB ports');
             obj.GUIHandles.DocButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [796 371 29 29], 'Callback', @(h,e)obj.Wiki(), 'CData', obj.GUIData.DocButton, 'TooltipString', 'Documentation wiki');
             text(735, 65,'Config', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
             line([730 815], [79 79], 'Color', LabelFontColor, 'LineWidth', 2);
             text(335, 65,'Manual Override', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
             line([145 718], [79 79], 'Color', LabelFontColor, 'LineWidth', 2);
-            text(731, 185,'Session', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
-            line([730 815], [200 200], 'Color', LabelFontColor, 'LineWidth', 2);
+            text(731, 205,'Session', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
+            line([730 815], [220 220], 'Color', LabelFontColor, 'LineWidth', 2);
             
             PluginPanelWidth = 575;
             PluginPanelOffset = 145;
@@ -790,14 +795,13 @@ classdef BpodObject < handle
                 obj.GUIHandles.OverridePanelAxes(i) = axes('Parent', obj.GUIHandles.OverridePanel(i), 'Position',[0 0 1 1], 'Color',[.37,.37,.37], 'Xlim', [0 PluginPanelWidth], 'Ylim', [0 250], 'UserData', 'PrimaryPanelAxes'); axis off;
                 uistack(obj.GUIHandles.OverridePanel(1),'top');
                 if i == 1 % State machine panel
-                    if obj.MachineType == 1
-                        if obj.FirmwareBuild < 8
+                    switch obj.MachineType
+                        case 1
                             StateMachinePanel_0_5; % This is a file in /Bpod/Functions/OverridePanels/
-                        else
+                        case 2
                             StateMachinePanel_0_7;
-                        end
-                    else
-                        StateMachinePanel_PSM_0_1;
+                        case 3
+                            StateMachinePanel_PSM_0_1;
                     end
                 else % Module panel
                     % Find module panel function and draw panel, otherwise draw default panel

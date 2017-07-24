@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Sound Beach, New York, USA
+Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the 
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -25,15 +25,13 @@ if isfield(TE, 'RawEvents')
 else
     TrialNum = 1;
     TE.Info = struct;
-    switch BpodSystem.FirmwareBuild
-        case 5
-            TE.Info.BpodVersion = 0.5;
-        case 6
-            TE.Info.BpodVersion = 0.5;
-        case 7
-            TE.Info.BpodVersion = 0.7;
-        case 8
-            TE.Info.BpodVersion = 0.7;
+    switch BpodSystem.MachineType
+        case 1
+            TE.Info.BpodVersion = 'Bpod 0.5';
+        case 2
+            TE.Info.BpodVersion = 'Bpod 0.7-0.9';
+        case 3
+            TE.Info.BpodVersion = 'Pocket State Machine';
     end
     TE.Info.SessionDate = datestr(now, 1);
     TheTime = now;

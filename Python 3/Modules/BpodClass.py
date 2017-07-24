@@ -26,7 +26,7 @@ class BpodObject(object):
     def __init__(self, serialPortName):
         self.serialObject = 0
         self.firmwareVersion = 0
-        self.currentFirmwareVersion = 14
+        self.currentFirmwareVersion = 15
         self.machineType = 0
         self.HW = Struct()
         self.HW.n = Struct()

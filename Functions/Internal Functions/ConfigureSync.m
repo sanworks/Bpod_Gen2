@@ -1,8 +1,8 @@
 %{
 ----------------------------------------------------------------------------
 
-This file is part of the Bpod Project
-Copyright (C) 2014 Joshua I. Sanders, Cold Spring Harbor Laboratory, NY, USA
+This file is part of the Sanworks Bpod repository
+Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function ConfigureSync(junk, morejunk)
 global BpodSystem
 close(BpodSystem.GUIHandles.SettingsMenuFig)
-if BpodSystem.FirmwareBuild < 8 % Bpod 0.5
+if BpodSystem.MachineType == 1 % Bpod 0.5
     error('Bpod 0.5 has a fixed sync port. No configuration required.')
 else
     BpodSystem.GUIHandles.PortConfigFig = figure('Position',[600 400 400 150],'name','Sync config.','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');

@@ -1,7 +1,7 @@
 % Example state matrix: Switches states when a TTL pulse arrives on BNC trigger channel 1
 
 
-sma = NewStateMatrix();
+sma = NewStateMachine();
 
 sma = AddState(sma, 'Name', 'Port1LightOn', ...
     'Timer', 1,...
