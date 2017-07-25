@@ -36,7 +36,7 @@
 //////////////////////////////////////////
 // 1 = Bpod 0.5 (Arduino Due); 2 = Bpod 0.7-0.9 (Arduino Due); 3 = Pocket State Machine (Teensy 3.6)
 
-#define MachineType 3 
+#define MachineType 2 
 
 //////////////////////////////////////////
 //          Set Firmware Version         /
