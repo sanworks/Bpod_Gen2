@@ -155,6 +155,20 @@ classdef DDSModule < handle
             obj.Frequency = double(obj.Port.read(1, 'uint32'))/1000;
             obj.Initialized = 1;
         end
+        function setAmplitudeBits(obj,bits)
+            obj.Port.write('D', 'uint8', bits, 'uint16');
+            Confirmed = obj.Port.read(1, 'uint8');
+            if Confirmed ~= 1
+                error('Error setting amplitude bits. Confirm byte not returned.');
+            end
+        end
+        function setAmplitudeZeroCode(obj,bits)
+            obj.Port.write('C', 'uint8', bits, 'uint16');
+            Confirmed = obj.Port.read(1, 'uint8');
+            if Confirmed ~= 1
+                error('Error setting amplitude zero code. Confirm byte not returned.');
+            end
+        end
         function GetParams(obj)
             obj.Port.write('Q', 'uint8'); % Request settings
             obj.Frequency = double(obj.Port.read(1, 'uint32'))/1000;
