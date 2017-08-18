@@ -1,0 +1,2 @@
+This sketch includes a copy of the DueTimer libaray by Ivan Seidel, along with its original license
+. The DueTimer library is open source, and freely available from: https://github.com/ivanseidel/DueTimer

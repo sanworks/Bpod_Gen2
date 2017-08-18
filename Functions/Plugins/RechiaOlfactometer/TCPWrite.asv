@@ -1,0 +1,17 @@
+function TCPWrite(IP, Port, Message)
+
+import java.net.Socket
+import java.net.InetAddress
+import java.io.*
+Message = sprintf('%s\n',Message);
+%output_socket = Socket(IP, Port);
+
+output_socket = Socket;
+Address = InetAddress
+output_socket.connect(IP, 500);
+
+output_stream   = output_socket.getOutputStream;
+d_output_stream = DataOutputStream(output_stream);
+d_output_stream.writeBytes(Message);  % Send the encoded string to the server
+d_output_stream.close;
+output_socket.close;

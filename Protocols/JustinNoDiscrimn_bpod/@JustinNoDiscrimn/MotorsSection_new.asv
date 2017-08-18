@@ -1,0 +1,516 @@
+% [x, y] = MotorsSection(obj, action, x, y)
+%
+% Section that takes care of controlling the stepper motors.
+%
+%
+% PARAMETERS:
+% -----------
+%
+% obj      Default object argument.
+%
+% action   One of:
+%            'init'      To initialise the section and set up the GUI
+%                        for it;
+%
+%            'reinit'    Delete all of this section's GUIs and data,
+%                        and reinit, at the same position on the same
+%                        figure as the original section GUI was placed.
+%           
+%            Several other actions are available (see code of this file).
+%
+% x, y     Relevant to action = 'init'; they indicate the initial
+%          position to place the GUI at, in the current figure window
+%
+% RETURNS:
+% --------
+%
+% [x, y]   When action == 'init', returns x and y, pixel positions on
+%          the current figure, updated after placing of this section's GUI.
+%
+% x        When action = 'get_next_side', x will be either 'l' for
+%          left or 'r' for right.
+%
+
+function [x, y] = MotorsSection(obj, action, x, y)
+
+GetSoloFunctionArgs;
+
+global Solo_Try_Catch_Flag
+global pole_motors_properties;
+global init_motors_properties
+global pole_motors; 
+global init_motors;
+
+%JPL - above globals used to be setup in mystartup.m...now they are here
+%for now
+
+%pole axial motor
+pole_motors_axial_properties.type = '@ZaberTCD1000';
+pole_motors_axial_properties.port = 'COM1';
+
+%pole radial motor
+pole_motors_radial_properties=[];
+%pole_motors_radial_properties.type = '@ZaberTCD1000';
+%pole_motors_radial_properties.port = 'COM2';
+
+%rear init poike axial motor
+init_motors_properties=[];
+%init_motors_properties.type = '@ZaberTCD1000';
+%init_motors_properties.port = 'COM3';
+
+
+switch action
+
+    case 'init',   % ------------ CASE INIT ----------------
+        
+        motorCount=0;
+        %initialize the pole axial motor
+        if isstruct(pole_motors_axial_properties)
+            if strcmp(pole_motors_axial_properties.type,'@FakeZaberTCD1000')
+                pole_motors_axial=FakeZaberTCD1000;
+            else
+                pole_motors_axial=ZaberTCD1000(pole_motors_axial_properties.port);
+            end
+%            serial_open(pole_motors_axial);
+            motorCount=motorCount+1;
+        end
+
+        %initialize the pole radial motor
+        if isstruct(pole_motors_radial_properties)
+            if strcmp(pole_motors_radial_properties.type,'@FakeZaberTCD1000')
+                pole_motors_radial=FakeZaberTCD1000;
+            else
+                pole_motors_radial=ZaberTCD1000(pole_motors_radial_properties.port);
+            end
+            serial_open(pole_motors_radial);
+            motorCount=motorCount+1;
+        end
+         
+        %initialize the init pole axial motor
+        if isstruct(init_motors_properties)
+            if strcmp(init_motors_properties.type,'@FakeZaberTCD1000')
+                init_motors=FakeZaberTCD1000;
+            else
+                init_motors=ZaberTCD1000(init_motors_properties.port);
+            end
+            serial_open(init_motors);
+            motorCount=motorCount+1;
+        end
+        
+        % Save the figure and the position in the figure where we are
+        % going to start adding GUI elements:
+        SoloParamHandle(obj, 'my_gui_info', 'value', [x y gcf]); next_row(y,1.5);
+        
+         % Set limits in microsteps for actuator. Range of actuator is greater than range of
+        % our  sliders, so must limit to prevent damage.  This limit is also coded into Zaber
+        % TCD1000 firmware, but exists here to keep GUI in range. If a command outside this range (0-value)
+        % motor driver gives error and no movement is made.
+        SoloParamHandle(obj, 'motor_max_position', 'value', 195000);  
+        SoloParamHandle(obj, 'trial_ready_times', 'value', 0);
+        
+        MenuParam(obj, 'motor_show', {'view', 'hide'}, 'view', x, y, 'label', 'Motor Control', 'TooltipString', 'Control motors');
+        set_callback(motor_show, {mfilename,'hide_show'});
+        
+        next_row(y);
+        Subheaderparam(obj,'sectiontitle','Motor Control',x,y);
+        
+        parentfig_x=x;parentfig_y=y;
+        
+      
+        % ---  Make new window for motor configuration
+        SoloParamHandle(obj, 'motorfig', 'saveable', 0);
+        motorfig.value = figure('Position', [3 500 400 200], 'Menubar', 'none',...
+            'Toolbar', 'none','Name','Motor Control','NumberTitle','off');
+
+        x = 1; y = 1;
+
+%                PushButtonParam(obj, 'serial_open', x, y, 'label', 'Open serial port');
+%                set_callback(serial_open, {mfilename, 'serial_open'});
+%                next_row(y);
+
+%%%%AXIAL POLE MOTOR
+
+        PushButtonParam(obj, 'pole_motor_axial_serial_reset', x, y, 'label', 'Reset pole axial motor serial port connection');
+        set_callback(pole_motor_axial_serial_reset, {mfilename, 'pole_motor_axial_serial_reset'});
+        next_row(y);
+
+%         PushButtonParam(obj, 'reset_motors_firmware', x, y, 'label', 'Reset Zaber firmware parameters',...
+%             'TooltipString','Target acceleration, target speed, and microsteps/step');
+%         set_callback(reset_motors_firmware, {mfilename, 'reset_motors_firmware'});
+%         next_row(y);
+
+        PushButtonParam(obj, 'pole_motor_axial_home', x, y, 'label', 'Home Pole Axial Motor');
+        set_callback(pole_motor_axial_home, {mfilename, 'pole_motor_axial_home'});
+        next_row(y);
+
+        PushButtonParam(obj, 'pole_motor_axial_stop', x, y, 'label', 'Stop Pole Axial Motor');
+        set_callback(pole_motor_axial_stop, {mfilename, 'pole_motor_axial_stop'});
+        next_row(y);
+
+        PushButtonParam(obj, 'pole_motor_axial_reset', x, y, 'label', 'Reset Pole Axial motor');
+        set_callback(motors_reset, {mfilename, 'pole_motor_axial_reset'});
+        next_row(y, 2);
+    
+%%%%RADIAL POLE MOTOR
+                PushButtonParam(obj, 'pole_motor_radial_serial_reset', x, y, 'label', 'Reset pole radial motor serial port connection');
+        set_callback(pole_motor_radial_serial_reset, {mfilename, 'pole_motor_radial_serial_reset'});
+        next_row(y);
+
+%         PushButtonParam(obj, 'reset_motors_firmware', x, y, 'label', 'Reset Zaber firmware parameters',...
+%             'TooltipString','Target acceleration, target speed, and microsteps/step');
+%         set_callback(reset_motors_firmware, {mfilename, 'reset_motors_firmware'});
+%         next_row(y);
+
+        PushButtonParam(obj, 'pole_motor_radial_home', x, y, 'label', 'Home Pole Radial Motor');
+        set_callback(pole_motor_radial_home, {mfilename, 'pole_motor_radial_home'});
+        next_row(y);
+
+        PushButtonParam(obj, 'pole_motor_radial_stop', x, y, 'label', 'Stop Pole Radial Motor');
+        set_callback(pole_motor_radial_stop, {mfilename, 'pole_motor_radial_stop'});
+        next_row(y);
+
+        PushButtonParam(obj, 'pole_motor_radial_reset', x, y, 'label', 'Reset Pole Radial Motor');
+        set_callback(pole_motor_radial_reset, {mfilename, 'pole_motor_radial_reset'});
+        next_row(y, 2);
+ 
+%%%%AXIAL INIT MOTOR
+                PushButtonParam(obj, 'init_motor_axial_serial_reset', x, y, 'label', 'Reset init axial motor serial port connection');
+        set_callback(init_motor_axial_serial_reset, {mfilename, 'init_motor_axial_serial_reset'});
+        next_row(y);
+
+%         PushButtonParam(obj, 'reset_motors_firmware', x, y, 'label', 'Reset Zaber firmware parameters',...
+%             'TooltipString','Target acceleration, target speed, and microsteps/step');
+%         set_callback(reset_motors_firmware, {mfilename, 'reset_motors_firmware'});
+%         next_row(y);
+
+        PushButtonParam(obj, 'init_motor_axial_home', x, y, 'label', 'Home Init Axial Motor');
+        set_callback(init_motor_axial_home, {mfilename, 'init_motor_axial_home'});
+        next_row(y);
+
+        PushButtonParam(obj, 'init_motor_axial_stop', x, y, 'label', 'Stop Init Axial Motor');
+        set_callback(init_motor_axial_stop, {mfilename, 'init_motor_axial_stop'});
+        next_row(y);
+
+        PushButtonParam(obj, 'init_motor_axial_reset', x, y, 'label', 'Reset Init Axial Motor');
+        set_callback(init_motor_axial_reset, {mfilename, 'init_motor_axial_reset'});
+        next_row(y, 2);
+        
+        %button for setting the center positon (radially) of the init pole
+        PushButtonParam(obj,'init_motor_set_ml',x,y,'label','Set Init Center');
+        set_callback(init_motor_set_ml, {mfilename, 'init_motor_set_ml'});
+        
+        next_row(y);
+          
+        PushButtonParam(obj, 'read_pole_positions', x, y, 'label', 'Read position');
+        set_callback(read_pole_positions, {mfilename, 'read_pole_positions'});
+
+        next_row(y);
+        
+        NumEditParam(obj,'axial_pole_motor_position',0,x,y,'label',...
+            'Axial motor position', ...
+            'TooltipString', 'Absolute axial position in microsteps of motor');
+        set_callback(axial_pole_motor_position, {mfilename, 'axial_pole_motor_position'});
+
+        nextrow(y);
+        NumEditParam(obj,'radial_pole_motor_position',0,x,y,'label',...
+            'Radial motor position', ...
+            'TooltipString', 'Absolute radial position in microsteps of motor');
+        set_callback(radial_pole_motor_position, {mfilename, 'radial_pole_motor_position'});
+
+        next_row(y);
+        SubheaderParam(obj, 'title', 'Read/set init position', x, y);
+
+        %settings for the init pole
+        next_row(y);
+        %NumeditParam(obj,
+        
+        %%%POLE POSITIONS SECTION
+        
+        %%%AXIAL
+        nextrow(y);
+        ToggleParam(obj, 'axial_position', 0, x, y, 'label', 'Axial Pole Positions',...
+            'TooltipString', 'One of the above positions chosen with some probabilty for every trial');
+        %set_callback(multi_go_position, 
+        next_row(y);
+        axialPos = {'pos1','pos2','pos3','pos4','pos5','pos6','pos7','pos8'};
+        
+        %JPL - this is uniform by default and can only be modified by
+        %completeing deselecting certain positions, or though antibias
+        
+        %goPosProb = {'prob1','prob2','prob3','prob4','prob5','prob6','prob7','prob8'};
+        
+        y1 = y;
+        y2 = y+20;
+        
+        for i = 1:8 % 8 axial pole positions
+            NumeditParam(obj, goPos{i}, 0+1.5*(i-1), x, y, 'position', [x+50*(i-1) y1 50 20],...
+                'label','', 'labelfraction', 0.05);
+            %NumeditParam(obj, goPosProb{i}, 0.125, x, y, 'position', [x+50*(i-1), y2, 50, 20], ...
+            %    'label','','labelfraction',0.05);
+        end
+        NumeditParam(obj, 'axial1',0, x, y, 'position', [x y 50 20], 'label','', 'labelfraction', 0.05);
+        NumeditParam(obj, 'axial2',1, x, y, 'position', [x+50 y 50 20],'label','', 'labelfraction', 0.05); 
+        NumeditParam(obj, 'axial3',1.8, x, y, 'position', [x+100 y 50 20],'label','',  'labelfraction', 0.05);
+        NumeditParam(obj, 'axial4',2.6, x, y, 'position', [x+150 y 50 20],'label','',  'labelfraction',0.05);
+        NumeditParam(obj, 'axial5',3.4, x, y, 'position', [x+200 y 50 20],'label','',  'labelfraction',0.05);
+        NumeditParam(obj, 'axial6',4.2, x, y, 'position', [x+250 y 50 20],'label','',  'labelfraction',0.05);
+        NumeditParam(obj, 'axial7',5, x, y, 'position', [x+300 y 50 20],'label','',  'labelfraction',0.05);
+        NumeditParam(obj, 'axial8',5.8, x, y, 'position', [x+350 y 50 20],'label','',  'labelfraction',0.05);
+        
+        next_column(x);
+        
+        %%%RADIAL
+        
+        ToggleParam(obj, 'radial_position', 0, x, y, 'label', 'Radial Pole Positions',...
+            'TooltipString', 'One of the above positions chosen with some probabilty for every trial');
+        %set_callback(multi_go_position, 
+        next_row(y);
+        radialPos = {'pos1','pos2','pos3','pos4','pos5','pos6','pos7','pos8'};
+        
+        %JPL - this is uniform by default and can only be modified by
+        %completeing deselecting certain positions, or though antibias
+        
+        %goPosProb = {'prob1','prob2','prob3','prob4','prob5','prob6','prob7','prob8'};
+        
+        y1 = y;
+        y2 = y+20;
+        
+        for i = 1:8 % 8 radial pole positions
+            NumeditParam(obj, radialPos{i}, 0+1.5*(i-1), x, y, 'position', [x+50*(i-1) y1 50 20],...
+                'label','', 'labelfraction', 0.05);
+            %NumeditParam(obj, goPosProb{i}, 0.125, x, y, 'position', [x+50*(i-1), y2, 50, 20], ...
+            %    'label','','labelfraction',0.05);
+        end
+        NumeditParam(obj, 'radial1',0, x, y, 'position', [x y 50 20], 'label','', 'labelfraction', 0.05);
+        NumeditParam(obj, 'radial2',1, x, y, 'position', [x+50 y 50 20],'label','', 'labelfraction', 0.05); 
+        NumeditParam(obj, 'radial3',1.8, x, y, 'position', [x+100 y 50 20],'label','',  'labelfraction', 0.05);
+        NumeditParam(obj, 'radial4',2.6, x, y, 'position', [x+150 y 50 20],'label','',  'labelfraction',0.05);
+        NumeditParam(obj, 'radial5',3.4, x, y, 'position', [x+200 y 50 20],'label','',  'labelfraction',0.05);
+        NumeditParam(obj, 'radial6',4.2, x, y, 'position', [x+250 y 50 20],'label','',  'labelfraction',0.05);
+        NumeditParam(obj, 'radial7',5, x, y, 'position', [x+300 y 50 20],'label','',  'labelfraction',0.05);
+        NumeditParam(obj, 'radial8',5.8, x, y, 'position', [x+350 y 50 20],'label','',  'labelfraction',0.05);
+        
+        next_column(y);
+        
+        %%%Init
+        
+        ToggleParam(obj, 'init_position', 0, x, y, 'label', 'Init (axial) Pole Positions',...
+            'TooltipString', 'One of the above positions chosen with some probabilty for every trial');
+        %set_callback(multi_go_position, 
+        next_row(y);
+        radialPos = {'pos1','pos2','pos3','pos4','pos5','pos6','pos7','pos8'};
+        
+        %JPL - this is uniform by default and can only be modified by
+        %completeing deselecting certain positions, or though antibias
+        
+        %goPosProb = {'prob1','prob2','prob3','prob4','prob5','prob6','prob7','prob8'};
+        
+        y1 = y;
+        y2 = y+20;
+        
+        for i = 1:8 % 8 radial pole positions
+            NumeditParam(obj, initPos{i}, 0+1.5*(i-1), x, y, 'position', [x+50*(i-1) y1 50 20],...
+                'label','', 'labelfraction', 0.05);
+            %NumeditParam(obj, goPosProb{i}, 0.125, x, y, 'position', [x+50*(i-1), y2, 50, 20], ...
+            %    'label','','labelfraction',0.05);
+        end
+        NumeditParam(obj, 'init1',0, x, y, 'position', [x y 50 20], 'label','', 'labelfraction', 0.05);
+        NumeditParam(obj, 'init2',1, x, y, 'position', [x+50 y 50 20],'label','', 'labelfraction', 0.05); 
+        NumeditParam(obj, 'init3',1.8, x, y, 'position', [x+100 y 50 20],'label','',  'labelfraction', 0.05);
+        NumeditParam(obj, 'init4',2.6, x, y, 'position', [x+150 y 50 20],'label','',  'labelfraction',0.05);
+        NumeditParam(obj, 'init5',3.4, x, y, 'position', [x+200 y 50 20],'label','',  'labelfraction',0.05);
+        NumeditParam(obj, 'init6',4.2, x, y, 'position', [x+250 y 50 20],'label','',  'labelfraction',0.05);
+        NumeditParam(obj, 'init7',5, x, y, 'position', [x+300 y 50 20],'label','',  'labelfraction',0.05);
+        NumeditParam(obj, 'init8',5.8, x, y, 'position', [x+350 y 50 20],'label','',  'labelfraction',0.05);
+
+        next_row(y);
+        NumeditParam(obj, 'nogo_position', 45000, x, y, 'label', ...
+            'No-go position','TooltipString','No-go trial position in microsteps.');
+        
+        next_row(y);
+        NumeditParam(obj, 'go_position', 0, x, y, 'label', ...
+            'Go position','TooltipString','Go trial position in microsteps.');
+        
+        next_row(y);
+        SubheaderParam(obj, 'title', 'Trial position', x, y);
+        
+         % For debugging motor
+        SoloParamhandle(obj, 'motor_move_time', 'value', 0);
+        
+        MotorsSection(obj,'hide_show');
+        MotorsSection(obj,'read_positions');
+        
+        x = parentfig_x; y = parentfig_y;
+        set(0,'CurrentFigure',value(myfig));
+        return;
+
+    case 'move_next_side', % --------- CASE MOVE_NEXT_SIDE -----
+       
+        next_side = SidesSection(obj,'get_next_side');
+         
+        % Manually start pedestal at mid-point (90000).
+        if next_side == 'r'
+              % if using multi go positions, choose one out of 4 positions
+              % randomly
+              possible_go = [value(go1), value(go2), value(go3), value(go4), ...
+                  value(go5), value(go6), value(go7), value(go8)]*1e4;
+              goProb = [value(prob1), value(prob2), value(prob3), value(prob4), ...
+                  value(prob5), value(prob6), value(prob7), value(prob8)];
+              if value(multi_go_position) == true
+                  % require the function randp.m. Randomly choose one
+                  % position with specified probability.
+                    go_position.value = possible_go(randp(goProb, 1)); 
+%                   go_position.value = possible_go(ceil(length(possible_go)*rand));
+              end;
+              position = value(go_position);
+              % for go trials, randomly choose 
+        elseif next_side == 'l'
+              position = value(nogo_position);
+        else
+            error('Invalid next side.')
+        end
+        
+        halfpoint = abs(round((value(nogo_position)-value(go_position))/2)) + min(value(nogo_position),value(go_position));
+%         if Solo_Try_Catch_Flag == 1
+%             try
+%                 move_absolute_sequence(motors,{90000,position},value(right_motor_num));
+%             catch
+%                 pause(1)
+%                 warning('Error in move_absolute_sequence, forcing state 35...');
+%                 SMControlSection(obj,'force_state_35');
+%                 return
+%             end
+%         else
+             tic
+             move_absolute_sequence(motors,{halfpoint,position},value(motor_num));
+             movetime = toc;
+             motor_move_time.value = movetime;
+             if movetime<value(MinimumITI)% Should make this min-ITI a SoloParamHandle
+                 pause(value(MinimumITI) - movetime); %4
+             end
+   %          disp(value(MinimumITI));
+%         end
+        
+         
+        previous_sides(n_started_trials+1) = next_side;
+        MotorsSection(obj,'read_positions');
+        
+%         trial_ready_times.value = datestr(now);
+        trial_ready_times.value = clock;
+        
+        return;
+    
+    %%axial xases
+    case 'pole_axial_motor_home',
+        move_home(pole_axial_motor);
+        return;
+
+    case 'pole_axial_serial_reset',
+        close_and_cleanup(motors);
+
+        global motors_properties;
+        global motors;
+
+        if strcmp(motors_properties.type,'@FakeZaberTCD1000')
+            motors = FakeZaberTCD1000;
+        else
+            motors = ZaberTCD1000;
+        end
+
+        serial_open(motors);
+        return;
+
+    case 'pole_axial_motor_stop',
+        stop(motors);
+        return;
+
+    case 'pole_axial_motor_reset',
+        reset(motors);
+        return;
+        
+    %%radial cases
+    case 'pole_radial_motor_home',
+        move_home(pole_radial_motor);
+        return;
+
+    case 'pole_radial_serial_reset',
+        close_and_cleanup(pole_radial_motor);
+
+        global pole_radial_motors_properties;
+        global pole_radial_motors;
+
+        if strcmp(pole_radial_motors_properties.type,'@FakeZaberTCD1000')
+            pole_radial_motors = FakeZaberTCD1000;
+        else
+            pole_radial_motors = ZaberTCD1000;
+        end
+
+        serial_open(pole_radial_motors);
+        return;
+
+    case 'pole_axial_motor_stop',
+        stop(motors);
+        return;
+
+    case 'pole_axial_motor_reset',
+        reset(motors);
+        return;
+
+    case 'serial_open',
+        serial_open(motors);
+        return;
+
+    case 'reset_motors_firmware',
+        set_initial_parameters(motors)
+        display('Reset speed, acceleration, and motor bus ID numbers.')
+        return;
+
+    case 'motor_position',
+        position = value(motor_position);
+        if position > value(motor_max_position) | position < 0
+            p = get_position(motors,value(motor_num));
+            motor_position.value = p;
+        else
+            move_absolute(motors,position,value(motor_num));
+        end
+        return;
+
+    case 'read_positions'
+        %loop through motors
+            p = get_position(motors{i},value(motor_num));
+            motors_position{i}.value = p;
+        return;
+
+        % --------- CASE HIDE_SHOW ---------------------------------
+
+    case 'hide_show'
+        if strcmpi(value(motor_show), 'hide')
+            set(value(motorfig), 'Visible', 'off');
+        elseif strcmpi(value(motor_show),'view')
+            set(value(motorfig),'Visible','on');
+        end;
+        return;
+
+
+    case 'reinit',   % ------- CASE REINIT -------------
+        currfig = gcf;
+
+        % Get the original GUI position and figure:
+        x = my_gui_info(1); y = my_gui_info(2); figure(my_gui_info(3));
+
+        delete(value(myaxes));
+
+        % Delete all SoloParamHandles who belong to this object and whose
+        % fullname starts with the name of this mfile:
+        delete_sphandle('owner', ['^@' class(obj) '$'], ...
+            'fullname', ['^' mfilename]);
+
+        % Reinitialise at the original GUI position and figure:
+        [x, y] = feval(mfilename, obj, 'init', x, y);
+
+        % Restore the current figure:
+        figure(currfig);
+        return;
+end
+
+

@@ -1,0 +1,41 @@
+    apt-get install libudev-dev libusb-1.0-0-dev libfox-1.6-dev
+
+
+
+  Then you need to get hidapi from http://www.signal11.us/oss/hidapi/
+  The easiest way to get this if you have git is:
+  
+      git clone git://github.com/signal11/hidapi.git
+
+
+./bootstrap
+	./configure
+	make
+	make install     <----- as root, or using sudo
+
+
+
+
+sudo    /sbin/udevadm control --reload-rules
+
+
+NOW you are ready to compile the MCC libusb programs
+   tar zxvf  MCCLIBUSB.1.6.tgz  (or the latest version).
+   cd mcc-libusb
+   make
+   sudo make install
+   ldconfig 
+
+
+
+
+
+
+
+
+
+
+
+
+I am writing the function read-... to use through Matlab...
+Im adding the arguments inline
