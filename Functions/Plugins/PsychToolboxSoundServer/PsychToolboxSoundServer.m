@@ -1,8 +1,13 @@
 %{
 ----------------------------------------------------------------------------
 
+<<<<<<< HEAD
 This file is part of the Bpod Project
 Copyright (C) 2014 Joshua I. Sanders, Cold Spring Harbor Laboratory, NY, USA
+=======
+This file is part of the Sanworks Bpod repository
+Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 
 ----------------------------------------------------------------------------
 

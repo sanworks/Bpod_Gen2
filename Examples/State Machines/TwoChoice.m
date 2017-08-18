@@ -1,6 +1,13 @@
+<<<<<<< HEAD
 % Example state machine: Choose between two ports
 
 sma = NewStateMatrix();
+=======
+% Example state machine: Wait for a choice between ports 1 and 2. Indicate
+% the choice for 1 second with the chosen port LED at max intsnsity.
+
+sma = NewStateMachine();
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 
 sma = AddState(sma, 'Name', 'WaitForChoice', ...
     'Timer', 1,...

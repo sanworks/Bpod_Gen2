@@ -1,6 +1,10 @@
 % Example state matrix: A global timer ends an infinite loop
 
+<<<<<<< HEAD
 sma = NewStateMatrix();
+=======
+sma = NewStateMachine();
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 sma = SetGlobalTimer(sma, 1, 3); %This legacy syntax is supported. Arguments: (sma, GlobalTimerNumber, Duration(s))
 sma = AddState(sma, 'Name', 'TimerTrig', ...
     'Timer', 0,...

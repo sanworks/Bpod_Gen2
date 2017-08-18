@@ -36,7 +36,10 @@ if strcmp(sma.StateNames{1},'Placeholder')
 end
 
 %% Check to make sure the State Machine doesn't have undefined states
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 if sum(sma.StatesDefined == 0) > 0
     disp('Error: The state machine contains references to the following undefined states: ');
     UndefinedStates = find(sma.StatesDefined == 0);
@@ -85,7 +88,10 @@ for i = 1:sma.nStatesInManifest
     sma.GlobalCounterMatrix(OriginalCounterMatrix==StateOrder(i)) = i;
     sma.ConditionMatrix(OriginalConditionMatrix==StateOrder(i)) = i;
 end
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 sma.InputMatrix = sma.InputMatrix(StateOrder,:);
 sma.OutputMatrix = sma.OutputMatrix(StateOrder,:);
 sma.StateTimerMatrix = sma.StateTimerMatrix(StateOrder);
@@ -248,6 +254,10 @@ if BpodSystem.EmulatorMode == 0
     %% Send state matrix to Bpod device
     ByteString = [EightBitMatrix typecast(ThirtyTwoBitMatrix, 'uint8') RunMessage];
     BpodSystem.SerialPort.write(ByteString, 'uint8');
+<<<<<<< HEAD
+=======
+    
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 %% Confirm send. Note: To reduce dead time, transmission is confirmed from state machine after next call to RunStateMachine()
     BpodSystem.Status.NewStateMachineSent = 1; % On next run, a byte is returned confirming that the state machine was received.
     Confirmed = 1;

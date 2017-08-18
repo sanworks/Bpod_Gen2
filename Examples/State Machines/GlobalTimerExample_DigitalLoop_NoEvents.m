@@ -1,8 +1,13 @@
 % Example state matrix: A global timer in "loop mode" sends 1ms pulses from BNC1 in an infinite loop. 
 % It is triggered in the first state. Next, the state machine goes into a state
 % where it waits for two events:
+<<<<<<< HEAD
 % 1. Port1In momentarily enters a state that stops the global timer. Port 2 will stop blinking.
 % 2. Exits the state machine.
+=======
+% 1. Port1In momentarily enters a state that stops the global timer.
+% 2. Port2In exits the state machine.
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 
 sma = NewStateMachine;
 sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', 0.001, 'OnsetDelay', 0,...

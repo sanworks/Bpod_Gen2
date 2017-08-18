@@ -2,7 +2,11 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
+<<<<<<< HEAD
 Copyright (C) 2016 Sanworks LLC, Sound Beach, New York, USA
+=======
+Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 
 ----------------------------------------------------------------------------
 
@@ -19,7 +23,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function BpodPortConfig
 global BpodSystem
+<<<<<<< HEAD
 if BpodSystem.FirmwareBuild < 8 % Bpod 0.5
+=======
+if BpodSystem.MachineType == 1 % Bpod 0.5
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
     BpodSystem.GUIHandles.PortConfigFig = figure('Position',[600 400 400 250],'name','Port config.','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
     yPos = 142;
 else
@@ -28,7 +36,11 @@ else
 end
 ha = axes('units','normalized', 'position',[0 0 1 1]);
 uistack(ha,'bottom');
+<<<<<<< HEAD
 if BpodSystem.FirmwareBuild < 8 % Bpod 0.5
+=======
+if BpodSystem.MachineType == 1 % Bpod 0.5
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
     BG = imread('InputChannelConfig.bmp');
 else
     BG = imread('InputChannelConfig2.bmp');
@@ -42,7 +54,11 @@ BpodSystem.GUIHandles.PortConfigPort5 = uicontrol('Style', 'checkbox', 'String',
 BpodSystem.GUIHandles.PortConfigPort6 = uicontrol('Style', 'checkbox', 'String', '', 'Position', [260 yPos 15 15], 'Callback', @UpdatePortConfig,'TooltipString', 'Enable port 6 input');
 BpodSystem.GUIHandles.PortConfigPort7 = uicontrol('Style', 'checkbox', 'String', '', 'Position', [305 yPos 15 15], 'Callback', @UpdatePortConfig,'TooltipString', 'Enable port 7 input');
 BpodSystem.GUIHandles.PortConfigPort8 = uicontrol('Style', 'checkbox', 'String', '', 'Position', [350 yPos 15 15], 'Callback', @UpdatePortConfig,'TooltipString', 'Enable port 8 input');
+<<<<<<< HEAD
 if BpodSystem.FirmwareBuild < 8 % Bpod 0.5
+=======
+if BpodSystem.MachineType == 1 % Bpod 0.5
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
     BpodSystem.GUIHandles.WireConfigPort1 = uicontrol('Style', 'checkbox', 'String', '', 'Position', [35 59 15 15], 'Callback', @UpdatePortConfig,'TooltipString', 'Enable wire 1 input');
     BpodSystem.GUIHandles.WireConfigPort2 = uicontrol('Style', 'checkbox', 'String', '', 'Position', [80 59 15 15], 'Callback', @UpdatePortConfig,'TooltipString', 'Enable wire 2 input');
     BpodSystem.GUIHandles.WireConfigPort3 = uicontrol('Style', 'checkbox', 'String', '', 'Position', [125 59 15 15], 'Callback', @UpdatePortConfig,'TooltipString', 'Enable wire 3 input');
@@ -64,7 +80,11 @@ for x = PortChannels
         eval(['set(BpodSystem.GUIHandles.PortConfigPort' num2str(x-BpodSystem.HW.Pos.Input_Port+1) ', ''Value'', 0);'])
     end
 end
+<<<<<<< HEAD
 if BpodSystem.FirmwareBuild < 8
+=======
+if BpodSystem.MachineType == 1
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
     WireChannels = find(BpodSystem.HW.Inputs == 'W');
     for x = WireChannels
         if BpodSystem.InputsEnabled(x) == 1
@@ -81,7 +101,11 @@ PortChannels = find(BpodSystem.HW.Inputs == 'P');
 for x = PortChannels
     eval(['BpodSystem.InputsEnabled(' num2str(x) ') = get(BpodSystem.GUIHandles.PortConfigPort' num2str(x-BpodSystem.HW.Pos.Input_Port+1) ', ''Value'');'])
 end
+<<<<<<< HEAD
 if BpodSystem.FirmwareBuild < 8
+=======
+if BpodSystem.MachineType == 1
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
     WireChannels = find(BpodSystem.HW.Inputs == 'W');
     for x = WireChannels
         eval(['BpodSystem.InputsEnabled(' num2str(x) ') = get(BpodSystem.GUIHandles.WireConfigPort' num2str(x-BpodSystem.HW.Pos.Input_Wire+1) ', ''Value'');'])

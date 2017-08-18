@@ -2,7 +2,11 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
+<<<<<<< HEAD
 Copyright (C) 2017 Sanworks LLC, Sound Beach, New York, USA
+=======
+Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 
 ----------------------------------------------------------------------------
 
@@ -10,8 +14,13 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
+<<<<<<< HEAD
 This program is distributed  WITHOUT ANY WARRANTY and without even the 
 implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+=======
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -25,6 +34,7 @@ if isfield(TE, 'RawEvents')
 else
     TrialNum = 1;
     TE.Info = struct;
+<<<<<<< HEAD
     switch BpodSystem.FirmwareBuild
         case 5
             TE.Info.BpodVersion = 0.5;
@@ -34,6 +44,15 @@ else
             TE.Info.BpodVersion = 0.7;
         case 8
             TE.Info.BpodVersion = 0.7;
+=======
+    switch BpodSystem.MachineType
+        case 1
+            TE.Info.BpodVersion = 'Bpod 0.5';
+        case 2
+            TE.Info.BpodVersion = 'Bpod 0.7-0.9';
+        case 3
+            TE.Info.BpodVersion = 'Pocket State Machine';
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
     end
     TE.Info.SessionDate = datestr(now, 1);
     TheTime = now;

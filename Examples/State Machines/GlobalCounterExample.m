@@ -1,7 +1,11 @@
 % Example state matrix: A global counter ends an infinite loop when 5
 % Port1in events occur. Port1in events acquired in the first state are deliberately not counted.
 
+<<<<<<< HEAD
 sma = NewStateMatrix();
+=======
+sma = NewStateMachine();
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 sma = SetGlobalCounter(sma, 1, 'Port1In', 5); % Arguments: (sma, CounterNumber, TargetEvent, Threshold)
 sma = AddState(sma, 'Name', 'InitialDelay', ...
     'Timer', 2,...

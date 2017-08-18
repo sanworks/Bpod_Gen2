@@ -77,8 +77,11 @@ if nargin > 8
     TimerOutputChannel = varargin{7};
     if ischar(TimerOutputChannel)
         OutputChannelIndex = find(strcmp(TimerOutputChannel,BpodSystem.StateMachineInfo.OutputChannelNames));
+<<<<<<< HEAD
     elseif TimerOutputChannel== -1 %JPL - for handling a bpod swave with no output
         OutputChannelIndex=255;
+=======
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
     end
     if isempty(OutputChannelIndex)
         error(['Error: ' TimerOutputChannel ' is not a valid output channel. Valid channels are: ' BpodSystem.StateMachineInfo.OutputChannelNames]);

@@ -24,8 +24,11 @@ if BpodSystem.Status.Pause == 1
     disp('Protocol paused. Press the "play" button to resume.')
     set(BpodSystem.GUIHandles.CxnDisplay, 'String', 'PAUSED', 'FontSize', 11);
     ColorState = 0;
+<<<<<<< HEAD
     %JPL - hook into bcontrol methods
     dispatcher('stop',BpodSystem.ProtocolTranslation.protocolName);
+=======
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
     while BpodSystem.Status.Pause == 1
         pause(.25);
         if ColorState == 0
@@ -39,8 +42,11 @@ if BpodSystem.Status.Pause == 1
         end
         
     end
+<<<<<<< HEAD
     %JPL - hook into bcontrol methods
     dispatcher('Run',BpodSystem.ProtocolTranslation.protocolName);
+=======
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
     set(BpodSystem.GUIHandles.CxnDisplay, 'ForegroundColor', [0 0 0]);
     set(BpodSystem.GUIHandles.CxnDisplay, 'String', 'Idle', 'FontSize', 9, 'BackgroundColor', [.8 .8 .8]);
 end

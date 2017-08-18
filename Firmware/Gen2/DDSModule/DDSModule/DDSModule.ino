@@ -18,7 +18,11 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
+<<<<<<< HEAD
 // NOTE: Load with Arduino 1.8.1 until otherwise notified.
+=======
+// NOTE: Load with Arduino 1.8.2 until otherwise notified.
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 
 // This is firmware for the Bpod DDS module, powered by Teensy 3.2, encapsulating the AD9834 DDS IC.
 // Amplitude control (menu function 'A') is provided in the range [150mV p2p --- 650mV p2p] by a separate DAC chip: AD5620.
@@ -33,6 +37,10 @@
 #include "ArCOM.h"
 #include <SPI.h>
 #include "ad983x.h"
+<<<<<<< HEAD
+=======
+#include <EEPROM.h>
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 ArCOM USBCOM(Serial);
 ArCOM StateMachineCOM(Serial1);
 ArCOM ModuleCOM(Serial2);
@@ -59,6 +67,11 @@ byte dacBytes[2] = {0};
 float frequency = 0;
 unsigned long frequencyInt = 0;
 uint16_t adcValue = 0;
+<<<<<<< HEAD
+=======
+uint16_t adcZeroCode = 0; // Bits coding for a 0V p2p output (must be calibrated with 'C' function)
+uint16_t defaultZeroCode = 7750;
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 uint32_t ampValue = 10000; // Value of amplitude scaling (0:10,000) 0 = 0mV, 10,000 = 650mV
 uint32_t lastAmpValue = 10000; // Previous value
 byte op = 0;
@@ -84,6 +97,13 @@ void setup() {
   myDDS.setFrequency(0, frequency);
   myDDS.setOutputMode(OUTPUT_MODE_SINE); // OUTPUT_MODE_SINE OUTPUT_MODE_TRIANGLE
   dacVal = 0;
+<<<<<<< HEAD
+=======
+  adcZeroCode = EEPROMreadUint16(0); // Argument = read-start address, function below
+  if (adcZeroCode == 0) { // Not yet calibrated; use a sensible value
+    adcZeroCode = defaultZeroCode;
+  }
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
   dacWrite(dacVal);
 }
 
@@ -171,12 +191,20 @@ void loop() {
         }
         if (ampValue > lastAmpValue) {
           for (int i = lastAmpValue; i < ampValue; i+=2) {
+<<<<<<< HEAD
             dacVal = (uint16_t)(7608 - ((double)i/10000)*7608);
+=======
+            dacVal = (uint16_t)(adcZeroCode - ((double)i/10000)*adcZeroCode);
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
             dacWrite(dacVal);
           }
         } else {
           for (int i = lastAmpValue; i > ampValue; i-=2) {
+<<<<<<< HEAD
             dacVal = (uint16_t)(7608 - ((double)i/10000)*7608);
+=======
+            dacVal = (uint16_t)(adcZeroCode - ((double)i/10000)*adcZeroCode);
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
             dacWrite(dacVal);
           }
         }
@@ -195,6 +223,28 @@ void loop() {
       case 'V': // USB request to return frequency
         USBCOM.writeUint32((uint32_t)(frequency*1000));
       break;
+<<<<<<< HEAD
+=======
+      case 'D': // Set amplitude bits (useful for evaluating zero code)
+        if (opSource == 0) {
+          dacVal = USBCOM.readUint16();
+          dacWrite(dacVal);
+          USBCOM.writeByte(1);
+        }
+      break;
+      case 'C': // Calibrate code for zero-amplitude
+        if (opSource == 0) {
+          adcZeroCode = USBCOM.readUint16();
+          EEPROMwriteUint16(0, adcZeroCode);
+          defaultZeroCode = EEPROMreadUint16(0);
+          if (defaultZeroCode == adcZeroCode) {
+            USBCOM.writeByte(1);
+          } else {
+            USBCOM.writeByte(0);
+          }
+        }
+      break;
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
       case 'B': // Set bit-range to expect on input channel
         if (opSource == 0) {
           USBCOM.readUint16Array(inputBitRange, 2);
@@ -275,6 +325,19 @@ double expMap(uint16_t input, uint32_t in_min, uint32_t in_max, uint32_t out_min
   uint32_t outputRange = out_max - out_min;
   return ((sq((double)input-(double)in_min)/sq((double)inputRange))*(double)outputRange)+(double)out_min;
 }
+<<<<<<< HEAD
+=======
+uint16_t EEPROMreadUint16(int startAddress) {
+  dacBuffer.Bytes[0] = EEPROM.read(0);
+  dacBuffer.Bytes[1] = EEPROM.read(1);
+  return dacBuffer.Uint16[0];
+}
+uint16_t EEPROMwriteUint16(int startAddress, uint16_t value) {
+  dacBuffer.Uint16[0] = value;
+  EEPROM.write(0, dacBuffer.Bytes[0]);
+  EEPROM.write(1, dacBuffer.Bytes[1]);
+}
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 void returnModuleInfo() { // Return module name and firmware version
   StateMachineCOM.writeByte(65); // Acknowledge
   StateMachineCOM.writeUint32(FirmwareVersion); // 4-byte firmware version

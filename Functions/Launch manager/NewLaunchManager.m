@@ -1,3 +1,25 @@
+<<<<<<< HEAD
+=======
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 function NewLaunchManager
 
 global BpodSystem
@@ -60,7 +82,10 @@ BpodSystem.GUIHandles.DataFileLabel = text(20, 710,'Data File:', 'FontName', 'Ar
 
 %% Populate UI
 BpodSystem.Path.ProtocolFolder = BpodSystem.SystemSettings.ProtocolFolder;
+<<<<<<< HEAD
 BpodSystem.Path.SoloProtocolFolder = BpodSystem.SystemSettings.SoloProtocolFolder;
+=======
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 loadProtocols;
 BpodSystem.GUIData.DummySubjectString = 'FakeSubject';
 % Set selected protocol to first non-folder item
@@ -69,7 +94,11 @@ SelectedProtocol = 1;
 for i = 1:length(ProtocolNames)
     ThisProtocolName = ProtocolNames{i};
     if ThisProtocolName(1) == '<'
+<<<<<<< HEAD
         %SelectedProtocol = i+1;
+=======
+        SelectedProtocol = i+1;
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
     end
 end
 set(BpodSystem.GUIHandles.ProtocolSelector, 'Value', SelectedProtocol);
@@ -219,6 +248,7 @@ else
         [~, Order] = sort(Types);
         ProtocolNames = ProtocolNames(Order);
     end
+<<<<<<< HEAD
     
     %JPL - for solo protocols
     Candidates = dir(BpodSystem.Path.SoloProtocolFolder);
@@ -249,6 +279,8 @@ else
         end
     end
     
+=======
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
     set(BpodSystem.GUIHandles.ProtocolSelector, 'String', ProtocolNames);
 end
 
@@ -657,6 +689,7 @@ SettingsList = get(BpodSystem.GUIHandles.SettingsSelector, 'String');
 SettingsIndex = get(BpodSystem.GUIHandles.SettingsSelector,'Value');
 SettingsName = SettingsList{SettingsIndex};
 SettingsFileName = fullfile(BpodSystem.Path.DataFolder, SubjectName, ProtocolName, 'Session Settings', [SettingsName '.mat']);
+<<<<<<< HEAD
 
 %JPL 
 if ~isempty(strfind(ProtocolName,'@')) %solo style protocol
@@ -671,6 +704,9 @@ else
 end
 addpath(genpath(ProtocolPath));
 
+=======
+ProtocolFileName = fullfile(BpodSystem.Path.ProtocolFolder, ProtocolName, [ProtocolName '.m']);
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 DataFolder = fullfile(BpodSystem.Path.DataFolder,SubjectName,ProtocolName,'Session Data');
 if ~exist(DataFolder)
     mkdir(DataFolder);
@@ -685,6 +721,11 @@ F = fieldnames(SettingStruct);
 FieldName = F{1};
 BpodSystem.ProtocolSettings = eval(['SettingStruct.' FieldName]);
 BpodSystem.Data = struct;
+<<<<<<< HEAD
+=======
+ProtocolPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName,[ProtocolName '.m']);
+addpath(ProtocolPath);
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
 BpodSystem.Status.BeingUsed = 1;
 BpodSystem.ProtocolStartTime = now*100000;

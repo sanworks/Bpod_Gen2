@@ -32,12 +32,15 @@ global BpodSystem
 BpodPath = fileparts(which('Bpod'));
 addpath(genpath(fullfile(BpodPath, 'Functions')));
 BpodSystem = BpodObject;
+<<<<<<< HEAD
 
 % JPL - 'headless' arg detected...dont spawn the gui
 if any(strcmp(varargin,'headless'))
     BpodSystem.Headless=1;
 end
 
+=======
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 % Try to find hardware. If none, prompt to run emulation mode.
 if nargin > 0
     if strcmp(varargin{1}, 'EMU')
@@ -67,10 +70,14 @@ end
 function BpodSetup
 global BpodSystem
 BpodSystem.Setup;
+<<<<<<< HEAD
 %JPL
 if BpodSystem.Headless==0
     BpodSystem.InitializeGUI();
 end
+=======
+BpodSystem.InitializeGUI();
+>>>>>>> 9dd1b1005e57c9d9ff3bf3532524677d5dfa1801
 evalin('base', 'global BpodSystem')
 
 function EmulatorSetup(hObject,event)
