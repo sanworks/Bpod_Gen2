@@ -33,6 +33,6 @@ sma.addState('Name', 'myState',
              'OutputActions', ())
 myBpod.sendStateMachine(sma) # Send state machine description to Bpod device
 RawEvents = myBpod.runStateMachine() # Run state machine and return events
-print RawEvents.__dict__ # Print events to console
+print(RawEvents.__dict__) # Print events to console
 
 myBpod.disconnect() # Disconnect Bpod

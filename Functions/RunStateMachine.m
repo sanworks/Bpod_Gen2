@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function RawTrialEvents = RunStateMachine
 global BpodSystem
-if isempty(BpodSystem.StateMatrix)
+if isempty(BpodSystem.StateMatrixSent)
     error('Error: A state matrix must be sent prior to calling "RunStateMatrix".')
 end
 if BpodSystem.BonsaiSocket.Connected == 1
@@ -47,6 +47,7 @@ if BpodSystem.EmulatorMode == 0
         BpodSystem.Status.NewStateMachineSent = 0;
     end
 end
+BpodSystem.StateMatrix = BpodSystem.StateMatrixSent;
 EventNames = BpodSystem.StateMachineInfo.EventNames;
 MaxEvents = 10000;
 nEvents = 0; nStates = 1;

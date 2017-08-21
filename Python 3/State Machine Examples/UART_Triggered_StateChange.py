@@ -18,6 +18,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+# Attach an EchoModule to any serial port (Arduino M0 + Bpod shield, loaded with EchoModule firmware)
+
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__)[:-22], "Modules")) # Add Bpod system files to Python path
 
@@ -29,7 +31,7 @@ myBpod = BpodObject('COM13') # Create a new instance of a Bpod object on serial 
 sma = stateMachine(myBpod) # Create a new state machine (events + outputs tailored for myBpod)
 sma.addState('Name', 'Port1Light', # Add a state
              'Timer', 0,
-             'StateChangeConditions', ('Serial2_3', 'Port2Light'), # Go to Port2Light when byte 0x3 arrives on UART port 2
+             'StateChangeConditions', ('EchoModule1_3', 'Port2Light'), # Go to Port2Light when byte 0x3 arrives from EchoModule1
              'OutputActions', ('PWM1', 255))
 sma.addState('Name', 'Port2Light',
              'Timer', 0,
@@ -38,6 +40,6 @@ sma.addState('Name', 'Port2Light',
 
 myBpod.sendStateMachine(sma) # Send state machine description to Bpod device
 RawEvents = myBpod.runStateMachine() # Run state machine and return events
-print RawEvents.__dict__ # Print events to console
+print(RawEvents.__dict__) # Print events to console
 
 myBpod.disconnect() # Disconnect Bpod

@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2016 Sanworks LLC, Sound Beach, New York, USA
+Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -20,7 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function Light2AFC_TrialManager
 % This protocol is a starting point for a visual 2AFC task like Light2AFC, 
 % but using the TrialManager object instead of RunStateMachine().
-% TrialManager allows heavy MATLAB-side processing (here, the PokesPlot plugin)
+% TrialManager allows heavy MATLAB-side processing (i.e., plots,
+% saving data, computing and loading the next trial's state machine)
 % without causing a long period of dead-time between trials. For more info
 % see the TrialManager documentation on the Bpod wiki.
 %
@@ -48,7 +49,7 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
     S.GUI.CueDelay = 0.2; % How long the mouse must poke in the center to activate the goal port
     S.GUI.ResponseTime = 5; % How long until the mouse must make a choice, or forefeit the trial
     S.GUI.RewardDelay = 0; % How long the mouse must wait in the goal port for reward to be delivered
-    S.GUI.PunishDelay = 3; % How long the mouse must wait in the goal port for reward to be delivered
+    S.GUI.PunishDelay = 3; %% How long the mouse must wait to start the next trial if it makes the wrong choice (s)
 end
 
 %% Define trial types
@@ -64,22 +65,23 @@ BpodNotebook('init');
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin   
 PokesPlot('init', getStateColors, getPokeColors);
 sma = PrepareStateMachine(S, TrialTypes, 1, []); % Prepare state machine for trial 1 with empty "current events" variable
-TrialManager.startTrial(sma); % Starts running first trial's state machine. A MATLAB timer object updates the 
+TrialManager.startTrial(sma); % Sends & starts running first trial's state machine. A MATLAB timer object updates the 
                               % console UI, while code below proceeds in parallel.
 
 %% Main trial loop
 for currentTrial = 1:MaxTrials
-    currentTrialEvents = TrialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimeOutState'}); 
+    currentTrialEvents = TrialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimeOutState', 'Punish'}); 
                                        % Hangs here until Bpod enters one of the listed trigger states, 
                                        % then returns current trial's states visited + events captured to this point
     if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session 
     [sma, S] = PrepareStateMachine(S, TrialTypes, currentTrial+1, currentTrialEvents); % Prepare next state machine.
     % Since PrepareStateMachine is a function with a separate workspace, pass any local variables needed to make 
     % the state machine as fields of settings struct S e.g. S.learningRate = 0.2.
-    RawEvents = TrialManager.getTrialData; % Hangs here until trial is over, then returns full trial's raw data
+    SendStateMachine(sma); % With TrialManager, you can send the next trial's state machine while the current trial is ongoing
+    RawEvents = TrialManager.getTrialData; % Hangs here until trial is over, then retrieves full trial's raw data
     if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session 
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
-    TrialManager.startTrial(sma); % Start next trial's state machine
+    TrialManager.startTrial(); % Start next trial's state machine (call with no argument since it was already sent)
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned from last trial, update plots and save data
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
         BpodSystem.Data = BpodNotebook('sync', BpodSystem.Data); % Sync with Bpod notebook plugin

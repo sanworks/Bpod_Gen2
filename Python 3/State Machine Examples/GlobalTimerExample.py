@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2016 Sanworks LLC, Sound Beach, New York, USA
+Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -42,7 +42,7 @@ sma.addState('Name', 'Port3Lit',
     'OutputActions', ('PWM3', 255))
 myBpod.sendStateMachine(sma) # Send state machine description to Bpod device
 RawEvents = myBpod.runStateMachine() # Run state machine and return events
-print RawEvents.__dict__ # Print events to console
+print(RawEvents.__dict__) # Print events to console
 
 # Disconnect Bpod
 myBpod.disconnect() # Sends a termination byte and closes the serial port. PulsePal stores current params to its EEPROM.

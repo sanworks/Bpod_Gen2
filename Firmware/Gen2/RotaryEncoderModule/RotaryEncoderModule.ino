@@ -1,7 +1,7 @@
 /*
   ----------------------------------------------------------------------------
 
-  This file is part of the Sanworks Bpod repository
+  This file is part of the Sanworks Bpod_Gen2 repository
   Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
 
   ----------------------------------------------------------------------------
@@ -21,10 +21,7 @@
 
 // The rotary encoder module, powered by Teensy 3.5, interfaces Bpod with a 1024-position rotary encoder: Yumo E6B2-CWZ3E
 // The serial interface allows the user to set position thresholds, which generate Bpod events when crossed.
-// The 'T' command starts an experimental trial, by setting the current position to '0' (position event thresholds in range +/-512).
-// Position data points and corresponding timestamps are logged until a threshold is reached.
-// The 'E' command exits a trial, before a threshold is reached.
-// The MATLAB interface can then retrieve the last trial's position log, and set new thresholds before starting the next trial.
+// The MATLAB interface can then retrieve the last trial's position log, and set new thresholds.
 // MATLAB can also stream the current position to a plot, for diagnostics.
 
 #include "ArCOM.h"
@@ -42,8 +39,8 @@ File DataFile; // File on microSD card, to store position data
 // Module setup
 unsigned long FirmwareVersion = 1;
 char moduleName[] = "RotaryEncoder"; // Name of module for manual override UI and state machine assembler
-char* eventNames[] = {"L", "R"}; // Left and right threshold crossings (with respect to position at trial start).
-byte nEventNames = (sizeof(eventNames)/sizeof(char *));
+//char* eventNames[] = {"L", "R"}; // Left and right threshold crossings (with respect to position at trial start).
+//byte nEventNames = (sizeof(eventNames)/sizeof(char *));
 
 // Output stream setup
 char moduleStreamPrefix = 'M'; // Command character to send before each position value when streaming data via output stream jack
@@ -276,6 +273,7 @@ void loop() {
         if (opSource == 0) {
           EncoderPos = myUSB.readInt16();
           nWraps = 0;
+          myUSB.writeByte(1);
         }
       break;
       case 'X': // Reset all params
@@ -374,19 +372,19 @@ void returnModuleInfo() {
   StateMachineCOM.writeUint32(FirmwareVersion); // 4-byte firmware version
   StateMachineCOM.writeByte(sizeof(moduleName)-1); // Length of module name
   StateMachineCOM.writeCharArray(moduleName, sizeof(moduleName)-1); // Module name
-  StateMachineCOM.writeByte(1); // 1 if more info follows, 0 if not
-  StateMachineCOM.writeByte('#'); // Op code for: Number of behavior events this module can generate
-  StateMachineCOM.writeByte(2); // 2 thresholds
-  StateMachineCOM.writeByte(1); // 1 if more info follows, 0 if not
-  StateMachineCOM.writeByte('E'); // Op code for: Behavior event names
-  StateMachineCOM.writeByte(nEventNames);
-  for (int i = 0; i < nEventNames; i++) { // Once for each event name
-    StateMachineCOM.writeByte(strlen(eventNames[i])); // Send event name length
-    for (int j = 0; j < strlen(eventNames[i]); j++) { // Once for each character in this event name
-      StateMachineCOM.writeByte(*(eventNames[i]+j)); // Send the character
-    }
-  }
   StateMachineCOM.writeByte(0); // 1 if more info follows, 0 if not
+//  StateMachineCOM.writeByte('#'); // Op code for: Number of behavior events this module can generate
+//  StateMachineCOM.writeByte(2); // 2 thresholds
+//  StateMachineCOM.writeByte(1); // 1 if more info follows, 0 if not
+//  StateMachineCOM.writeByte('E'); // Op code for: Behavior event names
+//  StateMachineCOM.writeByte(nEventNames);
+//  for (int i = 0; i < nEventNames; i++) { // Once for each event name
+//    StateMachineCOM.writeByte(strlen(eventNames[i])); // Send event name length
+//    for (int j = 0; j < strlen(eventNames[i]); j++) { // Once for each character in this event name
+//      StateMachineCOM.writeByte(*(eventNames[i]+j)); // Send the character
+//    }
+//  }
+//  StateMachineCOM.writeByte(0); // 1 if more info follows, 0 if not
 }
 
 void startLogging() {

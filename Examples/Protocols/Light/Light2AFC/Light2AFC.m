@@ -38,10 +38,10 @@ global BpodSystem
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
 if isempty(fieldnames(S))  % If settings file was an empty struct, populate struct with default settings
     S.GUI.RewardAmount = 3; %ul
-    S.GUI.CueDelay = 0.2; % How long the mouse must poke in the center to activate the goal port
-    S.GUI.ResponseTime = 5; % How long until the mouse must make a choice, or forefeit the trial
-    S.GUI.RewardDelay = 0; % How long the mouse must wait in the goal port for reward to be delivered
-    S.GUI.PunishDelay = 3; % How long the mouse must wait in the goal port for reward to be delivered
+    S.GUI.CueDelay = 0.2; % How long the mouse must poke in the center to activate the goal port (s)
+    S.GUI.ResponseTime = 5; % How long until the mouse must make a choice, or forefeit the trial (s)
+    S.GUI.RewardDelay = 0; % How long the mouse must wait in the goal port for reward to be delivered (s)
+    S.GUI.PunishDelay = 3; % How long the mouse must wait to start the next trial if it makes the wrong choice (s)
 end
 
 %% Define trials

@@ -1,4 +1,24 @@
-// SNES module interfaces the buttons of the SuperNintendo controller with Bpod.
+/*
+  ----------------------------------------------------------------------------
+
+  This file is part of the Sanworks Bpod_Gen2 repository
+  Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+
+  ----------------------------------------------------------------------------
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, version 3.
+
+  This program is distributed  WITHOUT ANY WARRANTY and without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*/
+// SNES module interfaces the buttons of the SuperNintendo controller with the Bpod state machine.
 // Each button press generates a behavior event with the following byte scheme:
 // A = 1; B = 2; Up = 3; Down = 4; Left = 5; Right = 6; Start = 7;
 // Bytes 8-14 = Each Button above, released.

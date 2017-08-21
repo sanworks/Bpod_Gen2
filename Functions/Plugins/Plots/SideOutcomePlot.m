@@ -63,6 +63,11 @@ switch Action
         if nargin > 3 %custom number of trials
             nTrialsToShow =varargin{3};
         end
+        if ispc
+            labelFontSize = 18;
+        else
+            labelFontSize = 15;
+        end
         axes(AxesHandle);
         %plot in specified axes
         Xdata = 1:nTrialsToShow; Ydata = SideList(Xdata);
@@ -75,7 +80,7 @@ switch Action
         BpodSystem.GUIHandles.UnrewardedCorrectLine = line([0,0],[0,0], 'LineStyle','none','Marker','o','MarkerEdge','g','MarkerFace',[1 1 1], 'MarkerSize',6);
         BpodSystem.GUIHandles.NoResponseLine = line([0,0],[0,0], 'LineStyle','none','Marker','o','MarkerEdge','b','MarkerFace',[1 1 1], 'MarkerSize',6);
         set(AxesHandle,'TickDir', 'out','YLim', [-1, 2], 'YTick', [0 1],'YTickLabel', {'Right','Left'}, 'FontSize', 16);
-        xlabel(AxesHandle, 'Trial#', 'FontSize', 18);
+        xlabel(AxesHandle, 'Trial#', 'FontSize', labelFontSize);
         hold(AxesHandle, 'on');
         
     case 'update'

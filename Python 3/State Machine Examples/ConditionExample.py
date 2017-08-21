@@ -40,9 +40,8 @@ sma.addState('Name', 'Port3Light',
              'Timer', 1,
              'StateChangeConditions', ('Tup', 'exit'),
              'OutputActions', ('PWM3', 255))
-print sma.conditions.matrix
 myBpod.sendStateMachine(sma) # Send state machine description to Bpod device
 RawEvents = myBpod.runStateMachine() # Run state machine and return events
-print RawEvents.__dict__ # Print events to console
+print(RawEvents.__dict__) # Print events to console
 
 myBpod.disconnect() # Disconnect Bpod

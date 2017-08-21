@@ -3,7 +3,13 @@ function BpodSystemInfo
 global BpodSystem
 
 FontName = 'Arial';
-Med = 12; Sm = 10;
+if ispc
+    Med = 12; Sm = 10;
+elseif ismac
+    Med = 14; Sm = 12;
+else
+    Med = 12; Sm = 10;
+end
 LabelFontColor = [0.9 0.9 0.9];
 ContentFontColor = [0 0 0];
 if BpodSystem.MachineType == 3

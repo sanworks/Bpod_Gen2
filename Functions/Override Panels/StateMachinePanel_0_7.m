@@ -34,23 +34,44 @@ for i = 1:BpodSystem.HW.n.Ports
     BpodSystem.GUIHandles.PortvPokeButton(i) = uicontrol('Parent', BpodSystem.GUIHandles.OverridePanel(1),'Style', 'pushbutton', 'String', '', 'Position', [xPos yOffset-90 30 30], 'Callback', ['ManualOverride(''IP'',' num2str(i) ');'], 'CData', BpodSystem.GUIData.OffButtonDark, 'TooltipString', ['Port ' num2str(i) ' virtual photogate']);
     xPos = xPos + 41;
 end
+if ispc
+    medFontSize = 12;
+elseif ismac
+    medFontSize = 16;
+else
+    medFontSize = 12;
+end
 xPos = xOffset+10;
 for x = 1:BpodSystem.HW.n.Ports
-    text(xPos, yOffset+45,num2str(x), 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+    text(xPos, yOffset+45,num2str(x), 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
     xPos = xPos + 41;
 end
-text(xOffset-42, yOffset+15,'VLV', 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
-text(xOffset-42, yOffset-30,'LED', 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
-text(xOffset-42, yOffset-75,'POK', 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+text(xOffset-42, yOffset+15,'VLV', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
+text(xOffset-42, yOffset-30,'LED', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
+text(xOffset-42, yOffset-75,'POK', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
+if ispc
+    TitleXOffset = 80;
+elseif ismac
+    TitleXOffset = 105;
+else
+    TitleXOffset = 80;
+end
 
-text(xOffset+80, yOffset+80,'Behavior Ports', 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+text(xOffset+TitleXOffset, yOffset+80,'Behavior Ports', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+320], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineWidth', 2);
 
 %% BNC override
 % Inputs
 xOffset = 395;
 yOffset = 150;
-text(xOffset+6, yOffset+80,'BncIn', 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+if ispc
+    TitleXOffset = 6;
+elseif ismac
+    TitleXOffset = 14;
+else
+    TitleXOffset = 6;
+end
+text(xOffset+TitleXOffset, yOffset+80,'BncIn', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineWidth', 2);
 xPos = xOffset;
 for i = 1:BpodSystem.HW.n.BNCInputs
@@ -59,14 +80,14 @@ for i = 1:BpodSystem.HW.n.BNCInputs
 end
 xPos = xOffset+11;
 for x = 1:BpodSystem.HW.n.BNCInputs
-    text(xPos, yOffset+45,num2str(x), 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+    text(xPos, yOffset+45,num2str(x), 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
     xPos = xPos + 41;
 end
 
 % Outputs
 xOffset = 485;
 yOffset = 150;
-text(xOffset+5, yOffset+80,'BncOut', 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+text(xOffset+TitleXOffset, yOffset+80,'BncOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineWidth', 2);
 xPos = xOffset;
 for i = 1:BpodSystem.HW.n.BNCOutputs
@@ -75,15 +96,22 @@ for i = 1:BpodSystem.HW.n.BNCOutputs
 end
 xPos = xOffset+11;
 for x = 1:BpodSystem.HW.n.BNCOutputs
-    text(xPos, yOffset+45,num2str(x), 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+    text(xPos, yOffset+45,num2str(x), 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
     xPos = xPos + 41;
 end
 
 %% Wire override
+if ispc
+    TitleXOffset = 2;
+elseif ismac
+    TitleXOffset = 10;
+else
+    TitleXOffset = 2;
+end
 % Inputs
 xOffset = 395;
 yOffset = 60;
-text(xOffset+2, yOffset+72,'WireIn', 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+text(xOffset+TitleXOffset, yOffset+72,'WireIn', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+58 yOffset+58], 'Color', [.8 .8 .8], 'LineWidth', 2);
 xPos = xOffset;
 yPos = yOffset;
@@ -100,17 +128,23 @@ end
 xPos = xOffset+12;
 yPos = yOffset+42;
 for i = 1:4
-    text(xPos, yPos,num2str(i), 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+    text(xPos, yPos,num2str(i), 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
     xPos = xPos + 41;
     if (i == 2)
         xPos = xOffset+12; yPos = yOffset - 15;
     end
 end
-
+if ispc
+    TitleXOffset = 0;
+elseif ismac
+    TitleXOffset = 5;
+else
+    TitleXOffset = 0;
+end
 % Outputs
 xOffset = 485;
 yOffset = 60;
-text(xOffset, yOffset+72,'WireOut', 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+text(xOffset+TitleXOffset, yOffset+72,'WireOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+58 yOffset+58], 'Color', [.8 .8 .8], 'LineWidth', 2);
 xPos = xOffset; ypos = yOffset;
 for i = 1:2
@@ -122,8 +156,8 @@ BpodSystem.GUIHandles.WireOutputButton(4) = uicontrol('Parent', BpodSystem.GUIHa
 
 xPos = xOffset+12;
 for x = 1:2
-    text(xPos, yOffset+42,num2str(x), 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+    text(xPos, yOffset+42,num2str(x), 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
     xPos = xPos + 41;
 end
-text(xOffset+13, yOffset-15,'3', 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
-text(xOffset+53, yOffset-15,'4', 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+text(xOffset+13, yOffset-15,'3', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
+text(xOffset+53, yOffset-15,'4', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);

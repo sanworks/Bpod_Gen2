@@ -19,7 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function ConfigureSync(junk, morejunk)
 global BpodSystem
-close(BpodSystem.GUIHandles.SettingsMenuFig)
 if BpodSystem.MachineType == 1 % Bpod 0.5
     error('Bpod 0.5 has a fixed sync port. No configuration required.')
 else

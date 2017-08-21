@@ -1,8 +1,8 @@
 %{
 ----------------------------------------------------------------------------
 
-This file is part of the Sanworks ArCOM repository
-Copyright (C) 2016 Sanworks LLC, Sound Beach, New York, USA
+This file is part of the Sanworks Bpod repository
+Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -55,6 +55,7 @@ classdef ArCOMObject_Bpod < handle
         UseOctave
         UsePsychToolbox
         validDataTypes
+        PortName
     end
     methods
         function obj = ArCOMObject_Bpod(portString, baudRate, varargin)
@@ -108,10 +109,12 @@ classdef ArCOMObject_Bpod < handle
                 end
             end
             obj.validDataTypes = {'char', 'uint8', 'uint16', 'uint32', 'int8', 'int16', 'int32'};
+            originalPortString = portString;
             switch obj.Interface
                 case 0
-                    obj.Port = serial(portString, 'BaudRate', 115200, 'Timeout', 1,'OutputBufferSize', 100000, 'InputBufferSize', 100000, 'DataTerminalReady', 'on', 'tag', 'ArCOM');
+                    obj.Port = serial(portString, 'BaudRate', 115200, 'Timeout', 1,'OutputBufferSize', 1000000, 'InputBufferSize', 1000000, 'DataTerminalReady', 'on', 'tag', 'ArCOM');
                     fopen(obj.Port);
+                    obj.PortName = originalPortString;
                 case 1
                     if ispc
                         portString = ['\\.\' portString];
@@ -127,6 +130,7 @@ classdef ArCOMObject_Bpod < handle
                     end
                     pause(.1); % Helps on some platforms
                     varargout{1} = obj;
+                    obj.PortName = originalPortString;
                 case 2
                     if ispc
                         PortNum = str2double(portString(4:end));
@@ -137,6 +141,7 @@ classdef ArCOMObject_Bpod < handle
                     obj.Port = serial(portString, 115200,  1);
                     pause(.2);
                     srl_flush(obj.Port);
+                    obj.PortName = originalPortString;
             end
         end
         function bytesAvailable = bytesAvailable(obj)

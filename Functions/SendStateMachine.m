@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Sound Beach, New York, USA
+Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -239,14 +239,25 @@ GlobalTimerLoopIntervals = uint32(sma.GlobalTimers.LoopInterval*BpodSystem.HW.Cy
 
 %% Create vectors of 8-bit and 32-bit data
 
-EightBitMatrix = ['C' nStates StateTimerMatrix InputMatrix OutputMatrix GlobalTimerStartMatrix GlobalTimerEndMatrix GlobalCounterMatrix ConditionMatrix GlobalTimerChannels GlobalTimerOnMessages GlobalTimerOffMessages GlobalTimerLoopMode SendGlobalTimerEvents GlobalCounterAttachedEvents ConditionChannels ConditionValues];
+EightBitMatrix = [nStates StateTimerMatrix InputMatrix OutputMatrix GlobalTimerStartMatrix GlobalTimerEndMatrix GlobalCounterMatrix ConditionMatrix GlobalTimerChannels GlobalTimerOnMessages GlobalTimerOffMessages GlobalTimerLoopMode SendGlobalTimerEvents GlobalCounterAttachedEvents ConditionChannels ConditionValues];
 ThirtyTwoBitMatrix = [StateTimers GlobalTimers GlobalTimerDelays GlobalTimerLoopIntervals GlobalCounterThresholds];
-
+nBytes = uint16(length(EightBitMatrix) + 4*length(ThirtyTwoBitMatrix)); % Number of bytes in state matrix (excluding nStates byte and RunMessage)
 if BpodSystem.EmulatorMode == 0
     %% Send state matrix to Bpod device
     ByteString = [EightBitMatrix typecast(ThirtyTwoBitMatrix, 'uint8') RunMessage];
-    BpodSystem.SerialPort.write(ByteString, 'uint8');
-    
+    if BpodSystem.Status.InStateMatrix == 1 % If loading during a trial
+        if BpodSystem.MachineType > 1
+            BpodSystem.SerialPort.write('C', 'uint8', nBytes, 'uint16'); 
+            for i = 1:length(ByteString)
+                BpodSystem.SerialPort.write(ByteString(i), 'uint8'); % send byte-wise, to avoid HW timer overrun
+            end
+        else
+            error('Error: Bpod 0.5 cannot send a state machine while a trial is in progress. If you need this functionality, consider switching to Bpod 0.7+')
+        end
+    else
+        BpodSystem.SerialPort.write(['C' typecast(nBytes, 'uint8') ByteString], 'uint8');
+    end
+
 %% Confirm send. Note: To reduce dead time, transmission is confirmed from state machine after next call to RunStateMachine()
     BpodSystem.Status.NewStateMachineSent = 1; % On next run, a byte is returned confirming that the state machine was received.
     Confirmed = 1;
@@ -254,4 +265,4 @@ else
     Confirmed = 1;
 end
 %% Update State Machine Object
-BpodSystem.StateMatrix = sma;
+BpodSystem.StateMatrixSent = sma;

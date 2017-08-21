@@ -20,7 +20,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function BpodSettingsMenu
 
 global BpodSystem
-BpodSystem.GUIHandles.SettingsMenuFig = figure('Position', [650 480 397 126],'name','Settings Menu','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+if ispc
+    MenuWindowHeight = 126;
+elseif ismac
+    MenuWindowHeight = 126;
+else
+    MenuWindowHeight = 105;
+end
+
+BpodSystem.GUIHandles.SettingsMenuFig = figure('Position', [650 480 397 MenuWindowHeight],'name','Settings Menu','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 ha = axes('units','normalized', 'position',[0 0 1 1]);
 uistack(ha,'bottom');
 BG = imread('SettingsMenuBG2.bmp');
@@ -36,7 +44,7 @@ BpodSystem.GUIHandles.SoundCalLaunchButton = uicontrol('Style', 'pushbutton', 'S
 PortCalButtonGFX = imread('PortConfigButton.bmp'); ypos = ypos + 65;
 BpodSystem.GUIHandles.PortCalLaunchButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [ypos 32 40 40], 'Callback', @ConfigurePorts, 'CData', PortCalButtonGFX, 'TooltipString', 'Configure low impedence inputs (ports and wire terminals)');
 SyncButtonGFX = imread('SyncConfigButton.bmp'); ypos = ypos + 65;
-BpodSystem.GUIHandles.SyncLaunchButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [ypos 32 40 40], 'Callback', @ConfigureSync, 'CData', SyncButtonGFX, 'TooltipString', 'Configure state synchronization signal');
+BpodSystem.GUIHandles.SyncLaunchButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [ypos 32 40 40], 'Callback', @ConfigureBpodSync, 'CData', SyncButtonGFX, 'TooltipString', 'Configure state synchronization signal');
 FolderButtonGFX = imread('FolderSetupButton.bmp'); ypos = ypos + 65;
 BpodSystem.GUIHandles.SyncLaunchButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [ypos 32 40 40], 'Callback', @ConfigureFolders, 'CData', FolderButtonGFX, 'TooltipString', 'Select data and protocol root folders');
 
@@ -59,6 +67,11 @@ function ConfigurePorts(trash, othertrash)
 global BpodSystem
 close(BpodSystem.GUIHandles.SettingsMenuFig)
 BpodPortConfig;
+
+function ConfigureBpodSync(trash, othertrash)
+global BpodSystem
+close(BpodSystem.GUIHandles.SettingsMenuFig)
+ConfigureSync;
 
 function ConfigureFolders(trash, othertrash)
 global BpodSystem

@@ -1,3 +1,23 @@
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
+
 classdef TrialManagerObject < handle
     properties
         Timer % MATLAB timer object to check for new events from the state machine
@@ -31,13 +51,21 @@ classdef TrialManagerObject < handle
     methods
         function obj = TrialManagerObject %Constructor
             global BpodSystem
+            if isempty(BpodSystem)
+                error('You must run Bpod() before creating an instance of TrialManagerObject.')
+            end
             if BpodSystem.EmulatorMode == 1
                 error('Error: The Bpod emulator does not currently support running state machines with TrialManager.') 
             end
             obj.Timer = timer('TimerFcn',@(h,e)obj.processLiveEvents(), 'ExecutionMode', 'fixedRate', 'Period', 0.001);
         end
-        function startTrial(obj, StateMatrix)
+        function startTrial(obj, varargin)
             global BpodSystem
+            smaSent = 1;
+            if nargin > 1
+                smaSent = 0;
+                StateMatrix = varargin{1};
+            end
             obj.PrepareNextTrialFlag = 0;
             obj.TrialEndFlag = 0;
             if BpodSystem.BonsaiSocket.Connected == 1
@@ -46,14 +74,18 @@ classdef TrialManagerObject < handle
                     BpodSocketServer('read', BonsaiBytesAvailable);
                 end
             end
-            SendStateMachine(StateMatrix, 'RunImmediately');
+            if smaSent
+                BpodSystem.SerialPort.write('R', 'uint8');
+            else
+                SendStateMachine(StateMatrix, 'RunImmediately');
+            end
             SMA_Confirmed = BpodSystem.SerialPort.read(1, 'uint8');
             if isempty(SMA_Confirmed)
                 error('Error: The last state machine sent was not acknowledged by the Bpod device.');
             elseif SMA_Confirmed ~= 1
                 error('Error: The last state machine sent was not acknowledged by the Bpod device.');
             end
-            %toc
+            BpodSystem.StateMatrix = BpodSystem.StateMatrixSent;
             BpodSystem.Status.NewStateMachineSent = 0;
             BpodSystem.Status.LastStateCode = 0;
             BpodSystem.Status.CurrentStateCode = 1;

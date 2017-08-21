@@ -18,7 +18,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-// Bpod State Machine Firmware Ver. 15
+// Bpod State Machine Firmware Ver. 16
 //
 // SYSTEM SETUP:
 //
@@ -43,8 +43,7 @@
 //////////////////////////////////////////
 // Current firmware version (single firmware file, compiles for MachineTypes set above)
 
-#define FirmwareVersion 15
-
+#define FirmwareVersion 16
 
 //////////////////////////////////////////
 //          Board configuration          /
@@ -200,6 +199,7 @@ boolean smaTransmissionConfirmed = false; // Set to true when the last state mac
 boolean newSMATransmissionStarted = false; // Set to true when beginning a state machine transmission
 boolean UARTrelayMode[nSerialChannels] = {false};
 byte nModuleEvents[nSerialChannels] = {10}; // Stores number of behavior events assigned to each serial module (10 by default)
+uint16_t stateMatrixNBytes = 0; // Number of bytes in the state matrix about to be transmitted
 
 //////////////////////////////////
 // Initialize general use vars:  /
@@ -215,6 +215,7 @@ int LEDBrightnessAdjustInterval = 5;
 byte LEDBrightnessAdjustDirection = 1;
 byte LEDBrightness = 0;
 byte serialByteBuffer[4] = {0};
+
 // State machine definitions. Each matrix relates each state to some inputs or outputs.
 const byte InputMatrixSize = maxSerialEvents + nDigitalInputs*2;
 byte actualInputMatrixSize = InputMatrixSize;
@@ -280,16 +281,33 @@ unsigned short MinCallbackDuration = 0; // Minimum time spent executing a timer 
 unsigned short MaxCallbackDuration = 0; // Maximum time spent executing a timer callback in cycleMonitoring mode
 unsigned long nCycles = 0; // Number of cycles measured since event X
 byte connectionState = 0; // 1 if connected to MATLAB
-byte RunningStateMatrix = 0; // 1 if state matrix is running
+byte RunningStateMatrix = 0; // 1  if state matrix is running
 byte firstLoop= 0; // 1 if first timer callback in state matrix
 int Ev = 0; // Index of current event
 byte nOverrides = 0; // Number of overrides on a line of the state matrix (for compressed transmission scheme)
 byte col = 0; byte val = 0; // col and val are used in compression scheme
-byte UARTRelayBuffer[128] = {0}; // Stores bytes to be relayed to a module
+const uint16_t StateMatrixBufferSize = 50000;
+#if MachineType > 1
+  byte StateMatrixBuffer[StateMatrixBufferSize] = {0}; // Stores next trial's state matrix
+#endif
+const uint16_t SerialRelayBufferSize = 1024;
+byte SerialRelayBuffer[SerialRelayBufferSize] = {0}; // Stores bytes to be transmitted to a serial device (i.e. module, USB)
+uint16_t bufferPos = 0;
+boolean smaPending = false; // If a state matrix is ready to read into the serial buffer (from USB)
+boolean smaReady2Load = false; // If a state matrix was read into the serial buffer and is ready to read into sma vars with LoadStateMatrix()
+uint16_t nSMBytesRead = 0;
+
 union {
   byte Bytes[20];
-  int32_t Uint32[5];
-} TrialTimeStamps;
+  uint32_t Uint32[5];
+} TrialTimeStamps; // For trial timestamp conversion
+
+union {
+    byte byteArray[4];
+    uint16_t uint16;
+    uint32_t uint32;
+} typeBuffer; // For general purpose type conversion
+
 #if MachineType == 3
   IntervalTimer hardwareTimer;
 #endif
@@ -449,6 +467,14 @@ void loop() {
   if (!RunningStateMatrix) {
     relayModuleBytes();
   }
+  #if MachineType > 1
+    if (smaPending) { // If a request to read a new state matrix arrived during a trial, read here at lower priority (in free time between timer interrupts)
+      USBCOM.readByteArray(StateMatrixBuffer, stateMatrixNBytes);
+      smaTransmissionConfirmed = true;
+      smaReady2Load = true;
+      smaPending = false;
+    }
+  #endif
 }
 
 void handler() { // This is the timer handler function, which is called every (timerPeriod) us
@@ -475,7 +501,7 @@ void handler() { // This is the timer handler function, which is called every (t
       #endif
     }
   }
-  if (USBCOM.available() > 0) { // If a message has arrived on the USB serial port
+  if ((USBCOM.available() > 0) && (smaPending == false)) { // If a message has arrived on the USB serial port
     CommandByte = USBCOM.readByte();  // P for Program, R for Run, O for Override, 6 for Handshake, F for firmware version
     switch (CommandByte) {
       case '6':  // Initialization handshake
@@ -641,27 +667,27 @@ void handler() { // This is the timer handler function, which is called every (t
         nBytes = USBCOM.readUint8();
         switch (Byte1) {
           case 0:
-            USBCOM.readByteArray(UARTRelayBuffer, nBytes);
-            Serial1COM.writeByteArray(UARTRelayBuffer, nBytes);
+            USBCOM.readByteArray(SerialRelayBuffer, nBytes);
+            Serial1COM.writeByteArray(SerialRelayBuffer, nBytes);
           break;
           case 1:
-            USBCOM.readByteArray(UARTRelayBuffer, nBytes);
-            Serial2COM.writeByteArray(UARTRelayBuffer, nBytes);
+            USBCOM.readByteArray(SerialRelayBuffer, nBytes);
+            Serial2COM.writeByteArray(SerialRelayBuffer, nBytes);
           break;
           #if MachineType > 1
             case 2:
-              USBCOM.readByteArray(UARTRelayBuffer, nBytes);
-              Serial3COM.writeByteArray(UARTRelayBuffer, nBytes);
+              USBCOM.readByteArray(SerialRelayBuffer, nBytes);
+              Serial3COM.writeByteArray(SerialRelayBuffer, nBytes);
             break;
           #endif
           #if MachineType == 3
             case 3:
-              USBCOM.readByteArray(UARTRelayBuffer, nBytes);
-              Serial4COM.writeByteArray(UARTRelayBuffer, nBytes);
+              USBCOM.readByteArray(SerialRelayBuffer, nBytes);
+              Serial4COM.writeByteArray(SerialRelayBuffer, nBytes);
             break;
             case 4:
-              USBCOM.readByteArray(UARTRelayBuffer, nBytes);
-              Serial5COM.writeByteArray(UARTRelayBuffer, nBytes);
+              USBCOM.readByteArray(SerialRelayBuffer, nBytes);
+              Serial5COM.writeByteArray(SerialRelayBuffer, nBytes);
             break;
           #endif
          }
@@ -720,104 +746,26 @@ void handler() { // This is the timer handler function, which is called every (t
            inputOverrideState[VirtualEventTarget] = true;
         }
       break;
-      case 'C': // Get new compressed state matrix from MATLAB/Python
+      case 'C': // Get new compressed state matrix from MATLAB/Python 
         newSMATransmissionStarted = true;
         smaTransmissionConfirmed = false;
-        nStates = USBCOM.readByte();
-        for (int x = 0; x < nStates; x++) { // Set matrix to default
-          StateTimerMatrix[x] = 0;
-          for (int y = 0; y < InputMatrixSize; y++) {
-            InputStateMatrix[x][y] = x;
-          }
-          for (int y = 0; y < OutputMatrixSize; y++) {
-            OutputStateMatrix[x][y] = 0;
-          }
-          for (int y = 0; y < nGlobalTimers; y++) {
-            GlobalTimerStartMatrix[x][y] = x;
-          }
-          for (int y = 0; y < nGlobalTimers; y++) {
-            GlobalTimerEndMatrix[x][y] = x;
-          }
-          for (int y = 0; y < nGlobalCounters; y++) {
-            GlobalCounterMatrix[x][y] = x;
-          }
-          for (int y = 0; y < nConditions; y++) {
-            ConditionMatrix[x][y] = x;
+        stateMatrixNBytes = USBCOM.readUint16();
+        if (stateMatrixNBytes < StateMatrixBufferSize) {
+          if (RunningStateMatrix) {
+            #if MachineType > 1
+              nSMBytesRead = 0;
+              smaPending = true;
+            #else
+              USBCOM.writeByte(0);
+            #endif
+          } else {
+            #if MachineType > 1
+              USBCOM.readByteArray(StateMatrixBuffer, stateMatrixNBytes); // Read data in 1 batch operation (much faster than item-wise)
+              smaTransmissionConfirmed = true;
+            #endif
+            loadStateMatrix(); // Loads the state matrix from the buffer into the relevant variables
           }
         }
-        for (int x = 0; x < nStates; x++) { // Get State timer matrix
-          StateTimerMatrix[x] = USBCOM.readByte();
-        }
-        for (int x = 0; x < nStates; x++) { // Get Input Matrix differences
-          nOverrides = USBCOM.readByte();
-          for (int y = 0; y<nOverrides; y++) {
-            col = USBCOM.readByte();
-            val = USBCOM.readByte();
-            InputStateMatrix[x][col] = val;
-          }
-        }
-        for (int x = 0; x < nStates; x++) { // Get Output Matrix differences
-          nOverrides = USBCOM.readByte();
-          for (int y = 0; y<nOverrides; y++) {
-            col = USBCOM.readByte();
-            val = USBCOM.readByte();
-            OutputStateMatrix[x][col] = val;
-          }
-        }
-        for (int x = 0; x < nStates; x++) { // Get Global Timer Start Matrix differences
-          nOverrides = USBCOM.readByte();
-          if (nOverrides > 0) {
-            for (int y = 0; y<nOverrides; y++) {
-              col = USBCOM.readByte();
-              val = USBCOM.readByte();
-              GlobalTimerStartMatrix[x][col] = val;
-            }
-          }
-        }
-        for (int x = 0; x < nStates; x++) { // Get Global Timer End Matrix differences
-          nOverrides = USBCOM.readByte();
-          if (nOverrides > 0) {
-            for (int y = 0; y<nOverrides; y++) {
-              col = USBCOM.readByte();
-              val = USBCOM.readByte();
-              GlobalTimerEndMatrix[x][col] = val;
-            }
-          }
-        }
-        for (int x = 0; x < nStates; x++) { // Get Global Counter Matrix differences
-          nOverrides = USBCOM.readByte();
-          if (nOverrides > 0) {
-            for (int y = 0; y<nOverrides; y++) {
-              col = USBCOM.readByte();
-              val = USBCOM.readByte();
-              GlobalCounterMatrix[x][col] = val;
-            }
-          }
-        }
-        for (int x = 0; x < nStates; x++) { // Get Condition Matrix differences
-          nOverrides = USBCOM.readByte();
-          if (nOverrides > 0) {
-            for (int y = 0; y<nOverrides; y++) {
-              col = USBCOM.readByte();
-              val = USBCOM.readByte();
-              ConditionMatrix[x][col] = val;
-            }
-          }
-        }
-        USBCOM.readByteArray(GlobalTimerChannel, nGlobalTimers); // Get output channels of global timers
-        USBCOM.readByteArray(GlobalTimerOnMessage, nGlobalTimers); // Get serial messages to trigger on timer start
-        USBCOM.readByteArray(GlobalTimerOffMessage, nGlobalTimers); // Get serial messages to trigger on timer end
-        USBCOM.readByteArray(GlobalTimerLoop, nGlobalTimers); // Get global timer loop state (true/false)
-        USBCOM.readByteArray(SendGlobalTimerEvents, nGlobalTimers); // Send global timer events (enabled/disabled)
-        USBCOM.readByteArray(GlobalCounterAttachedEvents, nGlobalCounters); // Get global counter attached events
-        USBCOM.readByteArray(ConditionChannels, nConditions); // Get condition channels
-        USBCOM.readByteArray(ConditionValues, nConditions); // Get condition values
-        USBCOM.readUint32Array(StateTimers, nStates); // Get state timers
-        USBCOM.readUint32Array(GlobalTimers, nGlobalTimers); // Get global timers
-        USBCOM.readUint32Array(GlobalTimerOnsetDelays, nGlobalTimers); // Get global timer onset delays
-        USBCOM.readUint32Array(GlobalTimerLoopIntervals, nGlobalTimers); // Get loop intervals
-        USBCOM.readUint32Array(GlobalCounterThresholds, nGlobalCounters); // Get global counter event count thresholds
-        smaTransmissionConfirmed = true;
       break;
       case 'R':  // Run State Machine
         if (newSMATransmissionStarted){
@@ -1133,6 +1081,7 @@ void handler() { // This is the timer handler function, which is called every (t
       SyncWrite();
     }
     resetOutputs();
+    //digitalWrite(24, HIGH);
 // Send trial timing data back to computer
     serialByteBuffer[0] = 1; // Op Code for sending events
     serialByteBuffer[1] = 1; // Read one event
@@ -1149,14 +1098,31 @@ void handler() { // This is the timer handler function, which is called every (t
       SPI.transfer(0); // Send address bytes
       SPI.transfer(0);
       SPI.transfer(0);
-      for (int i = 0; i < nEvents * 4; i++) {
-        USBCOM.writeByte(SPI.transfer(0));
+      uint16_t nFullBufferReads = 0; // A buffer array (SerialRelayBuffer) will store data read from RAM and dump it to USB
+      uint16_t nRemainderBytes = 0;
+      if (nEvents*4 > SerialRelayBufferSize) {
+        nFullBufferReads = (unsigned long)(floor(((double)nEvents)*4 / (double)SerialRelayBufferSize));
+      } else {
+        nFullBufferReads = 0;
+      }  
+      for (int i = 0; i < nFullBufferReads; i++) { // Full buffer transfers; skipped if nFullBufferReads = 0
+        SPI.transfer(SerialRelayBuffer, SerialRelayBufferSize);
+        USBCOM.writeByteArray(SerialRelayBuffer, SerialRelayBufferSize);
+      }
+      nRemainderBytes = (nEvents*4)-(nFullBufferReads*SerialRelayBufferSize);
+      if (nRemainderBytes > 0) {
+        SPI.transfer(SerialRelayBuffer, nRemainderBytes);
+        USBCOM.writeByteArray(SerialRelayBuffer, nRemainderBytes);   
       }
       digitalWriteDirect(fRAMcs, HIGH);
     #else
       USBCOM.writeUint32Array(Timestamps, nEvents);
-    #endif
+    #endif    
     MatrixFinished = false;
+    if (smaReady2Load) { // If the next trial's state matrix was loaded to the serial buffer during the trial
+      loadStateMatrix();
+      smaReady2Load = false;
+    }
     updateStatusLED(0);
     updateStatusLED(2);
   } // End Matrix finished
@@ -1289,7 +1255,9 @@ void setStateOutputs(byte State) {
         }
         break;
         case 'S':
-          spiWrite(OutputStateMatrix[State][i], OutputCh[i]);
+          if (outputOverrideState[i] == 0) {
+            spiWrite(OutputStateMatrix[State][i], OutputCh[i]);
+          }
         break;
         case 'D':
         case 'B':
@@ -1414,14 +1382,14 @@ byte digitalReadDirect(int pin) { // >10x Faster than digitalRead(), specific to
   #endif
 }
 
-void setGlobalTimerChannel(byte chan, byte op) {
-  Byte1 = GlobalTimerChannel[chan];
+void setGlobalTimerChannel(byte timerChan, byte op) {
+  Byte1 = GlobalTimerChannel[timerChan];
   switch (OutputHW[Byte1]) {
-    case 'U':
+    case 'U': // UART
       if (op == 1) {
-        Byte2 = GlobalTimerOnMessage[chan];
+        Byte2 = GlobalTimerOnMessage[timerChan];
       } else {
-        Byte2 = GlobalTimerOffMessage[chan];
+        Byte2 = GlobalTimerOffMessage[timerChan];
       }
       if (Byte2 < 254) {
         Byte3 = SerialMessage_nBytes[Byte2][Byte1];
@@ -1451,7 +1419,7 @@ void setGlobalTimerChannel(byte chan, byte op) {
         }
       }
     break;
-    case 'B':
+    case 'B': // Digital IO (BNC, Wire, Digital)
     case 'W':
     case 'D':
       if (op == 1) {
@@ -1462,12 +1430,21 @@ void setGlobalTimerChannel(byte chan, byte op) {
         outputOverrideState[Byte1] = 0;
       }
     break;
-    case 'P':
+    case 'P': // Port (PWM / LED)
       if (op == 1) {
-        analogWrite(OutputCh[Byte1], GlobalTimerOnMessage[chan]);
+        analogWrite(OutputCh[Byte1], GlobalTimerOnMessage[timerChan]);
         outputOverrideState[Byte1] = 1;
       } else {
-        analogWrite(OutputCh[Byte1], 0); //GlobalTimerOffMessage[chan]
+        analogWrite(OutputCh[Byte1], 0);
+        outputOverrideState[Byte1] = 0;
+      }
+    break;
+    case 'S': // Valve
+      if (op == 1) {
+        spiWrite(GlobalTimerOnMessage[timerChan], OutputCh[Byte1]);
+        outputOverrideState[Byte1] = 1;
+      } else {
+        spiWrite(0, OutputCh[Byte1]);
         outputOverrideState[Byte1] = 0;
       }
     break;
@@ -1507,8 +1484,8 @@ void relayModuleInfo(ArCOM serialCOM) {
                 for (int i = 0; i < Byte2; i++) {
                   Byte3 = serialCOM.readByte(); // Length of event name (in characters)
                   USBCOM.writeByte(Byte3);
-                  serialCOM.readByteArray(UARTRelayBuffer, Byte3);
-                  USBCOM.writeByteArray(UARTRelayBuffer, Byte3);
+                  serialCOM.readByteArray(SerialRelayBuffer, Byte3);
+                  USBCOM.writeByteArray(SerialRelayBuffer, Byte3);
                 }
               break;
             }
@@ -1624,5 +1601,229 @@ void clearSerialBuffers() {
        break;
      }
   }
+}
+
+void loadStateMatrix() { // Loads a state matrix from the serial buffer into the relevant local variables
+  #if MachineType > 1
+    nStates = StateMatrixBuffer[0]; 
+  #else
+    nStates = USBCOM.readByte();
+  #endif
+  bufferPos = 1; // Current position in serial relay buffer
+  for (int x = 0; x < nStates; x++) { // Set matrix to default
+    StateTimerMatrix[x] = 0;
+    for (int y = 0; y < InputMatrixSize; y++) {
+      InputStateMatrix[x][y] = x;
+    }
+    for (int y = 0; y < OutputMatrixSize; y++) {
+      OutputStateMatrix[x][y] = 0;
+    }
+    for (int y = 0; y < nGlobalTimers; y++) {
+      GlobalTimerStartMatrix[x][y] = x;
+    }
+    for (int y = 0; y < nGlobalTimers; y++) {
+      GlobalTimerEndMatrix[x][y] = x;
+    }
+    for (int y = 0; y < nGlobalCounters; y++) {
+      GlobalCounterMatrix[x][y] = x;
+    }
+    for (int y = 0; y < nConditions; y++) {
+      ConditionMatrix[x][y] = x;
+    }
+  }
+  #if MachineType > 1 // Bpod 0.7+; Read state matrix from RAM buffer
+    for (int x = 0; x < nStates; x++) { // Get State timer matrix
+      StateTimerMatrix[x] = StateMatrixBuffer[bufferPos]; bufferPos++;
+    }
+    for (int x = 0; x < nStates; x++) { // Get Input Matrix differences
+      nOverrides = StateMatrixBuffer[bufferPos]; bufferPos++;
+      for (int y = 0; y<nOverrides; y++) {
+        col = StateMatrixBuffer[bufferPos]; bufferPos++;
+        val = StateMatrixBuffer[bufferPos]; bufferPos++;
+        InputStateMatrix[x][col] = val;
+      }
+    }
+    for (int x = 0; x < nStates; x++) { // Get Output Matrix differences
+      nOverrides = StateMatrixBuffer[bufferPos]; bufferPos++;
+      for (int y = 0; y<nOverrides; y++) {
+        col = StateMatrixBuffer[bufferPos]; bufferPos++;
+        val = StateMatrixBuffer[bufferPos]; bufferPos++;
+        OutputStateMatrix[x][col] = val;
+      }
+    }
+    for (int x = 0; x < nStates; x++) { // Get Global Timer Start Matrix differences
+      nOverrides = StateMatrixBuffer[bufferPos]; bufferPos++;
+      if (nOverrides > 0) {
+        for (int y = 0; y<nOverrides; y++) {
+          col = StateMatrixBuffer[bufferPos]; bufferPos++;
+          val = StateMatrixBuffer[bufferPos]; bufferPos++;
+          GlobalTimerStartMatrix[x][col] = val;
+        }
+      }
+    }
+    for (int x = 0; x < nStates; x++) { // Get Global Timer End Matrix differences
+      nOverrides = StateMatrixBuffer[bufferPos]; bufferPos++;
+      if (nOverrides > 0) {
+        for (int y = 0; y<nOverrides; y++) {
+          col = StateMatrixBuffer[bufferPos]; bufferPos++;
+          val = StateMatrixBuffer[bufferPos]; bufferPos++;
+          GlobalTimerEndMatrix[x][col] = val;
+        }
+      }
+    }
+    for (int x = 0; x < nStates; x++) { // Get Global Counter Matrix differences
+      nOverrides = StateMatrixBuffer[bufferPos]; bufferPos++;
+      if (nOverrides > 0) {
+        for (int y = 0; y<nOverrides; y++) {
+          col = StateMatrixBuffer[bufferPos]; bufferPos++;
+          val = StateMatrixBuffer[bufferPos]; bufferPos++;
+          GlobalCounterMatrix[x][col] = val;
+        }
+      }
+    }
+    for (int x = 0; x < nStates; x++) { // Get Condition Matrix differences
+      nOverrides = StateMatrixBuffer[bufferPos]; bufferPos++;
+      if (nOverrides > 0) {
+        for (int y = 0; y<nOverrides; y++) {
+          col = StateMatrixBuffer[bufferPos]; bufferPos++;
+          val = StateMatrixBuffer[bufferPos]; bufferPos++;
+          ConditionMatrix[x][col] = val;
+        }
+      }
+    }
+    for (int i = 0; i < nGlobalTimers; i++) {
+      GlobalTimerChannel[i] = StateMatrixBuffer[bufferPos]; bufferPos++;
+    }
+    for (int i = 0; i < nGlobalTimers; i++) {
+      GlobalTimerOnMessage[i] = StateMatrixBuffer[bufferPos]; bufferPos++;
+    }
+    for (int i = 0; i < nGlobalTimers; i++) {
+      GlobalTimerOffMessage[i] = StateMatrixBuffer[bufferPos]; bufferPos++;
+    }
+    for (int i = 0; i < nGlobalTimers; i++) {
+      GlobalTimerLoop[i] = StateMatrixBuffer[bufferPos]; bufferPos++;
+    }
+    for (int i = 0; i < nGlobalTimers; i++) {
+      SendGlobalTimerEvents[i] = StateMatrixBuffer[bufferPos]; bufferPos++;
+    }
+    for (int i = 0; i < nGlobalCounters; i++) {
+      GlobalCounterAttachedEvents[i] = StateMatrixBuffer[bufferPos]; bufferPos++;
+    }
+    for (int i = 0; i < nConditions; i++) {
+      ConditionChannels[i] = StateMatrixBuffer[bufferPos]; bufferPos++;
+    }
+    for (int i = 0; i < nConditions; i++) {
+      ConditionValues[i] = StateMatrixBuffer[bufferPos]; bufferPos++;
+    }
+    for (int i = 0; i < nStates; i++) {
+      typeBuffer.byteArray[0] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[1] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[2] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[3] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      StateTimers[i] = typeBuffer.uint32;
+    }
+    for (int i = 0; i < nGlobalTimers; i++) {
+      typeBuffer.byteArray[0] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[1] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[2] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[3] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      GlobalTimers[i] = typeBuffer.uint32;
+    }
+    for (int i = 0; i < nGlobalTimers; i++) {
+      typeBuffer.byteArray[0] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[1] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[2] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[3] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      GlobalTimerOnsetDelays[i] = typeBuffer.uint32;
+    }
+    for (int i = 0; i < nGlobalTimers; i++) {
+      typeBuffer.byteArray[0] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[1] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[2] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[3] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      GlobalTimerLoopIntervals[i] = typeBuffer.uint32;
+    }
+    for (int i = 0; i < nGlobalCounters; i++) {
+      typeBuffer.byteArray[0] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[1] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[2] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      typeBuffer.byteArray[3] = StateMatrixBuffer[bufferPos]; bufferPos++;
+      GlobalCounterThresholds[i] = typeBuffer.uint32;
+    }
+  #else // Bpod 0.5; Read state matrix from serial port
+    for (int x = 0; x < nStates; x++) { // Get State timer matrix
+      StateTimerMatrix[x] = USBCOM.readByte();
+    }
+    for (int x = 0; x < nStates; x++) { // Get Input Matrix differences
+      nOverrides = USBCOM.readByte();
+      for (int y = 0; y<nOverrides; y++) {
+        col = USBCOM.readByte();
+        val = USBCOM.readByte();
+        InputStateMatrix[x][col] = val;
+      }
+    }
+    for (int x = 0; x < nStates; x++) { // Get Output Matrix differences
+      nOverrides = USBCOM.readByte();
+      for (int y = 0; y<nOverrides; y++) {
+        col = USBCOM.readByte();
+        val = USBCOM.readByte();
+        OutputStateMatrix[x][col] = val;
+      }
+    }
+    for (int x = 0; x < nStates; x++) { // Get Global Timer Start Matrix differences
+      nOverrides = USBCOM.readByte();
+      if (nOverrides > 0) {
+        for (int y = 0; y<nOverrides; y++) {
+          col = USBCOM.readByte();
+          val = USBCOM.readByte();
+          GlobalTimerStartMatrix[x][col] = val;
+        }
+      }
+    }
+    for (int x = 0; x < nStates; x++) { // Get Global Timer End Matrix differences
+      nOverrides = USBCOM.readByte();
+      if (nOverrides > 0) {
+        for (int y = 0; y<nOverrides; y++) {
+          col = USBCOM.readByte();
+          val = USBCOM.readByte();
+          GlobalTimerEndMatrix[x][col] = val;
+        }
+      }
+    }
+    for (int x = 0; x < nStates; x++) { // Get Global Counter Matrix differences
+      nOverrides = USBCOM.readByte();
+      if (nOverrides > 0) {
+        for (int y = 0; y<nOverrides; y++) {
+          col = USBCOM.readByte();
+          val = USBCOM.readByte();
+          GlobalCounterMatrix[x][col] = val;
+        }
+      }
+    }
+    for (int x = 0; x < nStates; x++) { // Get Condition Matrix differences
+      nOverrides = USBCOM.readByte();
+      if (nOverrides > 0) {
+        for (int y = 0; y<nOverrides; y++) {
+          col = USBCOM.readByte();
+          val = USBCOM.readByte();
+          ConditionMatrix[x][col] = val;
+        }
+      }
+    }
+    USBCOM.readByteArray(GlobalTimerChannel, nGlobalTimers); // Get output channels of global timers
+    USBCOM.readByteArray(GlobalTimerOnMessage, nGlobalTimers); // Get serial messages to trigger on timer start
+    USBCOM.readByteArray(GlobalTimerOffMessage, nGlobalTimers); // Get serial messages to trigger on timer end
+    USBCOM.readByteArray(GlobalTimerLoop, nGlobalTimers); // Get global timer loop state (true/false)
+    USBCOM.readByteArray(SendGlobalTimerEvents, nGlobalTimers); // Send global timer events (enabled/disabled)
+    USBCOM.readByteArray(GlobalCounterAttachedEvents, nGlobalCounters); // Get global counter attached events
+    USBCOM.readByteArray(ConditionChannels, nConditions); // Get condition channels
+    USBCOM.readByteArray(ConditionValues, nConditions); // Get condition values
+    USBCOM.readUint32Array(StateTimers, nStates); // Get state timers
+    USBCOM.readUint32Array(GlobalTimers, nGlobalTimers); // Get global timers
+    USBCOM.readUint32Array(GlobalTimerOnsetDelays, nGlobalTimers); // Get global timer onset delays
+    USBCOM.readUint32Array(GlobalTimerLoopIntervals, nGlobalTimers); // Get loop intervals
+    USBCOM.readUint32Array(GlobalCounterThresholds, nGlobalCounters); // Get global counter event count thresholds
+    smaTransmissionConfirmed = true;
+  #endif
 }
 

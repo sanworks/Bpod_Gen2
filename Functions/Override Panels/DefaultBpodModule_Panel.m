@@ -24,10 +24,19 @@ FontName = 'OCR A STD';
 if ismac
     FontName = 'Arial';
 end
-BpodSystem.GUIData.InputFontSize = 10;
-BpodSystem.GUIData.InstructionFontSize = 8;
-if isunix
+
+if ispc
+    BpodSystem.GUIData.InstructionFontSize = 8;
+    BpodSystem.GUIData.InputFontSize = 10;
+    BpodSystem.GUIData.TitleFontSize = 12;
+elseif ismac
+    BpodSystem.GUIData.InstructionFontSize = 11;
+    BpodSystem.GUIData.InputFontSize = 12;
+    BpodSystem.GUIData.TitleFontSize = 16;
+else
     BpodSystem.GUIData.InstructionFontSize = 7;
+    BpodSystem.GUIData.InputFontSize = 10;
+    BpodSystem.GUIData.TitleFontSize = 12;
 end
 BpodSystem.GUIData.SelectedTermDisplayMode = 1;
 
@@ -36,7 +45,7 @@ ModuleNumber = find(strcmp(ModuleName, BpodSystem.Modules.Name));
 xOffset = 120;
 yOffset = 130;
 Label = ['Module ' num2str(ModuleNumber) ' Serial Terminal'];
-text(xOffset+25, yOffset+80, Label, 'FontName', FontName, 'FontSize', 12, 'Color', [.8 .8 .8]);
+text(xOffset+25, yOffset+80, Label, 'FontName', FontName, 'FontSize', BpodSystem.GUIData.TitleFontSize, 'Color', [.8 .8 .8]);
 line([xOffset-30 xOffset+360], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineWidth', 2);
 xPos = xOffset;
 ByteModeInstructions = 'Spaces delimit bytes, use '' '' for char i.e. ''A'' 5 213 ''B''';
@@ -52,11 +61,13 @@ BpodSystem.GUIHandles.SerialTerminalInput(ModuleNumber) = uicontrol('Parent', Pa
     'ButtonDownFcn',@(src,event)ClearInstructions(ModuleNumber));
 BpodSystem.GUIHandles.SerialTerminalOutput(ModuleNumber) = uicontrol('Parent', PanelHandle,'Style', 'edit',...
     'String', '', 'Position', [xPos-30 yOffset-100 275 90],...
-    'HorizontalAlignment', 'left', 'Enable', 'inactive', 'Max', 3);
+    'HorizontalAlignment', 'left', 'Enable', 'inactive', 'Max', 3, 'FontSize', BpodSystem.GUIData.InputFontSize);
 BpodSystem.GUIHandles.SerialTerminalButton(ModuleNumber) = uicontrol('Parent', PanelHandle,'Style', 'pushbutton',...
-    'String', 'Send', 'Position', [xPos+258 yOffset 100 30], 'Callback', @(src,event)SendMessage(ModuleNumber, ModuleName));
+    'String', 'Send', 'Position', [xPos+258 yOffset 100 30], 'Callback', @(src,event)SendMessage(ModuleNumber, ModuleName),...
+    'ForegroundColor', [1 1 1], 'BackgroundColor', [0.5 0.5 0.5]);
 BpodSystem.GUIHandles.SerialTerminalClearButton(ModuleNumber) = uicontrol('Parent', PanelHandle,'Style', 'pushbutton',...
-    'String', 'Clear', 'Position', [xPos+258 yOffset-40 100 30], 'Callback', @(src,event)ClearTerminal(ModuleNumber));
+    'String', 'Clear', 'Position', [xPos+258 yOffset-40 100 30], 'Callback', @(src,event)ClearTerminal(ModuleNumber),...
+    'ForegroundColor', [1 1 1], 'BackgroundColor', [0.5 0.5 0.5]);
 BpodSystem.GUIHandles.SerialTerminalCharSelect(ModuleNumber) = uicontrol('Parent', PanelHandle, 'Style', 'radiobutton', ...
                            'Callback', @(src,event)SelectCharmode(ModuleNumber), ...
                            'Units',    'pixels', ...

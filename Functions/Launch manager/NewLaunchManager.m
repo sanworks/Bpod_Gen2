@@ -26,11 +26,18 @@ ha = axes('units','normalized', 'position',[0 0 1 1]);
 uistack(ha,'bottom');
 BG = imread('LaunchManagerBG2.bmp');
 image(BG); axis off;
-text(130, 45,'Protocol Launch Manager', 'FontName', 'OCRASTD', 'FontSize', 20, 'Color', [0.8 0.8 0.8]);
+if ispc
+    lmYpos = 130; SelectorFontSize = 11; PathFontSize = 10;
+elseif ismac
+    lmYpos = 160; SelectorFontSize = 14; PathFontSize = 14;
+else 
+    lmYpos = 130; SelectorFontSize = 11; PathFontSize = 10;
+end
+text(lmYpos, 45,'Protocol Launch Manager', 'FontName', 'OCRASTD', 'FontSize', 20, 'Color', [0.8 0.8 0.8]);
 line([10 590], [80 80], 'Color', [0.8 0.8 0.8], 'LineWidth', 1);
-BpodSystem.GUIHandles.ProtocolSelector = uicontrol('Style', 'listbox','Position', [25 95 200 390], 'String', 'Folder not found', 'Callback', @ProtocolSelectorNavigate, 'FontWeight', 'bold', 'FontSize', 11, 'BackgroundColor', [.8 .8 .8]);
-BpodSystem.GUIHandles.SubjectSelector = uicontrol('Style', 'listbox','Position', [265 95 200 390], 'String', 'Folder not found', 'Callback', @SubjectSelectorNavigate, 'FontWeight', 'bold', 'FontSize', 11, 'BackgroundColor', [.8 .8 .8]);
-BpodSystem.GUIHandles.SettingsSelector = uicontrol('Style', 'listbox','Position', [505 95 200 390], 'String', 'Folder not found', 'FontWeight', 'bold', 'FontSize', 11, 'BackgroundColor', [.8 .8 .8]);
+BpodSystem.GUIHandles.ProtocolSelector = uicontrol('Style', 'listbox','Position', [25 95 200 390], 'String', 'Folder not found', 'Callback', @ProtocolSelectorNavigate, 'FontWeight', 'bold', 'FontSize', SelectorFontSize, 'BackgroundColor', [.8 .8 .8]);
+BpodSystem.GUIHandles.SubjectSelector = uicontrol('Style', 'listbox','Position', [265 95 200 390], 'String', 'Folder not found', 'Callback', @SubjectSelectorNavigate, 'FontWeight', 'bold', 'FontSize', SelectorFontSize, 'BackgroundColor', [.8 .8 .8]);
+BpodSystem.GUIHandles.SettingsSelector = uicontrol('Style', 'listbox','Position', [505 95 200 390], 'String', 'Folder not found', 'FontWeight', 'bold', 'FontSize', SelectorFontSize, 'BackgroundColor', [.8 .8 .8]);
 text(20, 120,'Protocol', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
 text(212, 120,'Subject', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
 text(405, 120,'Settings', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
@@ -52,65 +59,82 @@ EditGFX = imread('EditButton.bmp');
 BpodSystem.GUIHandles.EditSettingsButton = uicontrol('Style', 'pushbutton', 'CData', EditGFX, 'Position', [708 399 25 25], 'Callback', @EditSettings, 'TooltipString', 'Edit Session Settings', 'FontName', 'OCRASTD', 'FontSize', 22, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
 ImportGFX = imread('ImportButton.bmp');
 BpodSystem.GUIHandles.ImportSettingsButton = uicontrol('Style', 'pushbutton', 'CData', ImportGFX, 'Position', [708 369 25 25], 'Callback', @ImportSettings, 'TooltipString', 'Import Session Settings', 'FontName', 'OCRASTD', 'FontSize', 22, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
-if verLessThan('matlab','9.0')
-    jButton = java(findjobj(BpodSystem.GUIHandles.EditProtocolButton));
-    jButton.setBorderPainted(false);
-    jButton = java(findjobj(BpodSystem.GUIHandles.AddProtocolButton));
-    jButton.setBorderPainted(false);
-    jButton = java(findjobj(BpodSystem.GUIHandles.ImportSettingsButton));
-    jButton.setBorderPainted(false);
-    jButton = java(findjobj(BpodSystem.GUIHandles.AddSubjectButton));
-    jButton.setBorderPainted(false);
-    jButton = java(findjobj(BpodSystem.GUIHandles.DelProtocolButton));
-    jButton.setBorderPainted(false);
-    jButton = java(findjobj(BpodSystem.GUIHandles.DelSubjectButton));
-    jButton.setBorderPainted(false);
-    jButton = java(findjobj(BpodSystem.GUIHandles.AddSettingsButton));
-    jButton.setBorderPainted(false);
-    jButton = java(findjobj(BpodSystem.GUIHandles.DelSettingsButton));
-    jButton.setBorderPainted(false);
-    jButton = java(findjobj(BpodSystem.GUIHandles.EditSettingsButton));
-    jButton.setBorderPainted(false);
-end
-BpodSystem.GUIHandles.DataFilePathDisplay = text(20, 685,'', 'FontName', 'Courier New', 'FontSize', 10, 'Color', [0.9 0.9 0.9]);
-BpodSystem.GUIHandles.DataFileLabel = text(20, 665,'Data Folder:', 'FontName', 'Arial', 'FontSize', 10, 'Color', [1 1 1], 'Interpreter', 'None');
-BpodSystem.GUIHandles.DataFileDisplay = text(20, 730,'', 'FontName', 'Courier New', 'FontSize', 10, 'Color', [0.9 0.9 0.9], 'Interpreter', 'None');
-BpodSystem.GUIHandles.DataFileLabel = text(20, 710,'Data File:', 'FontName', 'Arial', 'FontSize', 10, 'Color', [1 1 1], 'Interpreter', 'None');
+
+jButton = java(findjobj(BpodSystem.GUIHandles.EditProtocolButton));
+jButton.setBorderPainted(false);
+jButton = java(findjobj(BpodSystem.GUIHandles.AddProtocolButton));
+jButton.setBorderPainted(false);
+jButton = java(findjobj(BpodSystem.GUIHandles.ImportSettingsButton));
+jButton.setBorderPainted(false);
+jButton = java(findjobj(BpodSystem.GUIHandles.AddSubjectButton));
+jButton.setBorderPainted(false);
+jButton = java(findjobj(BpodSystem.GUIHandles.DelProtocolButton));
+jButton.setBorderPainted(false);
+jButton = java(findjobj(BpodSystem.GUIHandles.DelSubjectButton));
+jButton.setBorderPainted(false);
+jButton = java(findjobj(BpodSystem.GUIHandles.AddSettingsButton));
+jButton.setBorderPainted(false);
+jButton = java(findjobj(BpodSystem.GUIHandles.DelSettingsButton));
+jButton.setBorderPainted(false);
+jButton = java(findjobj(BpodSystem.GUIHandles.EditSettingsButton));
+jButton.setBorderPainted(false);
+
+BpodSystem.GUIHandles.DataFilePathDisplay = text(20, 685,'', 'FontName', 'Courier New', 'FontSize', PathFontSize, 'Color', [0.9 0.9 0.9]);
+BpodSystem.GUIHandles.DataFileLabel = text(20, 665,'Data Folder:', 'FontName', 'Arial', 'FontSize', PathFontSize, 'Color', [1 1 1], 'Interpreter', 'None');
+BpodSystem.GUIHandles.DataFileDisplay = text(20, 730,'', 'FontName', 'Courier New', 'FontSize', PathFontSize, 'Color', [0.9 0.9 0.9], 'Interpreter', 'None');
+BpodSystem.GUIHandles.DataFileLabel = text(20, 710,'Data File:', 'FontName', 'Arial', 'FontSize', PathFontSize, 'Color', [1 1 1], 'Interpreter', 'None');
 
 %% Populate UI
-BpodSystem.Path.ProtocolFolder = BpodSystem.SystemSettings.ProtocolFolder;
-loadProtocols;
-BpodSystem.GUIData.DummySubjectString = 'FakeSubject';
-% Set selected protocol to first non-folder item
-ProtocolNames = get(BpodSystem.GUIHandles.ProtocolSelector, 'String');
-SelectedProtocol = 1;
-for i = 1:length(ProtocolNames)
-    ThisProtocolName = ProtocolNames{i};
-    if ThisProtocolName(1) == '<'
-        SelectedProtocol = i+1;
+if isfield(BpodSystem.SystemSettings, 'ProtocolFolder')
+    BpodSystem.Path.ProtocolFolder = BpodSystem.SystemSettings.ProtocolFolder;
+end
+
+if isempty(BpodSystem.Path.ProtocolFolder)
+    choice = questdlg('Protocols folder not found.', ...
+        'Protocol folder not found', ...
+        'Select folder', 'Select folder');
+    BpodSystem.setupFolders;
+    close(BpodSystem.GUIHandles.LaunchManagerFig);
+elseif isempty(BpodSystem.Path.DataFolder)
+    choice = questdlg('Data folder not found.', ...
+        'Data folder not found', ...
+        'Select folder', 'Select folder');
+    BpodSystem.setupFolders;
+    close(BpodSystem.GUIHandles.LaunchManagerFig);
+else
+    loadProtocols;
+    BpodSystem.GUIData.DummySubjectString = 'FakeSubject';
+    % Set selected protocol to first non-folder item
+    ProtocolNames = get(BpodSystem.GUIHandles.ProtocolSelector, 'String');
+    SelectedProtocol = 1;
+    for i = 1:length(ProtocolNames)
+        ThisProtocolName = ProtocolNames{i};
+        if ThisProtocolName(1) == '<'
+            SelectedProtocol = i+1;
+        end
     end
-end
-set(BpodSystem.GUIHandles.ProtocolSelector, 'Value', SelectedProtocol);
-SelectedProtocolName = ProtocolNames{SelectedProtocol};
-BpodSystem.Status.CurrentProtocolName = SelectedProtocolName;
-DataPath = fullfile(BpodSystem.Path.DataFolder,BpodSystem.GUIData.DummySubjectString);
-ProtocolName = BpodSystem.Status.CurrentProtocolName;
+    set(BpodSystem.GUIHandles.ProtocolSelector, 'Value', SelectedProtocol);
+    SelectedProtocolName = ProtocolNames{SelectedProtocol};
+    BpodSystem.Status.CurrentProtocolName = SelectedProtocolName;
+    DataPath = fullfile(BpodSystem.Path.DataFolder,BpodSystem.GUIData.DummySubjectString);
+    ProtocolName = BpodSystem.Status.CurrentProtocolName;
 
-%Make standard folders for this protocol.  This will fail silently if the folders exist
-mkdir(DataPath, ProtocolName);
-mkdir(fullfile(DataPath,ProtocolName,'Session Data'))
-mkdir(fullfile(DataPath,ProtocolName,'Session Settings'))
+    %Make standard folders for this protocol.  This will fail silently if the folders exist
+    mkdir(DataPath, ProtocolName);
+    mkdir(fullfile(DataPath,ProtocolName,'Session Data'))
+    mkdir(fullfile(DataPath,ProtocolName,'Session Settings'))
 
-% Ensure that a default settings file exists
-DefaultSettingsFilePath = fullfile(DataPath,ProtocolName,'Session Settings', 'DefaultSettings.mat');
-if ~exist(DefaultSettingsFilePath)
-    ProtocolSettings = struct;
-    save(DefaultSettingsFilePath, 'ProtocolSettings')
+    % Ensure that a default settings file exists
+    DefaultSettingsFilePath = fullfile(DataPath,ProtocolName,'Session Settings', 'DefaultSettings.mat');
+    if ~exist(DefaultSettingsFilePath)
+        ProtocolSettings = struct;
+        save(DefaultSettingsFilePath, 'ProtocolSettings')
+    end
+    loadSubjects(ProtocolName);
+    loadSettings(ProtocolName, BpodSystem.GUIData.DummySubjectString);
+    UpdateDataFile(ProtocolName, BpodSystem.GUIData.DummySubjectString);
+    BpodSystem.GUIData.ProtocolSelectorLastValue = 1;
 end
-loadSubjects(ProtocolName);
-loadSettings(ProtocolName, BpodSystem.GUIData.DummySubjectString);
-UpdateDataFile(ProtocolName, BpodSystem.GUIData.DummySubjectString);
-BpodSystem.GUIData.ProtocolSelectorLastValue = 1;
 
 function ProtocolSelectorNavigate (~,~)
 global BpodSystem
@@ -184,61 +208,49 @@ UpdateDataFile(ProtocolName, SelectedName);
 
 function loadProtocols
 global BpodSystem
-if isempty(BpodSystem.Path.ProtocolFolder)
-    choice = questdlg('Protocols folder not found.', ...
-        'Protocol folder not found', ...
-        'Select folder', 'Select folder');
-    BpodSystem.setupFolders;
-elseif isempty(BpodSystem.Path.DataFolder)
-    choice = questdlg('Data folder not found.', ...
-        'Data folder not found', ...
-        'Select folder', 'Select folder');
-    BpodSystem.setupFolders;
+if strcmp(BpodSystem.Path.ProtocolFolder, BpodSystem.SystemSettings.ProtocolFolder)
+    startPos = 3;
 else
-    if strcmp(BpodSystem.Path.ProtocolFolder, BpodSystem.SystemSettings.ProtocolFolder)
-        startPos = 3;
-    else
-        startPos = 2;
-    end
-    Candidates = dir(BpodSystem.Path.ProtocolFolder);
-    ProtocolNames = cell(1);
-    nProtocols = 0;
-    for x = startPos:length(Candidates)
-        if Candidates(x).isdir
-            ProtocolFolder = fullfile(BpodSystem.Path.ProtocolFolder, Candidates(x).name);
-            Contents = dir(ProtocolFolder);
-            nItems = length(Contents);
-            Found = 0;
-            for y = 3:nItems
-                if strcmp(Contents(y).name, [Candidates(x).name '.m'])
-                    Found = 1;
-                end
-            end
-            if Found
-                ProtocolName = Candidates(x).name;
-            else
-                ProtocolName = ['<' Candidates(x).name '>'];
-            end
-            nProtocols = nProtocols + 1;
-            ProtocolNames{nProtocols} = ProtocolName;
-        end
-    end
-    if isempty(ProtocolNames)
-        ProtocolNames = {'No Protocols Found'};
-    else
-        % Sort to put organizing directories first
-        Types = ones(1,nProtocols);
-        for i = 1:nProtocols
-            ProtocolName = ProtocolNames{i};
-            if ProtocolName(1) == '<'
-                Types(i) = 0;
-            end
-        end
-        [~, Order] = sort(Types);
-        ProtocolNames = ProtocolNames(Order);
-    end
-    set(BpodSystem.GUIHandles.ProtocolSelector, 'String', ProtocolNames);
+    startPos = 2;
 end
+Candidates = dir(BpodSystem.Path.ProtocolFolder);
+ProtocolNames = cell(1);
+nProtocols = 0;
+for x = startPos:length(Candidates)
+    if Candidates(x).isdir
+        ProtocolFolder = fullfile(BpodSystem.Path.ProtocolFolder, Candidates(x).name);
+        Contents = dir(ProtocolFolder);
+        nItems = length(Contents);
+        Found = 0;
+        for y = 3:nItems
+            if strcmp(Contents(y).name, [Candidates(x).name '.m'])
+                Found = 1;
+            end
+        end
+        if Found
+            ProtocolName = Candidates(x).name;
+        else
+            ProtocolName = ['<' Candidates(x).name '>'];
+        end
+        nProtocols = nProtocols + 1;
+        ProtocolNames{nProtocols} = ProtocolName;
+    end
+end
+if isempty(ProtocolNames)
+    ProtocolNames = {'No Protocols Found'};
+else
+    % Sort to put organizing directories first
+    Types = ones(1,nProtocols);
+    for i = 1:nProtocols
+        ProtocolName = ProtocolNames{i};
+        if ProtocolName(1) == '<'
+            Types(i) = 0;
+        end
+    end
+    [~, Order] = sort(Types);
+    ProtocolNames = ProtocolNames(Order);
+end
+set(BpodSystem.GUIHandles.ProtocolSelector, 'String', ProtocolNames);
 
 function loadSubjects(ProtocolName)
 global BpodSystem
@@ -301,7 +313,14 @@ uistack(ha,'bottom');
 BG = imread('NameInputBG.bmp');
 image(BG); axis off;
 text(15, 20,'Subject Name:', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
-NewAnimalName = uicontrol('Style', 'edit', 'String', '', 'Position', [25 25 200 25], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [1 1 1]);
+if ispc
+    NameEntryYwidth = 200;
+elseif ismac
+    NameEntryYwidth = 150;
+else
+    NameEntryYwidth = 200;
+end
+NewAnimalName = uicontrol('Style', 'edit', 'String', '', 'Position', [25 25 NameEntryYwidth 25], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [1 1 1]);
 uicontrol(NewAnimalName)
 waitfor(NewAnimalName,'String')
 NameList = get(BpodSystem.GUIHandles.SubjectSelector, 'String');
@@ -403,13 +422,20 @@ end
 
 function AddSettings(~,~)
 global BpodSystem
+if ispc
+    NameEntryYwidth = 200;
+elseif ismac
+    NameEntryYwidth = 150;
+else
+    NameEntryYwidth = 200;
+end
 NewSubjectGFX = imread('NameInputBG.bmp');
 NameInputFig = figure('Position',[550 600 200 100],'name','New settings file','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 ha = axes('units','normalized', 'position',[0 0 1 1]);
 uistack(ha,'bottom');
 image(NewSubjectGFX); axis off;
 text(15, 20,'Settings Name:', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
-NewSettingsName = uicontrol('Style', 'edit', 'String', '', 'Position', [25 25 200 25], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [1 1 1]);
+NewSettingsName = uicontrol('Style', 'edit', 'String', '', 'Position', [25 25 NameEntryYwidth 25], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [1 1 1]);
 uicontrol(NewSettingsName)
 waitfor(NewSettingsName,'String')
 SettingsNameList = get(BpodSystem.GUIHandles.SettingsSelector, 'String');

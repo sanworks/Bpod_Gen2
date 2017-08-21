@@ -20,9 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function AnalogSound2AFC
 % This protocol demonstrates a 2AFC task using the analog output module to generate sound stimuli.
 % Subjects initialize each trial with a poke into port 2. After a delay, a tone plays.
+% If subjects exit the port before the tone is finished playing, a dissonant error sound is played.
 % Subjects are rewarded for responding left for low-pitch tones, and right for high.
 % A white noise pulse indicates incorrect choice.
-% If subjects exit the port before the tone is finished playing, a dissonant error sound is played.
+% NOTE: We use AnalogOutputModule to play sound in this demo because the task's reinforcement cues 
+% could be any 4 sounds that are easily discriminated from each other.
+% A proper sound card is necessary for studies where auditory signal quality is critical to analysis.
 
 global BpodSystem
 
@@ -31,9 +34,14 @@ global BpodSystem
 % You will need:
 % - A Bpod state machine v0.7+
 % - A Bpod analog output module, loaded with WavePlayer firmware, connected to the Bpod serial port defined below:
-% - Connect channels 1 and 2 f the analog output module to a pair of amplified speakers.
+% - Connect channel 1 (or ch1+2) of the analog output module to an amplified speaker(s).
 
-WavePlayerSerialPort = 'COM69';
+%% Resolve WavePlayer USB port
+if (isfield(BpodSystem.ModuleUSB, 'WavePlayer1'))
+    WavePlayerUSB = BpodSystem.ModuleUSB.WavePlayer1;
+else
+    error('Error: To run this protocol, you must first pair the WavePlayer1 module with its USB port. Click the USB config button on the Bpod console.')
+end
 
 %% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
@@ -82,7 +90,7 @@ for x = 1:50 % Gate waveform to create pulses
 end
 
 % Program sound server
-W = BpodWavePlayer(WavePlayerSerialPort);
+W = BpodWavePlayer(WavePlayerUSB);
 W.SamplingRate = SF;
 W.BpodEvents{1} = 'On'; W.BpodEvents{2} = 'On';
 W.TriggerMode = 'Master';

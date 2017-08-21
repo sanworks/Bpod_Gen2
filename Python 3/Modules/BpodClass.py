@@ -26,7 +26,7 @@ class BpodObject(object):
     def __init__(self, serialPortName):
         self.serialObject = 0
         self.firmwareVersion = 0
-        self.currentFirmwareVersion = 15
+        self.currentFirmwareVersion = 16
         self.machineType = 0
         self.HW = Struct()
         self.HW.n = Struct()
@@ -447,7 +447,7 @@ class BpodObject(object):
         # Check to make sure all states in manifest exist
         if len(sma.manifest) > sma.nStates:
             raise BpodError('Error: Could not send state machine - some states were referenced by name, but not subsequently declared.')
-        Message = (ord('C'),)
+        Message = ()
         Message += (sma.nStates,)
         for i in range(sma.nStates): # Send state timer transitions (for all states)
             if math.isnan(sma.stateTimerMatrix[i]):
@@ -540,7 +540,8 @@ class BpodObject(object):
             Message += (sma.conditions.values[i],)
         sma.stateTimers = sma.stateTimers[:sma.nStates]
         ThirtyTwoBitMessage = [i*self.HW.cycleFrequency for i in sma.stateTimers] + [i*self.HW.cycleFrequency for i in sma.globalTimers.timers] + [i*self.HW.cycleFrequency for i in sma.globalTimers.onsetDelays] + [i*self.HW.cycleFrequency for i in sma.globalTimers.loopIntervals] + sma.globalCounters.thresholds
-        self.serialObject.write(Message, 'uint8', ThirtyTwoBitMessage, 'uint32')
+        nSMbytes = len(Message) + (len(ThirtyTwoBitMessage))*4
+        self.serialObject.write(ord('C'), 'uint8', nSMbytes, 'uint16', Message, 'uint8', ThirtyTwoBitMessage, 'uint32')
         self.stateMachine = sma
         self.status.newStateMachineSent = 1;
     def runStateMachine(self):
@@ -625,6 +626,8 @@ class BpodObject(object):
         RawEvents.TrialStartTimestamp =  float(self.serialObject.read(1,'uint32'))/1000 # Start-time of the trial in milliseconds
         nTimeStamps = self.serialObject.read(1,'uint16')
         TimeStamps = self.serialObject.read(nTimeStamps, 'uint32')
+        if nTimeStamps == 1:
+            TimeStamps = (TimeStamps,)
         RawEvents.EventTimestamps = [i/float(self.HW.cycleFrequency) for i in TimeStamps];
         for i in range(len(StateChangeIndexes)):
             RawEvents.StateTimestamps.append(RawEvents.EventTimestamps[StateChangeIndexes[i]])

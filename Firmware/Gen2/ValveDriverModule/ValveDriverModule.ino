@@ -1,8 +1,8 @@
 /*
   ----------------------------------------------------------------------------
 
-  This file is part of the Sanworks Bpod repository
-  Copyright (C) 2017 Sanworks LLC, Sound Beach, New York, USA
+  This file is part of the Sanworks Bpod_Gen2 repository
+  Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
 
   ----------------------------------------------------------------------------
 

@@ -1,4 +1,4 @@
-% Example state matrix: Runs through 8 states of 1ms each.
+% Example state matrix: Runs through 20 states of 1ms each.
 % Sends a pulse train on BNC trigger channel 1, where alternating states
 % are high and low.
 % Useful for bench-testing SYNC line.

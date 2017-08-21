@@ -61,6 +61,11 @@ switch Action
         if nargin > 3 %custom number of trials
             nTrialsToShow =varargin{3};
         end
+        if ispc
+            labelFontSize = 18;
+        else
+            labelFontSize = 15;
+        end
         axes(AxesHandle);
         MaxTrialType = max(TrialTypeList);
         %plot in specified axes
@@ -79,7 +84,7 @@ switch Action
             BpodSystem.GUIHandles.TTOP_Ylabel = strsplit(num2str(MaxTrialType:-1:-1));
         end
         set(AxesHandle,'TickDir', 'out','YLim', [-MaxTrialType-.5, -.5], 'YTick', -MaxTrialType:1:-1,'YTickLabel', BpodSystem.GUIHandles.TTOP_Ylabel, 'FontSize', 16);
-        xlabel(AxesHandle, 'Trial#', 'FontSize', 18);
+        xlabel(AxesHandle, 'Trial#', 'FontSize', labelFontSize);
         ylabel(AxesHandle, 'Trial Type', 'FontSize', 16);
         hold(AxesHandle, 'on');
         

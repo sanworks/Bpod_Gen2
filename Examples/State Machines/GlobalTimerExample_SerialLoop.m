@@ -1,8 +1,8 @@
 % Example state matrix: A global timer in "loop mode" triggers the analog output module in an infinite loop. 
-% It is triggered in the first state. Next, the state machine goes into a state
+% Looped playback is triggered in the first state. Next, the state machine goes into a state
 % where it waits for two events:
-% 1. Port1In momentarily enters a state that stops the global timer. Port 2 will stop blinking.
-% 2. Exits the state machine.
+% 1. Port1In momentarily enters a state that stops the global timer. The analog output module will stop receiving triggers.
+% 2. Port2In Exits the state machine.
 % Before the state machine is run, an audio waveform is loaded to the analog output module as sound#2, 
 % and a trigger message is loaded to the state machine to trigger sound#2
 % on output channel 1.
@@ -10,7 +10,7 @@
 % and you must edit the COM port string below to match the correct port on your system.
 
 % Setup analog output module & load waveform
-W = BpodWavePlayer('COM101'); % Replace 'COM101' with the analog output module's USB serial port
+W = BpodWavePlayer('COM69'); % Replace 'COM69' with the analog output module's USB serial port
 W.BpodEvents{1} = 'Off'; % Turn off WavePlayer's onset and offset events (there would be too many!)
 W.SamplingRate = 44100;
 Wave = GenerateSineWave(44100, 2000, 0.05); % Args = SF(Hz), Freq(Hz), Duration(s)
