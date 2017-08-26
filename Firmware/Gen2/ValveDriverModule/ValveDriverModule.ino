@@ -25,6 +25,7 @@ ArCOM myUSB(SerialUSB); // Creates an ArCOM object called myUSB, wrapping Serial
 ArCOM myUART(Serial1); // Creates an ArCOM object called myUART, wrapping Serial1
 uint32_t FirmwareVersion = 1;
 char moduleName[] = "ValveModule"; // Name of module for manual override UI and state machine assembler
+
 byte opCode = 0; 
 byte opSource = 0;
 boolean newOp = false;
@@ -58,6 +59,9 @@ void loop() {
       case 255:
         if (opSource == 1) {
           returnModuleInfo();
+        } else if (opSource == 0) {
+          myUSB.writeByte(254); // Confirm
+          myUSB.writeUint32(FirmwareVersion); // Send firmware version
         }
       break;
       case 'O': // Open channel
@@ -89,6 +93,9 @@ void loop() {
         for (int i = 0; i < 8; i++) {
           valveState[i] = bitRead(channel, i);
           digitalWrite(inputChannels[outputChannels[i]], valveState[i]);
+        }
+        if (opSource == 0) {
+          myUSB.writeByte(1);
         }
       break;
       default: // Toggle channel; toggle op Codes = 1-8 or characters 1-8

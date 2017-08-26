@@ -50,6 +50,30 @@ switch Op
             Panels = Params.GUIPanels;
             PanelNames = fieldnames(Panels);
             nPanels = length(PanelNames);
+            paramNames = fieldnames(Params.GUI);
+            nParameters = length(paramNames);
+            paramPanels = zeros(1,nParameters);
+            % Find any params not assigned a panel and assign to
+            % new 'Parameters' panel
+            paramsInPanels = {}; 
+            for i = 1:nPanels
+                paramsInPanels = [paramsInPanels Panels.(PanelNames{i})];
+            end
+            paramsInDefaultPanel = {};
+            
+            for i = 1:nParameters
+                if ~strcmp(paramNames{i}, paramsInPanels)
+                    paramsInDefaultPanel = [paramsInDefaultPanel paramNames{i}];
+                end
+            end
+            if ~isempty(paramsInDefaultPanel)
+                Panels.Parameters = cell(1,length(paramsInDefaultPanel));
+                for i = 1:length(paramsInDefaultPanel)
+                    Panels.Parameters{i} = paramsInDefaultPanel{i};
+                end
+                PanelNames{nPanels+1} = 'Parameters';
+            end
+            nPanels = length(PanelNames);
         else
             Panels = struct;
             Panels.Parameters = ParamNames;

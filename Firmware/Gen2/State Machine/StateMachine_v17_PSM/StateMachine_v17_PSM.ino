@@ -18,7 +18,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-// Bpod State Machine Firmware Ver. 16
+// Bpod State Machine Firmware Ver. 17
 //
 // SYSTEM SETUP:
 //
@@ -36,14 +36,14 @@
 //////////////////////////////////////////
 // 1 = Bpod 0.5 (Arduino Due); 2 = Bpod 0.7-0.9 (Arduino Due); 3 = Pocket State Machine (Teensy 3.6)
 
-#define MachineType 2 
+#define MachineType 3
 
 //////////////////////////////////////////
 //          Set Firmware Version         /
 //////////////////////////////////////////
 // Current firmware version (single firmware file, compiles for MachineTypes set above)
 
-#define FirmwareVersion 16
+#define FirmwareVersion 17
 
 //////////////////////////////////////////
 //          Board configuration          /
@@ -290,7 +290,7 @@ const uint16_t StateMatrixBufferSize = 50000;
 #if MachineType > 1
   byte StateMatrixBuffer[StateMatrixBufferSize] = {0}; // Stores next trial's state matrix
 #endif
-const uint16_t SerialRelayBufferSize = 1024;
+const uint16_t SerialRelayBufferSize = 256;
 byte SerialRelayBuffer[SerialRelayBufferSize] = {0}; // Stores bytes to be transmitted to a serial device (i.e. module, USB)
 uint16_t bufferPos = 0;
 boolean smaPending = false; // If a state matrix is ready to read into the serial buffer (from USB)

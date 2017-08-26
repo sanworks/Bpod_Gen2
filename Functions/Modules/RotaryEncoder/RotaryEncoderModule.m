@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% ChoiceWheel is a system to measure lateral paw sweeps in mice.
+% Rotary Encoder Module for Bpod
 %
 % Installation:
 % 1. Install PsychToolbox from: http://psychtoolbox.org/download/
@@ -28,12 +28,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
 % - Create a RotaryEncoderModule object with R = RotaryEncoderModule('COMx') where COMx is your serial port string
 % - Directly manipulate its fields to change trial parameters on the device.
-% - Run R.stream to see streaming output (for testing purposes)
+% - Run R.streamUI to see streaming output (for testing purposes)
 % - Run P = R.currentPosition to return the current wheel position (for testing purposes).
-% - Run R.runTrial to manually start an experimental trial (sets position to 0, enables thresholds).
-% - Run data = R.getLastTrialData once the trial is over, to return the trial outcome and wheel position record
-% - Run a trial from the Bpod state machine by sending byte 'T' over the hardware serial connection
-% - Serial event bytes during the trial will be sent to Bpod: 1 = left choice, 2 = right choice
+% - Other functions are described on the Bpod wiki:
+% https://sites.google.com/site/bpoddocumentation/bpod-user-guide/function-reference-beta/rotaryencodermodule
 
 classdef RotaryEncoderModule < handle
     properties
