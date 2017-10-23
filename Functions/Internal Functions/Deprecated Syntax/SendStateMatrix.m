@@ -1,2 +1,2 @@
-function SendStateMatrix(sma)
-SendStateMachine(sma);
+function Confirmed = SendStateMatrix(sma)
+Confirmed = SendStateMachine(sma);

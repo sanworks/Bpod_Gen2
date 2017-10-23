@@ -30,7 +30,7 @@ function sma_out = AddState(sma, namestr, StateName, timerstr, StateTimer, condi
 
 global BpodSystem
 % Sanity check state name
-if strcmpi(StateName, 'exit')
+if sum(strcmpi(StateName, {'exit', '>exit'})) > 0
     error('Error: The exit state is added automatically when sending a matrix. Do not add it explicitly.')
 end
 
@@ -72,12 +72,17 @@ sma.StatesDefined(CurrentState) = 1;
 %% Make sure all the states in "StateChangeConditions" exist, and if not, create them as undefined states.
 for x = 2:2:length(StateChangeConditions)
     ThisStateName = StateChangeConditions{x};
-    if ~strcmpi(ThisStateName,'exit')
+    [IsOp, opCode] = findOpName(ThisStateName); % returns 0 if state name, 1 if special op name (>exit, >back, etc)
+    if ~IsOp
         isThere = sum(strcmp(ThisStateName, sma.StateNames)) > 0;
         if isThere == 0
             NewStateNumber = length(sma.StateNames)+1;
             sma.StateNames(NewStateNumber) = StateChangeConditions(x);
             sma.StatesDefined(NewStateNumber) = 0;
+        end
+    else
+        if opCode == 65538 % True if '>back' is used. Then, only 254 states are allowed and "state 255" is interpreted as a "back" signal
+            sma.meta.use255BackSignal = 1;
         end
     end
 end
@@ -86,8 +91,9 @@ EventNames = BpodSystem.StateMachineInfo.EventNames;
 for x = 1:2:length(StateChangeConditions)
     CandidateEventCode = find(strcmp(StateChangeConditions{x},EventNames));
     TargetState = StateChangeConditions{x+1};
-    if strcmpi(TargetState, 'exit')
-        TargetStateNumber = NaN;
+    [IsOp, opCode] = findOpName(TargetState);
+    if IsOp
+        TargetStateNumber = opCode;
     else
         TargetStateNumber = find(strcmp(StateChangeConditions{x+1},sma.StateNames));
     end
@@ -100,7 +106,12 @@ for x = 1:2:length(StateChangeConditions)
                     case '_end'
                         if CandidateEventCode < nInputColumns+(BpodSystem.HW.n.GlobalTimers*2)+1;
                             % This is a transition for a global timer end. Add to global timer end matrix.
-                            GlobalTimerNumber = str2double(CandidateEventName(length(CandidateEventName) - 4));
+                            StartPos = length(CandidateEventName) - 5; EndPos = StartPos+1;
+                            TimerNumString = CandidateEventName(StartPos:EndPos);
+                            if lower(TimerNumString(1)) == 'r'
+                                TimerNumString = TimerNumString(2);
+                            end
+                            GlobalTimerNumber = str2double(TimerNumString);
                             if ~isnan(GlobalTimerNumber)
                                 sma.GlobalTimerEndMatrix(CurrentState, GlobalTimerNumber) = TargetStateNumber;
                             else
@@ -117,7 +128,13 @@ for x = 1:2:length(StateChangeConditions)
                         end
                     case 'tart'
                         % This is a transition for a global timer start. Add to global timer start matrix.
-                        GlobalTimerNumber = str2double(CandidateEventName(length(CandidateEventName) - 6));
+                        
+                        StartPos = length(CandidateEventName) - 7; EndPos = StartPos+1;
+                        TimerNumString = CandidateEventName(StartPos:EndPos);
+                        if lower(TimerNumString(1)) == 'r'
+                            TimerNumString = TimerNumString(2);
+                        end
+                        GlobalTimerNumber = str2double(TimerNumString);
                         if ~isnan(GlobalTimerNumber)
                             sma.GlobalTimerStartMatrix(CurrentState, GlobalTimerNumber) = TargetStateNumber;
                         else
@@ -125,12 +142,17 @@ for x = 1:2:length(StateChangeConditions)
                         end
                     otherwise
                         % This is a transition for a condition. Add to condition matrix
-                    ConditionNumber = str2double(CandidateEventName(length(CandidateEventName)));
-                    if ~isnan(ConditionNumber)
-                        sma.ConditionMatrix(CurrentState, ConditionNumber) = TargetStateNumber;
-                    else
-                        EventSpellingErrorMessage(ThisStateName);
-                    end
+                        StartPos = length(CandidateEventName)-1; EndPos = StartPos+1;
+                        CondNumString = CandidateEventName(StartPos:EndPos);
+                        if lower(CondNumString(1)) == 'n'
+                            CondNumString = CondNumString(2);
+                        end
+                        ConditionNumber = str2double(CondNumString);
+                        if ~isnan(ConditionNumber)
+                            sma.ConditionMatrix(CurrentState, ConditionNumber) = TargetStateNumber;
+                        else
+                            EventSpellingErrorMessage(ThisStateName);
+                        end
                 end
             else % Tup
                 sma.StateTimerMatrix(CurrentState) = TargetStateNumber;
@@ -145,7 +167,8 @@ end
 
 %% Add output actions
 OutputChannelNames = BpodSystem.StateMachineInfo.OutputChannelNames;
-MetaActions = {'Valve', 'LED', 'LEDState', 'BNCState', 'WireState'}; % Valve is an alternate syntax for "ValveState", specifying one valve to open (1-8)
+MetaActions = {'ValveState', 'LED', 'LEDState', 'BNCState', 'WireState', 'Valve'}; % ValveState is a byte whose bits control an array of valves
+
 % LED is an alternate syntax for PWM1-8,specifying one LED to set to max brightness (1-8)
 % LEDState is an alternate syntax for PWM1-8. A byte coding for binary sets which LEDs are at max brightness
 % BNCState and WireState are added for backwards compatability with Bpod
@@ -156,10 +179,11 @@ for x = 1:2:length(OutputActions)
         Value = OutputActions{x+1};
         switch MetaAction
             case 1
-                if Value > 0
-                    Value = 2^(Value-1);
-                end
-                    sma.OutputMatrix(CurrentState,BpodSystem.HW.Pos.Output_SPI) = Value;
+                ValvePos = BpodSystem.HW.Pos.Output_Valve;
+                ValveLogic = double(dec2bin(Value) == '1'); 
+                ValveLogic = ValveLogic(end:-1:1); 
+                ValveLogic = [ValveLogic zeros(1,BpodSystem.HW.n.Valves-length(ValveLogic))];
+                sma.OutputMatrix(CurrentState,ValvePos:ValvePos+BpodSystem.HW.n.Valves-1) = ValveLogic;
             case 2
                 if Value > 0
                     sma.OutputMatrix(CurrentState,BpodSystem.HW.Pos.Output_PWM+Value-1) = 255;
@@ -176,16 +200,22 @@ for x = 1:2:length(OutputActions)
                 for i = 1:BpodSystem.HW.n.WireOutputs
                     sma.OutputMatrix(CurrentState,BpodSystem.HW.Pos.Output_Wire+i-1) = bitget(Value, i)*255;
                 end
+            case 6
+                if Value > 0
+                    sma.OutputMatrix(CurrentState,BpodSystem.HW.Pos.Output_Valve+Value-1) = 1;
+                end
         end
     else
         TargetEventCode = find(strcmp(OutputActions{x}, OutputChannelNames));
         if ~isempty(TargetEventCode)
             Value = OutputActions{x+1};
-            if ischar(Value) % Assume binary string, convert to decimal
-                if (sum(Value == '0') + sum(Value == '1')) == length(Value) 
+            if ischar(Value) 
+                if (sum(Value == '0') + sum(Value == '1')) == length(Value) % Assume binary string, convert to decimal
                     Value = bin2dec(Value);
+                elseif length(Value) == 1
+                    Value = uint8(Value);
                 else
-                    error('Error: Values for output actions must be either a byte or a binary string.')
+                    error('Error: value of an output action must be a byte, a character or a binary string of up to 8 1s and 0s')
                 end
             else
                if (TargetEventCode == BpodSystem.HW.Pos.GlobalTimerTrig) || (TargetEventCode == BpodSystem.HW.Pos.GlobalTimerCancel)
@@ -213,3 +243,22 @@ sma_out = sma;
 
 function EventSpellingErrorMessage(ThisStateName)
 error(['Check spelling of your state transition events for state: ' ThisStateName '. Valid events (% is an index): Port%In Port%Out BNC%High BNC%Low Wire%High Wire%Low SoftCode% GlobalTimer%End Tup'])
+
+function [IsOp, opCode] = findOpName(ThisStateName)
+IsOp = 0; opCode = 0;
+if ThisStateName(1) == '>'
+    switch ThisStateName(2:end)
+        case 'exit'
+            IsOp = 1;
+            opCode = 65537;
+        case 'back'
+            IsOp = 1;
+            opCode = 65538;
+    end
+else
+    if strcmpi(ThisStateName,'exit') % Accept 'exit' without > for backwards compatability
+        IsOp = 1;
+        opCode = 65537;
+    end
+end
+IsOp = logical(IsOp);

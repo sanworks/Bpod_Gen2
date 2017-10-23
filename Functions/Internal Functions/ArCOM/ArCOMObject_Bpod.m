@@ -218,6 +218,9 @@ classdef ArCOMObject_Bpod < handle
                         end
                         ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(uint32(data), 'uint8');
                         ByteStringPos = ByteStringPos + DataLength(i);
+                    case 'uint64'
+                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(uint64(data), 'uint8');
+                        ByteStringPos = ByteStringPos + DataLength(i);
                     case 'int8'
                         if sum((data < -128)+(data > 127)) > 0
                             error('Error: a signed 8-bit integer was out of range: -128 to 127')
@@ -235,6 +238,9 @@ classdef ArCOMObject_Bpod < handle
                             error('Error: a signed 32-bit integer was out of range: -2,147,483,648 to 2,147,483,647')
                         end
                         ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(int32(data), 'uint8');
+                        ByteStringPos = ByteStringPos + DataLength(i);
+                    case 'int64'
+                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(int64(data), 'uint8');
                         ByteStringPos = ByteStringPos + DataLength(i);
                     otherwise
                         error(['The datatype ' dataType ' is not currently supported by ArCOM.']);
@@ -271,12 +277,16 @@ classdef ArCOMObject_Bpod < handle
                         nTotalBytes = nTotalBytes + nValues(i)*2;
                     case 'uint32'
                         nTotalBytes = nTotalBytes + nValues(i)*4;
+                    case 'uint64'
+                        nTotalBytes = nTotalBytes + nValues(i)*8;
                     case 'int8'
                         nTotalBytes = nTotalBytes + nValues(i);
                     case 'int16'
                         nTotalBytes = nTotalBytes + nValues(i)*2;
                     case 'int32'
                         nTotalBytes = nTotalBytes + nValues(i)*4;
+                    case 'int64'
+                        nTotalBytes = nTotalBytes + nValues(i)*8;
                 end
             end
             switch obj.Interface
@@ -302,12 +312,16 @@ classdef ArCOMObject_Bpod < handle
                         varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i)*2)-1)), 'uint16'); Pos = Pos + nValues(i)*2;
                     case 'uint32'
                         varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i)*4)-1)), 'uint32'); Pos = Pos + nValues(i)*4;
+                    case 'uint64'
+                        varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i)*8)-1)), 'uint32'); Pos = Pos + nValues(i)*8;
                     case 'int8'
                         varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i))-1)), 'int8'); Pos = Pos + nValues(i);
                     case 'int16'
                         varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i)*2)-1)), 'int16'); Pos = Pos + nValues(i)*2;
                     case 'int32'
                         varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i)*4)-1)), 'int32'); Pos = Pos + nValues(i)*4;
+                    case 'int64'
+                        varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i)*8)-1)), 'int32'); Pos = Pos + nValues(i)*8;
                 end
             end
         end

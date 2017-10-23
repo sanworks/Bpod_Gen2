@@ -21,7 +21,12 @@ function Bpod(varargin)
 BpodLoaded = 0;
 try
     evalin('base', 'BpodSystem;'); % BpodSystem is a global variable in the base workspace, representing the hardware
-    BpodLoaded = 1;
+    isEmpty = evalin('base', 'isempty(BpodSystem);');
+    if isEmpty
+        evalin('base', 'clear global BpodSystem;')
+    else
+        BpodLoaded = 1;
+    end
 catch
 end
 if BpodLoaded
@@ -31,7 +36,10 @@ warning off
 global BpodSystem
 BpodPath = fileparts(which('Bpod'));
 addpath(genpath(fullfile(BpodPath, 'Functions')));
+
 BpodSystem = BpodObject;
+Ver = BpodSoftwareVersion;
+disp(['Starting Bpod Console v' sprintf('%3.2f', Ver)])
 % Try to find hardware. If none, prompt to run emulation mode.
 if nargin > 0
     if strcmp(varargin{1}, 'EMU')
@@ -40,9 +48,9 @@ if nargin > 0
         try
             if nargin > 1
                 ForceJava = varargin{2};
-                BpodSystem.InitializeHardware(varargin{1}, ForceJava);
+                BpodSystem.Connect2BpodSM(varargin{1}, ForceJava);
             else
-                BpodSystem.InitializeHardware(varargin{1});
+                BpodSystem.Connect2BpodSM(varargin{1});
             end
             BpodSetup;
         catch
@@ -51,7 +59,7 @@ if nargin > 0
     end
 else
     try
-        BpodSystem.InitializeHardware('AUTO');
+        BpodSystem.Connect2BpodSM('AUTO');
         BpodSetup;
     catch
         EmulatorDialog;
@@ -60,14 +68,14 @@ end
 
 function BpodSetup
 global BpodSystem
-BpodSystem.Setup;
+BpodSystem.SetupHardware;
 BpodSystem.InitializeGUI();
 evalin('base', 'global BpodSystem')
 
 function EmulatorSetup(hObject,event)
 global BpodSystem
 BpodSystem.EmulatorMode = 1;
-BpodSystem.Setup;
+BpodSystem.SetupHardware;
 BpodSystem.InitializeGUI();
 evalin('base', 'global BpodSystem')
 

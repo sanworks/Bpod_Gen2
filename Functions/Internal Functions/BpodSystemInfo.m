@@ -13,25 +13,34 @@ end
 LabelFontColor = [0.9 0.9 0.9];
 ContentFontColor = [0 0 0];
 if BpodSystem.MachineType == 3
-    XWidth = 1100;
-    Xstep = 105;
+    if BpodSystem.StateMachineInfo.nEvents > 148
+        Xstep = 110;
+    else
+        Xstep = 120;
+    end
     OutputActionOffset = 0;
     EventOffset = 150;
 else
-    XWidth = 900;
     Xstep = 130;
     OutputActionOffset = 50;
     EventOffset = 180;
 end
+if BpodSystem.StateMachineInfo.nEvents > 111
+    XWidth = 1100;
+    Xfactor = 5.5;
+else
+    XWidth = 900;
+    Xfactor = 8;
+end
 BpodSystem.GUIHandles.SystemInfoFig = figure('Position',[70 70 XWidth 600],...
-    'name','Bpod System Info','numbertitle','off','MenuBar', 'none', 'Resize', 'off');
+    'name','Bpod System Info','numbertitle','off','MenuBar', 'none');
 obj.GUIHandles.Console = axes('units','normalized', 'position',[0 0 1 1]);
             uistack(obj.GUIHandles.Console,'bottom');
             BG = imread('ConsoleBG3.bmp');
             image(BG); axis off;
 
 YPos = 25; XPos = 30;
-MachineTypes = {'v0.5', 'v0.7-0.9', 'PSM'};
+MachineTypes = {'v0.5', 'v0.7-0.9', 'v2.0'};
 text(XPos, 10,'State Machine', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor, 'FontWeight', 'Bold'); 
 text(XPos, YPos,['Firmware Version: ' num2str(BpodSystem.FirmwareVersion)], 'FontSize', 11, 'FontWeight', 'Bold'); YPos = YPos + 15;
 text(XPos, YPos,['Hardware: ' MachineTypes{BpodSystem.MachineType}], 'FontSize', Med); YPos = YPos + 15;
@@ -63,16 +72,23 @@ YPos = 25;
 XPos = XPos + EventOffset;
 
 text(XPos, 10,'Valid Events', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor, 'FontWeight', 'Bold');
+maxLen = 0;
 for i = 1:BpodSystem.StateMachineInfo.nEvents
-    text(XPos, YPos,[num2str(i) ': ' BpodSystem.StateMachineInfo.EventNames{i}],...
+    EventText = [num2str(i) ': ' BpodSystem.StateMachineInfo.EventNames{i}];
+    text(XPos, YPos,EventText,...
         'FontName', FontName, 'FontSize', Sm, 'Color', ContentFontColor,...
         'Interpreter', 'None');
+    textLen = length(EventText);
+    if textLen > maxLen
+        maxLen = textLen;
+    end
     YPos = YPos + 10;
     if YPos > 390
-        YPos = 25; XPos = XPos + Xstep;
+        YPos = 25; XPos = XPos + maxLen*Xfactor;
+        maxLen = 0;
     end
 end
-XPos = XPos + Xstep + OutputActionOffset;
+XPos = XPos + maxLen*6 + OutputActionOffset;
 text(XPos, 10,'Output Actions', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor, 'FontWeight', 'Bold');
 YPos = 25; 
 for i = 1:BpodSystem.StateMachineInfo.nOutputChannels

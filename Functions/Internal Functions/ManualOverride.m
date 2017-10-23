@@ -31,26 +31,10 @@ switch TargetCode(1)
     case 'O' % Output channel
         Ch = ResolveOutputChannel(TargetCode(2), ChannelCode);
         DigitalOutputChannel = Ch-1;
+        if DigitalOutputChannel == BpodSystem.SyncConfig.Channel
+            BpodErrorDlg(['You cannot override' char(10)  'the sync channel.']);
+        end
         switch TargetCode(2)
-            case 'S' % Assume SPI valve shift register
-                if BpodSystem.HardwareState.OutputState(Ch) == 0
-                    OverrideMessage = ['O' DigitalOutputChannel 2^(ByteCode-1)];
-                    BpodSystem.HardwareState.OutputState(Ch) = 2^(ByteCode-1);
-                else
-                    OverrideMessage = ['O' DigitalOutputChannel 0];
-                    BpodSystem.HardwareState.OutputState(Ch) = 0;
-                end
-                % If one valve is open, disable all others
-                Channels = 1:8;
-                ChPos = ByteCode;
-                InactiveChannels = Channels(Channels ~= ChPos);
-                for x = 1:7
-                    if (ByteCode > 0) && BpodSystem.HardwareState.OutputState(Ch) > 0
-                        set(BpodSystem.GUIHandles.PortValveButton(InactiveChannels(x)), 'Enable', 'off');
-                    else
-                        set(BpodSystem.GUIHandles.PortValveButton(InactiveChannels(x)), 'Enable', 'on');
-                    end
-                end
             case 'P'
                 oldVal = BpodSystem.HardwareState.OutputState(Ch);
                 if oldVal < 255
@@ -65,6 +49,22 @@ switch TargetCode(1)
             case 'W'
                 BpodSystem.HardwareState.OutputState(Ch) = 1-BpodSystem.HardwareState.OutputState(Ch);
                 OverrideMessage = ['O' DigitalOutputChannel BpodSystem.HardwareState.OutputState(Ch)];
+            case 'V'
+                BpodSystem.HardwareState.OutputState(Ch) = 1-BpodSystem.HardwareState.OutputState(Ch);
+                OverrideMessage = ['O' DigitalOutputChannel BpodSystem.HardwareState.OutputState(Ch)];
+                if BpodSystem.MachineType < 3
+                    % If one valve is open, disable all others
+                    Channels = 1:8;
+                    ChPos = Ch-BpodSystem.HW.Pos.Output_Valve+1;
+                    InactiveChannels = Channels(Channels ~= ChPos);
+                    for x = 1:7
+                        if BpodSystem.HardwareState.OutputState(Ch) > 0
+                            set(BpodSystem.GUIHandles.PortValveButton(InactiveChannels(x)), 'Enable', 'off');
+                        else
+                            set(BpodSystem.GUIHandles.PortValveButton(InactiveChannels(x)), 'Enable', 'on');
+                        end
+                    end
+                end
             case 'U'
                 switch Ch
                     case 1

@@ -6,4 +6,4 @@ sma = NewStateMatrix();
 for x = 1:127
 eval(['sma = AddState(sma, ''Name'', ''State ' num2str(x) ''', ''Timer'', .001, ''StateChangeConditions'', {''Tup'', ''State ' num2str(x+1) '''}, ''OutputActions'', {});']);
 end
-sma = AddState(sma, 'Name', 'State 128', 'Timer', .001, 'StateChangeConditions', {'Tup', 'exit'}, 'OutputActions', {});
+sma = AddState(sma, 'Name', 'State 128', 'Timer', .001, 'StateChangeConditions', {'Tup', '>exit'}, 'OutputActions', {});

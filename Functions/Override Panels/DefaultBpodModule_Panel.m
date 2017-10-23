@@ -100,7 +100,7 @@ if strcmp(Character,'return')
     import java.awt.event.KeyEvent;
     robot=Robot;
     robot.keyPress(KeyEvent.VK_ENTER);
-    pause(0.01)
+    pause(0.03)
     robot.keyRelease(KeyEvent.VK_ENTER);
     SendMessage(ModuleNumber,ModuleName);
 end

@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function RawTrialEvents = RunStateMachine
 global BpodSystem
+TimeScaleFactor = (BpodSystem.HW.CyclePeriod/1000);
 if isempty(BpodSystem.StateMatrixSent)
     error('Error: A state matrix must be sent prior to calling "RunStateMatrix".')
 end
@@ -46,12 +47,16 @@ if BpodSystem.EmulatorMode == 0
         end
         BpodSystem.Status.NewStateMachineSent = 0;
     end
+    TrialStartTimestampBytes = BpodSystem.SerialPort.read(8, 'uint8');
+    TrialTimestamp64 = typecast(TrialStartTimestampBytes, 'uint64');
+    TrialStartTimestamp = double(typecast(TrialStartTimestampBytes, 'uint64'))/1000000; % Start-time of the trial in microseconds (compensated for 32-bit clock rollover)
 end
 BpodSystem.StateMatrix = BpodSystem.StateMatrixSent;
 EventNames = BpodSystem.StateMachineInfo.EventNames;
 MaxEvents = 10000;
 nEvents = 0; nStates = 1;
 Events = zeros(1,MaxEvents); States = zeros(1,MaxEvents);
+LiveEventTimestamps = zeros(1,MaxEvents);
 CurrentEvent = zeros(1,10);
 StateChangeIndexes = zeros(1,MaxEvents);
 States(nStates) = 1;
@@ -121,6 +126,9 @@ while BpodSystem.Status.InStateMatrix
                 nCurrentEvents = double(opCodeBytes(2));
                 if BpodSystem.EmulatorMode == 0
                     TempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents, 'uint8');
+                    if BpodSystem.LiveTimestamps == 1
+                        ThisTimestamp = double(BpodSystem.SerialPort.read(1, 'uint32'))*TimeScaleFactor;
+                    end
                 else
                     TempCurrentEvents = VirtualCurrentEvents;
                 end
@@ -150,9 +158,14 @@ while BpodSystem.Status.InStateMatrix
                         TransitionEventFound = 1;
                     end
                     i = i + 1;
-                end
+                end 
                 SetBpodHardwareMirror2ReflectEvent(CurrentEvent);
-                if NewState ~= BpodSystem.Status.CurrentStateCode
+                if TransitionEventFound
+                    if BpodSystem.StateMatrix.meta.use255BackSignal == 1
+                        if NewState == 256
+                            NewState = BpodSystem.Status.LastStateCode;
+                        end
+                    end
                     if  NewState <= nTotalStates
                         StateChangeIndexes(nStates) = nEvents+1;
                         nStates = nStates + 1;
@@ -203,6 +216,9 @@ while BpodSystem.Status.InStateMatrix
                 if BpodSystem.Status.InStateMatrix == 1
                     BpodSystem.RefreshGUI;
                     Events(nEvents+1:(nEvents+nCurrentEvents)) = CurrentEvent(1:nCurrentEvents);
+                    if BpodSystem.LiveTimestamps == 1
+                        LiveEventTimestamps(nEvents+1:(nEvents+nCurrentEvents)) = ThisTimestamp;
+                    end
                     BpodSystem.Status.LastEvent = CurrentEvent(1);
                     CurrentEvent(1:nCurrentEvents) = 0;
                     set(BpodSystem.GUIHandles.LastEventDisplay, 'string', EventNames{BpodSystem.Status.LastEvent});
@@ -224,24 +240,40 @@ while BpodSystem.Status.InStateMatrix
                 end
             end
         end
-        %pause(0.0001);
         drawnow;
     end
 end
 
 if BpodSystem.Status.BeingUsed == 1
+    ThisTrialErrorCodes = [];
     Events = Events(1:nEvents);
     States = States(1:nStates);
-    % Accept Timestamps
     if BpodSystem.EmulatorMode == 0
-        TrialStartTimestamp =  double(BpodSystem.SerialPort.read(1, 'uint32'))/1000; % Start-time of the trial in milliseconds (immune to 32-bit clock rollover)
-        nTimeStamps = double(BpodSystem.SerialPort.read(1, 'uint16'));
-        TimeStamps = double(BpodSystem.SerialPort.read(nTimeStamps, 'uint32'));
-        TimeScaleFactor = (BpodSystem.HW.CyclePeriod/1000);
-        TimeStamps = TimeStamps*TimeScaleFactor;
+        TrialEndTimestamps = BpodSystem.SerialPort.read(12, 'uint8');
+        nHWTimerCycles = double(typecast(TrialEndTimestamps(1:4), 'uint32'));
+        TrialEndTimestamp = double(typecast(TrialEndTimestamps(5:12), 'uint64'))/1000000;
+        TrialTimeFromMicros = (TrialEndTimestamp - TrialStartTimestamp);
+        TrialTimeFromCycles = (nHWTimerCycles/BpodSystem.HW.CycleFrequency); % Add 1ms to adjust for bias due to placement of millis() in start+end code
+        Discrepancy = abs(TrialTimeFromMicros - TrialTimeFromCycles)*1000;
+        if Discrepancy > 1
+            disp([char(10) '***WARNING!***' char(10) 'Bpod missed hardware update deadline(s) on the past trial, by ~' num2str(Discrepancy)...
+                            'ms!' char(10) 'An error code (1) has been added to your trial data.' char(10) '**************'])
+            ThisTrialErrorCodes(1) = 1;
+        end
+    end
+    if BpodSystem.LiveTimestamps == 1
+        TimeStamps = LiveEventTimestamps(1:nEvents);
+    end
+    % Accept Timestamps
+    if BpodSystem.EmulatorMode == 0 
+        if BpodSystem.LiveTimestamps == 0
+            nTimeStamps = double(BpodSystem.SerialPort.read(1, 'uint16'));
+            TimeStamps = double(BpodSystem.SerialPort.read(nTimeStamps, 'uint32'))*TimeScaleFactor;
+        end
     else
         TrialStartTimestamp = BpodSystem.Emulator.MatrixStartTime-(BpodSystem.Status.BpodStartTime*100000);
         TimeStamps = (BpodSystem.Emulator.Timestamps(1:BpodSystem.Emulator.nEvents)*1000);
+        TrialEndTimestamp = TrialStartTimestamp + TimeStamps(end);
     end
     StateChangeIndexes = StateChangeIndexes(1:nStates-1);
     EventTimeStamps = TimeStamps;
@@ -250,16 +282,18 @@ if BpodSystem.Status.BeingUsed == 1
     StateTimeStamps(1) = 0;
     RawTrialEvents.States = States;
     RawTrialEvents.Events = Events;
-    RawTrialEvents.StateTimestamps = Round2Millis(StateTimeStamps)/1000; % Convert to seconds
-    RawTrialEvents.EventTimestamps = Round2Millis(EventTimeStamps)/1000;
-    RawTrialEvents.TrialStartTimestamp = Round2Millis(TrialStartTimestamp);
+    RawTrialEvents.StateTimestamps = Round2Cycles(StateTimeStamps)/1000; % Convert to seconds
+    RawTrialEvents.EventTimestamps = Round2Cycles(EventTimeStamps)/1000;
+    RawTrialEvents.TrialStartTimestamp = Round2Cycles(TrialStartTimestamp);
+    RawTrialEvents.TrialEndTimestamp = Round2Cycles(TrialEndTimestamp);
     RawTrialEvents.StateTimestamps(end+1) = RawTrialEvents.EventTimestamps(end);
+    RawTrialEvents.ErrorCodes = ThisTrialErrorCodes;
 end
 SetBpodHardwareMirror2CurrentState(0);
 BpodSystem.Status.InStateMatrix = 0;
 
-function MilliOutput = Round2Millis(DecimalInput)
-MilliOutput = round(DecimalInput*(1000))/(1000);
+function MilliOutput = Round2Cycles(DecimalInput)
+MilliOutput = round(DecimalInput*(10000))/(10000);
 
 function SetBpodHardwareMirror2CurrentState(CurrentState)
 global BpodSystem

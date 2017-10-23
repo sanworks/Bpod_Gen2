@@ -33,6 +33,11 @@ elseif ismac
 else 
     lmYpos = 130; SelectorFontSize = 11; PathFontSize = 10;
 end
+if verLessThan('matlab', '8')
+    ButtonFont = 'Courier';
+else
+    ButtonFont = 'OCRASTD';
+end
 text(lmYpos, 45,'Protocol Launch Manager', 'FontName', 'OCRASTD', 'FontSize', 20, 'Color', [0.8 0.8 0.8]);
 line([10 590], [80 80], 'Color', [0.8 0.8 0.8], 'LineWidth', 1);
 BpodSystem.GUIHandles.ProtocolSelector = uicontrol('Style', 'listbox','Position', [25 95 200 390], 'String', 'Folder not found', 'Callback', @ProtocolSelectorNavigate, 'FontWeight', 'bold', 'FontSize', SelectorFontSize, 'BackgroundColor', [.8 .8 .8]);
@@ -41,8 +46,9 @@ BpodSystem.GUIHandles.SettingsSelector = uicontrol('Style', 'listbox','Position'
 text(20, 120,'Protocol', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
 text(212, 120,'Subject', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
 text(405, 120,'Settings', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
-BpodSystem.GUIHandles.LaunchButton = uicontrol('Style', 'pushbutton', 'String', ['Launch ' char(187)], 'Position', [590 10 150 65], 'Callback', @LaunchProtocol, 'TooltipString', 'Launch Protocol', 'FontName', 'OCRASTD', 'FontSize', 16, 'BackgroundColor', [.37 .37 .37], 'ForegroundColor', [.8 .8 .8]);
-%BpodSystem.GUIHandles.BackButton = uicontrol('Style', 'pushbutton', 'String', [char(171) ' Return'], 'Position', [15 10 150 65], 'Callback', @CloseLaunchManager, 'TooltipString', 'Close Launch Manager', 'FontName', 'OCRASTD', 'FontSize', 16, 'BackgroundColor', [.37 .37 .37], 'ForegroundColor', [.8 .8 .8]);
+BpodSystem.GUIHandles.LaunchButton = uicontrol('Position', [590 10 150 65], 'Style', 'pushbutton', 'String', ['Launch ' char(187)], 'FontName', ButtonFont, 'FontSize', 16, 'Callback', @LaunchProtocol, 'TooltipString', 'Launch Protocol', 'BackgroundColor', [.37 .37 .37], 'ForegroundColor', [.8 .8 .8]);
+%BpodSystem.GUIHandles.BackButton = uicontrol('Style', 'pushbutton',
+%'String', [char(171) ' Return'], 'Position', [15 10 150 65], 'Callback', @CloseLaunchManager, 'TooltipString', 'Close Launch Manager', 'FontName', 'OCRASTD', 'FontSize', 16, 'BackgroundColor', [.37 .37 .37], 'ForegroundColor', [.8 .8 .8]);
 AddGFX = imread('PlusButton.bmp');
 BpodSystem.GUIHandles.AddProtocolButton = uicontrol('Style', 'pushbutton', 'CData', AddGFX, 'Position', [228 459 25 25], 'Callback', @CreateProtocol, 'TooltipString', 'Create Protocol', 'FontName', 'OCRASTD', 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
 DelGFX = imread('MinusButton.bmp');
@@ -59,26 +65,26 @@ EditGFX = imread('EditButton.bmp');
 BpodSystem.GUIHandles.EditSettingsButton = uicontrol('Style', 'pushbutton', 'CData', EditGFX, 'Position', [708 399 25 25], 'Callback', @EditSettings, 'TooltipString', 'Edit Session Settings', 'FontName', 'OCRASTD', 'FontSize', 22, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
 ImportGFX = imread('ImportButton.bmp');
 BpodSystem.GUIHandles.ImportSettingsButton = uicontrol('Style', 'pushbutton', 'CData', ImportGFX, 'Position', [708 369 25 25], 'Callback', @ImportSettings, 'TooltipString', 'Import Session Settings', 'FontName', 'OCRASTD', 'FontSize', 22, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
-
-jButton = java(findjobj(BpodSystem.GUIHandles.EditProtocolButton));
-jButton.setBorderPainted(false);
-jButton = java(findjobj(BpodSystem.GUIHandles.AddProtocolButton));
-jButton.setBorderPainted(false);
-jButton = java(findjobj(BpodSystem.GUIHandles.ImportSettingsButton));
-jButton.setBorderPainted(false);
-jButton = java(findjobj(BpodSystem.GUIHandles.AddSubjectButton));
-jButton.setBorderPainted(false);
-jButton = java(findjobj(BpodSystem.GUIHandles.DelProtocolButton));
-jButton.setBorderPainted(false);
-jButton = java(findjobj(BpodSystem.GUIHandles.DelSubjectButton));
-jButton.setBorderPainted(false);
-jButton = java(findjobj(BpodSystem.GUIHandles.AddSettingsButton));
-jButton.setBorderPainted(false);
-jButton = java(findjobj(BpodSystem.GUIHandles.DelSettingsButton));
-jButton.setBorderPainted(false);
-jButton = java(findjobj(BpodSystem.GUIHandles.EditSettingsButton));
-jButton.setBorderPainted(false);
-
+if ~verLessThan('matlab', '8.0.0')
+    jButton = java(findjobj(BpodSystem.GUIHandles.EditProtocolButton));
+    jButton.setBorderPainted(false);
+    jButton = java(findjobj(BpodSystem.GUIHandles.AddProtocolButton));
+    jButton.setBorderPainted(false);
+    jButton = java(findjobj(BpodSystem.GUIHandles.ImportSettingsButton));
+    jButton.setBorderPainted(false);
+    jButton = java(findjobj(BpodSystem.GUIHandles.AddSubjectButton));
+    jButton.setBorderPainted(false);
+    jButton = java(findjobj(BpodSystem.GUIHandles.DelProtocolButton));
+    jButton.setBorderPainted(false);
+    jButton = java(findjobj(BpodSystem.GUIHandles.DelSubjectButton));
+    jButton.setBorderPainted(false);
+    jButton = java(findjobj(BpodSystem.GUIHandles.AddSettingsButton));
+    jButton.setBorderPainted(false);
+    jButton = java(findjobj(BpodSystem.GUIHandles.DelSettingsButton));
+    jButton.setBorderPainted(false);
+    jButton = java(findjobj(BpodSystem.GUIHandles.EditSettingsButton));
+    jButton.setBorderPainted(false);
+end
 BpodSystem.GUIHandles.DataFilePathDisplay = text(20, 685,'', 'FontName', 'Courier New', 'FontSize', PathFontSize, 'Color', [0.9 0.9 0.9]);
 BpodSystem.GUIHandles.DataFileLabel = text(20, 665,'Data Folder:', 'FontName', 'Arial', 'FontSize', PathFontSize, 'Color', [1 1 1], 'Interpreter', 'None');
 BpodSystem.GUIHandles.DataFileDisplay = text(20, 730,'', 'FontName', 'Courier New', 'FontSize', PathFontSize, 'Color', [0.9 0.9 0.9], 'Interpreter', 'None');
@@ -136,7 +142,7 @@ else
     BpodSystem.GUIData.ProtocolSelectorLastValue = 1;
 end
 
-function ProtocolSelectorNavigate (~,~)
+function ProtocolSelectorNavigate (a,b)
 global BpodSystem
 currentValue = get(BpodSystem.GUIHandles.ProtocolSelector, 'Value');
 String = get(BpodSystem.GUIHandles.ProtocolSelector, 'String');
@@ -176,7 +182,7 @@ end
 BpodSystem.GUIData.ProtocolSelectorLastValue = currentValue;
 
 
-function SubjectSelectorNavigate (~,~)
+function SubjectSelectorNavigate (a,b)
 global BpodSystem
 ProtocolList = get(BpodSystem.GUIHandles.ProtocolSelector, 'String');
 SelectedProtocol = get(BpodSystem.GUIHandles.ProtocolSelector, 'Value');
@@ -247,7 +253,7 @@ else
             Types(i) = 0;
         end
     end
-    [~, Order] = sort(Types);
+    [a, Order] = sort(Types);
     ProtocolNames = ProtocolNames(Order);
 end
 set(BpodSystem.GUIHandles.ProtocolSelector, 'String', ProtocolNames);
@@ -304,7 +310,7 @@ FileName = [SubjectName '_' ProtocolName '_' DateInfo '.mat'];
 set(BpodSystem.GUIHandles.DataFileDisplay, 'String', FileName);
 BpodSystem.Path.CurrentDataFile = fullfile(BpodSystem.Path.DataFolder, SubjectName, ProtocolName, 'Session Data', FileName);
 
-function AddSubject(~,~)
+function AddSubject(a,b)
 global BpodSystem
 NewSubjectGFX = imread('NameInputBG.bmp');
 NameInputFig = figure('Position',[550 600 200 100],'name','New test subject','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
@@ -373,7 +379,7 @@ if ~isempty(NewName)
     %end
 end
 
-function CreateProtocol(~,~)
+function CreateProtocol(a,b)
 global BpodSystem
 NewSubjectGFX = imread('NameInputBG.bmp');
 NameInputFig = figure('Position',[550 600 250 100],'name','New Protocol','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
@@ -420,7 +426,7 @@ if ~isempty(NewName)
     end
 end
 
-function AddSettings(~,~)
+function AddSettings(a,b)
 global BpodSystem
 if ispc
     NameEntryYwidth = 200;
@@ -484,7 +490,7 @@ else
     msgbox('A settings file with this name exists. No entry made.', 'Modal')
 end
 
-function EditSettings(~,~)
+function EditSettings(a,b)
 global BpodSystem
 SettingsNames = get(BpodSystem.GUIHandles.SettingsSelector, 'String');
 SelectedSettingsIndex = get(BpodSystem.GUIHandles.SettingsSelector, 'Value');
@@ -507,7 +513,7 @@ disp('SaveProtocolSettings(ProtocolSettings);')
 disp('----------------------------')
 commandwindow
 
-function EditProtocol(~,~)
+function EditProtocol(a,b)
 global BpodSystem
 ProtocolNames = get(BpodSystem.GUIHandles.ProtocolSelector, 'String');
 SelectedProtocol = get(BpodSystem.GUIHandles.ProtocolSelector, 'Value');
@@ -515,7 +521,7 @@ SelectedProtocolName = ProtocolNames{SelectedProtocol};
 ProtocolPath = fullfile(BpodSystem.Path.ProtocolFolder, SelectedProtocolName, [SelectedProtocolName '.m']);
 edit(ProtocolPath);
 
-function DeleteSettings(~,~)
+function DeleteSettings(a,b)
 global BpodSystem
 SettingsNames = get(BpodSystem.GUIHandles.SettingsSelector, 'String');
 SelectedSettingsIndex = get(BpodSystem.GUIHandles.SettingsSelector, 'Value');
@@ -548,7 +554,7 @@ if SelectedSettingsIndex ~= DefaultSettingsIndex
     end
 end
 
-function DeleteProtocol(~,~)
+function DeleteProtocol(a,b)
 global BpodSystem
 ProtocolNames = get(BpodSystem.GUIHandles.ProtocolSelector, 'String');
 SelectedProtocol = get(BpodSystem.GUIHandles.ProtocolSelector, 'Value');
@@ -575,7 +581,7 @@ if SelectedProtocol ~= 1
     end
 end
 
-function DeleteSubject(~,~)
+function DeleteSubject(a,b)
 global BpodSystem
 ProtocolNameList = get(BpodSystem.GUIHandles.ProtocolSelector, 'String');
 ProtocolSelected = get(BpodSystem.GUIHandles.ProtocolSelector, 'Value');
@@ -628,7 +634,7 @@ else
     BpodErrorSound;
 end
 
-function ImportSettings(~,~)
+function ImportSettings(a,b)
 global BpodSystem
 ProtocolNames = get(BpodSystem.GUIHandles.ProtocolSelector, 'String');
 SelectedProtocol = get(BpodSystem.GUIHandles.ProtocolSelector, 'Value');
@@ -659,7 +665,7 @@ copyfile(TargetSettingsPath, DestinationSettingsPath);
 % Update UI with new settings
 loadSettings(SelectedProtocolName, SelectedSubjectName);
 
-function LaunchProtocol(~,~)
+function LaunchProtocol(a,b)
 global BpodSystem
 ProtocolList = get(BpodSystem.GUIHandles.ProtocolSelector, 'String');
 SelectedProtocol = get(BpodSystem.GUIHandles.ProtocolSelector, 'Value');
@@ -691,6 +697,7 @@ addpath(ProtocolPath);
 set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
 BpodSystem.Status.BeingUsed = 1;
 BpodSystem.ProtocolStartTime = now*100000;
+BpodSystem.resetSessionClock();
 close(BpodSystem.GUIHandles.LaunchManagerFig);
 run(ProtocolPath);
 
@@ -699,6 +706,6 @@ SpaceIndexes = InputString == ' ';
 InputString(SpaceIndexes) = '_';
 OutputString = InputString;
 
-function CloseLaunchManager(~,~)
+function CloseLaunchManager(a,b)
 global BpodSystem
 close(BpodSystem.GUIHandles.LaunchManagerFig);

@@ -3407,16 +3407,22 @@ function jControl = findjobj_fast(hControl, jContainer)
     try jControl = jControl.getParent.getView.getParent.getParent; catch, end  % return JScrollPane if exists
 end
 function jControl = findTooltipIn(jContainer)
+    persistent FastMode
+    if isempty(FastMode)
+        FastMode = ~verLessThan('matlab', '8');
+    end
     try
-        jControl = [];  % Fix suggested by H. Koch 11/4/2017
-        tooltipStr = jContainer.getToolTipText;
-        %if strcmp(char(tooltipStr),'!@#$%^&*')
-        if ~isempty(tooltipStr) && tooltipStr.startsWith('!@#$%^&*')  % a bit faster
-            jControl = jContainer;
-        else
-            for idx = 1 : jContainer.getComponentCount
-                jControl = findTooltipIn(jContainer.getComponent(idx-1));
-                if ~isempty(jControl), return; end
+        if FastMode
+            jControl = [];  % Fix suggested by H. Koch 11/4/2017
+            tooltipStr = jContainer.getToolTipText;
+            %if strcmp(char(tooltipStr),'!@#$%^&*')
+            if ~isempty(tooltipStr) && tooltipStr.startsWith('!@#$%^&*')  % a bit faster
+                jControl = jContainer;
+            else
+                for idx = 1 : jContainer.getComponentCount
+                    jControl = findTooltipIn(jContainer.getComponent(idx-1));
+                    if ~isempty(jControl), return; end
+                end
             end
         end
     catch

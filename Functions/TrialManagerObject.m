@@ -46,7 +46,10 @@ classdef TrialManagerObject < handle
         nTotalStates
         States
         StateNames
+        LiveEventTimestamps
         MaxEvents = 10000; % Maximum number of events possible in 1 trial (for preallocation)
+        TimeScaleFactor
+        TrialStartTimestamp
     end
     methods
         function obj = TrialManagerObject %Constructor
@@ -57,7 +60,8 @@ classdef TrialManagerObject < handle
             if BpodSystem.EmulatorMode == 1
                 error('Error: The Bpod emulator does not currently support running state machines with TrialManager.') 
             end
-            obj.Timer = timer('TimerFcn',@(h,e)obj.processLiveEvents(), 'ExecutionMode', 'fixedRate', 'Period', 0.001);
+            obj.TimeScaleFactor = (BpodSystem.HW.CyclePeriod/1000);
+            obj.Timer = timer('TimerFcn',@(h,e)obj.processLiveEvents(), 'ExecutionMode', 'fixedRate', 'Period', 0.01);
         end
         function startTrial(obj, varargin)
             global BpodSystem
@@ -75,16 +79,21 @@ classdef TrialManagerObject < handle
                 end
             end
             if smaSent
-                BpodSystem.SerialPort.write('R', 'uint8');
+                if BpodSystem.Status.SM2runASAP == 0
+                    BpodSystem.SerialPort.write('R', 'uint8');
+                end
             else
-                SendStateMachine(StateMatrix, 'RunImmediately');
+                SendStateMachine(StateMatrix, 'RunASAP');
             end
+            BpodSystem.Status.SM2runASAP = 0;
             SMA_Confirmed = BpodSystem.SerialPort.read(1, 'uint8');
             if isempty(SMA_Confirmed)
                 error('Error: The last state machine sent was not acknowledged by the Bpod device.');
             elseif SMA_Confirmed ~= 1
                 error('Error: The last state machine sent was not acknowledged by the Bpod device.');
             end
+            TrialStartTimestampBytes = BpodSystem.SerialPort.read(8, 'uint8');
+            obj.TrialStartTimestamp = double(typecast(TrialStartTimestampBytes, 'uint64'))/1000000; % Start-time of the trial in microseconds (compensated for 32-bit clock rollover)            
             BpodSystem.StateMatrix = BpodSystem.StateMatrixSent;
             BpodSystem.Status.NewStateMachineSent = 0;
             BpodSystem.Status.LastStateCode = 0;
@@ -116,6 +125,7 @@ classdef TrialManagerObject < handle
             obj.EventNames = BpodSystem.StateMachineInfo.EventNames;
             obj.nEvents = 0; obj.nStates = 1;
             obj.Events = zeros(1,obj.MaxEvents); obj.States = zeros(1,obj.MaxEvents);
+            obj.LiveEventTimestamps = zeros(1,obj.MaxEvents);
             obj.CurrentEvent = zeros(1,10);
             obj.StateChangeIndexes = zeros(1,obj.MaxEvents);
             obj.States(obj.nStates) = 1;
@@ -132,16 +142,30 @@ classdef TrialManagerObject < handle
             if BpodSystem.Status.BeingUsed == 1
                 obj.Events = obj.Events(1:obj.nEvents);
                 obj.States = obj.States(1:obj.nStates);
+                TrialEndTimestamps = BpodSystem.SerialPort.read(12, 'uint8');
+                nHWTimerCycles = double(typecast(TrialEndTimestamps(1:4), 'uint32'));
+                TrialEndTimestamp = double(typecast(TrialEndTimestamps(5:12), 'uint64'))/1000000;
                 % Accept Timestamps
                 if BpodSystem.EmulatorMode == 0
-                    TrialStartTimestamp =  double(BpodSystem.SerialPort.read(1, 'uint32'))/1000; % Start-time of the trial in milliseconds (immune to 32-bit clock rollover)
-                    nTimeStamps = double(BpodSystem.SerialPort.read(1, 'uint16'));
-                    TimeStamps = double(BpodSystem.SerialPort.read(nTimeStamps, 'uint32'));
-                    TimeScaleFactor = (BpodSystem.HW.CyclePeriod/1000);
-                    TimeStamps = TimeStamps*TimeScaleFactor;
+                    if BpodSystem.LiveTimestamps == 0
+                        nTimeStamps = double(BpodSystem.SerialPort.read(1, 'uint16'));
+                        TimeStamps = double(BpodSystem.SerialPort.read(nTimeStamps, 'uint32'));
+                        TimeStamps = TimeStamps*(BpodSystem.HW.CyclePeriod/1000);
+                    else
+                        TimeStamps = obj.LiveEventTimestamps(1:obj.nEvents);
+                    end
                 else
-                    TrialStartTimestamp = BpodSystem.Emulator.MatrixStartTime-(BpodSystem.Status.BpodStartTime*100000);
+                    obj.TrialStartTimestamp = BpodSystem.Emulator.MatrixStartTime-(BpodSystem.Status.BpodStartTime*100000);
                     TimeStamps = (BpodSystem.Emulator.Timestamps(1:BpodSystem.Emulator.nEvents)*1000);
+                end
+                ThisTrialErrorCodes = [];
+                TrialTimeFromMicros = (TrialEndTimestamp - obj.TrialStartTimestamp);
+                TrialTimeFromCycles = (nHWTimerCycles/BpodSystem.HW.CycleFrequency); % Add 1ms to adjust for bias due to placement of millis() in start+end code
+                Discrepancy = abs(TrialTimeFromMicros - TrialTimeFromCycles)*1000;
+                if Discrepancy > 1
+                    disp([char(10) '***WARNING!***' char(10) 'Bpod missed hardware update deadline(s) on the past trial, by ~' num2str(Discrepancy)...
+                        'ms!' char(10) 'An error code (1) has been added to your trial data.' char(10) '**************'])
+                    ThisTrialErrorCodes(1) = 1;
                 end
                 obj.StateChangeIndexes = obj.StateChangeIndexes(1:obj.nStates-1);
                 EventTimeStamps = TimeStamps;
@@ -150,10 +174,12 @@ classdef TrialManagerObject < handle
                 StateTimeStamps(1) = 0;
                 RawTrialEvents.States = obj.States;
                 RawTrialEvents.Events = obj.Events;
-                RawTrialEvents.StateTimestamps = obj.Round2Millis(StateTimeStamps)/1000; % Convert to seconds
-                RawTrialEvents.EventTimestamps = obj.Round2Millis(EventTimeStamps)/1000;
-                RawTrialEvents.TrialStartTimestamp = obj.Round2Millis(TrialStartTimestamp);
+                RawTrialEvents.StateTimestamps = obj.Round2Cycles(StateTimeStamps)/1000; % Convert to seconds
+                RawTrialEvents.EventTimestamps = obj.Round2Cycles(EventTimeStamps)/1000;
+                RawTrialEvents.TrialStartTimestamp = obj.Round2Cycles(obj.TrialStartTimestamp);
+                RawTrialEvents.TrialEndTimestamp = obj.Round2Cycles(TrialEndTimestamp);
                 RawTrialEvents.StateTimestamps(end+1) = RawTrialEvents.EventTimestamps(end);
+                RawTrialEvents.ErrorCodes = ThisTrialErrorCodes;
             else
                 stop(obj.Timer);
                 delete(obj.Timer);
@@ -180,6 +206,9 @@ classdef TrialManagerObject < handle
                         CurrentEvents.RawData = struct;
                         CurrentEvents.RawData.StatesVisited = obj.States(1:obj.nStates);
                         CurrentEvents.RawData.EventsCaptured = obj.Events(1:obj.nEvents);
+                        if BpodSystem.LiveTimestamps == 1
+                            CurrentEvents.RawData.EventTimestamps = obj.LiveEventTimestamps(1:obj.nEvents);
+                        end
                         CurrentEvents.StatesVisited = BpodSystem.StateMatrix.StateNames(CurrentEvents.RawData.StatesVisited);
                         CurrentEvents.EventsCaptured = BpodSystem.StateMachineInfo.EventNames(CurrentEvents.RawData.EventsCaptured);
                     else
@@ -235,6 +264,9 @@ classdef TrialManagerObject < handle
                         nCurrentEvents = double(opCodeBytes(2));
                         if BpodSystem.EmulatorMode == 0
                             TempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents, 'uint8');
+                            if BpodSystem.LiveTimestamps == 1
+                                ThisTimestamp = double(BpodSystem.SerialPort.read(1, 'uint32'))*obj.TimeScaleFactor;
+                            end
                         else
                             TempCurrentEvents = VirtualCurrentEvents;
                         end
@@ -268,7 +300,12 @@ classdef TrialManagerObject < handle
                             i = i + 1;
                         end
                         obj.SetBpodHardwareMirror2ReflectEvent(obj.CurrentEvent);
-                        if NewState ~= BpodSystem.Status.CurrentStateCode
+                        if TransitionEventFound
+                            if BpodSystem.StateMatrix.meta.use255BackSignal == 1
+                                if NewState == 256
+                                    NewState = BpodSystem.Status.LastStateCode;
+                                end
+                            end
                             if  NewState <= obj.nTotalStates
                                 if sum(obj.NextTrialTriggerStates == NewState) > 0
                                     obj.PrepareNextTrialFlag = 1;
@@ -323,6 +360,9 @@ classdef TrialManagerObject < handle
                         if BpodSystem.Status.InStateMatrix == 1
                             BpodSystem.RefreshGUI;
                             obj.Events(obj.nEvents+1:(obj.nEvents+nCurrentEvents)) = obj.CurrentEvent(1:nCurrentEvents);
+                            if BpodSystem.LiveTimestamps == 1
+                                obj.LiveEventTimestamps(obj.nEvents+1:(obj.nEvents+nCurrentEvents)) = ThisTimestamp;
+                            end
                             BpodSystem.Status.LastEvent = obj.CurrentEvent(1);
                             obj.CurrentEvent(1:nCurrentEvents) = 0;
                             set(BpodSystem.GUIHandles.LastEventDisplay, 'string', obj.EventNames{BpodSystem.Status.LastEvent});
@@ -346,7 +386,7 @@ classdef TrialManagerObject < handle
                 end
             end
         end
-        function TimeString = Secs2HMS(~, Seconds)
+        function TimeString = Secs2HMS(a, Seconds)
             H = floor(Seconds/3600);
             Seconds = Seconds-(H*3600);
             M = floor(Seconds/60);
@@ -363,11 +403,11 @@ classdef TrialManagerObject < handle
             end
             TimeString = [num2str(H) ':' MPad num2str(M) ':' SPad num2str(S)];
         end
-        function HandleSoftCode(~,SoftCode)
+        function HandleSoftCode(a,SoftCode)
             global BpodSystem
             eval([BpodSystem.SoftCodeHandlerFunction '(' num2str(SoftCode) ')'])
         end
-        function ManualOverrideEvent = VirtualManualOverride(~,OverrideMessage)
+        function ManualOverrideEvent = VirtualManualOverride(a,OverrideMessage)
             % Converts the byte code transmission formatted for the state machine into event codes
             global BpodSystem
             OpCode = OverrideMessage(1);
@@ -392,7 +432,7 @@ classdef TrialManagerObject < handle
                 ManualOverrideEvent = [];
             end
         end
-        function SetBpodHardwareMirror2ReflectEvent(~,Events)
+        function SetBpodHardwareMirror2ReflectEvent(a,Events)
             global BpodSystem
             nEvents = sum(Events ~= 0);
             for i = 1:nEvents
@@ -430,7 +470,7 @@ classdef TrialManagerObject < handle
                 end
             end
         end
-        function SetBpodHardwareMirror2CurrentState(~,CurrentState)
+        function SetBpodHardwareMirror2CurrentState(a,CurrentState)
             global BpodSystem
             if CurrentState > 0
                 NewOutputState = BpodSystem.StateMatrix.OutputMatrix(CurrentState,:);
@@ -442,8 +482,8 @@ classdef TrialManagerObject < handle
                 BpodSystem.RefreshGUI;
             end
         end
-        function MilliOutput = Round2Millis(~,DecimalInput)
-            MilliOutput = round(DecimalInput*(1000))/(1000);
+        function MilliOutput = Round2Cycles(a,DecimalInput)
+            MilliOutput = round(DecimalInput*(10000))/(10000);
         end
     end
 end

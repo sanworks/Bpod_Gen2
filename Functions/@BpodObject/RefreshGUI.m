@@ -1,0 +1,95 @@
+function obj = RefreshGUI(obj)
+    if ~isempty(obj.StateMatrix)
+        set(obj.GUIHandles.PreviousStateDisplay, 'String', obj.Status.LastStateName);
+        set(obj.GUIHandles.CurrentStateDisplay, 'String', obj.Status.CurrentStateName);
+        if obj.Status.LastEvent > 0
+            if obj.Status.LastEvent <= length(obj.StateMachineInfo.EventNames)
+                set(obj.GUIHandles.LastEventDisplay, 'String', obj.StateMachineInfo.EventNames{obj.Status.LastEvent});
+            end
+        end
+    end
+    startPos = obj.HW.n.SerialChannels;
+    ChangedOutputChannels = find(obj.HardwareState.OutputState ~= obj.LastHardwareState.OutputState);
+    ChangedOutputChannels = ChangedOutputChannels(ChangedOutputChannels>startPos);
+    for i = ChangedOutputChannels
+        thisChannelType = obj.HardwareState.OutputType(i);
+        thisChannelState = obj.HardwareState.OutputState(i);
+        lastChannelState = obj.LastHardwareState.OutputState(i);
+        switch thisChannelType
+            case 'S' % Assume this SPI channel is a power shift register to control valves
+                for j = 1:8
+                    valveState = bitget(thisChannelState,j);
+                    lastValveState = bitget(lastChannelState, j);
+                    if valveState ~= lastValveState
+                        if obj.GUIData.CurrentPanel == 1
+                            if valveState == 1
+                                set(obj.GUIHandles.PortValveButton(j), 'CData', obj.GUIData.OnButtonDark);
+                            else
+                                set(obj.GUIHandles.PortValveButton(j), 'CData', obj.GUIData.OffButtonDark);
+                            end
+                        end
+                    end
+                end
+            case 'V' % Valve controlled by output line (not SPI shift register)
+                if obj.GUIData.CurrentPanel == 1
+                    if thisChannelState == 1
+                        set(obj.GUIHandles.PortValveButton(i-obj.HW.Pos.Output_Valve+1), 'CData', obj.GUIData.OnButtonDark);
+                    else
+                        set(obj.GUIHandles.PortValveButton(i-obj.HW.Pos.Output_Valve+1), 'CData', obj.GUIData.OffButtonDark);
+                    end
+                end
+            case 'B' % BNC (digital)
+                if obj.GUIData.CurrentPanel == 1
+                    if thisChannelState == 1
+                        set(obj.GUIHandles.BNCOutputButton(i-obj.HW.Pos.Output_BNC+1), 'CData', obj.GUIData.OnButtonDark);
+                    else
+                        set(obj.GUIHandles.BNCOutputButton(i-obj.HW.Pos.Output_BNC+1), 'CData', obj.GUIData.OffButtonDark);
+                    end
+                end
+            case 'W' % Wire (digital)
+                if obj.GUIData.CurrentPanel == 1
+                    if thisChannelState == 1
+                        set(obj.GUIHandles.WireOutputButton(i-obj.HW.Pos.Output_Wire+1), 'CData', obj.GUIData.OnButtonDark);
+                    else
+                        set(obj.GUIHandles.WireOutputButton(i-obj.HW.Pos.Output_Wire+1), 'CData', obj.GUIData.OffButtonDark);
+                    end
+                end
+            case 'P' % Port (PWM)
+                if obj.GUIData.CurrentPanel == 1
+                    if thisChannelState > 0
+                        set(obj.GUIHandles.PortLEDButton(i-obj.HW.Pos.Output_PWM+1), 'CData', obj.GUIData.OnButtonDark);
+                    else
+                        set(obj.GUIHandles.PortLEDButton(i-obj.HW.Pos.Output_PWM+1), 'CData', obj.GUIData.OffButtonDark);
+                    end
+                end
+        end
+    end
+    ChangedInputChannels = find(obj.HardwareState.InputState ~= obj.LastHardwareState.InputState);
+    for i = ChangedInputChannels
+        thisChannelType = obj.HardwareState.InputType(i);
+        thisChannelState = obj.HardwareState.InputState(i);
+        if obj.GUIData.CurrentPanel == 1
+            switch thisChannelType
+                case 'P' % Port (digital)
+                    if thisChannelState == 1
+                        set(obj.GUIHandles.PortvPokeButton(i-obj.HW.Pos.Input_Port+1), 'CData', obj.GUIData.OnButtonDark);
+                    else
+                        set(obj.GUIHandles.PortvPokeButton(i-obj.HW.Pos.Input_Port+1), 'CData', obj.GUIData.OffButtonDark);
+                    end
+                case 'B' % BNC (digital)
+                    if thisChannelState == 1
+                        set(obj.GUIHandles.BNCInputButton(i-obj.HW.Pos.Input_BNC+1), 'CData', obj.GUIData.OnButtonDark);
+                    else
+                        set(obj.GUIHandles.BNCInputButton(i-obj.HW.Pos.Input_BNC+1), 'CData', obj.GUIData.OffButtonDark);
+                    end
+                case 'W' % Wire (digital)
+                    if thisChannelState == 1
+                        set(obj.GUIHandles.WireInputButton(i-obj.HW.Pos.Input_Wire+1), 'CData', obj.GUIData.OnButtonDark);
+                    else
+                        set(obj.GUIHandles.WireInputButton(i-obj.HW.Pos.Input_Wire+1), 'CData', obj.GUIData.OffButtonDark);
+                    end
+            end
+        end
+    end
+    obj.LastHardwareState = obj.HardwareState;
+end

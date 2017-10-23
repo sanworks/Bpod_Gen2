@@ -25,13 +25,17 @@ if isfield(TE, 'RawEvents')
 else
     TrialNum = 1;
     TE.Info = struct;
-    switch BpodSystem.MachineType
-        case 1
-            TE.Info.BpodVersion = 'Bpod 0.5';
-        case 2
-            TE.Info.BpodVersion = 'Bpod 0.7-0.9';
-        case 3
-            TE.Info.BpodVersion = 'Pocket State Machine';
+    if BpodSystem.EmulatorMode == 1
+        TE.Info.StateMachineVersion = 'Bpod 0.7-0.9 EMULATOR';
+    else
+        switch BpodSystem.MachineType
+            case 1
+                TE.Info.StateMachineVersion = 'Bpod 0.5';
+            case 2
+                TE.Info.StateMachineVersion = 'Bpod 0.7-0.9';
+            case 3
+                TE.Info.StateMachineVersion = 'Bpod 2.0';
+        end
     end
     TE.Info.SessionDate = datestr(now, 1);
     TheTime = now;
@@ -81,5 +85,7 @@ TE.RawData.OriginalEventData{TrialNum} = RawTrialEvents.Events;
 TE.RawData.OriginalStateTimestamps{TrialNum} = RawTrialEvents.StateTimestamps;
 TE.RawData.OriginalEventTimestamps{TrialNum} = RawTrialEvents.EventTimestamps;
 TE.TrialStartTimestamp(TrialNum) = RawTrialEvents.TrialStartTimestamp;
+TE.TrialEndTimestamp(TrialNum) = RawTrialEvents.TrialEndTimestamp;
+TE.RawData.StateMachineErrorCodes{TrialNum} = RawTrialEvents.ErrorCodes;
 TE.SettingsFile = BpodSystem.ProtocolSettings;
 newTE = TE;

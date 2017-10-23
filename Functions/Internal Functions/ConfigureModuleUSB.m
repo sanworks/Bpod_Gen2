@@ -30,9 +30,9 @@ text(15, 35, 'Module', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 
 text(140, 35, 'USB Port', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
 text(265, 35, 'USB Available', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
 BpodSystem.GUIHandles.ModuleList = uicontrol('Position', [20 75 180 100], 'Style', 'listbox', 'String', BpodSystem.Modules.Name, 'FontSize', 12,...
-    'FontName', 'Courier', 'FontWeight', 'Bold');
+    'FontName', 'Courier', 'FontWeight', 'Bold', 'Callback', @selectFromModuleList);
 BpodSystem.GUIHandles.PairedUSBList = uicontrol('Position', [210 75 180 100], 'Style', 'listbox', 'String', {''},...
-    'FontSize', 12, 'FontName', 'Courier', 'FontWeight', 'Bold');
+    'FontSize', 12, 'FontName', 'Courier', 'FontWeight', 'Bold', 'Callback', @selectFromPairedList);
 BpodSystem.GUIHandles.FreeUSBList = uicontrol('Position', [400 75 180 100], 'Style', 'listbox', 'String', {''},...
     'FontSize', 12, 'FontName', 'Courier', 'FontWeight', 'Bold');
 BpodSystem.GUIHandles.ModuleUSBPairButton = uicontrol('Position', [130 20 150 30], 'Style', 'pushbutton', 'String', '-->Pair<--', 'FontSize', 12, 'FontName', 'Courier', 'Callback', @pair);
@@ -68,8 +68,20 @@ moduleNames = get(BpodSystem.GUIHandles.ModuleList, 'String');
 selectedModuleName = moduleNames{selectedModule};
 BpodSystem.Modules.USBport{selectedModule} = [];
 refreshFreeUSBPorts;
-BpodSystem.ModuleUSB = rmfield(BpodSystem.ModuleUSB, selectedModuleName);
+if isfield(BpodSystem.ModuleUSB, selectedModuleName)
+    BpodSystem.ModuleUSB = rmfield(BpodSystem.ModuleUSB, selectedModuleName);
+end
 SaveModuleUSBConfig;
+
+function selectFromModuleList(junk, moreJunk)
+global BpodSystem
+selectedModule = get(BpodSystem.GUIHandles.ModuleList, 'Value');
+set(BpodSystem.GUIHandles.PairedUSBList, 'Value', selectedModule);
+
+function selectFromPairedList(junk, moreJunk)
+global BpodSystem
+selectedModule = get(BpodSystem.GUIHandles.PairedUSBList, 'Value');
+set(BpodSystem.GUIHandles.ModuleList, 'Value', selectedModule);
 
 function refreshFreeUSBPorts
 global BpodSystem
