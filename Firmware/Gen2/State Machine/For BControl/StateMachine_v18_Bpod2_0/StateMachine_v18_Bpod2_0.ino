@@ -749,7 +749,7 @@ void handler() { // This is the timer handler function, which is called every (t
           break;
           case 'V':
             if (usesSPIValves) {
-              outputState[Byte1] = overrideChanState;
+              outputState[overrideChan] = overrideChanState;
               valveWrite();
             } else {
               digitalWriteDirect(OutputCh[overrideChan], overrideChanState);
