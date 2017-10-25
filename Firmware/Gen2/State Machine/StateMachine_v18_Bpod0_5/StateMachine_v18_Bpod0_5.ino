@@ -369,6 +369,8 @@ byte connectionState = 0; // 1 if connected to MATLAB
 byte RunningStateMatrix = 0; // 1  if state matrix is running
 byte firstLoop= 0; // 1 if first timer callback in state matrix
 int Ev = 0; // Index of current event
+byte overrideChan = 0; // Output channel being manually overridden
+byte overrideChanState = 0; // State of channel being manually overridden
 byte nOverrides = 0; // Number of overrides on a line of the state matrix (for compressed transmission scheme)
 byte col = 0; byte val = 0; // col and val are used in compression scheme
 const uint16_t StateMatrixBufferSize = 50000;
@@ -736,26 +738,31 @@ void handler() { // This is the timer handler function, which is called every (t
       USBCOM.writeByte(1);
       break;
       case 'O':  // Override digital hardware state
-        Byte1 = USBCOM.readByte();
-        Byte2 = USBCOM.readByte();
-        switch (OutputHW[Byte1]) {
+        overrideChan = USBCOM.readByte();
+        overrideChanState = USBCOM.readByte();
+        switch (OutputHW[overrideChan]) {
           case 'D':
           case 'B':
           case 'W':
-            digitalWriteDirect(OutputCh[Byte1], Byte2);
-            outputOverrideState[Byte1] = Byte2;
+            digitalWriteDirect(OutputCh[overrideChan], overrideChanState);
+            outputOverrideState[overrideChan] = overrideChanState;
           break;
           case 'V':
             if (usesSPIValves) {
-              outputState[Byte1] = Byte2;
+              outputState[Byte1] = overrideChanState;
               valveWrite();
             } else {
-              digitalWriteDirect(OutputCh[Byte1], Byte2);
+              digitalWriteDirect(OutputCh[overrideChan], overrideChanState);
             }
-            outputOverrideState[Byte1] = Byte2;
+            outputOverrideState[overrideChan] = overrideChanState;
           break;
           case 'P':
-            analogWrite(OutputCh[Byte1], Byte2);
+            analogWrite(OutputCh[overrideChan], overrideChanState);
+            if (overrideChanState > 0) {
+              outputOverrideState[overrideChan] = true;
+            } else {
+              outputOverrideState[overrideChan] = false;
+            }
           break;
         }
       break;
