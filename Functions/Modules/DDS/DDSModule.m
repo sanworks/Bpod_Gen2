@@ -105,7 +105,7 @@ classdef DDSModule < handle
                     error('Error: amplitude must be in range [0,1]')
                 end
                 ampValue = floor(amp*10000);
-                obj.Port.write('A', 'uint8', ampValue, 'uint32');
+                obj.Port.write('A', 'uint8', ampValue, 'uint16');
                 Confirmed = obj.Port.read(1, 'uint8');
                 if Confirmed ~= 1
                     error('Error setting amplitude. Confirm code not returned.');
