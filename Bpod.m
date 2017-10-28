@@ -39,6 +39,14 @@ addpath(genpath(fullfile(BpodPath, 'Functions')));
 
 BpodSystem = BpodObject;
 Ver = BpodSoftwareVersion;
+CurrentVer = GetCurrentBpodVersion(); % Insert 'develop' as an argument, to be alerted when dev branch updates appear
+if ~isempty(CurrentVer)
+    if Ver ~= CurrentVer  
+        disp( '***********************************************************')
+        disp(['UPDATE NOTICE: Bpod Console v' sprintf('%3.2f', CurrentVer) ' is available to download!'])
+        disp( '***********************************************************')
+    end
+end
 disp(['Starting Bpod Console v' sprintf('%3.2f', Ver)])
 % Try to find hardware. If none, prompt to run emulation mode.
 if nargin > 0
