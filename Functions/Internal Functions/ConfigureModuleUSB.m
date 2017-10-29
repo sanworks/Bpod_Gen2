@@ -19,26 +19,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function ConfigureModuleUSB(junk, morejunk)
 global BpodSystem
-BpodSystem.GUIHandles.ModuleUSBFig = figure('Position',[600 400 600 250],'name','Module USB config.','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
-ha = axes('units','normalized', 'position',[0 0 1 1]);
-uistack(ha,'bottom');
-BG = imread('InputChannelConfig2.bmp');
-image(BG); axis off;
-
-text(130, 15, 'Module USB config', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
-text(15, 35, 'Module', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
-text(140, 35, 'USB Port', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
-text(265, 35, 'USB Available', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
-BpodSystem.GUIHandles.ModuleList = uicontrol('Position', [20 75 180 100], 'Style', 'listbox', 'String', BpodSystem.Modules.Name, 'FontSize', 12,...
-    'FontName', 'Courier', 'FontWeight', 'Bold', 'Callback', @selectFromModuleList);
-BpodSystem.GUIHandles.PairedUSBList = uicontrol('Position', [210 75 180 100], 'Style', 'listbox', 'String', {''},...
-    'FontSize', 12, 'FontName', 'Courier', 'FontWeight', 'Bold', 'Callback', @selectFromPairedList);
-BpodSystem.GUIHandles.FreeUSBList = uicontrol('Position', [400 75 180 100], 'Style', 'listbox', 'String', {''},...
-    'FontSize', 12, 'FontName', 'Courier', 'FontWeight', 'Bold');
-BpodSystem.GUIHandles.ModuleUSBPairButton = uicontrol('Position', [130 20 150 30], 'Style', 'pushbutton', 'String', '-->Pair<--', 'FontSize', 12, 'FontName', 'Courier', 'Callback', @pair);
-BpodSystem.GUIHandles.ModuleUSBUnpairButton = uicontrol('Position', [320 20 150 30], 'Style', 'pushbutton', 'String', '<--Unpair-->', 'FontSize', 12, 'FontName', 'Courier', 'Callback', @unpair);
-refreshFreeUSBPorts;
-
+if BpodSystem.EmulatorMode == 0
+    BpodSystem.GUIHandles.ModuleUSBFig = figure('Position',[600 400 600 250],'name','Module USB config.','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+    ha = axes('units','normalized', 'position',[0 0 1 1]);
+    uistack(ha,'bottom');
+    BG = imread('InputChannelConfig2.bmp');
+    image(BG); axis off;
+    text(130, 15, 'Module USB config', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
+    text(15, 35, 'Module', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
+    text(140, 35, 'USB Port', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
+    text(265, 35, 'USB Available', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
+    BpodSystem.GUIHandles.ModuleList = uicontrol('Position', [20 75 180 100], 'Style', 'listbox', 'String', BpodSystem.Modules.Name, 'FontSize', 12,...
+        'FontName', 'Courier', 'FontWeight', 'Bold', 'Callback', @selectFromModuleList);
+    BpodSystem.GUIHandles.PairedUSBList = uicontrol('Position', [210 75 180 100], 'Style', 'listbox', 'String', {''},...
+        'FontSize', 12, 'FontName', 'Courier', 'FontWeight', 'Bold', 'Callback', @selectFromPairedList);
+    BpodSystem.GUIHandles.FreeUSBList = uicontrol('Position', [400 75 180 100], 'Style', 'listbox', 'String', {''},...
+        'FontSize', 12, 'FontName', 'Courier', 'FontWeight', 'Bold');
+    BpodSystem.GUIHandles.ModuleUSBPairButton = uicontrol('Position', [130 20 150 30], 'Style', 'pushbutton', 'String', '-->Pair<--', 'FontSize', 12, 'FontName', 'Courier', 'Callback', @pair);
+    BpodSystem.GUIHandles.ModuleUSBUnpairButton = uicontrol('Position', [320 20 150 30], 'Style', 'pushbutton', 'String', '<--Unpair-->', 'FontSize', 12, 'FontName', 'Courier', 'Callback', @unpair);
+    refreshFreeUSBPorts;
+end
 function pair(junk, moreJunk)
 global BpodSystem
 selectedModule = get(BpodSystem.GUIHandles.ModuleList, 'Value');
