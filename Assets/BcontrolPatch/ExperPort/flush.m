@@ -1,3 +1,4 @@
+EndBpod;
 delete(get(0,'Children'));
 hndls_to_delete = findobj(findall(0));
 for ctr = 1:length(hndls_to_delete)
