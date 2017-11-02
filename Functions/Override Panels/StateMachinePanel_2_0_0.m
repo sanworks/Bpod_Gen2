@@ -21,7 +21,7 @@ function StateMachinePanel_2_0_0
 global BpodSystem
 
 FontName = 'OCR A STD';
-if ismac
+if ismac && verLessThan('matlab', '8')
     FontName = 'Arial';
 end
 %% Port override
@@ -52,7 +52,7 @@ text(xOffset-42, yOffset-90,'POK', 'FontName', FontName, 'FontSize', medFontSize
 if ispc
     TitleXOffset = 5;
 elseif ismac
-    TitleXOffset = 105;
+    TitleXOffset = 7;
 else
     TitleXOffset = 80;
 end
@@ -168,7 +168,10 @@ if BpodSystem.HW.n.WireOutputs > 2
     text(xOffset+13, yOffset-15,'3', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
     text(xOffset+53, yOffset-15,'4', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 end
-
-text(350, 190,' Bpod Finite', 'FontName', FontName, 'FontSize', 16, 'Color', [.6 .6 .6]);
-text(350, 130,'State Machine', 'FontName', FontName, 'FontSize', 16, 'Color', [.6 .6 .6]);
-text(350, 70, '    v2.0', 'FontName', FontName, 'FontSize', 16, 'Color', [.6 .6 .6]);
+xPos = 350;
+if ismac
+    xPos = 380;
+end
+text(xPos, 190,' Bpod Finite', 'FontName', FontName, 'FontSize', 16, 'Color', [.6 .6 .6]);
+text(xPos, 130,'State Machine', 'FontName', FontName, 'FontSize', 16, 'Color', [.6 .6 .6]);
+text(xPos, 70, '    v2.0', 'FontName', FontName, 'FontSize', 16, 'Color', [.6 .6 .6]);

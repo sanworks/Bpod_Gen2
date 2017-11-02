@@ -8,7 +8,8 @@ if ispc
     [a,reply]=system('ping -n 1 -w 1000 www.google.com'); % Check for connection
     ConnectConfirmString = 'Received = 1';
 elseif ismac
-
+    [a,reply]=system('trap -SIGALRM; ping -c 1 -t 1 www.google.com'); % Check for connection
+    ConnectConfirmString = '1 packets received';
 else
     [a,reply]=system('timeout 1 ping -c 1 www.google.com'); % Check for connection
     ConnectConfirmString = '1 received';
