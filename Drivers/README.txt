@@ -1,1 +1,0 @@
-These drivers are part of the open source Arduino repository: http://arduino.cc. We thank the Arduino.cc team for providing them and keeping them current!
