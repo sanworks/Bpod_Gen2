@@ -21,7 +21,7 @@
 // NOTE: Load with Arduino 1.8.2 until otherwise notified.
 
 // This is firmware for the Bpod DDS module, powered by Teensy 3.2, encapsulating the AD9834 DDS IC.
-// Amplitude control (menu function 'A') is provided in the range [150mV p2p --- 650mV p2p] by a separate DAC chip: AD5620.
+// Amplitude control (menu function 'A') is provided in the range [0mV p2p <---> 650mV p2p] by a separate DAC chip: AD5620.
 // The module can output sine or triangle waves (menu function 'W') in frequencies between 1Hz and 100kHz.
 // Frequency (menu function 'F') can be controlled from: (0) USB, (1) the state machine or (2) a separate Bpod module, or any subset of these simultaneously.
 
@@ -40,7 +40,7 @@ ArCOM ModuleCOM(Serial2);
 SPISettings DACSettings(4000000, MSBFIRST, SPI_MODE2); // Settings for DAC
 
 // Module setup
-uint32_t FirmwareVersion = 1;
+uint32_t FirmwareVersion = 2;
 char moduleName[] = "DDSModule"; // Name of module for manual override UI and state machine assembler
 
 // Pins
@@ -163,17 +163,17 @@ void loop() {
         myDDS.setFrequency(0, frequency);
         myDDS.setFrequency(1, frequency);
       break;
-      case 'A': // Set amplitude. Range = 0 : 10000 ~ 150mV : 650mV p2p
-      switch (opSource) {
+      case 'A': // Set amplitude. Range = 0 : 10000 = 0mV : 650mV p2p
+        switch (opSource) {
           case 0:
-            ampValue = USBCOM.readUint32();
+            ampValue = USBCOM.readUint16();
             USBCOM.writeByte(1);
           break;
           case 1:
-            ampValue = StateMachineCOM.readUint32();
+            ampValue = StateMachineCOM.readUint16();
           break;
           case 2:
-            ampValue = ModuleCOM.readUint32();
+            ampValue = ModuleCOM.readUint16();
           break;
         }
         if (ampValue > lastAmpValue) {
@@ -222,9 +222,14 @@ void loop() {
         }
       break;
       case 'B': // Set bit-range to expect on input channel
-        if (opSource == 0) {
-          USBCOM.readUint16Array(inputBitRange, 2);
-          USBCOM.writeByte(1);
+        switch (opSource) {
+          case 0:
+            USBCOM.readUint16Array(inputBitRange, 2);
+            USBCOM.writeByte(1);
+          break;
+          case 1:
+            StateMachineCOM.readUint16Array(inputBitRange, 2);
+          break;
         }
       break;
       case 'R': // Set frequency output range

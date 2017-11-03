@@ -166,11 +166,11 @@ function obj = InitializeGUI(obj)
         end
     end
     if ispc
-        InfoDispFontSize = 9; InfoDispBoxHeight = 20; InfoDispBoxWidth = 115; Ypos = 268;
+        InfoDispFontSize = 9; InfoDispBoxHeight = 20; PortDispBoxHeight = 20; InfoDispBoxWidth = 115; Ypos = 268;
     elseif ismac
-        InfoDispFontSize = 12; InfoDispBoxHeight = 22; InfoDispBoxWidth = 115; Ypos = 264;
+        InfoDispFontSize = 12; InfoDispBoxHeight = 22; PortDispBoxHeight = 28; InfoDispBoxWidth = 115; Ypos = 264;
     else
-        InfoDispFontSize = 7.5; InfoDispBoxHeight = 23; InfoDispBoxWidth = 120; Ypos = 268;
+        InfoDispFontSize = 7.5; InfoDispBoxHeight = 23; PortDispBoxHeight = 23; InfoDispBoxWidth = 120; Ypos = 268;
     end
     
     if obj.EmulatorMode == 1
@@ -183,7 +183,7 @@ function obj = InitializeGUI(obj)
     obj.GUIHandles.PreviousStateDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [12 Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
     obj.GUIHandles.LastEventDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [12 Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
     obj.GUIHandles.TimeDisplay = uicontrol('Style', 'text', 'String', '0', 'Position', [12 Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.USBPortDisplay = uicontrol('Style', 'text', 'String', PortString, 'Position', [12 Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize);
+    obj.GUIHandles.USBPortDisplay = uicontrol('Style', 'text', 'String', PortString, 'Position', [12 Ypos InfoDispBoxWidth PortDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize);
     obj.FixPushbuttons;
     text(15, 30, Title, 'FontName', TitleFontName, 'FontSize', Lg, 'Color', TitleColor);
     line([280 770], [30 30], 'Color', LabelFontColor, 'LineWidth', 4);
