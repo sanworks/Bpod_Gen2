@@ -38,13 +38,16 @@ FV = num2str(obj.FirmwareVersion);
 SV = num2str(BpodSoftwareVersion);
 if ispc
     WinVer = [];
-    if ~isempty(strfind(obj.HostOS, 'Windows XP'))
+    [a,reply]=system('ver');
+    if ~isempty(strfind(reply, ' 5.1')) || ~isempty(strfind(reply, ' 5.2'))
         WinVer = 'XP';
-    elseif ~isempty(strfind(obj.HostOS, 'Windows 7'))
+    elseif ~isempty(strfind(reply, ' 6.0'))
+        WinVer = 'VA'; % Vista
+    elseif ~isempty(strfind(reply, ' 6.1'))
         WinVer = '7';
-    elseif ~isempty(strfind(obj.HostOS, 'Windows 8'))
+    elseif ~isempty(strfind(reply, ' 6.2'))
         WinVer = '8';
-    elseif ~isempty(strfind(obj.HostOS, 'Windows 10'))
+    elseif ~isempty(strfind(reply, ' 10.'))
         WinVer = '10';
     end
     OS = ['W' WinVer];
