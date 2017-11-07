@@ -223,7 +223,6 @@ function obj = InitializeGUI(obj)
             end
         else
             obj.PhoneHomeOpt_In_Out();
-            obj.BpodPhoneHome();
         end
     end
 end

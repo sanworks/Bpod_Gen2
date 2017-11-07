@@ -439,6 +439,7 @@ classdef BpodObject < handle
                     obj.SystemSettings.PhoneHome = 0;
                 case 1
                     obj.SystemSettings.PhoneHome = 1;
+                    obj.BpodPhoneHome();
             end
             obj.SaveSettings;
             close(obj.GUIHandles.BpodPhoneHomeFig);
