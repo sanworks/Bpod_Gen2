@@ -60,6 +60,7 @@ classdef BpodObject < handle
         SplashData % Splash screen frames
         LastHardwareState % Last known state of I/O lines and serial codes
         CycleMonitoring % 0 = off, 1 = on. Measures min and max actual hardware timer callback execution time
+        IsOnline % 1 if connection to Internet is available, 0 if not
     end
     methods
         function obj = BpodObject %Constructor            
@@ -105,6 +106,28 @@ classdef BpodObject < handle
                     error('Font installed. Please restart MATLAB and run Bpod again.')
                 end
             end
+            
+            % Check for Internet Connection
+            if ispc
+                [a,reply]=system('ping -n 1 -w 1000 www.google.com'); % Check for connection
+                ConnectConfirmString = 'Received = 1';
+            elseif ismac
+                [a,reply]=system('trap -SIGALRM; ping -c 1 -t 1 www.google.com'); % Check for connection
+                ConnectConfirmString = '1 packets received';
+            else
+                [a,reply]=system('timeout 1 ping -c 1 www.google.com'); % Check for connection
+                ConnectConfirmString = '1 received';
+            end
+            obj.IsOnline = 0;
+            if ~isempty(strfind(reply, ConnectConfirmString))
+                obj.IsOnline = 1;
+            end
+            
+            % Validate software version
+            if obj.IsOnline
+                obj.ValidateSoftwareVersion();
+            end
+            
             % Initialize fields
             obj.LiveTimestamps = 0;
             obj.SplashData.BG = SplashBGData;
@@ -377,6 +400,31 @@ classdef BpodObject < handle
             end
             obj.Modules.RelayActive(1:end) = 0;
         end
+        function PhoneHomeOpt_In_Out(obj)
+            obj.GUIHandles.BpodPhoneHomeFig = figure('Position', [550 180 400 350],...
+                'name','Bpod Phone Home','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+            ha = axes('units','normalized', 'position',[0 0 1 1]);
+            uistack(ha,'bottom');
+            BG = imread('PhoneHomeBG.bmp');
+            image(BG); axis off; drawnow;
+            text(20, 40,'Bpod PhoneHome Program', 'FontName', 'OCRAStd', 'FontSize', 16, 'Color', [1 1 1]);
+            Pos = 80; Step = 25;
+            text(20, Pos,'Bpod PhoneHome is an opt-in', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'program to send anonymous data', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'about your Bpod software setup', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'to Sanworks LLC on Bpod start.', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'This will help us understand', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'which MATLAB versions and OS', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'flavors typically run Bpod', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'+ how many rigs are out there.', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step+5;
+            text(140, Pos,'See BpodPhoneHome.m', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            BpodSystem.GUIHandles.PhoneHomeAcceptBtn = uicontrol('Style', 'pushbutton', 'String', 'Ok',...
+                'Position', [130 15 120 40], 'Callback', @(h,e)obj.phoneHomeRegister(1),...
+                'FontSize', 12,'Backgroundcolor',[0.29 0.29 0.43],'Foregroundcolor',[0.9 0.9 0.9], 'FontName', 'OCRAStd');
+            BpodSystem.GUIHandles.PhoneHomeAcceptBtn = uicontrol('Style', 'pushbutton', 'String', 'Decline',...
+                'Position', [260 15 120 40], 'Callback', @(h,e)obj.phoneHomeRegister(0),...
+                'FontSize', 12,'Backgroundcolor',[0.29 0.29 0.43],'Foregroundcolor',[0.9 0.9 0.9], 'FontName', 'OCRAStd');
+        end        
         
         function delete(obj) % Destructor
             obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
@@ -384,7 +432,17 @@ classdef BpodObject < handle
             delete(obj.Timers.PortRelayTimer);
         end
     end
-    methods (Access = private)      
+    methods (Access = private)    
+       function phoneHomeRegister(obj, state)
+            switch state
+                case 0
+                    obj.SystemSettings.PhoneHome = 0;
+                case 1
+                    obj.SystemSettings.PhoneHome = 1;
+            end
+            obj.SaveSettings;
+            close(obj.GUIHandles.BpodPhoneHomeFig);
+        end
         function SwitchPanels(obj, panel)
             obj.GUIData.CurrentPanel = 0;
             OffPanels = 1:obj.HW.n.SerialChannels;
