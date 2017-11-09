@@ -148,9 +148,7 @@ classdef RotaryEncoderModule < handle
         function Data = getLoggedData(obj)
             if obj.uiStreaming == 1
                 stop(obj.Timer);
-                if (obj.Port.bytesAvailable > 0)
-                    obj.Port.read(obj.Port.bytesAvailable, 'uint8');
-                end
+                obj.stopUSBStream;
             end
             obj.Port.write('R', 'uint8');
             nPositions = obj.Port.read(1, 'uint32');
@@ -169,6 +167,7 @@ classdef RotaryEncoderModule < handle
                 Data.Times = [];
             end
             if obj.uiStreaming == 1
+                obj.startUSBStream;
                 start(obj.Timer);
             end
         end
@@ -211,7 +210,7 @@ classdef RotaryEncoderModule < handle
         function stopUSBStream(obj)
             if obj.acquiring
                 obj.Port.write(['S' 0], 'uint8');
-                pause(.1);
+                pause(.05);
                 if obj.Port.bytesAvailable > 0
                     obj.Port.read(obj.Port.bytesAvailable, 'uint8');
                 end
