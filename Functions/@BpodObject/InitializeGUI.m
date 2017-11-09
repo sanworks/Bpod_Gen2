@@ -216,6 +216,7 @@ function obj = InitializeGUI(obj)
     line([10 130], [79 79], 'Color', LabelFontColor, 'LineWidth', 2);
     Ver = BpodSoftwareVersion;
     text(10, 376,['Console v' sprintf('%3.2f', Ver)], 'FontName', FontName, 'FontSize', Vsm, 'Color', [0.6 0.6 0.6]);
+    drawnow;
     if obj.IsOnline == 1
         if isfield(obj.SystemSettings, 'PhoneHome')
             if obj.SystemSettings.PhoneHome == 1 % Note: You are opted out by default
