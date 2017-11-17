@@ -61,5 +61,22 @@ MatlabV = v.Release;
 MatlabV = MatlabV(2:end-1);
 emuMode = num2str(obj.EmulatorMode);
 Key = ['WESh0ULD@LLSw1TcH2PYtHOn'];
-[Reply, status] = urlread(['https://sanworks.io/et/phonehome.php?machine=' Machine '&firmware=' FV '&software=' SV '&os=' OS '&matver=' MatlabV '&emu=' emuMode '&key=' Key]);
+if verLessThan('matlab', '8.1')
+    Protocol = 'http://'; % MATLAB versions older than r2013a cannot use SSL without extensive configuration
+    useSSL = 0;
+else
+    Protocol = 'https://';
+    useSSL = 1;
+end
+Reply = ReadUrl([Protocol 'sanworks.io/et/phonehome.php?machine=' Machine '&firmware=' FV '&software=' SV '&os=' OS '&matver=' MatlabV '&emu=' emuMode '&key=' Key], useSSL);
+end
+
+function str = ReadUrl(url, useSSL)
+    if useSSL
+        is = java.net.URL([], url, sun.net.www.protocol.http.Handler).openConnection().getInputStream(); 
+    else
+        is = java.net.URL([], url, sun.net.www.protocol.http.Handler).openConnection().getInputStream(); 
+    end
+    br = java.io.BufferedReader(java.io.InputStreamReader(is));
+    str = char(br.readLine());
 end
