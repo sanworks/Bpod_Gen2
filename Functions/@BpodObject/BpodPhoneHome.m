@@ -17,17 +17,25 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function BpodPhoneHome(obj)
+function BpodPhoneHome(obj, op)
 % BpodPhoneHome is disabled by default. If the Bpod user opts in, it will send
 % anonymous data about your Bpod installation, MATLAB version and OS to a
 % secure server owned and operated by Sanworks LLC each time the Bpod program
-% is started, and only if an Internet connection is detected.
+% or a protocol is started, and only if an Internet connection is detected.
 %
 % This data will help Sanworks developers understand how Bpod is typically configured,
-% and how to prioritize features and fixes in the future.
+% and how to prioritize features and fixes in the future. For instance, if
+% we notice that users on Linux OS + MATLAB pre r2013a restart
+% Bpod unusually frequently, we may allocate extra debuggung effort to ensure
+% the stability of that configuration.
+%
 % If another user of your installation has opted in, and you want to disable
-% this feature, set 'PhoneHome' to 0 in BpodSettings.mat (usually in your
+% this feature, run BpodSystem.PhoneHomeOpt_In_Out() from the command line 
+% OR manually set 'PhoneHome' to 0 in BpodSettings.mat (usually in your
 % /BpodLocal/ directory). If you want to participate, set 'PhoneHome' to 1.
+%
+% The argument 'op' can be: 0 (startup event) 1 (protocol run event) or 2
+% (Bpod crash/error event)
 %
 % Please be courteous, and do not misuse this function to spam our server.
 % Our goal is to make Bpod as stable as possible for Neuroscience researchers everywhere.
@@ -60,6 +68,11 @@ v = ver('matlab');
 MatlabV = v.Release;
 MatlabV = MatlabV(2:end-1);
 emuMode = num2str(obj.EmulatorMode);
+if (op == 0) || (op == 1) || (op == 2)
+    OP = num2str(op);
+else
+    error('Error: Invalid op')
+end
 Key = ['WESh0ULD@LLSw1TcH2PYtHOn'];
 if verLessThan('matlab', '8.1')
     Protocol = 'http://'; % MATLAB versions older than r2013a cannot use SSL without extensive configuration
@@ -68,12 +81,12 @@ else
     Protocol = 'https://';
     useSSL = 1;
 end
-Reply = ReadUrl([Protocol 'sanworks.io/et/phonehome.php?machine=' Machine '&firmware=' FV '&software=' SV '&os=' OS '&matver=' MatlabV '&emu=' emuMode '&key=' Key], useSSL);
+Reply = ReadUrl([Protocol 'sanworks.io/et/phonehome.php?machine=' Machine '&firmware=' FV '&software=' SV '&os=' OS '&matver=' MatlabV '&emu=' emuMode '&op=' OP '&key=' Key], useSSL);
 end
 
 function str = ReadUrl(url, useSSL)
     if useSSL
-        is = java.net.URL([], url, sun.net.www.protocol.http.Handler).openConnection().getInputStream(); 
+        is = java.net.URL([], url, sun.net.www.protocol.https.Handler).openConnection().getInputStream(); 
     else
         is = java.net.URL([], url, sun.net.www.protocol.http.Handler).openConnection().getInputStream(); 
     end

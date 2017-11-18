@@ -220,7 +220,7 @@ function obj = InitializeGUI(obj)
     if obj.IsOnline == 1
         if isfield(obj.SystemSettings, 'PhoneHome')
             if obj.SystemSettings.PhoneHome == 1 % Note: You are opted out by default
-                obj.BpodPhoneHome(); % Sends installation metadata to the Sanworks secure server on load (see comments in BpodPhoneHome fcn below)
+                obj.BpodPhoneHome(0); % Sends installation metadata to the Sanworks secure server on load (see comments in BpodPhoneHome fcn below)
             end
         else
             obj.PhoneHomeOpt_In_Out();

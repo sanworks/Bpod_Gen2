@@ -108,20 +108,7 @@ classdef BpodObject < handle
             end
             
             % Check for Internet Connection
-            if ispc
-                [a,reply]=system('ping -n 1 -w 1000 www.google.com'); % Check for connection
-                ConnectConfirmString = 'Received = 1';
-            elseif ismac
-                [a,reply]=system('trap -SIGALRM; ping -c 1 -t 1 www.google.com'); % Check for connection
-                ConnectConfirmString = '1 packets received';
-            else
-                [a,reply]=system('timeout 1 ping -c 1 www.google.com'); % Check for connection
-                ConnectConfirmString = '1 received';
-            end
-            obj.IsOnline = 0;
-            if ~isempty(strfind(reply, ConnectConfirmString))
-                obj.IsOnline = 1;
-            end
+            obj.IsOnline = obj.check4Internet();
             
             % Validate software version
             if obj.IsOnline
@@ -424,7 +411,23 @@ classdef BpodObject < handle
             BpodSystem.GUIHandles.PhoneHomeAcceptBtn = uicontrol('Style', 'pushbutton', 'String', 'Decline',...
                 'Position', [260 15 120 40], 'Callback', @(h,e)obj.phoneHomeRegister(0),...
                 'FontSize', 12,'Backgroundcolor',[0.29 0.29 0.43],'Foregroundcolor',[0.9 0.9 0.9], 'FontName', 'OCRAStd');
-        end        
+        end
+        function OnlineStatus = check4Internet(obj)
+           if ispc
+                [a,reply]=system('ping -n 1 -w 1000 www.google.com'); % Check for connection
+                ConnectConfirmString = 'Received = 1';
+            elseif ismac
+                [a,reply]=system('trap -SIGALRM; ping -c 1 -t 1 www.google.com'); % Check for connection
+                ConnectConfirmString = '1 packets received';
+            else
+                [a,reply]=system('timeout 1 ping -c 1 www.google.com'); % Check for connection
+                ConnectConfirmString = '1 received';
+            end
+            OnlineStatus = 0;
+            if ~isempty(strfind(reply, ConnectConfirmString))
+                OnlineStatus = 1;
+            end
+        end
         
         function delete(obj) % Destructor
             obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
@@ -439,11 +442,11 @@ classdef BpodObject < handle
                     obj.SystemSettings.PhoneHome = 0;
                 case 1
                     obj.SystemSettings.PhoneHome = 1;
-                    obj.BpodPhoneHome();
+                    obj.BpodPhoneHome(0);
             end
             obj.SaveSettings;
             close(obj.GUIHandles.BpodPhoneHomeFig);
-        end
+       end
         function SwitchPanels(obj, panel)
             obj.GUIData.CurrentPanel = 0;
             OffPanels = 1:obj.HW.n.SerialChannels;
