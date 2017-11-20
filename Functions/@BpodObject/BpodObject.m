@@ -442,6 +442,9 @@ classdef BpodObject < handle
                     obj.SystemSettings.PhoneHome = 0;
                 case 1
                     obj.SystemSettings.PhoneHome = 1;
+                    if ~isfield(obj.SystemSettings, 'PhoneHomeRigID')
+                        obj.SystemSettings.PhoneHomeRigID = char(floor(rand(1,16)*25)+65);
+                    end
                     obj.BpodPhoneHome(0);
             end
             obj.SaveSettings;

@@ -73,6 +73,7 @@ if (op == 0) || (op == 1) || (op == 2)
 else
     error('Error: Invalid op')
 end
+ID = obj.SystemSettings.PhoneHomeRigID;
 Key = ['WESh0ULD@LLSw1TcH2PYtHOn'];
 if verLessThan('matlab', '8.1')
     Protocol = 'http://'; % MATLAB versions older than r2013a cannot use SSL without extensive configuration
@@ -81,7 +82,7 @@ else
     Protocol = 'https://';
     useSSL = 1;
 end
-Reply = ReadUrl([Protocol 'sanworks.io/et/phonehome.php?machine=' Machine '&firmware=' FV '&software=' SV '&os=' OS '&matver=' MatlabV '&emu=' emuMode '&op=' OP '&key=' Key], useSSL);
+Reply = ReadUrl([Protocol 'sanworks.io/et/phonehome.php?machine=' Machine '&firmware=' FV '&software=' SV '&os=' OS '&matver=' MatlabV '&emu=' emuMode '&op=' OP '&id=' ID '&key=' Key], useSSL);
 end
 
 function str = ReadUrl(url, useSSL)
