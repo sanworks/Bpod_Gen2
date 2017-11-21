@@ -437,14 +437,15 @@ classdef BpodObject < handle
     end
     methods (Access = private)    
        function phoneHomeRegister(obj, state)
+           if ~isfield(obj.SystemSettings, 'PhoneHomeRigID')
+              obj.SystemSettings.PhoneHomeRigID = char(floor(rand(1,16)*25)+65);
+           end
             switch state
                 case 0
                     obj.SystemSettings.PhoneHome = 0;
+                    obj.BpodPhoneHome('Opt_Out');
                 case 1
                     obj.SystemSettings.PhoneHome = 1;
-                    if ~isfield(obj.SystemSettings, 'PhoneHomeRigID')
-                        obj.SystemSettings.PhoneHomeRigID = char(floor(rand(1,16)*25)+65);
-                    end
                     obj.BpodPhoneHome(0);
             end
             obj.SaveSettings;

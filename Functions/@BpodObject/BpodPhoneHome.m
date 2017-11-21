@@ -41,40 +41,49 @@ function BpodPhoneHome(obj, op)
 % Our goal is to make Bpod as stable as possible for Neuroscience researchers everywhere.
 % Thank you, -Josh Sanders Nov 2017.
 
-Machine = num2str(obj.MachineType);
-FV = num2str(obj.FirmwareVersion);
-SV = num2str(BpodSoftwareVersion);
-if ispc
-    WinVer = [];
-    [a,reply]=system('ver');
-    if ~isempty(strfind(reply, ' 5.1')) || ~isempty(strfind(reply, ' 5.2'))
-        WinVer = 'XP';
-    elseif ~isempty(strfind(reply, ' 6.0'))
-        WinVer = 'VA'; % Vista
-    elseif ~isempty(strfind(reply, ' 6.1'))
-        WinVer = '7';
-    elseif ~isempty(strfind(reply, ' 6.2'))
-        WinVer = '8';
-    elseif ~isempty(strfind(reply, ' 10.'))
-        WinVer = '10';
+OptedIn = 1;
+if ischar(op)
+    if strcmp(op, 'Opt_Out')
+        OptedIn = 0;
     end
-    OS = ['W' WinVer];
-elseif ismac
-    OS = 'OSX';
-else
-    OS = 'LNX';
 end
-v = ver('matlab');
-MatlabV = v.Release;
-MatlabV = MatlabV(2:end-1);
-emuMode = num2str(obj.EmulatorMode);
-if (op == 0) || (op == 1) || (op == 2)
-    OP = num2str(op);
-else
-    error('Error: Invalid op')
+
+if OptedIn == 1
+    Machine = num2str(obj.MachineType);
+    FV = num2str(obj.FirmwareVersion);
+    SV = num2str(BpodSoftwareVersion);
+    if ispc
+        WinVer = [];
+        [a,reply]=system('ver');
+        if ~isempty(strfind(reply, ' 5.1')) || ~isempty(strfind(reply, ' 5.2'))
+            WinVer = 'XP';
+        elseif ~isempty(strfind(reply, ' 6.0'))
+            WinVer = 'VA'; % Vista
+        elseif ~isempty(strfind(reply, ' 6.1'))
+            WinVer = '7';
+        elseif ~isempty(strfind(reply, ' 6.2'))
+            WinVer = '8';
+        elseif ~isempty(strfind(reply, ' 10.'))
+            WinVer = '10';
+        end
+        OS = ['W' WinVer];
+    elseif ismac
+        OS = 'OSX';
+    else
+        OS = 'LNX';
+    end
+    v = ver('matlab');
+    MatlabV = v.Release;
+    MatlabV = MatlabV(2:end-1);
+    emuMode = num2str(obj.EmulatorMode);
+    if (op == 0) || (op == 1) || (op == 2)
+        OP = num2str(op);
+    else
+        error('Error: Invalid op')
+    end
 end
 ID = obj.SystemSettings.PhoneHomeRigID;
-Key = ['WESh0ULD@LLSw1TcH2PYtHOn'];
+Key = 'WESh0ULD@LLSw1TcH2PYtHOn';
 if verLessThan('matlab', '8.1')
     Protocol = 'http://'; % MATLAB versions older than r2013a cannot use SSL without extensive configuration
     useSSL = 0;
@@ -82,7 +91,11 @@ else
     Protocol = 'https://';
     useSSL = 1;
 end
-Reply = ReadUrl([Protocol 'sanworks.io/et/phonehome.php?machine=' Machine '&firmware=' FV '&software=' SV '&os=' OS '&matver=' MatlabV '&emu=' emuMode '&op=' OP '&id=' ID '&key=' Key], useSSL);
+if OptedIn == 1
+    ReadUrl([Protocol 'sanworks.io/et/phonehome.php?machine=' Machine '&firmware=' FV '&software=' SV '&os=' OS '&matver=' MatlabV '&emu=' emuMode '&op=' OP '&id=' ID '&key=' Key], useSSL);
+else
+    ReadUrl([Protocol 'sanworks.io/et/opt_out.php?id=' ID '&key=' Key], useSSL); % Inform Sanworks LLC of the opt-out so we can accurately measure the fraction of users that chose to participate
+end
 end
 
 function str = ReadUrl(url, useSSL)
