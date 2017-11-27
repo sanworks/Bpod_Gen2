@@ -46,7 +46,7 @@ if nargin > 0
     if strcmp(varargin{1}, 'EMU')
         EmulatorDialog;
     else
-        try
+        %try
             if nargin > 1
                 ForceJava = varargin{2};
                 BpodSystem.Connect2BpodSM(varargin{1}, ForceJava);
@@ -54,9 +54,9 @@ if nargin > 0
                 BpodSystem.Connect2BpodSM(varargin{1});
             end
             BpodSetup;
-        catch
-            EmulatorDialog;
-        end
+        %catch
+        %    EmulatorDialog;
+        %end
     end
 else
     try
