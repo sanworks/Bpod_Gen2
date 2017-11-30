@@ -58,7 +58,7 @@ function obj = Connect2BpodSM(obj, portString, varargin)
         end
         if Connected
             if SkipDiscovery
-                obj.SerialPort.write('6', 'uint8');
+                obj.SerialPort.write('XZ6', 'uint8');
                 pause(.5)
                 if obj.SerialPort.bytesAvailable > 0
                     Trash = obj.SerialPort.read(obj.SerialPort.bytesAvailable, 'uint8');
