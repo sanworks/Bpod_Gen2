@@ -145,6 +145,11 @@ classdef ArCOMObject_Bpod < handle
                     pause(.2);
                     srl_flush(obj.Port);
                 case 3
+                    v = ver;
+                    hasITC = any(strcmp(cellstr(char(v.Name)), 'Instrument Control Toolbox'));
+                    if hasITC == 0
+                        error('Error: Bpod requires MATLAB instrument control toolbox to connect via TCP/IP');
+                    end
                     obj.Port = tcpip(portString,11258, 'InputBufferSize', 1000000, 'OutputBufferSize', 1000000, 'Timeout', 3);
                     fopen(obj.Port);
                     pause(.1);
