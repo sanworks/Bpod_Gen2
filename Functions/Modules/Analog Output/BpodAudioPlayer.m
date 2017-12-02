@@ -27,8 +27,8 @@ classdef BpodAudioPlayer < handle
         TriggerMode % 'Normal' plays the triggered wave(s), and ignores triggers on the same channel during playback.
         % 'Master' plays the triggered wave(s), and triggers can force-start a new wave during playback.
         % 'Toggle' plays the triggered wave(s), and stops playback if the same wave is triggered again.
-        LoopMode % 'On' loops the waveform until LoopDuration seconds, or until toggled off. 'Off' = one shot.
-        LoopDuration % (seconds) In loop mode, specifies the duration to loop the waveform following a trigger.
+        LoopMode %For each wave, 'On' loops the waveform until LoopDuration seconds, or until toggled off. 'Off' = one shot.
+        LoopDuration % (seconds) In loop mode, specifies the duration to loop the waveform following a trigger. 0 = until canceled.
         AMenvelope % If defined, a vector of amplitude coefficients for each waveform on onest + offset (in reverse)
         BpodEvents % 'On' sends byte 0x(channel) when starting playback, and 0x(channel+4) when playback finishes.
     end
@@ -36,10 +36,9 @@ classdef BpodAudioPlayer < handle
         FirmwareVersion = 0;
     end
     properties (Access = private)
-        CurrentFirmwareVersion = 1;
+        CurrentFirmwareVersion = 2;
         TriggerModeStrings = {'Normal', 'Master', 'Toggle'};
         ValidBinaryStates = {'Off', 'On'};
-        LoopModeLogic % Logic equivalent of LoopMode vector
         BpodEventsLogic % Logic equivalent of BpodEvents vector
         WaveformsLoaded = zeros(1,256);
         OutputRange = [-5 5]; % Range of sample voltages allowed
@@ -63,7 +62,7 @@ classdef BpodAudioPlayer < handle
             end
             obj.FirmwareVersion = obj.Port.read(1, 'uint32');
             if obj.FirmwareVersion < obj.CurrentFirmwareVersion
-                error(['Error: old firmware detected - v' obj.FirmwareVersion '. The current version is: ' obj.CurrentFirmwareVersion '. Please update the I2C messenger firmware using Arduino.'])
+                error(['Error: Old firmware detected: v' num2str(obj.FirmwareVersion) '. The current version is: v' num2str(obj.CurrentFirmwareVersion) '. Please update the I2C messenger firmware using Arduino.'])
             end
             obj.Port.write('N', 'uint8');
             obj.playerType = obj.Port.read(1, 'uint8');
@@ -72,11 +71,11 @@ classdef BpodAudioPlayer < handle
             obj.maxEnvelopeSamples = obj.Port.read(1, 'uint16');
             obj.maxSamplingRate = double(obj.Port.read(1, 'uint32'));
             obj.Info.maxSamplingRate = obj.maxSamplingRate;
-            triggerModeIndex = obj.Port.read(1, 'uint8')+1;
-            SamplingPeriodMicroseconds = typecast(obj.Port.read(4, 'uint8'), 'single');
-            obj.BpodEventsLogic = obj.Port.read(1, 'uint8');
-            obj.LoopModeLogic = obj.Port.read(1, 'uint8');
-            loopDurationSamples =  obj.Port.read(1, 'uint32');
+            triggerModeIndex = 1;
+            SamplingPeriodMicroseconds = single(22.675737);
+            obj.BpodEventsLogic = 0;
+            obj.LoopMode = logical(zeros(1,obj.maxWaves));
+            loopDurationSamples =  zeros(1,obj.maxWaves);
             obj.Waveforms = cell(1,obj.maxWaves); % Local copy of currently loaded waveforms
             obj.isPlaying = 0;
             obj.LoadMode = 'Fast';
@@ -88,8 +87,7 @@ classdef BpodAudioPlayer < handle
             obj.TriggerMode = obj.TriggerModeStrings{triggerModeIndex};
             obj.SamplingRate = 1/(SamplingPeriodMicroseconds/1000000);
             obj.LoopDuration = single(loopDurationSamples)*single(obj.SamplingRate);
-            obj.LoopMode = obj.ValidBinaryStates(obj.LoopModeLogic+1);
-            obj.BpodEvents = obj.ValidBinaryStates(obj.BpodEventsLogic+1);
+            obj.BpodEvents = obj.ValidBinaryStates{obj.BpodEventsLogic+1};
             obj.AMenvelope = [];
             obj.Initialized = 1;
             obj.Info.maxSounds = obj.maxWaves;
@@ -143,34 +141,30 @@ classdef BpodAudioPlayer < handle
             obj.BpodEventsLogic = BpodEvents;
             obj.BpodEvents = Events;
         end
-        function set.LoopMode(obj, ModeString)
+        function set.LoopMode(obj, LoopModes)
             if obj.Initialized
-                Mode = 0;
-                if strcmpi(ModeString, 'on')
-                    if obj.LoopDuration == 0
-                        error('Error: before enabling loop mode, you must specify a valid loop duration.')
-                    end
-                    Mode = 1;
-                elseif strcmpi(ModeString, 'off')
-                    Mode = 0;
-                else
-                    error('Error setting loop mode: status must be either ''On'' or ''Off''');
+                if length(LoopModes) ~= obj.maxWaves
+                    error('Error setting loop modes - a loop mode must exist for each wave.')
                 end
-                obj.Port.write(['O' Mode], 'uint8', obj.LoopDuration*obj.SamplingRate, 'uint32');
+                if ~islogical(LoopModes)
+                    if sum(LoopModes > 1)>0 || (sum(LoopModes < 0))>0
+                        error('Error: LoopModes must be 0 (looping disabled) or 1 (looping enabled)')
+                    end
+                end
+                obj.Port.write(['O' uint8(LoopModes)], 'uint8');
                 Confirmed = obj.Port.read(1, 'uint8');
                 if Confirmed ~= 1
                     error('Error setting loop mode. Confirm code not returned.');
                 end
-                obj.LoopModeLogic = Mode;
             end
-            obj.LoopMode = ModeString; 
+            obj.LoopMode = LoopModes; 
         end
         function set.LoopDuration(obj, Duration)
             if obj.Initialized
-                if length(Duration) ~= 1
-                    error('Error setting loop durations - one duration must be set.')
+                if length(Duration) ~= obj.maxWaves
+                    error('Error setting loop durations - a duration must exist for each wave.')
                 end
-                obj.Port.write(['O' obj.LoopModeLogic], 'uint8', Duration*obj.SamplingRate, 'uint32');
+                obj.Port.write('-', 'uint8', Duration*obj.SamplingRate, 'uint32');
                 Confirmed = obj.Port.read(1, 'uint8');
                 if Confirmed ~= 1
                     error('Error setting loop duration. Confirm code not returned.');
@@ -185,8 +179,8 @@ classdef BpodAudioPlayer < handle
                 end
                 SamplingPeriodMicroseconds = (1/sf)*1000000;
                 obj.Port.write(['S' typecast(single(SamplingPeriodMicroseconds), 'uint8')], 'uint8');
-                if sum(obj.LoopModeLogic) > 0 % Re-compute loop durations (in units of samples)
-                    obj.Port.write(['O' obj.LoopModeLogic], 'uint8', obj.LoopDuration*sf, 'uint32'); % Update loop durations
+                if sum(obj.LoopMode) > 0 % Re-compute loop durations (in units of samples)
+                    obj.Port.write('-', 'uint8', obj.LoopDuration*sf, 'uint32'); % Update loop durations
                     Confirmed = obj.Port.read(1, 'uint8');
                 end
             end
