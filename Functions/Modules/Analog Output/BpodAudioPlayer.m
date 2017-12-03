@@ -203,7 +203,7 @@ classdef BpodAudioPlayer < handle
             end
              obj.AMenvelope = Envelope;
         end
-        function loadSound(obj, SoundIndex, Waveform)
+        function loadSound(obj, SoundIndex, Waveform, varargin) % Optional argument: LoopMode (0 = off, 1 = on)
             if SoundIndex > obj.maxWaves
                 error(['Error: cannot load sound# ' num2str(SoundIndex) '; only ' num2str(obj.maxWaves) ' sounds are supported.'])
             end
@@ -214,6 +214,13 @@ classdef BpodAudioPlayer < handle
                 isStereo = 1;
             else
                 error('Error: waveform must be a 1xn (mono) or 2xn (stereo) vector');
+            end
+            CurrentLoopMode = obj.LoopMode(SoundIndex);
+            if nargin == 4
+                NewLoopMode = varargin{1};
+                if NewLoopMode ~= CurrentLoopMode
+                    obj.LoopMode(SoundIndex) = NewLoopMode;
+                end
             end
             minWave = min(min(Waveform));
             maxWave = max(max(Waveform));
