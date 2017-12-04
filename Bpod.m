@@ -39,26 +39,14 @@ addpath(genpath(fullfile(BpodPath, 'Functions')));
 
 BpodSystem = BpodObject;
 Ver = BpodSoftwareVersion;
-CurrentVer = GetCurrentBpodVersion(); % Insert 'develop' as an argument, to be alerted when dev branch updates appear
-if ~isempty(CurrentVer)
-    if Ver < CurrentVer  
-        disp( '***********************************************************')
-        disp(['UPDATE NOTICE: Bpod Console v' sprintf('%3.2f', CurrentVer) ' is available to download!'])
-        disp( '***********************************************************')
-    elseif Ver > CurrentVer
-        disp( '***********************************************************')
-        disp(['NOTE: You are running a dev version of Bpod Console: ' sprintf('%3.2f', Ver) char(10)...
-              'The latest stable release is: ' sprintf('%3.2f', CurrentVer)])
-        disp( '***********************************************************')
-    end
-end
 disp(['Starting Bpod Console v' sprintf('%3.2f', Ver)])
+
 % Try to find hardware. If none, prompt to run emulation mode.
 if nargin > 0
     if strcmp(varargin{1}, 'EMU')
         EmulatorDialog;
     else
-        try
+        %try
             if nargin > 1
                 ForceJava = varargin{2};
                 BpodSystem.Connect2BpodSM(varargin{1}, ForceJava);
@@ -66,9 +54,9 @@ if nargin > 0
                 BpodSystem.Connect2BpodSM(varargin{1});
             end
             BpodSetup;
-        catch
-            EmulatorDialog;
-        end
+        %catch
+        %    EmulatorDialog;
+        %end
     end
 else
     try

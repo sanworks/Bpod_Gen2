@@ -54,7 +54,7 @@ if ispc
 elseif ismac
     TitleXOffset = 7;
 else
-    TitleXOffset = 80;
+    TitleXOffset = 10;
 end
 xOffset = xOffset - 7;
 text(xOffset+TitleXOffset, yOffset+80,'Behavior Ports', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);

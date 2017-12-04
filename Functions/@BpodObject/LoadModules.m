@@ -19,7 +19,11 @@ function obj = LoadModules(obj)
         obj.Modules.EventNames = cell(1,nModules);
         obj.Modules.USBport = USBPairing;
         obj.SerialPort.write('M', 'uint8');
-        pause(.1);
+        if obj.SerialPort.Interface == 3 || obj.SerialPort.Interface == 4
+            pause(1);
+        else
+            pause(0.3);
+        end
         messageLength = obj.SerialPort.bytesAvailable;
         moduleEventsRequested = zeros(1,obj.HW.n.UartSerialChannels);
         if messageLength > 1
@@ -152,5 +156,7 @@ function obj = LoadModules(obj)
                 end
             end
         end
+    elseif obj.Status.BeingUsed == 1
+         BpodErrorDlg(['Cannot refresh modules.' char(10) 'Stop the session first.'], 0);
     end
 end

@@ -695,6 +695,10 @@ BpodSystem.Data = struct;
 ProtocolPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName,[ProtocolName '.m']);
 addpath(ProtocolPath);
 set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
+IsOnline = BpodSystem.check4Internet();
+if (IsOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
+    BpodSystem.BpodPhoneHome(1);
+end
 BpodSystem.Status.BeingUsed = 1;
 BpodSystem.ProtocolStartTime = now*100000;
 BpodSystem.resetSessionClock();

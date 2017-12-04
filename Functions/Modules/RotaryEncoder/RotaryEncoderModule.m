@@ -57,6 +57,7 @@ classdef RotaryEncoderModule < handle
         sweepStartTime = 0; % Time current UI sweep started
         displayPositions % UI y data
         displayTimes % UI x data
+        UIResetScheduled = 0; % 1 if a sweep should start the next time data arrives due to manual reset, 0 if not
         autoSync = 1; % If 1, update params on device when parameter fields change. If 0, don't.
     end
     methods
@@ -145,10 +146,13 @@ classdef RotaryEncoderModule < handle
             obj.Port.write('F', 'uint8');
         end
         function Data = getLoggedData(obj)
+            if obj.uiStreaming == 1
+                stop(obj.Timer);
+                obj.stopUSBStream;
+            end
             obj.Port.write('R', 'uint8');
             nPositions = obj.Port.read(1, 'uint32');
             Data = struct();
-            
             if nPositions > 0
                 Data = struct();
                 Data.nPositions = double(nPositions);
@@ -161,6 +165,10 @@ classdef RotaryEncoderModule < handle
                 Data.nPositions = 0;
                 Data.Positions = [];
                 Data.Times = [];
+            end
+            if obj.uiStreaming == 1
+                obj.startUSBStream;
+                start(obj.Timer);
             end
         end
         function zeroPosition(obj)
@@ -202,7 +210,7 @@ classdef RotaryEncoderModule < handle
         function stopUSBStream(obj)
             if obj.acquiring
                 obj.Port.write(['S' 0], 'uint8');
-                pause(.1);
+                pause(.05);
                 if obj.Port.bytesAvailable > 0
                     obj.Port.read(obj.Port.bytesAvailable, 'uint8');
                 end
@@ -210,71 +218,88 @@ classdef RotaryEncoderModule < handle
             end
         end
         function streamUI(obj)
-            obj.acquiring = 1;
-            obj.uiStreaming = 1;
-            BGColor = [0.8 0.8 0.8];
-            thresholdColors = {[0 0 1], [1 0 0], [0 1 0], [1 1 0], [0 1 1], [1 0 1]}; 
-            obj.displayPositions = nan(1,obj.nDisplaySamples);
-            obj.displayTimes = nan(1,obj.nDisplaySamples);
-            obj.gui.Fig  = figure('name','Position Stream', 'position',[100,100,800,500],...
-                'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off',...
-                'Color',BGColor, 'CloseRequestFcn', @(h,e)obj.endAcq());
-            obj.gui.Plot = axes('units','pixels', 'position',[90,70,500,400]); 
-            ylabel('Position (deg)', 'FontSize', 18); 
-            xlabel('Time (s)', 'FontSize', 18);
-            set(gca, 'xlim', [0 obj.maxDisplayTime], 'tickdir', 'out', 'FontSize', 12);
-            if obj.wrapPoint > 0
-                set(gca, 'ytick', [-obj.wrapPoint 0 obj.wrapPoint], 'ylim', [-obj.wrapPoint obj.wrapPoint]);
-            else
-                set(gca, 'ytick', [-180 0 180], 'ylim', [-180 180]);
-            end
-            Xdata = nan(1,obj.nDisplaySamples); Ydata = nan(1,obj.nDisplaySamples);
-            obj.gui.StartLine = line([0,obj.maxDisplayTime],[0,0], 'Color', [.5 .5 .5]);
-            nThresholds = length(obj.thresholds);
-            obj.gui.ThreshLine = cell(1,nThresholds);
-            for i = 1:nThresholds
-                obj.gui.ThreshLine{i} = line([0,obj.maxDisplayTime],[NaN NaN], 'Color', thresholdColors{i}, 'LineStyle', ':');
-            end
-            obj.gui.OscopeDataLine = line([Xdata,Xdata],[Ydata,Ydata]);
-            Ypos = 445;
-            uicontrol('Style', 'text', 'Position', [600 Ypos 170 30], 'String', 'Behavior Events', 'FontSize', 14,...
-                'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
-            obj.gui.UseEventsCheckbox = uicontrol('Style', 'checkbox', 'Position', [610 Ypos 30 30], 'FontSize', 12,...
-                'BackgroundColor', BGColor, 'Callback',@(h,e)obj.UIsetParams());
-            uicontrol('Style', 'text', 'Position', [630 Ypos-5 60 30], 'String', 'Enable', 'FontSize', 12,...
-                'BackgroundColor', BGColor); Ypos = Ypos - 45;
-            Ypos = 370;
-            uicontrol('Style', 'text', 'Position', [600 Ypos 180 30], 'String', 'Event Thresh (deg)', 'FontSize', 14,...
-                'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 45;
-            
-            uicontrol('Style', 'text', 'Position', [600 Ypos 30 30], 'String', '1:', 'FontSize', 14,...
-                'FontWeight', 'bold', 'BackgroundColor', BGColor, 'ForegroundColor', thresholdColors{1});
-            obj.gui.Threshold1Edit = uicontrol('Style', 'edit', 'Position', [630 Ypos+2 60 30], 'String', num2str(obj.thresholds(1)), 'FontSize', 14,...
-                'FontWeight', 'bold', 'Enable', 'off', 'Callback',@(h,e)obj.UIsetParams());
-            if nThresholds > 1
-                uicontrol('Style', 'text', 'Position', [695 Ypos 30 30], 'String', '2:', 'FontSize', 14,...
-                    'FontWeight', 'bold', 'BackgroundColor', BGColor, 'ForegroundColor', thresholdColors{2});
-                obj.gui.Threshold2Edit = uicontrol('Style', 'edit', 'Position', [725 Ypos+2 60 30], 'String', num2str(obj.thresholds(2)), 'FontSize', 14,...
+            if obj.uiStreaming == 0
+                obj.acquiring = 1;
+                obj.uiStreaming = 1;
+                BGColor = [0.8 0.8 0.8];
+                thresholdColors = {[0 0 1], [1 0 0], [0 1 0], [1 1 0], [0 1 1], [1 0 1]}; 
+                obj.displayPositions = nan(1,obj.nDisplaySamples);
+                obj.displayTimes = nan(1,obj.nDisplaySamples);
+                obj.gui.Fig  = figure('name','Position Stream', 'position',[100,100,800,500],...
+                    'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off',...
+                    'Color',BGColor, 'CloseRequestFcn', @(h,e)obj.endAcq());
+                obj.gui.Plot = axes('units','pixels', 'position',[90,70,500,400]); 
+                ylabel('Position (deg)', 'FontSize', 18); 
+                xlabel('Time (s)', 'FontSize', 18);
+                set(gca, 'xlim', [0 obj.maxDisplayTime], 'tickdir', 'out', 'FontSize', 12);
+                if obj.wrapPoint > 0
+                    set(gca, 'ytick', [-obj.wrapPoint 0 obj.wrapPoint], 'ylim', [-obj.wrapPoint obj.wrapPoint]);
+                else
+                    set(gca, 'ytick', [-180 0 180], 'ylim', [-180 180]);
+                end
+                Xdata = nan(1,obj.nDisplaySamples); Ydata = nan(1,obj.nDisplaySamples);
+                obj.gui.StartLine = line([0,obj.maxDisplayTime],[0,0], 'Color', [.5 .5 .5]);
+                nThresholds = length(obj.thresholds);
+                obj.gui.ThreshLine = cell(1,nThresholds);
+                for i = 1:nThresholds
+                    obj.gui.ThreshLine{i} = line([0,obj.maxDisplayTime],[NaN NaN], 'Color', thresholdColors{i}, 'LineStyle', ':');
+                end
+                obj.gui.OscopeDataLine = line([Xdata,Xdata],[Ydata,Ydata]);
+                Ypos = 445;
+                uicontrol('Style', 'text', 'Position', [600 Ypos 170 30], 'String', 'Behavior Events', 'FontSize', 14,...
+                    'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
+                obj.gui.UseEventsCheckbox = uicontrol('Style', 'checkbox', 'Position', [610 Ypos 30 30], 'FontSize', 12,...
+                    'BackgroundColor', BGColor, 'Callback',@(h,e)obj.UIsetParams());
+                uicontrol('Style', 'text', 'Position', [630 Ypos-5 60 30], 'String', 'Enable', 'FontSize', 12,...
+                    'BackgroundColor', BGColor); Ypos = Ypos - 45;
+                Ypos = 370;
+                uicontrol('Style', 'text', 'Position', [600 Ypos 180 30], 'String', 'Event Thresh (deg)', 'FontSize', 14,...
+                    'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 45;
+
+                uicontrol('Style', 'text', 'Position', [600 Ypos 30 30], 'String', '1:', 'FontSize', 14,...
+                    'FontWeight', 'bold', 'BackgroundColor', BGColor, 'ForegroundColor', thresholdColors{1});
+                obj.gui.Threshold1Edit = uicontrol('Style', 'edit', 'Position', [630 Ypos+2 60 30], 'String', num2str(obj.thresholds(1)), 'FontSize', 14,...
                     'FontWeight', 'bold', 'Enable', 'off', 'Callback',@(h,e)obj.UIsetParams());
+                if nThresholds > 1
+                    uicontrol('Style', 'text', 'Position', [695 Ypos 30 30], 'String', '2:', 'FontSize', 14,...
+                        'FontWeight', 'bold', 'BackgroundColor', BGColor, 'ForegroundColor', thresholdColors{2});
+                    obj.gui.Threshold2Edit = uicontrol('Style', 'edit', 'Position', [725 Ypos+2 60 30], 'String', num2str(obj.thresholds(2)), 'FontSize', 14,...
+                        'FontWeight', 'bold', 'Enable', 'off', 'Callback',@(h,e)obj.UIsetParams());
+                end
+                Ypos = 225;
+                obj.gui.ThresholdResetButton = uicontrol('Style', 'pushbutton', 'Position', [610 Ypos 175 30], 'String', 'Reset Thresholds', 'FontSize', 14,...
+                        'FontWeight', 'bold','Callback',@(h,e)obj.enableThresholds(ones(1,nThresholds))); Ypos = Ypos + 50;
+                obj.gui.ThresholdResetButton = uicontrol('Style', 'pushbutton', 'Position', [610 Ypos 175 30], 'String', 'Reset Position', 'FontSize', 14,...
+                        'FontWeight', 'bold','Callback',@(h,e)obj.zeroPosition());
+                Ypos = 175;
+                uicontrol('Style', 'text', 'Position', [600 Ypos 150 30], 'String', 'Output Stream', 'FontSize', 14,...
+                    'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
+                obj.gui.OutputStreamCheckbox = uicontrol('Style', 'checkbox', 'Position', [610 Ypos 30 30], 'FontSize', 12,...
+                    'BackgroundColor', BGColor, 'Callback',@(h,e)obj.UIsetParams(), 'Value', strcmp(obj.moduleOutputStream, 'on'));
+                uicontrol('Style', 'text', 'Position', [630 Ypos-5 60 30], 'String', 'Enable', 'FontSize', 12,...
+                    'BackgroundColor', BGColor); Ypos = Ypos - 45;
+                obj.displayPos = 1;
+                obj.sweepStartTime = 0;
+                drawnow;
+                obj.Timer = timer('TimerFcn',@(h,e)obj.updatePlot(), 'ExecutionMode', 'fixedRate', 'Period', 0.05);
+                obj.startUSBStream();
+                start(obj.Timer);
+            else
+                error('Error: A rotary encoder streamUI window is already open. Please close it and try again.');
             end
-            Ypos = 225;
-            obj.gui.ThresholdResetButton = uicontrol('Style', 'pushbutton', 'Position', [610 Ypos 175 30], 'String', 'Reset Thresholds', 'FontSize', 14,...
-                    'FontWeight', 'bold','Callback',@(h,e)obj.enableThresholds(ones(1,nThresholds))); Ypos = Ypos + 50;
-            obj.gui.ThresholdResetButton = uicontrol('Style', 'pushbutton', 'Position', [610 Ypos 175 30], 'String', 'Reset Position', 'FontSize', 14,...
-                    'FontWeight', 'bold','Callback',@(h,e)obj.zeroPosition());
-            Ypos = 175;
-            uicontrol('Style', 'text', 'Position', [600 Ypos 150 30], 'String', 'Output Stream', 'FontSize', 14,...
-                'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
-            obj.gui.OutputStreamCheckbox = uicontrol('Style', 'checkbox', 'Position', [610 Ypos 30 30], 'FontSize', 12,...
-                'BackgroundColor', BGColor, 'Callback',@(h,e)obj.UIsetParams(), 'Value', strcmp(obj.moduleOutputStream, 'on'));
-            uicontrol('Style', 'text', 'Position', [630 Ypos-5 60 30], 'String', 'Enable', 'FontSize', 12,...
-                'BackgroundColor', BGColor); Ypos = Ypos - 45;
-            obj.displayPos = 1;
-            obj.sweepStartTime = 0;
-            drawnow;
-            obj.Timer = timer('TimerFcn',@(h,e)obj.updatePlot(), 'ExecutionMode', 'fixedRate', 'Period', 0.05);
-            obj.startUSBStream();
-            start(obj.Timer);
+        end
+        function showThresholds(obj, State)
+            if State == 1
+                obj.updateThresh(1);
+            else
+                obj.updateThresh(0);
+            end
+        end
+        function clearUI(obj) % Clears data shown on UI (does not reset current sweep)
+            obj.displayPositions(1:obj.displayPos) = NaN;
+            obj.displayTimes(1:obj.displayPos) = NaN;
+            set(obj.gui.OscopeDataLine,'xdata',[obj.displayTimes, obj.displayTimes], 'ydata', [obj.displayPositions, obj.displayPositions]); drawnow;
+            obj.UIResetScheduled = 1;
         end
         
         function delete(obj)
@@ -296,7 +321,7 @@ classdef RotaryEncoderModule < handle
             if ~isempty(newData.Positions)
                 DisplayTime = (newData.Times(end)-obj.sweepStartTime);
                 obj.displayPos = obj.displayPos + newData.nPositions;
-                if DisplayTime >= obj.maxDisplayTime
+                if (DisplayTime >= obj.maxDisplayTime) || (obj.UIResetScheduled == 1)
                     obj.displayPositions(1:obj.displayPos) = NaN;
                     obj.displayTimes(1:obj.displayPos) = NaN;
                     obj.displayPos = 1;
@@ -308,6 +333,7 @@ classdef RotaryEncoderModule < handle
                     obj.displayTimes(obj.displayPos-newData.nPositions+1:obj.displayPos) = SweepTimes;
                 end
                 set(obj.gui.OscopeDataLine,'xdata',[obj.displayTimes, obj.displayTimes], 'ydata', [obj.displayPositions, obj.displayPositions]); drawnow;
+                obj.UIResetScheduled = 0;
             end
         end
         function UIsetParams(obj)
@@ -327,19 +353,9 @@ classdef RotaryEncoderModule < handle
             end
             useEvents = get(obj.gui.UseEventsCheckbox, 'Value');
             if useEvents
-                set(obj.gui.Threshold1Edit, 'enable', 'on');           
-                set(obj.gui.ThreshLine{1}, 'Ydata', [obj.thresholds(1),obj.thresholds(1)]);
-                if nThresholds > 1
-                    set(obj.gui.Threshold2Edit, 'enable', 'on');
-                    set(obj.gui.ThreshLine{2}, 'Ydata', [obj.thresholds(2),obj.thresholds(2)]);
-                end
+                obj.updateThresh(1);
             else
-                set(obj.gui.Threshold1Edit, 'enable', 'off');
-                set(obj.gui.ThreshLine{1}, 'Ydata', [NaN NaN]);
-                if nThresholds > 1
-                    set(obj.gui.Threshold2Edit, 'enable', 'off');
-                    set(obj.gui.ThreshLine{2}, 'Ydata', [NaN NaN]);
-                end
+                obj.updateThresh(0);
             end
             useOutputStream = get(obj.gui.OutputStreamCheckbox, 'Value');
             
@@ -365,6 +381,23 @@ classdef RotaryEncoderModule < handle
             end
             obj.Port.write(['S' 1], 'uint8');
             start(obj.Timer);
+        end
+        function updateThresh(obj,State)
+            nThresholds = length(obj.thresholds);
+            if State == 1
+                 set(obj.gui.ThreshLine{1}, 'Ydata', [obj.thresholds(1),obj.thresholds(1)]);
+                if nThresholds > 1
+                    set(obj.gui.Threshold2Edit, 'enable', 'on');
+                    set(obj.gui.ThreshLine{2}, 'Ydata', [obj.thresholds(2),obj.thresholds(2)]);
+                end
+            else
+                set(obj.gui.Threshold1Edit, 'enable', 'off');
+                set(obj.gui.ThreshLine{1}, 'Ydata', [NaN NaN]);
+                if nThresholds > 1
+                    set(obj.gui.Threshold2Edit, 'enable', 'off');
+                    set(obj.gui.ThreshLine{2}, 'Ydata', [NaN NaN]);
+                end
+            end
         end
         function degrees = pos2degrees(obj, pos)
             degrees = round(((double(pos)/512)*180)*10)/10;
