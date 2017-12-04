@@ -58,9 +58,11 @@ function obj = Connect2BpodSM(obj, portString, varargin)
         end
         if Connected
             if SkipDiscovery
-                obj.SerialPort.write('6', 'uint8');
+                obj.SerialPort.write('XZ6', 'uint8');
                 pause(.5)
-                Trash = obj.SerialPort.read(obj.SerialPort.bytesAvailable, 'uint8');
+                if obj.SerialPort.bytesAvailable > 0
+                    Trash = obj.SerialPort.read(obj.SerialPort.bytesAvailable, 'uint8');
+                end
                 obj.SerialPort.write('6', 'uint8');
                 Reply = obj.SerialPort.read(1, 'uint8');
                 if (Reply == '5') % If the Bpod state machine replied correctly

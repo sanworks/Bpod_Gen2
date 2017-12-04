@@ -22,7 +22,11 @@ if BpodSystem.MachineType == 3
     EventOffset = 150;
 else
     Xstep = 130;
-    OutputActionOffset = 50;
+    if BpodSystem.StateMachineInfo.nEvents > 111
+        OutputActionOffset = 50;
+    else
+        OutputActionOffset = 0;
+    end
     EventOffset = 180;
 end
 if BpodSystem.StateMachineInfo.nEvents > 111
