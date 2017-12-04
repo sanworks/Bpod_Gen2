@@ -226,4 +226,5 @@ function obj = InitializeGUI(obj)
             obj.PhoneHomeOpt_In_Out();
         end
     end
+    set(obj.GUIHandles.MainFig, 'HandleVisibility', 'callback');
 end
