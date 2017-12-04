@@ -156,5 +156,7 @@ function obj = LoadModules(obj)
                 end
             end
         end
+    elseif obj.Status.BeingUsed == 1
+         BpodErrorDlg(['Cannot refresh modules.' char(10) 'Stop the session first.'], 0);
     end
 end
