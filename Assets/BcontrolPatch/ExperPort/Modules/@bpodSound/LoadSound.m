@@ -52,7 +52,7 @@ function [sm] = LoadSound(sm, trignum, sound, side, tau_ms, predelay_s, loop_fg)
    if strcmp(side, 'both'),
      mydata.(['sound' num2str(trignum)]) = sound;
      set(sm.myfig, 'UserData', mydata);
-     BpodSystem.PluginObjects.SoundServer.loadSound(trignum, sound);
+     BpodSystem.PluginObjects.SoundServer.loadSound(trignum, sound, loop_fg);
      return
    end;
    
@@ -86,7 +86,7 @@ function [sm] = LoadSound(sm, trignum, sound, side, tau_ms, predelay_s, loop_fg)
     
    mydata.(['sound' num2str(trignum)]) = nd;      
    set(sm.myfig, 'UserData', mydata);
-   BpodSystem.PluginObjects.SoundServer.loadSound(trignum, nd);
+   BpodSystem.PluginObjects.SoundServer.loadSound(trignum, nd, loop_fg);
    return;
    
    
