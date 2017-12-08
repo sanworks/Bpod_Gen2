@@ -345,7 +345,28 @@ if isUsingHappenings(sma)
     hStates = find(~cellfun(@isempty, hList));
     nHappStates = length(hStates);
     nTotalStates = length(hList)-39;
-    standardEvents = ColLabelNames(1:TupPos-1);
+    standardEventsFromSM = ColLabelNames(1:TupPos-1); % Could be used to sanity check procedural standard events (below)
+    nLogicInputChannels = length(BpodSystem.PluginObjects.Bcontrol2Bpod_DI_Map);
+    standardEvents = cell(1,nLogicInputChannels);
+    standardEventPos = 0;
+    for i = 1:nLogicInputChannels
+        standardEventPos = standardEventPos + 1;
+        switch BpodSystem.PluginObjects.Bcontrol2Bpod_DI_Map{i}
+            case 'C'
+                standardEvents{standardEventPos} = 'Cin';
+                standardEventPos = standardEventPos + 1;
+                standardEvents{standardEventPos} = 'Cout';
+            case 'L'
+                standardEvents{standardEventPos} = 'Lin';
+                standardEventPos = standardEventPos + 1;
+                standardEvents{standardEventPos} = 'Lout';
+            case 'R'
+                standardEvents{standardEventPos} = 'Rin';
+                standardEventPos = standardEventPos + 1;
+                standardEvents{standardEventPos} = 'Rout';
+        end
+    end
+    
     nConditionsSet = 0;
     portOffset = BpodSystem.HW.Pos.Event_Port-1;
     % Create happening map and load conditions
