@@ -31,6 +31,7 @@ classdef BpodClientObject < handle
         host
         port
         nDOlines
+        nDIlines
         SMmeta
         CurrentEvents
         CurrentEventTimestamps
@@ -103,13 +104,38 @@ classdef BpodClientObject < handle
                     obj.DIOChannelMap.Index(i) = nWires; %PortChannels(nWires);
                     obj.DIOChannelMap.Chan(i) = wirePos(nWires);
                 else
-                    error('Error: your Settings_Custom.conf file specifies too many output channels for Bpod hardware.')
+                    error('Error: your Settings_Custom.conf file specifies more output channels than your Bpod state machine supports.')
                 end
             end
+            % Generate Input channel map
+            input_lines = bSettings('get','INPUTLINES','all');
+            namesIn = input_lines(:,1); % Should always be {'C'; 'L'; 'R'} regardless of order in Settings_Custom.conf
+            lineCodesIn = cell2mat(input_lines(:,2))';
+            portPosIn = find(BpodSystem.HW.Inputs == 'P');
+            obj.nDIlines = length(lineCodesIn);
+            obj.DINChannelMap.Type = zeros(1,obj.nDOlines);
+            obj.DINChannelMap.Index = zeros(1,obj.nDIlines);
+            obj.DINChannelMap.Chan = zeros(1,obj.nDIlines);
+            portPosIn = portPosIn(1:obj.nDIlines);
+            nPortsIn = 0;
+            for i = 1:obj.nDIlines
+                nPortsIn = nPortsIn + 1;
+                thisLine = lineCodesIn(nPortsIn);
+                obj.DINChannelMap.Type(i) = 'P';
+                obj.DINChannelMap.Index(i) = thisLine;
+                obj.DINChannelMap.Chan(i) = portPosIn(thisLine);
+            end
+            
             % Generate reference map for quick Bcontrol dout channel -> Bpod output channel conversion
             DIO = [valvePos; portPos];
             DIO = DIO(1:end);
             BpodSystem.PluginObjects.Bcontrol2Bpod_DO_Map = [DIO bncPos];
+            
+            % Generate reference map for quick Bcontrol din channel -> Bpod input channel conversion 
+            % Note: This is simply the order specified in Settings_Custom,
+            % not an analog of the DO_MAP
+            BpodSystem.PluginObjects.Bcontrol2Bpod_DI_Map = namesIn(lineCodesIn)';
+            
             % Check for waveplayer - if it exists, initialize it
             if ~isfield(BpodSystem.PluginObjects, 'WavePlayer')
                 if sum(strcmp('WavePlayer1', BpodSystem.Modules.Name)) > 0
