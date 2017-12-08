@@ -49,6 +49,7 @@ classdef BpodClientObject < handle
         hapMap % Map of Bpod input event codes to happSpec indexes
         LastEventTime % Actual last event time returned from SM
         LastEventTime_MATLAB % Last event time, as recorded using now()
+        isPaused % True if paused, False if not
     end
     methods
         function obj = BpodClientObject(host, port)
@@ -155,8 +156,8 @@ classdef BpodClientObject < handle
                     end
                 else
                     disp('############################################################');
-              disp(['ALERT! No WavePlayer module detected!' char(10) 'Protocols will error out if analog scheduled waves are used.'])
-              disp('############################################################');
+                    disp(['ALERT! No WavePlayer module detected!' char(10) 'Protocols will error out if analog scheduled waves are used.'])
+                    disp('############################################################');
                 end
             end
             % Generate generic state names in advance (to speed up SM translation)
@@ -169,6 +170,7 @@ classdef BpodClientObject < handle
             obj.NewSMLoaded = 0;
             obj.TrialDoneFlag = 0;
             obj.usingHappenings = 0;
+            obj.isPaused = 0;
             obj.TimeScaleFactor = (BpodSystem.HW.CyclePeriod/1000000);
         end
         function connect(obj)
@@ -190,7 +192,7 @@ classdef BpodClientObject < handle
                 end
             end
             for cmd = 1:nCommands
-                thisCommand = Commands{cmd};
+                thisCommand = Commands{cmd}
                 %disp(thisCommand);
                 if ~isempty(strfind(thisCommand, 'BYPASS'))
                     msg = thisCommand(8:end);
@@ -238,6 +240,23 @@ classdef BpodClientObject < handle
                         case 'VERSION'
                             obj.ReplyBuffer = num2str(BpodSystem.FirmwareVersion);
                         case 'INITIALIZE'
+                            if BpodSystem.Status.InStateMatrix
+                               BpodSystem.Status.Live = 0;
+                                if BpodSystem.EmulatorMode == 0
+                                    BpodSystem.SerialPort.write('X', 'uint8');
+                                    pause(.1);
+                                    nBytes = BpodSystem.SerialPort.bytesAvailable;
+                                    if nBytes > 0
+                                        BpodSystem.SerialPort.read(nBytes, 'uint8');
+                                    end
+                                    if isfield(BpodSystem.PluginSerialPorts, 'TeensySoundServer')
+                                        TeensySoundServer('end');
+                                    end   
+                                end
+                                BpodSystem.Status.InStateMatrix = 0;
+                                BpodSystem.Status.NewStateMachineSent = 0;
+                                obj.isPaused = 0;
+                            end
                             obj.nTrialsCompleted = 0;
                             obj.TrialStartTimestamp = 0;
                             BpodSystem.SerialPort.write('*', 'uint8'); % Reset session clock
@@ -263,48 +282,41 @@ classdef BpodClientObject < handle
                             obj.happeningSpec = varargin{1};
                             obj.usingHappenings = 1;
                         case 'HALT'
-                            BpodSystem.Status.Live = 0;
-                            if BpodSystem.EmulatorMode == 0
-                                BpodSystem.SerialPort.write('X', 'uint8');
-                                pause(.1);
-                                nBytes = BpodSystem.SerialPort.bytesAvailable;
-                                if nBytes > 0
-                                    BpodSystem.SerialPort.read(nBytes, 'uint8');
-                                end
-                                if isfield(BpodSystem.PluginSerialPorts, 'TeensySoundServer')
-                                    TeensySoundServer('end');
-                                end   
-                            end
-                            BpodSystem.Status.NewStateMachineSent = 0;
-                            BpodSystem.Status.InStateMatrix = 0;
+                            BpodSystem.SerialPort.write(['$' 0], 'uint8');
+                            obj.isPaused = 1;
                         case 'RUN'
-                            BpodSystem.SerialPort.write('R', 'uint8'); % Send the code to run the loaded matrix (character "R" for Run)
-                            if BpodSystem.Status.NewStateMachineSent % Read confirmation byte = successful state machine transmission
-                                SMA_Confirmed = BpodSystem.SerialPort.read(1, 'uint8');
-                                if isempty(SMA_Confirmed) 
-                                    error('Error: The last state machine sent was not acknowledged by the Bpod device.');
-                                elseif SMA_Confirmed ~= 1
-                                    error('Error: The last state machine sent was not acknowledged by the Bpod device.');
+                            if obj.isPaused == 0
+                                BpodSystem.SerialPort.write('R', 'uint8'); % Send the code to run the loaded matrix (character "R" for Run)
+                                if BpodSystem.Status.NewStateMachineSent % Read confirmation byte = successful state machine transmission
+                                    SMA_Confirmed = BpodSystem.SerialPort.read(1, 'uint8');
+                                    if isempty(SMA_Confirmed) 
+                                        error('Error: The last state machine sent was not acknowledged by the Bpod device.');
+                                    elseif SMA_Confirmed ~= 1
+                                        error('Error: The last state machine sent was not acknowledged by the Bpod device.');
+                                    end
+                                    BpodSystem.Status.NewStateMachineSent = 0;
                                 end
-                                BpodSystem.Status.NewStateMachineSent = 0;
+                                TrialStartTimestampBytes = BpodSystem.SerialPort.read(8, 'uint8');
+                                obj.TrialStartTimestamp = double(typecast(TrialStartTimestampBytes, 'uint64'))/1000000; % Start-time of the trial in microseconds (compensated for 32-bit clock rollover)
+                                BpodSystem.StateMatrix = BpodSystem.StateMatrixSent;
+                                BpodSystem.Status.LastStateCode = 0;
+                                BpodSystem.Status.CurrentStateCode = 1;
+                                BpodSystem.Status.LastStateName = 'None';
+                                BpodSystem.Status.CurrentStateName = BpodSystem.StateMatrix.StateNames{1};
+                                BpodSystem.HardwareState.OutputOverride(1:end) = 0;
+                                obj.SetBpodHardwareMirror2CurrentState(1);
+                                BpodSystem.Status.InStateMatrix = 1;
+                                obj.CurrentEvents = zeros(1,obj.MaxEvents); 
+                                obj.CurrentEventTimestamps = zeros(1,obj.MaxEvents);
+                                obj.NewSMLoaded = 1;
+                                obj.nTotalEvents = 0;
+                                obj.LastEventTime = 0;
+                                obj.LastEventTime_MATLAB = now;
+                                BpodSystem.PluginObjects.BcontrolEventCodeMap = BpodSystem.PluginObjects.BcontrolEventCodeMapBuffer;
+                            else
+                                BpodSystem.SerialPort.write(['$' 1], 'uint8');
+                                obj.isPaused = 0;
                             end
-                            TrialStartTimestampBytes = BpodSystem.SerialPort.read(8, 'uint8');
-                            obj.TrialStartTimestamp = double(typecast(TrialStartTimestampBytes, 'uint64'))/1000000; % Start-time of the trial in microseconds (compensated for 32-bit clock rollover)
-                            BpodSystem.StateMatrix = BpodSystem.StateMatrixSent;
-                            BpodSystem.Status.LastStateCode = 0;
-                            BpodSystem.Status.CurrentStateCode = 1;
-                            BpodSystem.Status.LastStateName = 'None';
-                            BpodSystem.Status.CurrentStateName = BpodSystem.StateMatrix.StateNames{1};
-                            BpodSystem.HardwareState.OutputOverride(1:end) = 0;
-                            obj.SetBpodHardwareMirror2CurrentState(1);
-                            BpodSystem.Status.InStateMatrix = 1;
-                            obj.CurrentEvents = zeros(1,obj.MaxEvents); 
-                            obj.CurrentEventTimestamps = zeros(1,obj.MaxEvents);
-                            obj.NewSMLoaded = 1;
-                            obj.nTotalEvents = 0;
-                            obj.LastEventTime = 0;
-                            obj.LastEventTime_MATLAB = now;
-                            BpodSystem.PluginObjects.BcontrolEventCodeMap = BpodSystem.PluginObjects.BcontrolEventCodeMapBuffer;
                         case 'GET EVENT COUNTER'
                             obj.nUnreadEvents = 0;
                             nBytesAvailable = BpodSystem.SerialPort.bytesAvailable;
