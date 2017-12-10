@@ -109,10 +109,19 @@ classdef ArCOMObject_Bpod < handle
                 end
             end
             obj.validDataTypes = {'char', 'uint8', 'uint16', 'uint32', 'int8', 'int16', 'int32'};
-            % If PortString is an IP address, set Interface to 3 (TCP/IP via Instrument Control Toolbox)
+            % If PortString is an IP address, set Interface to 3 or 4 (TCP/IP via Instrument Control or Psych Toolbox)
             if (portString(1) > 47) && (portString(1) < 58) && sum(portString == '.') > 2
-                obj.Interface = 3; 
-                %obj.Interface = 4;
+                v = ver;
+                hasITC = any(strcmp(cellstr(char(v.Name)), 'Instrument Control Toolbox'));
+                if hasITC == 0
+                    if obj.UsePsychToolbox == 0
+                        error ('Error: You must install PsychToolbox or MATLAB Instrument Control Toolbox to connect to a Bpod state machine via Ethernet.')
+                    else
+                        obj.Interface = 4;
+                    end
+                else
+                   obj.Interface = 3; 
+                end 
             end
             originalPortString = portString;
             switch obj.Interface
@@ -145,11 +154,6 @@ classdef ArCOMObject_Bpod < handle
                     pause(.2);
                     srl_flush(obj.Port);
                 case 3
-                    v = ver;
-                    hasITC = any(strcmp(cellstr(char(v.Name)), 'Instrument Control Toolbox'));
-                    if hasITC == 0
-                        error('Error: Bpod requires MATLAB instrument control toolbox to connect via TCP/IP');
-                    end
                     obj.Port = tcpip(portString,11258, 'InputBufferSize', 1000000, 'OutputBufferSize', 1000000, 'Timeout', 3);
                     fopen(obj.Port);
                     pause(.1);
@@ -161,9 +165,6 @@ classdef ArCOMObject_Bpod < handle
                         error(['Error: Could not connect to server at ' portString])
                     end
                 case 4
-                    if obj.UsePsychToolbox == 0
-                        error ('Error: You must install PsychToolbox to connect to a Bpod state machine via Ethernet.')
-                    end
                     obj.Port = pnet('tcpconnect',portString,11258);
                     pause(.1);
                     pnet(obj.Port,'setwritetimeout',3);
@@ -294,7 +295,7 @@ classdef ArCOMObject_Bpod < handle
                 case 3
                     fwrite(obj.Port, ['R' typecast(uint32(length(ByteString)), 'uint8'), ByteString]);
                 case 4
-                    pnet(obj.Port,'write', ['R' typecast(uint32(length(ByteString)), 'uint8'), ByteString]);
+                    pnet(obj.Port,'write', uint8(['R' typecast(uint32(length(ByteString)), 'uint8'), ByteString]));
             end
         end
         function varargout = read(obj, varargin)
@@ -341,7 +342,7 @@ classdef ArCOMObject_Bpod < handle
                 case 3
                     ByteString = fread(obj.Port, nTotalBytes, 'uint8')';
                 case 4
-                    ByteString = uint8(pnet(obj.Port,'read', nTotalBytes));
+                    ByteString = uint8(pnet(obj.Port,'read', nTotalBytes, 'uint8'));
             end
             if isempty(ByteString)
                 error('Error: The serial port returned 0 bytes.')
