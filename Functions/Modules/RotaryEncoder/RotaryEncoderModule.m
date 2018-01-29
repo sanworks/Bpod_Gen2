@@ -40,7 +40,8 @@ classdef RotaryEncoderModule < handle
         Port % ArCOM Serial port
         Timer % MATLAB timer (for updating the UI)
         thresholds = [-40 40]; % Encoder position thresholds, in degrees, used to generate behavior events
-        wrapPoint = 180; % Point at which position wraps around, in degrees. Set to 0 to deactivate wrapping.
+        wrapPoint = 180; % Point at which position wraps around, in degrees. Set to 0 to inactivate wrapping.
+        wrapMode = 'bipolar'; % 'bipolar' (position wraps to negative value) or 'unipolar' (wraps to 0) 
         sendThresholdEvents = 'off';
         moduleOutputStream = 'off';
         moduleStreamPrefix = 'M';
@@ -59,6 +60,8 @@ classdef RotaryEncoderModule < handle
         displayTimes % UI x data
         UIResetScheduled = 0; % 1 if a sweep should start the next time data arrives due to manual reset, 0 if not
         autoSync = 1; % If 1, update params on device when parameter fields change. If 0, don't.
+        validWrapModes = {'bipolar', 'unipolar'};
+        wrapModeByte = 1; % current wrap mode position in validWrapModes
     end
     methods
         function obj = RotaryEncoderModule(portString)
@@ -112,6 +115,17 @@ classdef RotaryEncoderModule < handle
             obj.Port.write('W', 'uint8', newWrapPointTics, 'int16');
             obj.ConfirmUSBTransmission('Module Wrap Point');
             obj.wrapPoint = newWrapPoint;
+        end
+        function set.wrapMode(obj, newWrapMode)
+            newWrapModeValue = find(strcmpi(newWrapMode, obj.validWrapModes));
+            if isempty(newWrapModeValue)
+                error(['Error: Invalid wrap mode: ' newWrapMode '. Valid wrap modes are: ' obj.validWrapModes])
+            end
+            
+            obj.Port.write(['M' newWrapModeValue-1], 'uint8');
+            obj.ConfirmUSBTransmission('Wrap Mode');
+            obj.wrapModeByte = newWrapModeValue;
+            obj.wrapMode = newWrapMode;
         end
         function set.sendThresholdEvents(obj, stateString)
             stateString = lower(stateString);
@@ -233,7 +247,11 @@ classdef RotaryEncoderModule < handle
                 xlabel('Time (s)', 'FontSize', 18);
                 set(gca, 'xlim', [0 obj.maxDisplayTime], 'tickdir', 'out', 'FontSize', 12);
                 if obj.wrapPoint > 0
-                    set(gca, 'ytick', [-obj.wrapPoint 0 obj.wrapPoint], 'ylim', [-obj.wrapPoint obj.wrapPoint]);
+                    if obj.wrapModeByte == 1
+                      set(gca, 'ytick', [-obj.wrapPoint 0 obj.wrapPoint], 'ylim', [-obj.wrapPoint obj.wrapPoint]);
+                    elseif obj.wrapModeByte == 2
+                      set(gca, 'ytick', [0 obj.wrapPoint], 'ylim', [0 obj.wrapPoint]);  
+                    end
                 else
                     set(gca, 'ytick', [-180 0 180], 'ylim', [-180 180]);
                 end
@@ -385,6 +403,7 @@ classdef RotaryEncoderModule < handle
         function updateThresh(obj,State)
             nThresholds = length(obj.thresholds);
             if State == 1
+                 set(obj.gui.Threshold1Edit, 'enable', 'on');
                  set(obj.gui.ThreshLine{1}, 'Ydata', [obj.thresholds(1),obj.thresholds(1)]);
                 if nThresholds > 1
                     set(obj.gui.Threshold2Edit, 'enable', 'on');
