@@ -62,6 +62,8 @@ classdef RotaryEncoderModule < handle
         autoSync = 1; % If 1, update params on device when parameter fields change. If 0, don't.
         validWrapModes = {'bipolar', 'unipolar'};
         wrapModeByte = 1; % current wrap mode position in validWrapModes
+        NewDataTemplate = struct; % Template struct for new data (copied when streaming data is read to save time)
+        isLogging = 0; % True if logging to microSD card, false if not
     end
     methods
         function obj = RotaryEncoderModule(portString)
@@ -74,7 +76,16 @@ classdef RotaryEncoderModule < handle
             obj.syncParams();
             obj.displayPositions = nan(1,obj.nDisplaySamples); % UI y data
             obj.displayTimes = nan(1,obj.nDisplaySamples); % UI x data
+            % Set up template struct for new streaming data
+            obj.NewDataTemplate.nPositions = 0;
+            obj.NewDataTemplate.Positions = zeros(1,1000);
+            obj.NewDataTemplate.Times = zeros(1,1000);
+            obj.NewDataTemplate.nEvents = 0;
+            obj.NewDataTemplate.EventTypes = uint8(zeros(1,1000));
+            obj.NewDataTemplate.EventCodes = uint8(zeros(1,1000));
+            obj.NewDataTemplate.EventTimestamps = zeros(1,1000);
         end
+        
         function pos = currentPosition(obj)
             obj.Port.write('Q', 'uint8');
             pos = obj.pos2degrees(obj.Port.read(1, 'int16'));
@@ -155,9 +166,11 @@ classdef RotaryEncoderModule < handle
         end
         function startLogging(obj)
             obj.Port.write('L', 'uint8');
+            obj.isLogging = 1;
         end
         function stopLogging(obj)
             obj.Port.write('F', 'uint8');
+            obj.isLogging = 0;
         end
         function Data = getLoggedData(obj)
             if obj.uiStreaming == 1
@@ -201,24 +214,70 @@ classdef RotaryEncoderModule < handle
             obj.Port.write([';' ThresholdEnabledBits], 'uint8');
         end
         function startUSBStream(obj)
-            obj.acquiring = 1;
-            obj.Port.write(['S' 1], 'uint8');
+            if obj.isLogging == 0
+                obj.acquiring = 1;
+                obj.Port.write(['S' 1], 'uint8');
+            else
+                error('Error: The Rotary Encoder Module is logging to microSD. Turn off logging with stopLogging() to enable USB streaming.')
+            end
         end
         function NewData = readUSBStream(obj)
             if ~obj.acquiring
                 error('Error: the USB stream must be started with startUSBStream() before you can read stream data from the buffer.')
             end
-            BytesAvailable = obj.Port.bytesAvailable;
-            NewData = struct;
-            NewData.nPositions = 0;
-            NewData.Positions = [];
-            NewData.Times = [];
-            if BytesAvailable > 5
-                nBytesToRead = floor(BytesAvailable/6)*6;
-                Message = obj.Port.read(nBytesToRead, 'uint8');
-                NewData.nPositions = length(Message)/6;
-                NewData.Positions = obj.pos2degrees(typecast(Message(obj.positionBytemask(1:6*NewData.nPositions)), 'int16'));
-                NewData.Times = double(typecast(Message(obj.timeBytemask(1:6*NewData.nPositions)), 'uint32'))/1000;
+            NewData = obj.NewDataTemplate;
+            nNewDataPoints = 0;
+            nNewEvents = 0;
+            if (obj.Port.bytesAvailable > 0) 
+                Msg = obj.Port.read(obj.Port.bytesAvailable, 'uint8');
+                MsgInd = 1;
+                while MsgInd < length(Msg)
+                    thisOp = Msg(MsgInd);
+                    switch thisOp
+                        case 'P' % Position  
+                            MsgInd = MsgInd + 1;
+                            nPositions = double(Msg(MsgInd));
+                            MsgInd = MsgInd + 1;
+                            Positions = Msg(MsgInd:MsgInd+(6*nPositions)-1);
+                            MsgInd = MsgInd + (6*nPositions)-1;
+                            NewData.nPositions = NewData.nPositions + nPositions;
+                            NewData.Positions(nNewDataPoints+1:nNewDataPoints+nPositions) = obj.pos2degrees(typecast(Positions(obj.positionBytemask(1:6*nPositions)), 'int16'));
+                            NewData.Times(nNewDataPoints+1:nNewDataPoints+nPositions) = double(typecast(Positions(obj.timeBytemask(1:6*nPositions)), 'uint32'))/1000;
+                            nNewDataPoints = nNewDataPoints + nPositions;
+                            MsgInd = MsgInd + 1;
+                        case 'E' % Event
+                            MsgInd = MsgInd + 1;
+                            EventData = Msg(MsgInd:MsgInd+5);
+                            nNewEvents = nNewEvents + 1;
+                            MsgInd = MsgInd + 6;
+                            NewData.nEvents = NewData.nEvents + 1;
+                            NewData.EventTypes(nNewEvents) = EventData(1);
+                            NewData.EventCodes(nNewEvents) = EventData(2);
+                            NewData.EventTimestamps(nNewEvents) = double(typecast(EventData(3:end), 'uint32'))/1000;
+                    end
+                end
+                if nNewDataPoints > 0
+                    NewData.Positions = NewData.Positions(1:nNewDataPoints);
+                    NewData.Times = NewData.Times(1:nNewDataPoints);
+                else
+                    NewData.Positions = [];
+                    NewData.Times = [];
+                end
+                if nNewEvents > 0
+                    NewData.EventTypes = NewData.EventTypes(1:nNewEvents);
+                    NewData.EventCodes = NewData.EventCodes(1:nNewEvents);
+                    NewData.EventTimestamps = NewData.EventTimestamps(1:nNewEvents);
+                else
+                    NewData.EventTypes = [];
+                    NewData.EventCodes = [];
+                    NewData.EventTimestamps = [];
+                end
+            else
+                NewData.Positions = [];
+                NewData.Times = [];
+                NewData.EventTypes = [];
+                NewData.EventCodes = [];
+                NewData.EventTimestamps = [];
             end
         end
         function stopUSBStream(obj)
@@ -232,6 +291,9 @@ classdef RotaryEncoderModule < handle
             end
         end
         function streamUI(obj)
+            if obj.isLogging == 1
+                error('Error: The Rotary Encoder Module is logging to microSD. Turn off logging with stopLogging() to enable USB streaming.')
+            end
             if obj.uiStreaming == 0
                 obj.acquiring = 1;
                 obj.uiStreaming = 1;
@@ -264,7 +326,7 @@ classdef RotaryEncoderModule < handle
                 end
                 obj.gui.OscopeDataLine = line([Xdata,Xdata],[Ydata,Ydata]);
                 Ypos = 445;
-                uicontrol('Style', 'text', 'Position', [600 Ypos 170 30], 'String', 'Behavior Events', 'FontSize', 14,...
+                uicontrol('Style', 'text', 'Position', [600 Ypos 170 30], 'String', 'Threshold Events', 'FontSize', 14,...
                     'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
                 obj.gui.UseEventsCheckbox = uicontrol('Style', 'checkbox', 'Position', [610 Ypos 30 30], 'FontSize', 12,...
                     'BackgroundColor', BGColor, 'Callback',@(h,e)obj.UIsetParams());
