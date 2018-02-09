@@ -1,0 +1,13 @@
+---v1.55---
+-Fixed SSL handshake bug in PhoneHome program (CRITICAL)
+-Enabled rotary encoder module to log and timestamp bytes from state machine
+-Added 'unipolar' mode to rotary encoder module, for treadmill assays
+-Restored display of automatically changing parameters in BpodParameterGUI
+-Updated serial interface syntax used to relay Bonsai soft codes
+-Updated BControl patch to handle pausing and sound server reset following a MATLAB force-quit
+
+---v1.54---
+-Added Ethernet Module support with PsychToolbox (previously req. Instrument Ctrl Tlbx)
+-Added in-trial pause support to BControl patch
+-In BControl patch, added ability to list channels in any order in settings_custom.conf
+-In BControl patch, added ability to loop sounds on sound server (vs. looping sched. wave)
