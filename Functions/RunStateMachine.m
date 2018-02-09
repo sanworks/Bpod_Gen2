@@ -106,7 +106,7 @@ while BpodSystem.Status.InStateMatrix
         if BpodSystem.BonsaiSocket.Connected == 1
             if BpodSocketServer('bytesAvailable') > 0
                 Byte = ReadOscByte;
-                OverrideMessage = ['VS' Byte];
+                OverrideMessage = ['~' Byte];
                 BpodSystem.VirtualManualOverrideBytes = OverrideMessage;
                 BpodSystem.ManualOverrideFlag = 1;
             end
@@ -235,7 +235,7 @@ while BpodSystem.Status.InStateMatrix
             if BpodSystem.BonsaiSocket.Connected == 1
                 if BpodSocketServer('bytesAvailable') > 0
                     Byte = ReadOscByte;
-                    OverrideMessage = ['VS' Byte];
+                    OverrideMessage = ['~' Byte];
                     BpodSystem.SerialPort.write(OverrideMessage, 'uint8');
                 end
             end

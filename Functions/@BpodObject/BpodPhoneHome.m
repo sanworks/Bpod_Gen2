@@ -87,9 +87,11 @@ Key = 'WESh0ULD@LLSw1TcH2PYtHOn';
 if verLessThan('matlab', '8.1')
     Protocol = 'http://'; % MATLAB versions older than r2013a cannot use SSL without extensive configuration
     useSSL = 0;
-else
-    Protocol = 'https://';
-    useSSL = 1;
+else 
+    Protocol = 'http://';
+    useSSL = 0;
+%     Protocol = 'https://'; % Beginning on 8 Feb 2018, even newer MATLAB versions fail at the SSL handshake. 
+%     useSSL = 1;
 end
 if OptedIn == 1
     ReadUrl([Protocol 'sanworks.io/et/phonehome.php?machine=' Machine '&firmware=' FV '&software=' SV '&os=' OS '&matver=' MatlabV '&emu=' emuMode '&op=' OP '&id=' ID '&key=' Key], useSSL);

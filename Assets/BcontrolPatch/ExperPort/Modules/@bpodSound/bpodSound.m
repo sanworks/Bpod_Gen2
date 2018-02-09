@@ -1,31 +1,60 @@
 function sm = bpodSound(a)
-   global BpodSystem
-   if nargin==0,
-
-      myfig = figure('Visible', 'off');
-      
-      sr=bSettings('get','SOUND','sound_sample_rate');
-      if isnan(sr)
-      sr=8000;
-      end
-      mydata = struct( ...
-          'samplerate',    sr,   ...
-          'allowed_trigs', [1:32]  ...
-          );   
-          
-          
-      for i=1:32,
+global BpodSystem
+if nargin==0,
+    
+    myfig = figure('Visible', 'off');
+    
+    sr=bSettings('get','SOUND','sound_sample_rate');
+    if isnan(sr)
+        sr=8000;
+    end
+    mydata = struct( ...
+        'samplerate',    sr,   ...
+        'allowed_trigs', [1:32]  ...
+        );
+    
+    
+    for i=1:32,
         mydata = setfield(mydata, ['sound' num2str(i)], []);
-      end;
-        
-      set(myfig, 'UserData', mydata);
-      
-      sm = struct('myfig', myfig);      
-      sm = class(sm, 'bpodSound');
-      
-      if ~isfield(BpodSystem.PluginObjects, 'SoundServer')
-          if isfield(BpodSystem.ModuleUSB, 'AudioPlayer1')
+    end;
+    
+    set(myfig, 'UserData', mydata);
+    
+    sm = struct('myfig', myfig);
+    sm = class(sm, 'bpodSound');
+    AudioPlayerFound = 0;
+    if ~isfield(BpodSystem.PluginObjects, 'SoundServer')
+        if isfield(BpodSystem.ModuleUSB, 'AudioPlayer1')
+            AssertAudioPlayerAvailable(BpodSystem.ModuleUSB.AudioPlayer1);
             BpodSystem.PluginObjects.SoundServer = BpodAudioPlayer(BpodSystem.ModuleUSB.AudioPlayer1);
+            AudioPlayerFound = 1;
+        elseif sum(strcmp('AudioPlayer1', BpodSystem.Modules.Name)) > 0
+            error('Error setting up Bpod sound server for B-control: the sound server''s USB port must be paired with its Bpod serial port. Use the USB menu on the Bpod console.')
+        else
+            % Check to see whether the audio player's usual serial port is present
+            USBSerialPorts = BpodSystem.FindUSBSerialPorts;
+            CandidateAudioPlayers = USBSerialPorts.Teensy;
+            load(BpodSystem.Path.ModuleUSBConfig)
+            LastPairedPort = ModuleUSBConfig.USBPorts(strcmp(ModuleUSBConfig.ModuleNames, 'AudioPlayer1'));
+            LastPairedPort = LastPairedPort{1};
+            if sum(strcmp(CandidateAudioPlayers, LastPairedPort)) > 0
+                AssertAudioPlayerAvailable(LastPairedPort);
+                BpodSystem.LoadModules();
+                if isfield(BpodSystem.ModuleUSB, 'AudioPlayer1')
+                    BpodSystem.PluginObjects.SoundServer = BpodAudioPlayer(BpodSystem.ModuleUSB.AudioPlayer1);
+                    AudioPlayerFound = 1;
+                else
+                    disp('#########################################');
+                    disp(['ALERT! No AudioPlayer module detected!' char(10) 'Protocols will error out if sound is used.'])
+                    disp('#########################################');
+                end
+            else
+                disp('#########################################');
+                disp(['ALERT! No AudioPlayer module detected!' char(10) 'Protocols will error out if sound is used.'])
+                disp('#########################################');
+            end
+        end
+        if AudioPlayerFound == 1
             if sr > 100000
                 error('Error: In your custom_settings.conf file, a sampling rate over 100kHz is specified - but the current BpodAudio firmware can only support up to 100kHz.')
             end
@@ -44,25 +73,49 @@ function sm = bpodSound(a)
             end
             TriggerMessages{nSoundsSupported+1} = 'X';
             LoadSerialMessages('AudioPlayer1', TriggerMessages);
-          elseif sum(strcmp('AudioPlayer1', BpodSystem.Modules.Name)) > 0
-            error('Error setting up Bpod sound server for B-control: the sound server''s USB port must be paired with its Bpod serial port. Use the USB menu on the Bpod console.')
-          else
-              disp('#########################################');
-              disp(['ALERT! No AudioPlayer module detected!' char(10) 'Protocols will error out if sound is used.'])
-              disp('#########################################');
-          end
-      end
-      
-      Initialize(sm);
-      return;
-      
-   elseif isa(ssm, 'softsm'),
-      ssm = a;
-      return;
-      
-   else
-      error(['Don''t understand this argument for creation of a ' ...
-             'bpodSound']);
-   end;
-   
-          
+        end
+    end
+    Initialize(sm);
+    return;
+    
+elseif isa(ssm, 'softsm'),
+    ssm = a;
+    return;
+    
+else
+    error(['Don''t understand this argument for creation of a ' ...
+        'bpodSound']);
+end;
+
+function AssertAudioPlayerAvailable(CandidatePort)
+% Spam the candidate port with handshake bytes until it replies.
+TestPort = ArCOMObject_Bpod(CandidatePort, 115200);
+TestPort.write(229, 'uint8');
+pause(.1);
+replied = TestPort.bytesAvailable;
+if replied == 0
+    disp('---------------------------------------')
+    disp('Bpod audio player did not reply.')
+    disp([CandidatePort ' may be the wrong port, OR'])
+    disp('the player may be stuck waiting for data.')
+    disp('Attempting to reset audio player. Please wait...')
+    disp('---------------------------------------')
+    nTries = 20; i = 0;
+    while (replied == 0 && i < nTries)
+        TestPort.write(ones(1,200000)*229, 'uint8');
+        pause(.01);
+        replied = TestPort.bytesAvailable;
+        i = i + 1;
+    end
+    if replied == 0
+        error(['Error: Bpod Audio Player non-responsive on port ' CandidatePort])
+    end
+    while TestPort.bytesAvailable > 0
+        TestPort.read(TestPort.bytesAvailable, 'uint8');
+    end
+    disp('Audio player reset successfully!')
+else
+    TestPort.read(TestPort.bytesAvailable, 'uint8');
+end
+clear TestPort
+pause(.1);
