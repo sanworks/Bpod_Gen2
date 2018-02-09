@@ -177,16 +177,17 @@ switch Op
             ThisParamStyle = BpodSystem.GUIData.ParameterGUI.Styles(p);
             ThisParamHandle = BpodSystem.GUIHandles.ParameterGUI.Params(p);
             ThisParamLastValue = BpodSystem.GUIData.ParameterGUI.LastParamValues{p};
+            ThisParamCurrentValue = Params.GUI.(ThisParamName); % Use single precision to avoid problems with ==
             switch ThisParamStyle
                 case 1 % Edit
                     GUIParam = str2double(get(ThisParamHandle, 'String'));
-                    if GUIParam ~= ThisParamLastValue
+                    if single(GUIParam) ~= single(ThisParamLastValue)
                         Params.GUI.(ThisParamName) = GUIParam;
-                    elseif Params.GUI.(ThisParamName) ~= ThisParamLastValue
-                        set(ThisParamHandle, 'String', num2str(GUIParam));
+                    elseif single(ThisParamCurrentValue) ~= single(ThisParamLastValue)
+                        set(ThisParamHandle, 'String', num2str(ThisParamCurrentValue));
                     end
                 case 2 % Text
-                    GUIParam = Params.GUI.(ThisParamName);
+                    GUIParam = ThisParamCurrentValue;
                     Text = GUIParam;
                     if ~ischar(Text)
                         Text = num2str(Text);
@@ -196,22 +197,23 @@ switch Op
                     GUIParam = get(ThisParamHandle, 'Value');
                     if GUIParam ~= ThisParamLastValue
                         Params.GUI.(ThisParamName) = GUIParam;
-                    elseif Params.GUI.(ThisParamName) ~= ThisParamLastValue
-                        set(ThisParamHandle, 'Value', GUIParam);
+                    elseif ThisParamCurrentValue ~= ThisParamLastValue
+                        set(ThisParamHandle, 'Value', ThisParamCurrentValue);
                     end
                 case 4 % Popupmenu
                     GUIParam = get(ThisParamHandle, 'Value');
                     if GUIParam ~= ThisParamLastValue
                         Params.GUI.(ThisParamName) = GUIParam;
-                    elseif Params.GUI.(ThisParamName) ~= ThisParamLastValue
-                        set(ThisParamHandle, 'Value', GUIParam);
+                    elseif ThisParamCurrentValue ~= ThisParamLastValue
+                        set(ThisParamHandle, 'Value', ThisParamCurrentValue);
                     end
             end
             if ThisParamStyle ~= 5
-                BpodSystem.GUIData.ParameterGUI.LastParamValues{p} = GUIParam;
+                BpodSystem.GUIData.ParameterGUI.LastParamValues{p} = Params.GUI.(ThisParamName);
             end
         end
     otherwise
     error('ParameterGUI must be called with a valid op code: ''init'' or ''sync''');
 end
+drawnow;
 varargout{1} = Params;
