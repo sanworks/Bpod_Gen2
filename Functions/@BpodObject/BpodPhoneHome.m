@@ -101,11 +101,16 @@ end
 end
 
 function str = ReadUrl(url, useSSL)
-    if useSSL
-        is = java.net.URL([], url, sun.net.www.protocol.https.Handler).openConnection().getInputStream(); 
-    else
-        is = java.net.URL([], url, sun.net.www.protocol.http.Handler).openConnection().getInputStream(); 
+    str = [];
+    try
+        if useSSL
+            is = java.net.URL([], url, sun.net.www.protocol.https.Handler).openConnection().getInputStream(); 
+        else
+            is = java.net.URL([], url, sun.net.www.protocol.http.Handler).openConnection().getInputStream(); 
+        end
+        br = java.io.BufferedReader(java.io.InputStreamReader(is));
+        str = char(br.readLine());
+    catch
+        % Fail silently; PhoneHome must not stop the science!
     end
-    br = java.io.BufferedReader(java.io.InputStreamReader(is));
-    str = char(br.readLine());
 end
