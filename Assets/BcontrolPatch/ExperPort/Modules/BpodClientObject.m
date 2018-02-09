@@ -192,7 +192,7 @@ classdef BpodClientObject < handle
                 end
             end
             for cmd = 1:nCommands
-                thisCommand = Commands{cmd}
+                thisCommand = Commands{cmd};
                 %disp(thisCommand);
                 if ~isempty(strfind(thisCommand, 'BYPASS'))
                     msg = thisCommand(8:end);
@@ -257,6 +257,10 @@ classdef BpodClientObject < handle
                                 BpodSystem.Status.NewStateMachineSent = 0;
                                 obj.isPaused = 0;
                             end
+                            if obj.isPaused == 1
+                                BpodSystem.SerialPort.write(['$' 1], 'uint8');
+                                obj.isPaused = 0;
+                            end
                             obj.nTrialsCompleted = 0;
                             obj.TrialStartTimestamp = 0;
                             BpodSystem.SerialPort.write('*', 'uint8'); % Reset session clock
@@ -310,13 +314,14 @@ classdef BpodClientObject < handle
                                 obj.CurrentEventTimestamps = zeros(1,obj.MaxEvents);
                                 obj.NewSMLoaded = 1;
                                 obj.nTotalEvents = 0;
+                                obj.TrialDoneFlag = 0;
                                 obj.LastEventTime = 0;
                                 obj.LastEventTime_MATLAB = now;
                                 BpodSystem.PluginObjects.BcontrolEventCodeMap = BpodSystem.PluginObjects.BcontrolEventCodeMapBuffer;
-                            else
-                                BpodSystem.SerialPort.write(['$' 1], 'uint8');
-                                obj.isPaused = 0;
-                            end
+                             else
+                                 BpodSystem.SerialPort.write(['$' 1], 'uint8');
+                                 obj.isPaused = 0;
+                             end
                         case 'GET EVENT COUNTER'
                             obj.nUnreadEvents = 0;
                             nBytesAvailable = BpodSystem.SerialPort.bytesAvailable;
