@@ -182,8 +182,13 @@ for x = 1:2:length(OutputActions)
                 ValvePos = BpodSystem.HW.Pos.Output_Valve;
                 ValveLogic = double(dec2bin(Value) == '1'); 
                 ValveLogic = ValveLogic(end:-1:1); 
-                ValveLogic = [ValveLogic zeros(1,BpodSystem.HW.n.Valves-length(ValveLogic))];
-                sma.OutputMatrix(CurrentState,ValvePos:ValvePos+BpodSystem.HW.n.Valves-1) = ValveLogic;
+                nValvesAddressed = length(ValveLogic);
+                if nValvesAddressed > BpodSystem.HW.n.Valves 
+                    error(['Error: tried to access valve# ' num2str(nValvesAddressed) ' but only ' num2str(BpodSystem.HW.n.Valves) ' valves exist on the connected state machine.'])
+                else
+                    ValveLogic = [ValveLogic zeros(1,BpodSystem.HW.n.Valves-length(ValveLogic))];
+                    sma.OutputMatrix(CurrentState,ValvePos:ValvePos+BpodSystem.HW.n.Valves-1) = ValveLogic;
+                end
             case 2
                 if Value > 0
                     sma.OutputMatrix(CurrentState,BpodSystem.HW.Pos.Output_PWM+Value-1) = 255;
