@@ -1,0 +1,2 @@
+function SaveBpodProtocolSettings(ProtocolSettings)
+SaveProtocolSettings(ProtocolSettings);
