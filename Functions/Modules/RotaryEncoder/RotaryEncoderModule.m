@@ -64,6 +64,7 @@ classdef RotaryEncoderModule < handle
         wrapModeByte = 1; % current wrap mode position in validWrapModes
         NewDataTemplate = struct; % Template struct for new data (copied when streaming data is read to save time)
         isLogging = 0; % True if logging to microSD card, false if not
+        maxThresholds = 8; % Maximum number of currently supported thresholds
     end
     methods
         function obj = RotaryEncoderModule(portString)
@@ -93,6 +94,9 @@ classdef RotaryEncoderModule < handle
         function set.thresholds(obj, newThresholds)
             if sum(abs(newThresholds) > obj.wrapPoint) > 0
                 error(['Error: thresholds cannot exceed the rotary encoder''s current wrap point: ' num2str(obj.wrapPoint) ' degrees.'])
+            end
+            if length(newThresholds) > obj.maxThresholds
+                error(['Error: the current software supports only ' num2str(obj.maxThresholds) ' thresholds.']);
             end
             ThresholdsInTics = obj.degrees2pos(newThresholds);
             obj.Port.write(['T' length(ThresholdsInTics)], 'uint8', ThresholdsInTics, 'int16');
@@ -298,7 +302,8 @@ classdef RotaryEncoderModule < handle
                 obj.acquiring = 1;
                 obj.uiStreaming = 1;
                 BGColor = [0.8 0.8 0.8];
-                thresholdColors = {[0 0 1], [1 0 0], [0 1 0], [1 1 0], [0 1 1], [1 0 1]}; 
+                thresholdColors = {[0 0 1], [1 0 0], [0 1 0], [1 1 0], [0 1 1],...
+                    [1 0 1], [0.5 0 0], [0 0.5 0]}; 
                 obj.displayPositions = nan(1,obj.nDisplaySamples);
                 obj.displayTimes = nan(1,obj.nDisplaySamples);
                 obj.gui.Fig  = figure('name','Position Stream', 'position',[100,100,800,500],...
@@ -471,12 +476,22 @@ classdef RotaryEncoderModule < handle
                     set(obj.gui.Threshold2Edit, 'enable', 'on');
                     set(obj.gui.ThreshLine{2}, 'Ydata', [obj.thresholds(2),obj.thresholds(2)]);
                 end
+                if nThresholds > 2
+                    for i = 3:nThresholds
+                        set(obj.gui.ThreshLine{i}, 'Ydata', [obj.thresholds(i),obj.thresholds(i)]);
+                    end
+                end
             else
                 set(obj.gui.Threshold1Edit, 'enable', 'off');
                 set(obj.gui.ThreshLine{1}, 'Ydata', [NaN NaN]);
                 if nThresholds > 1
                     set(obj.gui.Threshold2Edit, 'enable', 'off');
                     set(obj.gui.ThreshLine{2}, 'Ydata', [NaN NaN]);
+                end
+                if nThresholds > 2
+                    for i = 3:nThresholds
+                        set(obj.gui.ThreshLine{i}, 'Ydata', [NaN NaN]);
+                    end
                 end
             end
         end
