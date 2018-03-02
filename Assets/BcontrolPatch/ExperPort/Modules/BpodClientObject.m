@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -193,7 +193,7 @@ classdef BpodClientObject < handle
             end
             for cmd = 1:nCommands
                 thisCommand = Commands{cmd};
-                %disp(thisCommand);
+                %disp(thisCommand); % Uncomment to view commands sent from BControl to the state machine
                 if ~isempty(strfind(thisCommand, 'BYPASS'))
                     msg = thisCommand(8:end);
                     spacePos = find(msg == ' ');
@@ -434,6 +434,9 @@ classdef BpodClientObject < handle
                                         CETimestamps(i) = obj.CurrentEventTimestamps(i) + obj.TrialStartTimestamp;
                                     end
                                     if obj.CurrentEvents(i) == 255
+                                        if nCurrentEvents == 1 % Only a trial-end code was sent
+                                            EndTimestamp = CETimestamps(1); % Save timestamp of trial-end code
+                                        end
                                         nCurrentEvents = nCurrentEvents-1;
                                         CEprestates = CEprestates(1:nCurrentEvents);
                                         CEevents = CEevents(1:nCurrentEvents);
@@ -467,7 +470,13 @@ classdef BpodClientObject < handle
                                 end
                                 CEpoststates = CEpoststates(1:nCurrentEvents);
                                 if ExitEventFound
-                                    PostTrialRow = [35 -1 CETimestamps(end) 0 0];
+                                    if nCurrentEvents > 0
+                                        PostTrialRow = [35 -1 CETimestamps(end) 0 0];
+                                    else
+                                        % Only a trial-end code was captured in this update; use its timestamp
+                                        % (identical to timestamp of final event)
+                                        PostTrialRow = [35 -1 EndTimestamp 0 0];
+                                    end
                                 else
                                     PostTrialRow = [];
                                 end
