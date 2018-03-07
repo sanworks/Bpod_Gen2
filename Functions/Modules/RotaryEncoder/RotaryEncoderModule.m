@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -233,11 +233,15 @@ classdef RotaryEncoderModule < handle
                     obj.Port.write(['S' 1], 'uint8');
                     if nargin > 1
                         op = varargin{1};
-                        if strcmpi(op, 'usetimer')
-                            obj.usbCaptureEnabled = 1;
-                            obj.Timer = timer('TimerFcn',@(h,e)obj.captureUSBStream(), 'ExecutionMode', 'fixedRate', 'Period', 0.1, 'Tag', ['RE_' obj.Port.PortName]);
-                            start(obj.Timer);
+                        switch lower(op)
+                            case 'usetimer'
+                                obj.usbCaptureEnabled = 1;
+                                obj.Timer = timer('TimerFcn',@(h,e)obj.captureUSBStream(), 'ExecutionMode', 'fixedRate', 'Period', 0.1, 'Tag', ['RE_' obj.Port.PortName]);
+                                start(obj.Timer);
+                            otherwise
+                                error(['Error starting rotary encoder USB stream: Invalid argument ' op '. Valid arguments are: ''UseTimer'''])
                         end
+                                
                     end
                 else
                     error('Error: The Rotary Encoder Module is logging to microSD. Turn off logging with stopLogging() to enable USB streaming.')
@@ -245,63 +249,7 @@ classdef RotaryEncoderModule < handle
             end
         end
         function NewData = readUSBStream(obj)
-            if ~obj.acquiring
-                error('Error: the USB stream must be started with startUSBStream() before you can read stream data from the buffer.')
-            end
-            NewData = obj.NewDataTemplate;
-            nNewDataPoints = 0;
-            nNewEvents = 0;
-            if (obj.Port.bytesAvailable > 0) 
-                Msg = obj.Port.read(obj.Port.bytesAvailable, 'uint8');
-                MsgInd = 1;
-                while MsgInd < length(Msg)
-                    thisOp = Msg(MsgInd);
-                    switch thisOp
-                        case 'P' % Position  
-                            MsgInd = MsgInd + 1;
-                            nPositions = double(Msg(MsgInd));
-                            MsgInd = MsgInd + 1;
-                            Positions = Msg(MsgInd:MsgInd+(6*nPositions)-1);
-                            MsgInd = MsgInd + (6*nPositions)-1;
-                            NewData.nPositions = NewData.nPositions + nPositions;
-                            NewData.Positions(nNewDataPoints+1:nNewDataPoints+nPositions) = obj.pos2degrees(typecast(Positions(obj.positionBytemask(1:6*nPositions)), 'int16'));
-                            NewData.Times(nNewDataPoints+1:nNewDataPoints+nPositions) = double(typecast(Positions(obj.timeBytemask(1:6*nPositions)), 'uint32'))/1000;
-                            nNewDataPoints = nNewDataPoints + nPositions;
-                            MsgInd = MsgInd + 1;
-                        case 'E' % Event
-                            MsgInd = MsgInd + 1;
-                            EventData = Msg(MsgInd:MsgInd+5);
-                            nNewEvents = nNewEvents + 1;
-                            MsgInd = MsgInd + 6;
-                            NewData.nEvents = NewData.nEvents + 1;
-                            NewData.EventTypes(nNewEvents) = EventData(1);
-                            NewData.EventCodes(nNewEvents) = EventData(2);
-                            NewData.EventTimestamps(nNewEvents) = double(typecast(EventData(3:end), 'uint32'))/1000;
-                    end
-                end
-                if nNewDataPoints > 0
-                    NewData.Positions = NewData.Positions(1:nNewDataPoints);
-                    NewData.Times = NewData.Times(1:nNewDataPoints);
-                else
-                    NewData.Positions = [];
-                    NewData.Times = [];
-                end
-                if nNewEvents > 0
-                    NewData.EventTypes = NewData.EventTypes(1:nNewEvents);
-                    NewData.EventCodes = NewData.EventCodes(1:nNewEvents);
-                    NewData.EventTimestamps = NewData.EventTimestamps(1:nNewEvents);
-                else
-                    NewData.EventTypes = [];
-                    NewData.EventCodes = [];
-                    NewData.EventTimestamps = [];
-                end
-            else
-                NewData.Positions = [];
-                NewData.Times = [];
-                NewData.EventTypes = [];
-                NewData.EventCodes = [];
-                NewData.EventTimestamps = [];
-            end
+            NewData = obj.getUSBStream;
             if obj.usbCaptureEnabled == 1
                 obj.usbCapturedData = obj.appendStreamData(obj.usbCapturedData, NewData);
                 NewData = obj.usbCapturedData;
@@ -453,7 +401,7 @@ classdef RotaryEncoderModule < handle
             end
         end
         function updatePlot(obj)
-            newData = obj.readUSBStream;
+            newData = obj.getUSBStream;
             if ~isempty(newData.Positions)
                 DisplayTime = (newData.Times(end)-obj.sweepStartTime);
                 obj.displayPos = obj.displayPos + newData.nPositions;
@@ -546,6 +494,64 @@ classdef RotaryEncoderModule < handle
                         set(obj.gui.ThreshLine{i}, 'Ydata', [NaN NaN]);
                     end
                 end
+            end
+        end
+        function NewData = getUSBStream(obj)
+            if ~obj.acquiring
+                error('Error: the USB stream must be started with startUSBStream() before you can read stream data from the buffer.')
+            end
+            NewData = obj.NewDataTemplate;
+            nNewDataPoints = 0;
+            nNewEvents = 0;
+            nBytesAvailable = obj.Port.bytesAvailable;
+            if (nBytesAvailable > 6)
+                msgSize = 7*floor(nBytesAvailable/7); % Only read complete messages
+                Msg = obj.Port.read(msgSize, 'uint8');
+                MsgInd = 1;
+                while MsgInd < length(Msg)
+                    thisOp = Msg(MsgInd);
+                    switch thisOp
+                        case 'P' % Position  
+                            MsgInd = MsgInd + 1;
+                            Positions = Msg(MsgInd:MsgInd+5);
+                            MsgInd = MsgInd + 6;
+                            NewData.nPositions = NewData.nPositions + 1;
+                            nNewDataPoints = nNewDataPoints + 1;
+                            NewData.Positions(nNewDataPoints) = obj.pos2degrees(typecast(Positions(obj.positionBytemask(1:6)), 'int16'));
+                            NewData.Times(nNewDataPoints) = double(typecast(Positions(obj.timeBytemask(1:6)), 'uint32'))/1000;
+                        case 'E' % Event
+                            MsgInd = MsgInd + 1;
+                            EventData = Msg(MsgInd:MsgInd+5);
+                            nNewEvents = nNewEvents + 1;
+                            MsgInd = MsgInd + 6;
+                            NewData.nEvents = NewData.nEvents + 1;
+                            NewData.EventTypes(nNewEvents) = EventData(1);
+                            NewData.EventCodes(nNewEvents) = EventData(2);
+                            NewData.EventTimestamps(nNewEvents) = double(typecast(EventData(3:end), 'uint32'))/1000;
+                    end
+                end
+                if nNewDataPoints > 0
+                    NewData.Positions = NewData.Positions(1:nNewDataPoints);
+                    NewData.Times = NewData.Times(1:nNewDataPoints);
+                else
+                    NewData.Positions = [];
+                    NewData.Times = [];
+                end
+                if nNewEvents > 0
+                    NewData.EventTypes = NewData.EventTypes(1:nNewEvents);
+                    NewData.EventCodes = NewData.EventCodes(1:nNewEvents);
+                    NewData.EventTimestamps = NewData.EventTimestamps(1:nNewEvents);
+                else
+                    NewData.EventTypes = [];
+                    NewData.EventCodes = [];
+                    NewData.EventTimestamps = [];
+                end
+            else
+                NewData.Positions = [];
+                NewData.Times = [];
+                NewData.EventTypes = [];
+                NewData.EventCodes = [];
+                NewData.EventTimestamps = [];
             end
         end
         function degrees = pos2degrees(obj, pos)
