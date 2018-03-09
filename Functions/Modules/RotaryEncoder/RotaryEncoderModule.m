@@ -18,11 +18,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% ChoiceWheel is a system to measure lateral paw sweeps in mice.
+% The Rotary Encoder Module interfaces a quadrature rotary encoder with
+% MATLAB via USB. It also enables rapid communication of threshold
+% crossings to the Bpod State Machine (v0.7+), and streaming of position data
+% to other Bpod modules.
 %
 % Installation:
 % 1. Install PsychToolbox from: http://psychtoolbox.org/download/
-% 2. Install ArCOM from https://github.com/sanworks/ArCOM
+% 2. Install Bpod Gen2 from https://github.com/sanworks/Bpod_Gen2, and add
+%    the repository root folder to the MATLAB path
 % 3. Connect the rotary encoder module to a free serial port on Bpod with a CAT6 cable
 % 4. Connect the rotary encoder module to the computer with a USB micro cable.
 %
@@ -30,24 +34,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % - Directly manipulate its fields to change trial parameters on the device.
 % - Run R.streamUI to see streaming output (for testing purposes)
 % - Run P = R.currentPosition to return the current encoder position (for testing purposes).
-% - Other methods can be viewed with methods(R)
+% - Other methods can be viewed with methods(R), and documentation is on the Bpod wiki at: 
+% https://sites.google.com/site/bpoddocumentation/bpod-user-guide/function-reference-beta/rotaryencodermodule
 
 classdef RotaryEncoderModule < handle
     properties
         Port % ArCOM Serial port
-        Timer % MATLAB timer (for updating the UI)
         thresholds = [-40 40]; % Encoder position thresholds, in degrees, used to generate behavior events
         wrapPoint = 180; % Point at which position wraps around, in degrees. Set to 0 to inactivate wrapping.
         wrapMode = 'bipolar'; % 'bipolar' (position wraps to negative value) or 'unipolar' (wraps to 0) 
-        sendThresholdEvents = 'off';
-        moduleOutputStream = 'off';
-        moduleStreamPrefix = 'M';
+        sendThresholdEvents = 'off'; % Set to 'on' to send threshold crossing events to the Bpod state machine
+        moduleOutputStream = 'off'; % Set to 'on' to stream position data directly to another Bpod module
+        moduleStreamPrefix = 'M'; % The byte that precedes each position in the module output stream
     end
     properties (Access = private)
+        Timer % MATLAB timer (for updating the UI)
         acquiring = 0; % 0 if idle, 1 if streaming data to serial buffer
         uiStreaming = 0; % 1 if streaming data to UI
         gui = struct; % Handles for GUI elements
-        positionBytemask = logical(repmat([1 1 0 0 0 0], 1, 10000)); % For parsing data coming back from wheel
+        positionBytemask = logical(repmat([1 1 0 0 0 0], 1, 10000)); % For parsing data coming back from encoder
         timeBytemask = logical(repmat([0 0 1 1 1 1], 1, 10000));
         nDisplaySamples = 1000; % When streaming to plot, show up to 1,000 samples
         maxDisplayTime = 10; % When streaming to plot, show up to last 10 seconds
