@@ -36,11 +36,12 @@ if nAvailable > 0
                 CodedMessage(Pos:Pos+L) = [ThisNum ' '];
                 Pos = Pos + L + 1;
             end
-            CodedMessage = CodedMessage(1:Pos);
+            CodedMessage = CodedMessage(1:Pos-1);
         else
             CodedMessage = Message;
         end
-        NewString = [CurrentString CodedMessage];        
+        NewString = [CurrentString CodedMessage];
+
         set(BpodSystem.GUIHandles.SerialTerminalOutput(BpodSystem.GUIData.CurrentPanel-1), 'String', NewString);
         drawnow;
     end

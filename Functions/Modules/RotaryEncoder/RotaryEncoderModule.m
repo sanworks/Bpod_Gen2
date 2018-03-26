@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -18,39 +18,41 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% ChoiceWheel is a system to measure lateral paw sweeps in mice.
+% The Rotary Encoder Module interfaces a quadrature rotary encoder with
+% MATLAB via USB. It also enables rapid communication of threshold
+% crossings to the Bpod State Machine (v0.7+), and streaming of position data
+% to other Bpod modules.
 %
 % Installation:
 % 1. Install PsychToolbox from: http://psychtoolbox.org/download/
-% 2. Install ArCOM from https://github.com/sanworks/ArCOM
+% 2. Install Bpod Gen2 from https://github.com/sanworks/Bpod_Gen2, and add
+%    the repository root folder to the MATLAB path
 % 3. Connect the rotary encoder module to a free serial port on Bpod with a CAT6 cable
 % 4. Connect the rotary encoder module to the computer with a USB micro cable.
 %
 % - Create a RotaryEncoderModule object with R = RotaryEncoderModule('COMx') where COMx is your serial port string
 % - Directly manipulate its fields to change trial parameters on the device.
-% - Run R.stream to see streaming output (for testing purposes)
-% - Run P = R.currentPosition to return the current wheel position (for testing purposes).
-% - Run R.runTrial to manually start an experimental trial (sets position to 0, enables thresholds).
-% - Run data = R.getLastTrialData once the trial is over, to return the trial outcome and wheel position record
-% - Run a trial from the Bpod state machine by sending byte 'T' over the hardware serial connection
-% - Serial event bytes during the trial will be sent to Bpod: 1 = left choice, 2 = right choice
+% - Run R.streamUI to see streaming output (for testing purposes)
+% - Run P = R.currentPosition to return the current encoder position (for testing purposes).
+% - Other methods can be viewed with methods(R), and documentation is on the Bpod wiki at: 
+% https://sites.google.com/site/bpoddocumentation/bpod-user-guide/function-reference-beta/rotaryencodermodule
 
 classdef RotaryEncoderModule < handle
     properties
         Port % ArCOM Serial port
-        Timer % MATLAB timer (for updating the UI)
         thresholds = [-40 40]; % Encoder position thresholds, in degrees, used to generate behavior events
         wrapPoint = 180; % Point at which position wraps around, in degrees. Set to 0 to inactivate wrapping.
         wrapMode = 'bipolar'; % 'bipolar' (position wraps to negative value) or 'unipolar' (wraps to 0) 
-        sendThresholdEvents = 'off';
-        moduleOutputStream = 'off';
-        moduleStreamPrefix = 'M';
+        sendThresholdEvents = 'off'; % Set to 'on' to send threshold crossing events to the Bpod state machine
+        moduleOutputStream = 'off'; % Set to 'on' to stream position data directly to another Bpod module
+        moduleStreamPrefix = 'M'; % The byte that precedes each position in the module output stream
     end
     properties (Access = private)
+        Timer % MATLAB timer (for updating the UI)
         acquiring = 0; % 0 if idle, 1 if streaming data to serial buffer
         uiStreaming = 0; % 1 if streaming data to UI
         gui = struct; % Handles for GUI elements
-        positionBytemask = logical(repmat([1 1 0 0 0 0], 1, 10000)); % For parsing data coming back from wheel
+        positionBytemask = logical(repmat([1 1 0 0 0 0], 1, 10000)); % For parsing data coming back from encoder
         timeBytemask = logical(repmat([0 0 1 1 1 1], 1, 10000));
         nDisplaySamples = 1000; % When streaming to plot, show up to 1,000 samples
         maxDisplayTime = 10; % When streaming to plot, show up to last 10 seconds
@@ -65,16 +67,31 @@ classdef RotaryEncoderModule < handle
         NewDataTemplate = struct; % Template struct for new data (copied when streaming data is read to save time)
         isLogging = 0; % True if logging to microSD card, false if not
         maxThresholds = 8; % Maximum number of currently supported thresholds
+        usbCaptureEnabled = 0; % If 1, a timer object checks the serial port for new data every 0.1s and appends it to usbCapturedData
+        usbCapturedData = []; % Stores streaming data if usbCaptureEnabled = 1
     end
+            
     methods
         function obj = RotaryEncoderModule(portString)
+            % Destroy any orphaned timers from previous instances
+            T = timerfindall;
+            for i = 1:length(T)
+                thisTimer = T(i);
+                thisTimerTag = get(thisTimer, 'tag');
+                if strcmp(thisTimerTag, ['RE_' portString])
+                    warning('off');
+                    delete(thisTimer);
+                    warning('on');
+                end
+            end
+            % Create ArCOM wrapper for USB communication with Teensy
             obj.Port = ArCOMObject_Bpod(portString, 115200);
-            obj.Port.write('C', 'uint8');
+            obj.Port.write('CX', 'uint8'); % C = handshake, X = reset data streams
             response = obj.Port.read(1, 'uint8');
             if response ~= 217
                 error('Could not connect =( ')
             end
-            obj.syncParams();
+            obj.resetParams();
             obj.displayPositions = nan(1,obj.nDisplaySamples); % UI y data
             obj.displayTimes = nan(1,obj.nDisplaySamples); % UI x data
             % Set up template struct for new streaming data
@@ -88,10 +105,12 @@ classdef RotaryEncoderModule < handle
         end
         
         function pos = currentPosition(obj)
+            obj.assertNotUSBStreaming;
             obj.Port.write('Q', 'uint8');
             pos = obj.pos2degrees(obj.Port.read(1, 'int16'));
         end
         function set.thresholds(obj, newThresholds)
+            obj.assertNotUSBStreaming;
             if sum(abs(newThresholds) > obj.wrapPoint) > 0
                 error(['Error: thresholds cannot exceed the rotary encoder''s current wrap point: ' num2str(obj.wrapPoint) ' degrees.'])
             end
@@ -104,6 +123,7 @@ classdef RotaryEncoderModule < handle
             obj.thresholds = newThresholds;
         end
         function set.moduleOutputStream(obj, stateString)
+            obj.assertNotUSBStreaming;
             stateString = lower(stateString);
             if obj.autoSync
                 switch stateString
@@ -119,22 +139,26 @@ classdef RotaryEncoderModule < handle
             obj.moduleOutputStream = stateString;
         end
         function set.moduleStreamPrefix(obj, Prefix)
+            obj.assertNotUSBStreaming;
             if (length(Prefix) > 1) || (~ischar(Prefix))
                 error('Error setting output stream prefix; Prefix must be a single character.')
             end
-            obj.Port.write(['F' Prefix], 'uint8');
+            obj.Port.write(['I' Prefix], 'uint8');
             obj.ConfirmUSBTransmission('Module Output Stream Prefix');
         end
         function set.wrapPoint(obj, newWrapPoint)
+            obj.assertNotUSBStreaming;
             newWrapPointTics = obj.degrees2pos(newWrapPoint);
             obj.Port.write('W', 'uint8', newWrapPointTics, 'int16');
             obj.ConfirmUSBTransmission('Module Wrap Point');
             obj.wrapPoint = newWrapPoint;
         end
         function set.wrapMode(obj, newWrapMode)
+            obj.assertNotUSBStreaming;
             newWrapModeValue = find(strcmpi(newWrapMode, obj.validWrapModes));
             if isempty(newWrapModeValue)
-                error(['Error: Invalid wrap mode: ' newWrapMode '. Valid wrap modes are: ' obj.validWrapModes])
+                ErrMsg = ['Error: Invalid wrap mode: ' newWrapMode '. Valid wrap modes are: ''unipolar'', ''bipolar'''];
+                error(ErrMsg)
             end
             
             obj.Port.write(['M' newWrapModeValue-1], 'uint8');
@@ -143,6 +167,7 @@ classdef RotaryEncoderModule < handle
             obj.wrapMode = newWrapMode;
         end
         function set.sendThresholdEvents(obj, stateString)
+            obj.assertNotUSBStreaming;
             stateString = lower(stateString);
             if obj.autoSync
                 switch stateString
@@ -157,24 +182,13 @@ classdef RotaryEncoderModule < handle
             obj.ConfirmUSBTransmission('State Machine Threshold Events (Enable/Disable)');
             obj.sendThresholdEvents = stateString;
         end
-        function syncParams(obj) % For use when autoSync is off
-            ModuleOutputStreamValue = double(strcmp(obj.moduleOutputStream, 'on'));
-            obj.Port.write(['O' ModuleOutputStreamValue], 'uint8');
-            obj.ConfirmUSBTransmission('Output Module Stream');
-            StateMachineEventsValue = double(strcmp(obj.sendThresholdEvents, 'on'));
-            obj.Port.write(['V' StateMachineEventsValue], 'uint8');
-            obj.ConfirmUSBTransmission('State Machine Events');
-            ThresholdsInTics = obj.degrees2pos(obj.thresholds);
-            obj.Port.write(['T' length(ThresholdsInTics)], 'uint8', ThresholdsInTics, 'int16');
-            obj.ConfirmUSBTransmission('Thresholds');
-        end
         function startLogging(obj)
             obj.Port.write('L', 'uint8');
             obj.isLogging = 1;
         end
         function stopLogging(obj)
-            obj.Port.write('F', 'uint8');
-            obj.isLogging = 0;
+                obj.Port.write('F', 'uint8');
+                obj.isLogging = 0;
         end
         function Data = getLoggedData(obj)
             if obj.uiStreaming == 1
@@ -217,74 +231,58 @@ classdef RotaryEncoderModule < handle
             ThresholdEnabledBits = sum(ThresholdsEnabled.*2.^((0:length(ThresholdsEnabled)-1)));
             obj.Port.write([';' ThresholdEnabledBits], 'uint8');
         end
-        function startUSBStream(obj)
-            if obj.isLogging == 0
-                obj.acquiring = 1;
-                obj.Port.write(['S' 1], 'uint8');
-            else
-                error('Error: The Rotary Encoder Module is logging to microSD. Turn off logging with stopLogging() to enable USB streaming.')
+        function startUSBStream(obj, varargin)
+            if obj.acquiring == 0
+                if obj.isLogging == 0
+                    obj.acquiring = 1;
+                    obj.Port.write(['S' 1], 'uint8');
+                    if nargin > 1
+                        op = varargin{1};
+                        switch lower(op)
+                            case 'usetimer'
+                                obj.usbCaptureEnabled = 1;
+                                obj.Timer = timer('TimerFcn',@(h,e)obj.captureUSBStream(), 'ExecutionMode', 'fixedRate', 'Period', 0.1, 'Tag', ['RE_' obj.Port.PortName]);
+                                start(obj.Timer);
+                            otherwise
+                                error(['Error starting rotary encoder USB stream: Invalid argument ' op '. Valid arguments are: ''UseTimer'''])
+                        end
+                                
+                    end
+                else
+                    error('Error: The Rotary Encoder Module is logging to microSD. Turn off logging with stopLogging() to enable USB streaming.')
+                end
             end
         end
         function NewData = readUSBStream(obj)
-            if ~obj.acquiring
-                error('Error: the USB stream must be started with startUSBStream() before you can read stream data from the buffer.')
+            NewData = obj.getUSBStream;
+            if obj.usbCaptureEnabled == 1
+                obj.usbCapturedData = obj.appendStreamData(obj.usbCapturedData, NewData);
+                NewData = obj.usbCapturedData;
+                obj.usbCapturedData = [];
             end
-            NewData = obj.NewDataTemplate;
-            nNewDataPoints = 0;
-            nNewEvents = 0;
-            if (obj.Port.bytesAvailable > 0) 
-                Msg = obj.Port.read(obj.Port.bytesAvailable, 'uint8');
-                MsgInd = 1;
-                while MsgInd < length(Msg)
-                    thisOp = Msg(MsgInd);
-                    switch thisOp
-                        case 'P' % Position  
-                            MsgInd = MsgInd + 1;
-                            nPositions = double(Msg(MsgInd));
-                            MsgInd = MsgInd + 1;
-                            Positions = Msg(MsgInd:MsgInd+(6*nPositions)-1);
-                            MsgInd = MsgInd + (6*nPositions)-1;
-                            NewData.nPositions = NewData.nPositions + nPositions;
-                            NewData.Positions(nNewDataPoints+1:nNewDataPoints+nPositions) = obj.pos2degrees(typecast(Positions(obj.positionBytemask(1:6*nPositions)), 'int16'));
-                            NewData.Times(nNewDataPoints+1:nNewDataPoints+nPositions) = double(typecast(Positions(obj.timeBytemask(1:6*nPositions)), 'uint32'))/1000;
-                            nNewDataPoints = nNewDataPoints + nPositions;
-                            MsgInd = MsgInd + 1;
-                        case 'E' % Event
-                            MsgInd = MsgInd + 1;
-                            EventData = Msg(MsgInd:MsgInd+5);
-                            nNewEvents = nNewEvents + 1;
-                            MsgInd = MsgInd + 6;
-                            NewData.nEvents = NewData.nEvents + 1;
-                            NewData.EventTypes(nNewEvents) = EventData(1);
-                            NewData.EventCodes(nNewEvents) = EventData(2);
-                            NewData.EventTimestamps(nNewEvents) = double(typecast(EventData(3:end), 'uint32'))/1000;
-                    end
-                end
-                if nNewDataPoints > 0
-                    NewData.Positions = NewData.Positions(1:nNewDataPoints);
-                    NewData.Times = NewData.Times(1:nNewDataPoints);
-                else
-                    NewData.Positions = [];
-                    NewData.Times = [];
-                end
-                if nNewEvents > 0
-                    NewData.EventTypes = NewData.EventTypes(1:nNewEvents);
-                    NewData.EventCodes = NewData.EventCodes(1:nNewEvents);
-                    NewData.EventTimestamps = NewData.EventTimestamps(1:nNewEvents);
-                else
-                    NewData.EventTypes = [];
-                    NewData.EventCodes = [];
-                    NewData.EventTimestamps = [];
-                end
+        end
+        function OutData = appendStreamData(obj, StreamData, NewData)
+            if isfield(StreamData, 'nPositions')
+                StreamData.nPositions = StreamData.nPositions + NewData.nPositions;
+                StreamData.nEvents = StreamData.nEvents + NewData.nEvents;
+                StreamData.Positions = [StreamData.Positions NewData.Positions];
+                StreamData.Times = [StreamData.Times NewData.Times];
+                StreamData.EventTypes = [StreamData.EventTypes NewData.EventTypes];
+                StreamData.EventCodes = [StreamData.EventCodes NewData.EventCodes];
+                StreamData.EventTimestamps = [StreamData.EventTimestamps NewData.EventTimestamps];
+                OutData = StreamData;
             else
-                NewData.Positions = [];
-                NewData.Times = [];
-                NewData.EventTypes = [];
-                NewData.EventCodes = [];
-                NewData.EventTimestamps = [];
+                OutData = NewData;
             end
         end
         function stopUSBStream(obj)
+            if obj.usbCaptureEnabled == 1
+                obj.usbCaptureEnabled = 0;
+                obj.usbCapturedData = [];
+                stop(obj.Timer);
+                delete(obj.Timer);
+                obj.Timer = [];
+            end
             if obj.acquiring
                 obj.Port.write(['S' 0], 'uint8');
                 pause(.05);
@@ -299,7 +297,6 @@ classdef RotaryEncoderModule < handle
                 error('Error: The Rotary Encoder Module is logging to microSD. Turn off logging with stopLogging() to enable USB streaming.')
             end
             if obj.uiStreaming == 0
-                obj.acquiring = 1;
                 obj.uiStreaming = 1;
                 BGColor = [0.8 0.8 0.8];
                 thresholdColors = {[0 0 1], [1 0 0], [0 1 0], [1 1 0], [0 1 1],...
@@ -386,8 +383,9 @@ classdef RotaryEncoderModule < handle
             set(obj.gui.OscopeDataLine,'xdata',[obj.displayTimes, obj.displayTimes], 'ydata', [obj.displayPositions, obj.displayPositions]); drawnow;
             obj.UIResetScheduled = 1;
         end
-        
         function delete(obj)
+            obj.stopUSBStream;
+            obj.stopLogging;
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
         end
     end
@@ -401,8 +399,14 @@ classdef RotaryEncoderModule < handle
             obj.uiStreaming = 0;
             delete(obj.gui.Fig);
         end
-        function updatePlot(obj)
+        function captureUSBStream(obj)
             newData = obj.readUSBStream;
+            if (newData.nEvents > 0) || (newData.nPositions > 0)
+                obj.usbCapturedData = obj.appendStreamData(obj.usbCapturedData, newData);
+            end
+        end
+        function updatePlot(obj)
+            newData = obj.getUSBStream;
             if ~isempty(newData.Positions)
                 DisplayTime = (newData.Times(end)-obj.sweepStartTime);
                 obj.displayPos = obj.displayPos + newData.nPositions;
@@ -429,6 +433,7 @@ classdef RotaryEncoderModule < handle
             if (nBytesAvailable > 0)
                 obj.Port.read(nBytesAvailable, 'uint8');
             end
+            obj.acquiring = 0;
             nThresholds = length(obj.thresholds);
             newThreshold1 = str2double(get(obj.gui.Threshold1Edit, 'String'));
             obj.thresholds(1) = newThreshold1; 
@@ -465,6 +470,7 @@ classdef RotaryEncoderModule < handle
                     obj.moduleOutputStream = 'on';
             end
             obj.Port.write(['S' 1], 'uint8');
+            obj.acquiring = 1;
             start(obj.Timer);
         end
         function updateThresh(obj,State)
@@ -495,6 +501,64 @@ classdef RotaryEncoderModule < handle
                 end
             end
         end
+        function NewData = getUSBStream(obj)
+            if ~obj.acquiring
+                error('Error: the USB stream must be started with startUSBStream() before you can read stream data from the buffer.')
+            end
+            NewData = obj.NewDataTemplate;
+            nNewDataPoints = 0;
+            nNewEvents = 0;
+            nBytesAvailable = obj.Port.bytesAvailable;
+            if (nBytesAvailable > 6)
+                msgSize = 7*floor(nBytesAvailable/7); % Only read complete messages
+                Msg = obj.Port.read(msgSize, 'uint8');
+                MsgInd = 1;
+                while MsgInd < length(Msg)
+                    thisOp = Msg(MsgInd);
+                    switch thisOp
+                        case 'P' % Position  
+                            MsgInd = MsgInd + 1;
+                            Positions = Msg(MsgInd:MsgInd+5);
+                            MsgInd = MsgInd + 6;
+                            NewData.nPositions = NewData.nPositions + 1;
+                            nNewDataPoints = nNewDataPoints + 1;
+                            NewData.Positions(nNewDataPoints) = obj.pos2degrees(typecast(Positions(obj.positionBytemask(1:6)), 'int16'));
+                            NewData.Times(nNewDataPoints) = double(typecast(Positions(obj.timeBytemask(1:6)), 'uint32'))/1000;
+                        case 'E' % Event
+                            MsgInd = MsgInd + 1;
+                            EventData = Msg(MsgInd:MsgInd+5);
+                            nNewEvents = nNewEvents + 1;
+                            MsgInd = MsgInd + 6;
+                            NewData.nEvents = NewData.nEvents + 1;
+                            NewData.EventTypes(nNewEvents) = EventData(1);
+                            NewData.EventCodes(nNewEvents) = EventData(2);
+                            NewData.EventTimestamps(nNewEvents) = double(typecast(EventData(3:end), 'uint32'))/1000;
+                    end
+                end
+                if nNewDataPoints > 0
+                    NewData.Positions = NewData.Positions(1:nNewDataPoints);
+                    NewData.Times = NewData.Times(1:nNewDataPoints);
+                else
+                    NewData.Positions = [];
+                    NewData.Times = [];
+                end
+                if nNewEvents > 0
+                    NewData.EventTypes = NewData.EventTypes(1:nNewEvents);
+                    NewData.EventCodes = NewData.EventCodes(1:nNewEvents);
+                    NewData.EventTimestamps = NewData.EventTimestamps(1:nNewEvents);
+                else
+                    NewData.EventTypes = [];
+                    NewData.EventCodes = [];
+                    NewData.EventTimestamps = [];
+                end
+            else
+                NewData.Positions = [];
+                NewData.Times = [];
+                NewData.EventTypes = [];
+                NewData.EventCodes = [];
+                NewData.EventTimestamps = [];
+            end
+        end
         function degrees = pos2degrees(obj, pos)
             degrees = round(((double(pos)/512)*180)*10)/10;
         end
@@ -506,6 +570,19 @@ classdef RotaryEncoderModule < handle
             if Confirm ~= 1
                 error(['Error while updating ' ParamName '. RotaryEncoderModule did not return a confirmation byte.'])
             end
+        end
+        function assertNotUSBStreaming(obj)
+            if obj.acquiring == 1
+                error('Error: Cannot access rotary encoder module while USB streaming is active. Stop the stream first with stopUSBStream().')
+            end
+        end
+        function resetParams(obj)
+            obj.thresholds = [-40 40];
+            obj.wrapPoint = 180;
+            obj.wrapMode = 'bipolar';
+            obj.sendThresholdEvents = 'off';
+            obj.moduleOutputStream = 'off';
+            obj.moduleStreamPrefix = 'M';
         end
     end
 end

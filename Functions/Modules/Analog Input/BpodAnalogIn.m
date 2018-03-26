@@ -38,7 +38,7 @@ classdef BpodAnalogIn < handle
     
     properties(Constant)
         ValidRanges = {'-10V:10V', '-5V:5V', '-2.5V:2.5V','0V:10V'};
-        ValidSamplingRates = [1 100000]; % Range of valid sampling rates
+        ValidSamplingRates = [1 10000]; % Range of valid sampling rates
     end
     
     properties (Access = private)
