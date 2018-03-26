@@ -1,3 +1,9 @@
+---v1.56---
+-Updated current state machine firmware to v21 (optimizations for state machine r2)
+-Added support for Bpod port array module
+-Updated rotary encoder class with several bug-fixes, support for 8 thresholds and support for capturing + timestamping state machine byte codes
+-Updated BControl patch to improve handling of laggy USB serial buffers on some systems
+
 ---v1.55---
 -Fixed SSL handshake bug in PhoneHome program (CRITICAL)
 -Enabled rotary encoder module to log and timestamp bytes from state machine
