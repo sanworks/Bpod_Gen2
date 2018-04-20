@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -65,14 +65,29 @@ classdef BpodAnalogIn < handle
             try
                 obj.Port = ArCOMObject_Ain(portString, 115200);
             catch
-                error('Was not able to find BpodAnalogIn module. Try disconnect and connect again.')
+                error('Error: unable to connect to Bpod Analog Input module.')
             end
             obj.Port.write([obj.opMenuByte 'O'], 'uint8');
             pause(.1);
             HandShakeOkByte = obj.Port.read(1, 'uint8');
             if HandShakeOkByte == 161 % Correct handshake response
                 obj.FirmwareVersion = obj.Port.read(1, 'uint32');
-                disp(['AnalogIn module V' num2str(obj.FirmwareVersion) ' found.']);
+                try
+                    addpath(fullfile(fileparts(which('Bpod')), 'Functions', 'Internal Functions'));
+                    CurrentFirmware = CurrentFirmwareList;
+                    LatestFirmware = CurrentFirmware.AnalogIn;
+                catch
+                    % Stand-alone configuration (Bpod not installed); assume latest firmware
+                    LatestFirmware = obj.FirmwareVersion;
+                end
+                if obj.FirmwareVersion < LatestFirmware
+                    error(['Analog Input Module with old firmware found (v' num2str(obj.FirmwareVersion) '). Please update firmware to v' num2str(LatestFirmware) '.' char(13) ...
+                        'Firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.']);
+                elseif obj.FirmwareVersion > LatestFirmware
+                    error(['Analog Input Module with future firmware found. Please update your Bpod software from the Bpod_Gen2 repository.']);
+                else
+                    disp(['Analog Input Module found.']);
+                end
             else
                 error(['Error: The serial port (' portString ') returned an unexpected handshake signature.'])
             end
@@ -396,8 +411,7 @@ classdef BpodAnalogIn < handle
             obj.UIdata.TimeDivValues = [0.01 0.02 0.05 0.1 0.2 0.5 1 2];
             obj.UIdata.nDisplaySamples = obj.SamplingRate*obj.UIdata.TimeDivValues(obj.UIdata.TimeDivPos)*obj.UIhandles.nXDivisions;
             obj.UIdata.SweepPos = 1;
-            obj.UIdata.SweepPos = 1;
-            if IsLinux
+            if isunix && ~ismac
                 TitleFontSize = 16;
                 ScaleFontSize = 14;
                 SubTitleFontSize = 12;
@@ -695,7 +709,7 @@ classdef BpodAnalogIn < handle
             SF = str2double(SFstring);
             if ~isnan(SF)
                 SF = round(SF);
-                if (SF > 0) && (SF < obj.ValidSamplingRates(2))
+                if (SF >= 1) && (SF <= obj.ValidSamplingRates(2))
                     ValidSF = 1;
                 end
             end
@@ -713,7 +727,7 @@ classdef BpodAnalogIn < handle
         function UIsetNactiveChannels(obj)
             nActiveChan = get(obj.UIhandles.nChanSelect, 'Value');
             obj.stopUIStream;
-            if nActiveChan <= obj.nPhysicalChannels % Clear plot not in use
+            if nActiveChan <= obj.nPhysicalChannels 
                 for i = 1:nActiveChan
                     set(obj.UIhandles.chanEnable(i), 'enable', 'on');
                     set(obj.UIhandles.rangeSelect(i), 'enable', 'on');
@@ -725,8 +739,8 @@ classdef BpodAnalogIn < handle
                     set(obj.UIhandles.chanEnable(i), 'enable', 'off');
                     set(obj.UIhandles.rangeSelect(i), 'enable', 'off');
                 end
+                obj.nActiveChannels = nActiveChan;
             end
-            obj.nActiveChannels = nActiveChan;
             if obj.Streaming
                 obj.startUSBStream;
                 start(obj.Timer);
@@ -740,6 +754,11 @@ classdef BpodAnalogIn < handle
             set(obj.UIhandles.OscopeDataLine(chan), 'Ydata', [obj.UIdata.Ydata(chan,:),obj.UIdata.Ydata(chan,:)]);
             if obj.Streaming
                 obj.startUSBStream;
+                pause(.1);
+                if obj.Port.bytesAvailable > 0 % First buffer-full may have mixed data, discard
+                    obj.Port.read(obj.Port.bytesAvailable, 'uint8');
+                end
+                obj.UIdata.SweepPos = 1;
                 start(obj.Timer);
             end
         end
@@ -830,7 +849,7 @@ classdef BpodAnalogIn < handle
             channelsStreaming = obj.Stream2USB(1:obj.nActiveChannels);
             nChannelsStreaming = sum(channelsStreaming);
             updateChannels = find(channelsStreaming);
-            nBytesPerFrame = (nChannelsStreaming*2)+1;
+            nBytesPerFrame = (nChannelsStreaming*2)+2;
             if nChannelsStreaming > 0
                 if nBytesAvailable > nBytesPerFrame % If at least 1 sample is available for each channel
                     nBytesToRead = floor(nBytesAvailable/nBytesPerFrame)*nBytesPerFrame;
@@ -838,6 +857,7 @@ classdef BpodAnalogIn < handle
                     currentVoltDivValue = obj.UIdata.VoltDivValues(obj.UIdata.VoltDivPos);
                     if NewData(1) == 'R'
                         NewData(1:nBytesPerFrame:end) = [];
+                        NewData(1:nBytesPerFrame-1:end) = []; % Spacer
                         NewSamples = typecast(NewData(1:end), 'uint16');
                         nNewSamples = length(NewSamples)/nChannelsStreaming;
                         SweepPos = obj.UIdata.SweepPos;
