@@ -72,7 +72,22 @@ classdef BpodAnalogIn < handle
             HandShakeOkByte = obj.Port.read(1, 'uint8');
             if HandShakeOkByte == 161 % Correct handshake response
                 obj.FirmwareVersion = obj.Port.read(1, 'uint32');
-                disp(['AnalogIn module V' num2str(obj.FirmwareVersion) ' found.']);
+                try
+                    addpath(fullfile(fileparts(which('Bpod')), 'Functions', 'Internal Functions'));
+                    CurrentFirmware = CurrentFirmwareList;
+                    LatestFirmware = CurrentFirmware.AnalogIn;
+                catch
+                    % Stand-alone configuration (Bpod not installed); assume latest firmware
+                    LatestFirmware = obj.FirmwareVersion;
+                end
+                if obj.FirmwareVersion < LatestFirmware
+                    error(['Analog Input Module with old firmware found (v' num2str(obj.FirmwareVersion) '). Please update firmware to v' num2str(LatestFirmware) '.' char(13) ...
+                        'Firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.']);
+                elseif obj.FirmwareVersion > LatestFirmware
+                    error(['Analog Input Module with future firmware found. Please update your Bpod software from the Bpod_Gen2 repository.']);
+                else
+                    disp(['Analog Input Module found.']);
+                end
             else
                 error(['Error: The serial port (' portString ') returned an unexpected handshake signature.'])
             end
@@ -396,7 +411,7 @@ classdef BpodAnalogIn < handle
             obj.UIdata.TimeDivValues = [0.01 0.02 0.05 0.1 0.2 0.5 1 2];
             obj.UIdata.nDisplaySamples = obj.SamplingRate*obj.UIdata.TimeDivValues(obj.UIdata.TimeDivPos)*obj.UIhandles.nXDivisions;
             obj.UIdata.SweepPos = 1;
-            if IsLinux
+            if isunix && ~ismac
                 TitleFontSize = 16;
                 ScaleFontSize = 14;
                 SubTitleFontSize = 12;
