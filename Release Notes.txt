@@ -1,3 +1,6 @@
+---v1.57---
+-Fixes to analog input module class (+matching fixes to its firmware repository), fix streaming to scope UI at sampling rates >1kHz
+
 ---v1.56---
 -Updated current state machine firmware to v21 (optimizations for state machine r2)
 -Added support for Bpod port array module

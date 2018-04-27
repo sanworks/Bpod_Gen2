@@ -240,23 +240,17 @@ classdef BpodClientObject < handle
                         case 'VERSION'
                             obj.ReplyBuffer = num2str(BpodSystem.FirmwareVersion);
                         case 'INITIALIZE'
-                            if BpodSystem.Status.InStateMatrix
-                               BpodSystem.Status.Live = 0;
-                                if BpodSystem.EmulatorMode == 0
-                                    BpodSystem.SerialPort.write('X', 'uint8');
-                                    pause(.1);
-                                    nBytes = BpodSystem.SerialPort.bytesAvailable;
-                                    if nBytes > 0
-                                        BpodSystem.SerialPort.read(nBytes, 'uint8');
-                                    end
-                                    if isfield(BpodSystem.PluginSerialPorts, 'TeensySoundServer')
-                                        TeensySoundServer('end');
-                                    end   
-                                end
-                                BpodSystem.Status.InStateMatrix = 0;
-                                BpodSystem.Status.NewStateMachineSent = 0;
-                                obj.isPaused = 0;
+                           BpodSystem.Status.Live = 0;
+                            if BpodSystem.EmulatorMode == 0
+                                BpodSystem.SerialPort.write('X', 'uint8');
+                                pause(.1);
+                                nBytes = BpodSystem.SerialPort.bytesAvailable;
+                                if nBytes > 0
+                                    BpodSystem.SerialPort.read(nBytes, 'uint8');
+                                end 
                             end
+                            BpodSystem.Status.InStateMatrix = 0;
+                            BpodSystem.Status.NewStateMachineSent = 0;
                             if obj.isPaused == 1
                                 BpodSystem.SerialPort.write(['$' 1], 'uint8');
                                 obj.isPaused = 0;
