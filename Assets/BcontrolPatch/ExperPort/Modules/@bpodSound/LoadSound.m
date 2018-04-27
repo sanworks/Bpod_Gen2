@@ -43,6 +43,15 @@ function [sm] = LoadSound(sm, trignum, sound, side, tau_ms, predelay_s, loop_fg)
    nsamps = predelay_s * mydata.samplerate;
    sound = horzcat(zeros(size(sound,1), nsamps), sound);
 
+   %Code to allow users to set a volume scaling factor unique to each rig to
+  %help make sounds uniform between rigs when differences are greater than
+  %what the amplifiers can manage
+  volume_scale = bSettings('get','SOUND','volume_scaling');
+  if isempty(volume_scale) || isnan(volume_scale); volume_scale = 1; end
+  sound = sound * volume_scale;
+  sound(sound > 1) = 1;
+  sound(sound < -1) = -1; 
+  
    if (trignum < 0), trignum = -trignum; end;
    
    if ~ismember(trignum, mydata.allowed_trigs),
