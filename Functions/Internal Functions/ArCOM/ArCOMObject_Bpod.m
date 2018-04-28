@@ -126,14 +126,14 @@ classdef ArCOMObject_Bpod < handle
             originalPortString = portString;
             switch obj.Interface
                 case 0
-                    obj.Port = serial(portString, 'BaudRate', 115200, 'Timeout', 1,'OutputBufferSize', 1000000, 'InputBufferSize', 1000000, 'DataTerminalReady', 'on', 'tag', 'ArCOM');
+                    obj.Port = serial(portString, 'BaudRate', 115200, 'Timeout', 3,'OutputBufferSize', 1000000, 'InputBufferSize', 1000000, 'DataTerminalReady', 'on', 'tag', 'ArCOM');
                     fopen(obj.Port);
                 case 1
                     if ispc
                         portString = ['\\.\' portString];
                     end
                     IOPort('Verbosity', 0);
-                    obj.Port = IOPort('OpenSerialPort', portString, 'BaudRate=115200, OutputBufferSize=1000000, InputBufferSize=1000000, DTR=1');
+                    obj.Port = IOPort('OpenSerialPort', portString, 'ReceiveTimeout=3, BaudRate=115200, OutputBufferSize=1000000, InputBufferSize=1000000, DTR=1');
                     if (obj.Port < 0)
                         try
                             IOPort('Close', obj.Port);
