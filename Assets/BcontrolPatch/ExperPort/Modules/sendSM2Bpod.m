@@ -189,7 +189,7 @@ if HasAudioPlayer == 0
 else
     BpodOutputMatrixCol_Snd = find(strcmp(BpodSystem.StateMachineInfo.OutputChannelNames, 'AudioPlayer1'));
     nSoundsSupported = BpodSystem.PluginObjects.SoundServer.Info.maxSounds;
-    SoundOut(SoundOut < 0) = nSoundsSupported+1; % 1 more than the max number of sounds = sound-off byte.
+    SoundOut(SoundOut < 0) = (SoundOut(SoundOut < 0)*-1)+double(nSoundsSupported); % 1 more than the max number of sounds begins sound-off codes.
     SoundOut(1) = uint8('*'); % State 1 (equiv to state 0) sends a "push" signal to the sound server, to set newly
                               % loaded sounds to the front (playback) buffer
     bsma.OutputMatrix(:,BpodOutputMatrixCol_Snd) = SoundOut;
@@ -224,13 +224,13 @@ for i = 1:nWavesDeclared
     bsma.GlobalTimers.Names{i} = waveNames{i};
     if SW(i).sound_trig ~= 0
         if HasAudioPlayer
-            OffCode = BpodSystem.PluginObjects.SoundServer.Info.maxSounds+1;
+            MaxSounds = BpodSystem.PluginObjects.SoundServer.Info.maxSounds;
             bsma.GlobalTimers.OutputChannel(i) = AudioPlayerOutputCh;
             if SW(i).sound_trig > 0
                 bsma.GlobalTimers.OnMessage(i) = SW(i).sound_trig;
-                bsma.GlobalTimers.OffMessage(i) = OffCode; % If sounds are shut off when scheduled waves end.. is this true?
+                bsma.GlobalTimers.OffMessage(i) = SW(i).sound_trig+MaxSounds; % JS: If sounds are shut off when scheduled waves end.. is this true?
             else
-                bsma.GlobalTimers.OnMessage(i) = OffCode;
+                bsma.GlobalTimers.OnMessage(i) = (SW(i).sound_trig*-1)+MaxSounds;
             end
         else
             error('Error: A Bpod AudioPlayer module is required to run this state matrix, but none is connected.')
@@ -443,7 +443,6 @@ if ~isUsingHappenings(sma)
     BpodSystem.PluginObjects.BcontrolEventCodeMapBuffer(GTstart:lastDeclaredGT) = WaveStartPos:2:WaveEndPos;
     BpodSystem.PluginObjects.BcontrolEventCodeMapBuffer(GTend:GTend+nWavesDeclared-1) = WaveStartPos+1:2:WaveEndPos;
 end
-
 if RunASAP
     ok = SendStateMachine(bsma, 'RunASAP');
     BpodSystem.Status.InStateMatrix = 1;

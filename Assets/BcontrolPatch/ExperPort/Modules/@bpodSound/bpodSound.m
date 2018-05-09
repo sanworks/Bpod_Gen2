@@ -55,8 +55,8 @@ if nargin==0,
             end
         end
         if AudioPlayerFound == 1
-            if sr > 100000
-                error('Error: In your custom_settings.conf file, a sampling rate over 100kHz is specified - but the current BpodAudio firmware can only support up to 100kHz.')
+            if sr > 44100
+                error('Error: In your custom_settings.conf file, a sampling rate over 44.1kHz is specified - but the current BpodAudio firmware can only support up to 44.1kHz.')
             end
             nSoundsSupported = BpodSystem.PluginObjects.SoundServer.Info.maxSounds;
             BpodSystem.PluginObjects.SoundServer.SamplingRate = sr;
@@ -67,11 +67,13 @@ if nargin==0,
             % Set trigger mode to 'master' so that new sounds automatically cancel old ones
             BpodSystem.PluginObjects.SoundServer.TriggerMode = 'Master';
             % Setup trigger messages from state machine
-            TriggerMessages = cell(1,nSoundsSupported+1);
+            TriggerMessages = cell(1,nSoundsSupported*2);
             for i = 1:nSoundsSupported
                 TriggerMessages{i} = ['P' i-1];
             end
-            TriggerMessages{nSoundsSupported+1} = 'X';
+            for i = nSoundsSupported+1:nSoundsSupported*2
+                TriggerMessages{i} = ['x' i-nSoundsSupported-1];
+            end
             LoadSerialMessages('AudioPlayer1', TriggerMessages);
         end
     end
