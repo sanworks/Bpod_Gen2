@@ -1,8 +1,8 @@
-% Example state matrix: A global timer ends an infinite loop. It is
-% triggered in the first state, but begins measuring its 3-second Duration 
-% after a 1.5s onset delay. When the timer begins measuring, it sets the PWM channel of port2
-% to 25% duty cycle (64/256). When the timer's 3 second duration elapses, the PWM channel is returned low, 
-% and a GlobalTimer1_End event occurs (handled in both cases by exiting the state machine).
+% Example state matrix: A global timer ends an infinite loop of states 'Port1Lit' and 'Port3Lit'. 
+% It is triggered in the first state, but begins measuring its 3-second Duration 
+% after a 1.5s onset delay. When the timer begins measuring, it opens the valve on port 1. 
+% When the timer's 0.5 second duration elapses, the valve is closed, 
+% and a GlobalTimer1_End event occurs (handled in both states by exiting the state machine).
 
 
 sma = NewStateMachine;
