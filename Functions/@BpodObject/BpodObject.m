@@ -30,6 +30,7 @@ classdef BpodObject < handle
         Data % Struct storing all data collected in the current session. SaveBpodSessionData saves this to the current data file.
         StateMatrix % Struct of matrices describing current (running) state machine
         StateMatrixSent % StateMatrix sent to the state machine, for the next trial. At run, this replaces StateMatrix.
+        LastStateMatrix % Last state matrix completed. This is updated each time a trial run completes.
         HardwareState % Current state of I/O lines and serial codes
         StateMachineInfo % Struct with information about state machines (customized for connected hardware)
         GUIHandles % Struct with graphics handles
