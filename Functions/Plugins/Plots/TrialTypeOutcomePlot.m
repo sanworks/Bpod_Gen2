@@ -150,7 +150,10 @@ function [mn,mx] = rescaleX(AxesHandle,CurrentTrial,nTrialsToShow)
 FractionWindowStickpoint = .75; % After this fraction of visible trials, the trial position in the window "sticks" and the window begins to slide through trials.
 mn = max(round(CurrentTrial - FractionWindowStickpoint*nTrialsToShow),1);
 mx = mn + nTrialsToShow - 1;
-%set(AxesHandle,'XLim',[mn-1 mx+1]); Replaced this with a trimmed "display" copy of the data for speed - JS 2017
+tickLabels = sprintfc('%d',(mn-1:10:mx));
+set(AxesHandle,'XtickLabel', tickLabels);
+%set(AxesHandle,'XLim',[mn-1 mx+1]); Replaced this with a trimmed "display" copy of the data 
+                                    % and an xticklabel update for speed - JS 2018
 end
 
 function SplitString = Split(s)

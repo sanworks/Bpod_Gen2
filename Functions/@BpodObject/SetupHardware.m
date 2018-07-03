@@ -32,7 +32,7 @@ function obj = SetupHardware(obj)
             case 1
                SMName = 'r0.5';
             case 2
-               SMName = 'r0.7-0.9';
+               SMName = 'r0.7-1.0';
             case 3
                SMName = 'r2.0';
         end
