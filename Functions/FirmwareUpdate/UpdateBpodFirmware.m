@@ -8,6 +8,9 @@ classdef UpdateBpodFirmware < handle
         gui
         HW
         MachineType
+        LatestModuleFirmware
+        ModuleNames
+        ModuleUSBPorts
     end
     methods
         function obj = UpdateBpodFirmware(varargin)
@@ -19,8 +22,19 @@ classdef UpdateBpodFirmware < handle
                 StateMachinePort = BpodSystem.SerialPort.PortName;
                 SMFirmwareVersion = BpodSystem.FirmwareVersion;
                 ModuleFirmwareVersions = BpodSystem.Modules.FirmwareVersion;
-                ModuleNames = BpodSystem.Modules.Name;
+                obj.ModuleNames = BpodSystem.Modules.Name;
                 obj.MachineType = BpodSystem.MachineType;
+                obj.ModuleUSBPorts = BpodSystem.Modules.USBport;
+                for i = 1:length(obj.ModuleNames)
+                    ThisModuleName = obj.ModuleNames{i};
+                    if ~strcmp(ThisModuleName(1:end-1), 'Serial')
+                        if isempty(obj.ModuleUSBPorts{i})
+                            error(['Error: To load the firmware update tool, each module must' char(13)...
+                                   'first be paired with its corresponding USB serial port' char(13)...
+                                   '(use USB icon on the Bpod console).'])
+                        end
+                    end
+                end
             else
                 if nargin > 0
                     StateMachinePort = varargin{1};
@@ -69,7 +83,7 @@ classdef UpdateBpodFirmware < handle
             uicontrol('Style', 'edit', 'Position', [20 Ypos 170 30], 'String', 'State Machine', 'FontSize', 14,...
                 'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
             for i = 1:nModules
-                ModuleName = ModuleNames{i};
+                ModuleName = obj.ModuleNames{i};
                 if strcmp(ModuleName(1:6), 'Serial')
                     SerNum = ModuleName(end);
                     ModuleName = ['Module' num2str(SerNum)];
@@ -90,7 +104,7 @@ classdef UpdateBpodFirmware < handle
                 else
                     FV = num2str(thisModuleFirmware);
                 end
-                uicontrol('Style', 'edit', 'Position', [195 Ypos 170 30], 'String', FV, 'FontSize', 14,...
+                obj.gui.ModuleFV(i) = uicontrol('Style', 'edit', 'Position', [195 Ypos 170 30], 'String', FV, 'FontSize', 14,...
                     'FontWeight', 'bold', 'Enable', 'inactive', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
             end
             % Latest firmware
@@ -99,8 +113,15 @@ classdef UpdateBpodFirmware < handle
                 'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 45;
             obj.gui.FV = uicontrol('Style', 'edit', 'Position', [370 Ypos 170 30], 'String', num2str(obj.CurrentFirmware.StateMachine), 'FontSize', 14,...
                 'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
+            obj.LatestModuleFirmware = zeros(1,nModules);
             for i = 1:nModules
-                thisModuleFirmware = ModuleFirmwareVersions(i);
+                ModuleName = obj.ModuleNames{i};
+                if strcmp(ModuleName(1:6), 'Serial')
+                    obj.LatestModuleFirmware(i) = ModuleFirmwareVersions(i);
+                else
+                    obj.LatestModuleFirmware(i) = obj.CurrentFirmware.(ModuleName(1:end-1));
+                end
+                thisModuleFirmware = obj.LatestModuleFirmware(i);
                 if ModuleFirmwareVersions(i) == 0
                     FV = '---';
                 else
@@ -118,15 +139,20 @@ classdef UpdateBpodFirmware < handle
                 Enable = 'off';
             end
             obj.gui.smButton = uicontrol('Style', 'pushbutton', 'Position', [545 Ypos 170 30], 'String', 'Update', 'FontSize', 14,...
-                'FontWeight', 'bold', 'Enable', Enable,'Callback', @(h,e)obj.updateSMFirmware()); Ypos = Ypos - 30;
+                'FontWeight', 'bold', 'Enable', Enable,'Callback', @(h,e)obj.updateFirmware()); Ypos = Ypos - 30;
             for i = 1:nModules
                 thisModuleFirmware = ModuleFirmwareVersions(i);
                 Enable = 'on';
-                if ModuleFirmwareVersions(i) == 0
-                    Enable = 'off';
+                thisModuleName = obj.ModuleNames{i};
+                if thisModuleFirmware == 0
+                        Enable = 'off';
+                elseif thisModuleFirmware == obj.CurrentFirmware.(thisModuleName(1:end-1))
+                        Enable = 'off';
                 end
-                uicontrol('Style', 'pushbutton', 'Position', [545 Ypos 170 30], 'String', 'Update', 'FontSize', 14,...
-                    'FontWeight', 'bold', 'Enable', 'inactive', 'Enable', Enable); Ypos = Ypos - 30;
+                                
+                
+                obj.gui.moduleButton(i) = uicontrol('Style', 'pushbutton', 'Position', [545 Ypos 170 30], 'String', 'Update', 'FontSize', 14,...
+                    'FontWeight', 'bold', 'Enable', 'inactive', 'Enable', Enable,'Callback', @(h,e)obj.updateFirmware(i)); Ypos = Ypos - 30;
             end
             if nModules == 0
                 uicontrol('Style', 'text', 'Position', [30 Height-180 710 30], 'String', 'Note: Run Bpod() first to view connected modules', 'FontSize', 18,...
@@ -134,45 +160,111 @@ classdef UpdateBpodFirmware < handle
             end
             obj.StateMachinePort = StateMachinePort;
         end
-        function updateSMFirmware(obj)
+        function updateFirmware(obj, varargin)
+            global BpodSystem
+            ModuleNum = 0;
+            if nargin > 1
+                ModuleNum = varargin{1};
+                ModuleName = obj.ModuleNames{ModuleNum};
+            end
             progressbar(0); pause(.2);
             obj.CurrentFirmware = CurrentFirmwareList;
-            if obj.MachineType == 3
-                boardType = 'Teensy3_x';
-                if obj.HW.n.GlobalTimers == 20
-                    FirmwareFilename = 'StateMachine_Bpod2_BControl.hex';
-                else
-                    FirmwareFilename = 'StateMachine_Bpod2_Classic.hex';
+            if ModuleNum == 0
+                if obj.MachineType == 3
+                    boardType = 'Teensy3_x';
+                    if obj.HW.n.GlobalTimers == 20
+                        FirmwareFilename = 'StateMachine_Bpod2_BControl.hex';
+                    else
+                        FirmwareFilename = 'StateMachine_Bpod2_Classic.hex';
+                    end
+                    PauseFor = .1;
+                elseif obj.MachineType == 2
+                    boardType = 'ArduinoDue';
+                    FirmwareFilename = 'StateMachine_Bpod1.bin';
+                    PauseFor = 1;
+                elseif obj.MachineType == 1
+                    boardType = 'ArduinoDue';
+                    FirmwareFilename = 'StateMachine_Bpod0_5.bin';
+                    PauseFor = 1;
                 end
-                PauseFor = .1;
-            elseif obj.MachineType == 2
-                boardType = 'ArduinoDue';
-                FirmwareFilename = 'StateMachine_Bpod1.bin';
-                PauseFor = 1;
-            elseif obj.MachineType == 1
-                boardType = 'ArduinoDue';
-                FirmwareFilename = 'StateMachine_Bpod0_5.bin';
-                PauseFor = 1;
+                Port = obj.StateMachinePort;
+            else
+                Port = obj.ModuleUSBPorts{ModuleNum};
+                switch ModuleName(1:end-1)
+                    case 'WavePlayer'
+                        boardType = 'Teensy3_x';
+                        PauseFor = .1;
+                        W = BpodWavePlayer(Port, 'NoWarnings');
+                        nChannels = length(W.LoopDuration);
+                        clear W
+                        if nChannels == 4
+                            FirmwareFilename = 'BpodWavePlayer_4ch.hex';
+                        elseif nChannels == 8
+                            FirmwareFilename = 'BpodWavePlayer_8ch.hex';
+                        end
+                    case 'AudioPlayer'
+                        boardType = 'Teensy3_x';
+                        PauseFor = .1;
+                        A = BpodAudioPlayer(Port, 'NoWarnings');
+                        if strcmp(A.Info.playerType, 'AudioPlayer Live')
+                            FirmwareFilename = 'BpodAudioPlayerLive_4ch.hex';
+                        else
+                            FirmwareFilename = 'BpodAudioPlayer_4ch.hex';
+                        end
+                        clear A
+                    case 'AnalogIn'
+                        boardType = 'Teensy3_x';
+                        FirmwareFilename = 'AnalogInputModule_8ch.hex';
+                        PauseFor = .1;
+                    case 'RotaryEncoder'
+                        boardType = 'Teensy3_x';
+                        FirmwareFilename = 'RotaryEncoderModule.hex';
+                        PauseFor = .1;
+                    case 'DDSModule'
+                        boardType = 'Teensy3_x';
+                        FirmwareFilename = 'DDSModule.hex';
+                        PauseFor = .1;
+                    otherwise
+                        BpodErrorDlg(['This tool cannot yet update' char(10) ModuleName(1:end-1) ' modules '])
+                end
             end
             progressbar(0.02); pause(.1);
-            obj.uploadFirmware(obj.StateMachinePort, FirmwareFilename, boardType);
+            obj.uploadFirmware(Port, FirmwareFilename, boardType);
             progressbar(0.6);
             pause(PauseFor);
             progressbar(0.9);
-            Port = ArCOMObject_Bpod(obj.StateMachinePort, 115200);
-            obj.SMhandshake(Port); % Make sure it's a state machine
-            [FirmwareVersion, MachineType] = obj.GetFirmwareVer(Port);
+            if ModuleNum == 0
+                Port = ArCOMObject_Bpod(obj.StateMachinePort, 115200);
+                obj.SMhandshake(Port); % Make sure it's a state machine
+                [FirmwareVersion, MachineType] = obj.GetFirmwareVer(Port);
+                CurrentFirmwareVersion = obj.CurrentFirmware.StateMachine;
+                pause(.1);
+                Port.write('Z', 'uint8');
+                clear Port
+            else
+                ThisModuleType = ModuleName(1:end-1);
+                CurrentFirmwareVersion = obj.CurrentFirmware.(ThisModuleType);
+                pause(.1);
+                BpodSystem.StartModuleRelay(ModuleName);
+                ModuleWrite(ModuleName, 255, 'uint8'); % Request self-description (incl. firmware version)
+                pause(.1);
+                Reply = ModuleRead(ModuleName, BpodSystem.SerialPort.bytesAvailable, 'uint8');
+                % Request again - sometimes first request immediately after a firmware
+                % flash contains a spurious byte
+                ModuleWrite(ModuleName, 255, 'uint8'); % Request self-description (incl. firmware version)
+                pause(.1);
+                Reply = ModuleRead(ModuleName, BpodSystem.SerialPort.bytesAvailable, 'uint8');
+                FirmwareVersion = typecast(Reply(2:5), 'uint32');
+                BpodSystem.StopModuleRelay;
+            end
             progressbar(1);
             Success = 0;
-            if FirmwareVersion == obj.CurrentFirmware.StateMachine
+            if FirmwareVersion == CurrentFirmwareVersion
                 disp(['Update to Firmware v' num2str(FirmwareVersion) ' Successful!'])
                 Success = 1;
             else
                 error(['Error: Update NOT successful. State machine still has firmware v' num2str(FirmwareVersion)])
             end
-            pause(.1);
-            Port.write('Z', 'uint8');
-            clear Port
             if Success == 1 
                 BGColor = [0.4 1 0.4];
             else
@@ -182,8 +274,15 @@ classdef UpdateBpodFirmware < handle
                 'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off',...
                 'Color',BGColor);
             if Success == 1 
-                set(obj.gui.smButton, 'Enable', 'off');
-                set(obj.gui.FV, 'String', num2str(FirmwareVersion));
+                if ModuleNum == 0
+                    set(obj.gui.smButton, 'Enable', 'off');
+                    set(obj.gui.FV, 'String', num2str(FirmwareVersion));
+                else
+                    set(obj.gui.moduleButton(ModuleNum), 'Enable', 'off');
+                    set(obj.gui.ModuleFV(ModuleNum), 'String', num2str(FirmwareVersion));
+                    BpodSystem.Modules.FirmwareVersion(ModuleNum) = FirmwareVersion;
+                end
+                
                 uicontrol('Style', 'text', 'Position', [60 140 150 30], 'String', 'Success!', 'FontSize', 14,...
                                     'FontWeight', 'bold', 'BackgroundColor', BGColor);
                 uicontrol('Style', 'text', 'Position', [15 90 250 30], 'String', ['Firmware is now v' num2str(FirmwareVersion)], 'FontSize', 14,...

@@ -53,7 +53,13 @@ classdef BpodAudioPlayer < handle
         Initialized = 0; % Set to 1 when initialized (to avoid spamming device with settings as fields are populated)
     end
     methods
-        function obj = BpodAudioPlayer(portString)
+        function obj = BpodAudioPlayer(portString, varargin)
+            ShowWarnings = 1;
+            if nargin > 1
+                if strcmp(varargin{1}, 'NoWarnings')
+                    ShowWarnings = 0;
+                end
+            end
             obj.Port = ArCOMObject_Bpod(portString, 115200);
             obj.Port.write(229, 'uint8');
             response = obj.Port.read(1, 'uint8');
@@ -62,7 +68,13 @@ classdef BpodAudioPlayer < handle
             end
             obj.FirmwareVersion = obj.Port.read(1, 'uint32');
             if obj.FirmwareVersion < obj.CurrentFirmwareVersion
-                error(['Error: Old firmware detected: v' num2str(obj.FirmwareVersion) '. The current version is: v' num2str(obj.CurrentFirmwareVersion) '. Please update the I2C messenger firmware using Arduino.'])
+                if ShowWarnings == 1
+                    disp('*********************************************************************');
+                    disp(['Warning: Old firmware detected: v' num2str(obj.FirmwareVersion) ...
+                        '. The current version is: v' num2str(obj.CurrentFirmwareVersion) char(13)...
+                        'Please update using the firmware update tool: UpdateBpodFirmware().'])
+                    disp('*********************************************************************');
+                end
             end
             obj.Port.write('N', 'uint8');
             obj.playerType = obj.Port.read(1, 'uint8');

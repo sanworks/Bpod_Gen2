@@ -61,7 +61,13 @@ classdef BpodAnalogIn < handle
     
     methods
         
-        function obj = BpodAnalogIn(portString)
+        function obj = BpodAnalogIn(portString, varargin)
+            ShowWarnings = 1;
+            if nargin > 1
+                if strcmp(varargin{1}, 'NoWarnings')
+                    ShowWarnings = 0;
+                end
+            end
             try
                 obj.Port = ArCOMObject_Ain(portString, 115200);
             catch
@@ -81,8 +87,13 @@ classdef BpodAnalogIn < handle
                     LatestFirmware = obj.FirmwareVersion;
                 end
                 if obj.FirmwareVersion < LatestFirmware
-                    error(['Analog Input Module with old firmware found (v' num2str(obj.FirmwareVersion) '). Please update firmware to v' num2str(LatestFirmware) '.' char(13) ...
-                        'Firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.']);
+                    if ShowWarnings == 1
+                        disp('*********************************************************************');
+                        disp(['Warning: Old firmware detected: v' num2str(obj.FirmwareVersion) ...
+                            '. The current version is: v' num2str(LatestFirmware) char(13)...
+                            'Please update using the firmware update tool: UpdateBpodFirmware().'])
+                        disp('*********************************************************************');
+                    end
                 elseif obj.FirmwareVersion > LatestFirmware
                     error(['Analog Input Module with future firmware found. Please update your Bpod software from the Bpod_Gen2 repository.']);
                 else
@@ -122,7 +133,6 @@ classdef BpodAnalogIn < handle
             obj.About.METHODS = 'type methods(myObject) at the command line to see a list of valid methods.';
             obj.Initialized = 1;
         end
-       
         function set.nSamplesToLog(obj, nSamples)
             if obj.Initialized
                 nSamples2Send = nSamples;
@@ -359,7 +369,9 @@ classdef BpodAnalogIn < handle
             end
             obj.Stream2Module = value;
         end
-        
+        function FV = getFirmwareVersion(obj)
+            FV = obj.FirmwareVersion;
+        end
         function data = getData(obj)   
             if obj.Port.bytesAvailable > 0
                 obj.Port.read(obj.Port.bytesAvailable); % Clear buffer

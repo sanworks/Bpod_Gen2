@@ -332,5 +332,5 @@ end
 %% Update State Machine Object
 BpodSystem.StateMatrixSent = sma;
 if BpodSystem.MachineType < 3
-    pause(.0001); % Avoids timing issue with Arduino Due USB driver
+    pause(.002); % Avoids timing issue with Arduino Due USB driver
 end
