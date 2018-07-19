@@ -151,7 +151,7 @@ FractionWindowStickpoint = .75; % After this fraction of visible trials, the tri
 mn = max(round(CurrentTrial - FractionWindowStickpoint*nTrialsToShow),1);
 mx = mn + nTrialsToShow - 1;
 tickLabels = sprintfc('%d',(mn-1:10:mx));
-set(AxesHandle,'XtickLabel', tickLabels);
+set(AxesHandle, 'Xtick', 0:10:nTrialsToShow, 'XtickLabel', tickLabels);
 %set(AxesHandle,'XLim',[mn-1 mx+1]); Replaced this with a trimmed "display" copy of the data 
                                     % and an xticklabel update for speed - JS 2018
 end

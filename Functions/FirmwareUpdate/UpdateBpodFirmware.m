@@ -25,15 +25,25 @@ classdef UpdateBpodFirmware < handle
                 obj.ModuleNames = BpodSystem.Modules.Name;
                 obj.MachineType = BpodSystem.MachineType;
                 obj.ModuleUSBPorts = BpodSystem.Modules.USBport;
-                for i = 1:length(obj.ModuleNames)
+                USBWarning = 0;
+                nModules = length(obj.ModuleNames);
+                hasUSBPairing = zeros(1,nModules);
+                for i = 1:nModules
                     ThisModuleName = obj.ModuleNames{i};
                     if ~strcmp(ThisModuleName(1:end-1), 'Serial')
                         if isempty(obj.ModuleUSBPorts{i})
-                            error(['Error: To load the firmware update tool, each module must' char(13)...
-                                   'first be paired with its corresponding USB serial port' char(13)...
-                                   '(use USB icon on the Bpod console).'])
+                            USBWarning = 1;
+                        else
+                            hasUSBPairing(i) = 1;
                         end
                     end
+                end
+                if USBWarning == 1
+                    BpodErrorSound;
+                    warndlg(['Important: To update a module, it must first be' char(10)...
+                           'paired with its corresponding USB serial port.' char(10)...
+                           'Use USB icon on the Bpod console,' char(10)...
+                           'then restart the updater: UpdateBpodFirmware()']);
                 end
             else
                 if nargin > 0
@@ -95,7 +105,7 @@ classdef UpdateBpodFirmware < handle
             % Firmware Ver
             uicontrol('Style', 'text', 'Position', [195 Ypos 170 30], 'String', 'Firmware ver.', 'FontSize', 18,...
                 'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 45;
-            uicontrol('Style', 'edit', 'Position', [195 Ypos 170 30], 'String', num2str(SMFirmwareVersion), 'FontSize', 14,...
+            obj.gui.StateMachineFV = uicontrol('Style', 'edit', 'Position', [195 Ypos 170 30], 'String', num2str(SMFirmwareVersion), 'FontSize', 14,...
                 'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
             for i = 1:nModules
                 thisModuleFirmware = ModuleFirmwareVersions(i);
@@ -149,8 +159,9 @@ classdef UpdateBpodFirmware < handle
                 elseif thisModuleFirmware == obj.CurrentFirmware.(thisModuleName(1:end-1))
                         Enable = 'off';
                 end
-                                
-                
+                if hasUSBPairing(i) == 0
+                    Enable = 'off';
+                end
                 obj.gui.moduleButton(i) = uicontrol('Style', 'pushbutton', 'Position', [545 Ypos 170 30], 'String', 'Update', 'FontSize', 14,...
                     'FontWeight', 'bold', 'Enable', 'inactive', 'Enable', Enable,'Callback', @(h,e)obj.updateFirmware(i)); Ypos = Ypos - 30;
             end
@@ -224,6 +235,15 @@ classdef UpdateBpodFirmware < handle
                         boardType = 'Teensy3_x';
                         FirmwareFilename = 'DDSModule.hex';
                         PauseFor = .1;
+                    case 'AmbientModule'
+                        boardType = 'TrinketM0';
+                        FirmwareFilename = 'AmbientModule.bin';
+                        PauseFor = 1;
+                        A = AmbientModule(Port);
+                        pause(.1);
+                        AmbientCal = A.getCalibration;
+                        pause(.1);
+                        clear A
                     otherwise
                         BpodErrorDlg(['This tool cannot yet update' char(10) ModuleName(1:end-1) ' modules '])
                 end
@@ -256,11 +276,19 @@ classdef UpdateBpodFirmware < handle
                 Reply = ModuleRead(ModuleName, BpodSystem.SerialPort.bytesAvailable, 'uint8');
                 FirmwareVersion = typecast(Reply(2:5), 'uint32');
                 BpodSystem.StopModuleRelay;
+                if strcmp(ModuleName(1:end-1), 'AmbientModule')
+                    % Re-flash calibration values
+                    A = AmbientModule(Port);
+                    pause(.1);
+                    A.setCalibration(AmbientCal.Temperature_C, AmbientCal.AirPressure_mb, AmbientCal.RelativeHumidity);
+                    pause(.1);
+                    clear A
+                end
             end
+            
             progressbar(1);
             Success = 0;
             if FirmwareVersion == CurrentFirmwareVersion
-                disp(['Update to Firmware v' num2str(FirmwareVersion) ' Successful!'])
                 Success = 1;
             else
                 error(['Error: Update NOT successful. State machine still has firmware v' num2str(FirmwareVersion)])
@@ -270,13 +298,13 @@ classdef UpdateBpodFirmware < handle
             else
                 BGColor = [1 0.4 0.4];
             end
-            obj.gui.ConfirmModal  = figure('name','Firmware Update', 'position',[335,120,100,200],...
+            obj.gui.ConfirmModal  = figure('name','Firmware Update', 'position',[335,120,280,200],...
                 'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off',...
                 'Color',BGColor);
             if Success == 1 
                 if ModuleNum == 0
                     set(obj.gui.smButton, 'Enable', 'off');
-                    set(obj.gui.FV, 'String', num2str(FirmwareVersion));
+                    set(obj.gui.StateMachineFV, 'String', num2str(FirmwareVersion));
                 else
                     set(obj.gui.moduleButton(ModuleNum), 'Enable', 'off');
                     set(obj.gui.ModuleFV(ModuleNum), 'String', num2str(FirmwareVersion));
@@ -289,6 +317,7 @@ classdef UpdateBpodFirmware < handle
                                     'FontWeight', 'bold', 'BackgroundColor', BGColor);
                 uicontrol('Style', 'pushbutton', 'Position', [90 20 100 40], 'String', 'Ok', 'FontSize', 14,...
                                     'FontWeight', 'bold', 'BackgroundColor', [0.8 0.8 0.8], 'Callback', @(h,e)obj.closeModal());
+                disp('------Firmware update complete------')
             else
                 uicontrol('Style', 'text', 'Position', [60 140 150 30], 'String', 'Failure', 'FontSize', 14,...
                                     'FontWeight', 'bold', 'BackgroundColor', BGColor);
@@ -309,11 +338,16 @@ classdef UpdateBpodFirmware < handle
                     system(['@mode ' TargetPort ':1200,N,8,1']);
                     system('PING -n 3 127.0.0.1>NUL');
                     programPath = fullfile(thisFolder, ['bossac -i -d -U true -e -w -v -b ' firmwarePath ' -R']);
+                case 'TrinketM0'
+                    system(['@mode ' TargetPort ':1200,N,8,1']);
+                    system('PING -n 3 127.0.0.1>NUL');
+                    programPath = fullfile(thisFolder, ['bossac -i -d -U true -e -w -v -b ' firmwarePath ' -R']);
                 case 'Teensy3_x'
                     [status, msg] = system('taskkill /F /IM teensy.exe');
                     pause(.1);
                     programPath = fullfile(thisFolder, ['tycmd upload ' firmwarePath ' --board "@' TargetPort '"']);
             end
+            disp('------Uploading new firmware------')
             system(programPath);
         end
         function SMhandshake(obj, Port)

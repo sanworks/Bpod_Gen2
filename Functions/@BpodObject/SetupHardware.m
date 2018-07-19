@@ -37,15 +37,18 @@ function obj = SetupHardware(obj)
                SMName = 'r2.0';
         end
         disp(['Bpod State Machine ' SMName ' connected on port ' obj.SerialPort.PortName])
-        if obj.FirmwareVersion ~= obj.CurrentFirmware.StateMachine
-            obj.SerialPort.write('Z');
-            obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
+        if obj.FirmwareVersion ~= obj.CurrentFirmware.StateMachine 
             if obj.FirmwareVersion < obj.CurrentFirmware.StateMachine
                 disp([char(13) 'ERROR: Old state machine firmware detected, v' num2str(obj.FirmwareVersion) '. ' char(13)...
-                    'Please update the state machine firmware to v' num2str(obj.CurrentFirmware.StateMachine) ', restart MATLAB and try again.' char(13)...
-                    'The latest firmware is <a href="matlab:web(''https://github.com/sanworks/Bpod_StateMachine_Firmware/tree/v' num2str(obj.CurrentFirmware.StateMachine) '/Preconfigured'',''-browser'')">here</a>.' char(13) ...
-                    'Installation instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
-                error('Old firmware detected. See instructions above.');
+                    'Please update the state machine firmware to v' num2str(obj.CurrentFirmware.StateMachine) ', and try again.' char(13)...
+                    'Click <a href="matlab:UpdateBpodFirmware(''' obj.SerialPort.PortName ''');">here</a> to start the update tool, or run UpdateBpodFirmware().' char(13)...
+                    'If necessary, manual firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
+                BpodErrorSound;
+                obj.SerialPort.write('Z');
+                obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
+                obj.GUIData.OldFirmwareFlag = 1; % Signal to the Bpod.m launch code that old firmware was detected
+                errordlg(['ERROR: Old state machine firmware detected.' char(10) 'See instructions in the MATLAB command window.']);
+                %error('Old firmware detected. See instructions above.');
             else
                 error('The firmware on the Bpod state machine is newer than your Bpod software for MATLAB. Please update your MATLAB software from the Bpod repository and try again.')
             end

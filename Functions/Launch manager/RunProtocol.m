@@ -111,7 +111,7 @@ switch Opstring
             set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
             IsOnline = BpodSystem.check4Internet();
             if (IsOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
-                BpodSystem.BpodPhoneHome(1);
+                %BpodSystem.BpodPhoneHome(1); % Disabled until server migration. -JS July 2018
             end
             BpodSystem.Status.BeingUsed = 1;
             BpodSystem.ProtocolStartTime = now*100000;

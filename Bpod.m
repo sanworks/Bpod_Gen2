@@ -63,7 +63,12 @@ else
         BpodSystem.Connect2BpodSM('AUTO');
         BpodSetup;
     catch
-        EmulatorDialog;
+        if isfield(BpodSystem.GUIData, 'OldFirmwareFlag')
+            close(BpodSystem.GUIHandles.SplashFig);
+            delete(BpodSystem)
+        else
+            EmulatorDialog;
+        end
     end
 end
 
