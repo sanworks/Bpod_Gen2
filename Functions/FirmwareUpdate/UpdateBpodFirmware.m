@@ -15,6 +15,10 @@ classdef UpdateBpodFirmware < handle
     methods
         function obj = UpdateBpodFirmware(varargin)
             global BpodSystem
+            if ~ispc
+                error(['Error: The Bpod firmware updater is not yet available on OSX or Linux.' char(10)...
+                    'Please follow instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a> to update with the Arduino application.'])
+            end
             BpodPath = fileparts(which('Bpod'));
             addpath(genpath(fullfile(BpodPath, 'Functions')));
             obj.CurrentFirmware = CurrentFirmwareList;
