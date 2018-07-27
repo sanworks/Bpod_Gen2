@@ -351,6 +351,7 @@ classdef UpdateBpodFirmware < handle
             system(programPath);
         end
         function SMhandshake(obj, Port)
+            Port.read(Port.bytesAvailable, 'uint8');
             Port.write('6', 'uint8');
             pause(.2);
             Reply = Port.read(1, 'uint8');
