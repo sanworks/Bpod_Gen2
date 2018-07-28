@@ -1,5 +1,15 @@
 function UpdateBpodSoftware
 warning off
+% Check for compatible system
+if verLessThan('MATLAB', '8.4')
+    error(['Error: The automatic updater requires MATLAB r2014b or newer. ' char(10)...
+        'Update your software manually, following the instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/software-update'',''-browser'')">here</a>.'])
+end
+if ~ispc
+    error(['Error: The automatic updater does not yet work on OSX or Linux. ' char(10)...
+        'Update your software manually, following the instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/software-update'',''-browser'')">here</a>.'])
+end
+
 % Check for open Bpod
 try
     evalin('base', 'BpodSystem;'); % BpodSystem is a global variable in the base workspace, representing the hardware
@@ -11,6 +21,7 @@ try
     end
 catch
 end
+
 % Create paths        
 BpodPath = fileparts(which('Bpod'));
 Path = struct;
@@ -45,15 +56,12 @@ DateInfo(DateInfo == 'T') = '_';
 ThisBackupDir = fullfile(BackupDir, ['Bpod_Backup_' DateInfo]);
 copyfile(Path.BpodRoot, ThisBackupDir);
 disp('Downloading new software...')
+
 % Download latest master branch
 DownloadDir = fullfile(TempDir, 'Download');
 ZipFilePath = fullfile(DownloadDir, 'Bpod_Gen2.zip');
 mkdir(DownloadDir);
-if verLessThan('MATLAB', '8.4')
-    urlwrite('http://github.com/sanworks/Bpod_Gen2/archive/master.zip', ZipFilePath);
-else
-    websave(ZipFilePath, 'http://github.com/sanworks/Bpod_Gen2/archive/master.zip');
-end
+websave(ZipFilePath, 'http://github.com/sanworks/Bpod_Gen2/archive/master.zip');
 disp('Extracting new software...')
 unzip(ZipFilePath, DownloadDir);
 delete(ZipFilePath);
@@ -65,6 +73,7 @@ dos_cmd = sprintf( 'rmdir /S /Q "%s"', Path.BpodRoot );
 [st, msg] = system(dos_cmd);
 movefile(fullfile(DownloadDir, 'Bpod_Gen2-master'), fullfile(Path.ParentDir, 'Bpod_Gen2'), 'f');
 SystemPath = fullfile(Path.BpodRoot, 'Functions');
+% Add files back to MATLAB path
 addpath(Path.BpodRoot);
 addpath(genpath(SystemPath));
 disp('Update complete!')
