@@ -59,12 +59,12 @@ sma.StateNames{CurrentState} = StateName;
 sma.Manifest{CurrentStateInManifest} = StateName;
 sma.nStatesInManifest = sma.nStatesInManifest + 1;
 nInputColumns = sma.meta.InputMatrixSize;
-sma.InputMatrix(CurrentState,:) = ones(1,nInputColumns)*CurrentState;
-sma.OutputMatrix(CurrentState,:) = zeros(1,BpodSystem.StateMachineInfo.nOutputChannels);
-sma.GlobalTimerStartMatrix(CurrentState,:) = ones(1,BpodSystem.HW.n.GlobalTimers)*CurrentState;
-sma.GlobalTimerEndMatrix(CurrentState,:) = ones(1,BpodSystem.HW.n.GlobalTimers)*CurrentState;
-sma.GlobalCounterMatrix(CurrentState,:) = ones(1,BpodSystem.HW.n.GlobalCounters)*CurrentState;
-sma.ConditionMatrix(CurrentState,:) = ones(1,BpodSystem.HW.n.Conditions)*CurrentState;
+sma.InputMatrix(CurrentState,:) = BpodSystem.BlankStateMachine.InputMatrix*CurrentState;
+sma.OutputMatrix(CurrentState,:) = BpodSystem.BlankStateMachine.OutputMatrix;
+sma.GlobalTimerStartMatrix(CurrentState,:) = BpodSystem.BlankStateMachine.GlobalTimerStartMatrix*CurrentState;
+sma.GlobalTimerEndMatrix(CurrentState,:) = BpodSystem.BlankStateMachine.GlobalTimerEndMatrix*CurrentState;
+sma.GlobalCounterMatrix(CurrentState,:) = BpodSystem.BlankStateMachine.GlobalCounterMatrix*CurrentState;
+sma.ConditionMatrix(CurrentState,:) = BpodSystem.BlankStateMachine.ConditionMatrix*CurrentState;
 sma.StateTimerMatrix(CurrentState) = CurrentState;
 sma.StateTimers(CurrentState) = StateTimer;
 sma.StatesDefined(CurrentState) = 1;
@@ -250,20 +250,21 @@ function EventSpellingErrorMessage(ThisStateName)
 error(['Check spelling of your state transition events for state: ' ThisStateName '. Valid events (% is an index): Port%In Port%Out BNC%High BNC%Low Wire%High Wire%Low SoftCode% GlobalTimer%End Tup'])
 
 function [IsOp, opCode] = findOpName(ThisStateName)
-IsOp = 0; opCode = 0;
+IsOp = false; opCode = 0;
 if ThisStateName(1) == '>'
     switch ThisStateName(2:end)
         case 'exit'
-            IsOp = 1;
+            IsOp = true;
             opCode = 65537;
         case 'back'
-            IsOp = 1;
+            IsOp = true;
             opCode = 65538;
     end
 else
-    if strcmpi(ThisStateName,'exit') % Accept 'exit' without > for backwards compatability
-        IsOp = 1;
-        opCode = 65537;
+    if length(ThisStateName) == 4
+        if strcmpi(ThisStateName,'exit') % Accept 'exit' without > for backwards compatability
+            IsOp = true;
+            opCode = 65537;
+        end
     end
 end
-IsOp = logical(IsOp);

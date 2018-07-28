@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -18,14 +18,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function varargout = ParameterGUI(varargin)
+function varargout = BpodParameterGUI(varargin)
 
-% EnhancedParameterGUI('init', ParamStruct) - initializes a GUI with edit boxes for every field in subfield ParamStruct.GUI
-% EnhancedParameterGUI('sync', ParamStruct) - updates the GUI with fields of
+% BpodParameterGUI('init', ParamStruct) - initializes a GUI with edit boxes for every field in subfield ParamStruct.GUI
+% BpodParameterGUI('sync', ParamStruct) - updates the GUI with fields of
 %       ParamStruct.GUI, if they have not been changed by the user. 
 %       Returns a param struct. Fields in the GUI sub-struct are read from the UI.
 
-% This version of ParameterGUI includes improvements 
+% This version of BpodParameterGUI includes improvements 
 % from EnhancedParameterGUI, contributed by F. Carnevale
 
 global BpodSystem
@@ -215,5 +215,5 @@ switch Op
     otherwise
     error('ParameterGUI must be called with a valid op code: ''init'' or ''sync''');
 end
-drawnow;
+%drawnow;
 varargout{1} = Params;
