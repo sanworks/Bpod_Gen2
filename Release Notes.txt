@@ -1,3 +1,13 @@
+---v1.58--- 
+-Added software update app to keep MATLAB software current: UpdateBpodSoftware()
+-Added firmware update app to keep Bpod firmware current: UpdateBpodFirmware()
+-Fixed axes display in TrialTypeOutcomePlot plugin
+-Minor optimization to AddState() function (now uses prepared vectors instead of ones() and zeros() to populate defaults)
+-Removed drawnow() from update method of BpodParameterGUI to reduce inter-trial dead-time on MATLAB versions newer than r2014b
+-Fixed a bug in TrialManager() that would cause crashes when state names varied between trials
+-Disabled PhoneHome transmissions on boot and protocol-start (to resume once Sanworks has a 100% reliable web host)
+-
+
 ---v1.57---
 -Fixes to analog input module class (+matching fixes to its firmware repository), fix streaming to scope UI at sampling rates >1kHz
 

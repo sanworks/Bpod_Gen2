@@ -215,5 +215,7 @@ switch Op
     otherwise
     error('ParameterGUI must be called with a valid op code: ''init'' or ''sync''');
 end
-%drawnow;
+if verLessThan('MATLAB', '8.4')
+    drawnow;
+end
 varargout{1} = Params;
