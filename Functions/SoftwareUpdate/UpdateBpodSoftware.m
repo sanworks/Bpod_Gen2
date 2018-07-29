@@ -22,6 +22,13 @@ try
 catch
 end
 
+% Check for Internet connectivity
+[a,reply]=system('ping -n 1 -w 1000 www.google.com'); % Check for connection
+ConnectConfirmString = 'Received = 1';
+if ~contains(reply, ConnectConfirmString)
+     error(['The Bpod updater was not able to access the Internet.' char(10) 'Please make sure your computer has Internet access and try again.']);
+end
+
 % Create paths        
 BpodPath = fileparts(which('Bpod'));
 Path = struct;
@@ -45,12 +52,14 @@ if ~isempty(latestVersion)
     end
 end
 BackupDir = fullfile(Path.LocalDir, 'Temp', 'Backup');
+disp(' ');
 disp('----Bpod Software Updater Beta----')
-disp(['This app will update your Bpod software from v' num2str(Ver) ' to v' num2str(latestVersion)]);
+disp(['This will update your Bpod software from v' num2str(Ver) ' to v' num2str(latestVersion) '.']);
 disp('A backup copy of your current Bpod_Gen2 folder will be made in: ');
 disp(BackupDir);
+disp('Then, the latest software from Github will replace your current Bpod_Gen2 folder.');
 disp(' ');
-disp('*IMPORTANT* This update software is a BETA release.')
+disp('*IMPORTANT* This update tool is a BETA release.')
 disp('Please manually back up your Bpod_Gen2 folder and data')
 disp('before you try it for the first time! If you prefer to update')
 disp('manually, please follow the instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/software-update'',''-browser'')">here</a>.')

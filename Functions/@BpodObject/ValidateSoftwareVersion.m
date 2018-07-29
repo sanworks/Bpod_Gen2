@@ -32,6 +32,7 @@ if ~isempty(latestVersion)
         disp( '***********************************************************')
         disp(['UPDATE NOTICE: Bpod Console v' sprintf('%3.2f', latestVersion) ' is available to download!'])
         disp(['                 View release notes <a href="matlab:web(''https://github.com/sanworks/Bpod_Gen2/blob/master/Release%20Notes.txt'',''-browser'')">here</a>'])
+        disp(['To update run UpdateBpodSoftware() OR see instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/software-update'',''-browser'')">here</a>'])
         disp( '***********************************************************')
     elseif Ver > latestVersion
         disp( '***********************************************************')
