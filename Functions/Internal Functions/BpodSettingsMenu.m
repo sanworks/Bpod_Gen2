@@ -25,7 +25,7 @@ if ispc
 elseif ismac
     MenuWindowHeight = 126;
 else
-    MenuWindowHeight = 126;
+    MenuWindowHeight = 112;
 end
 
 BpodSystem.GUIHandles.SettingsMenuFig = figure('Position', [650 480 397 MenuWindowHeight],'name','Settings Menu','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
