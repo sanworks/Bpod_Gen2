@@ -190,7 +190,7 @@ classdef UpdateBpodFirmware < handle
                     if obj.HW.n.GlobalTimers == 20
                         FirmwareFilename = 'StateMachine_Bpod2_BControl.hex';
                     else
-                        FirmwareFilename = 'StateMachine_Bpod2_Classic.hex';
+                        FirmwareFilename = 'StateMachine_Bpod2_Standard.hex';
                     end
                     PauseFor = .1;
                 elseif obj.MachineType == 2

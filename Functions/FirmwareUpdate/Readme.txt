@@ -5,3 +5,5 @@ For Arduino, Adafruit and Sparkfun brand boards, firmware updating is powered by
 More details at: https://github.com/shumatech/BOSSA
 
 Firmware files in this folder are the latest stable versions (as of the time the Bpod_Gen2 repository was downloaded).
+If you need an earlier firmware version, it must be installed manually. Installation instructions are here:
+https://sites.google.com/site/bpoddocumentation/firmware-update
