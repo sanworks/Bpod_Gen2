@@ -186,6 +186,7 @@ classdef TrialManagerObject < handle
                 obj.Timer = [];
             end
             obj.SetBpodHardwareMirror2CurrentState(0);
+            BpodSystem.LastStateMatrix = BpodSystem.StateMatrix;
             BpodSystem.Status.InStateMatrix = 0;
         end
         function CurrentEvents = getCurrentEvents(obj, triggerStates)

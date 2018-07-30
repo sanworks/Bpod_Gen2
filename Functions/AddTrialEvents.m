@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -17,9 +17,15 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% Adds trial events to human-readable trial event struct.
+
+% An optional third argument is the state matrix of the trial to be
+% processed (this must be passed explicitly if using TrialManager)
+
 function newTE = AddTrialEvents(TE, RawTrialEvents)
 global BpodSystem
-
+StateNames = BpodSystem.LastStateMatrix.StateNames;
 if isfield(TE, 'RawEvents')
     TrialNum = length(TE.RawEvents.Trial) + 1;
 else
@@ -45,7 +51,7 @@ end
 TE.nTrials = TrialNum;
 %% Parse and add raw events for this trial
 States = RawTrialEvents.States;
-nPossibleStates = length(BpodSystem.StateMatrix.StateNames);
+nPossibleStates = length(StateNames);
 VisitedStates = zeros(1,nPossibleStates);
 % determine unique states while preserving visited order
 UniqueStates = zeros(1,nPossibleStates);
@@ -68,18 +74,18 @@ for x = 1:length(States)
     UniqueStateDataMatrices{UniqueStateIndexes(x)} = [UniqueStateDataMatrices{UniqueStateIndexes(x)}; [RawTrialEvents.StateTimestamps(x) RawTrialEvents.StateTimestamps(x+1)]];
 end
 for x = 1:nUniqueStates
-    TE.RawEvents.Trial{TrialNum}.States.(BpodSystem.StateMatrix.StateNames{UniqueStates(x)}) = UniqueStateDataMatrices{x};
+    TE.RawEvents.Trial{TrialNum}.States.(StateNames{UniqueStates(x)}) = UniqueStateDataMatrices{x};
 end
 for x = 1:nPossibleStates
     if VisitedStates(x) == 0
-        TE.RawEvents.Trial{TrialNum}.States.(BpodSystem.StateMatrix.StateNames{x}) = [NaN NaN];
+        TE.RawEvents.Trial{TrialNum}.States.(StateNames{x}) = [NaN NaN];
     end
 end
 Events = RawTrialEvents.Events;
 for x = 1:length(Events)
     TE.RawEvents.Trial{TrialNum}.Events.(BpodSystem.StateMachineInfo.EventNames{Events(x)}) = RawTrialEvents.EventTimestamps(Events == Events(x));
 end
-TE.RawData.OriginalStateNamesByNumber{TrialNum} = BpodSystem.StateMatrix.StateNames;
+TE.RawData.OriginalStateNamesByNumber{TrialNum} = StateNames;
 TE.RawData.OriginalStateData{TrialNum} = RawTrialEvents.States;
 TE.RawData.OriginalEventData{TrialNum} = RawTrialEvents.Events;
 TE.RawData.OriginalStateTimestamps{TrialNum} = RawTrialEvents.StateTimestamps;

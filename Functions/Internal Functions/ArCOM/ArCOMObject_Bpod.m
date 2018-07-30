@@ -126,14 +126,14 @@ classdef ArCOMObject_Bpod < handle
             originalPortString = portString;
             switch obj.Interface
                 case 0
-                    obj.Port = serial(portString, 'BaudRate', 115200, 'Timeout', 3,'OutputBufferSize', 1000000, 'InputBufferSize', 1000000, 'DataTerminalReady', 'on', 'tag', 'ArCOM');
+                    obj.Port = serial(portString, 'BaudRate', baudRate, 'Timeout', 3,'OutputBufferSize', 1000000, 'InputBufferSize', 1000000, 'DataTerminalReady', 'on', 'tag', 'ArCOM');
                     fopen(obj.Port);
                 case 1
                     if ispc
                         portString = ['\\.\' portString];
                     end
                     IOPort('Verbosity', 0);
-                    obj.Port = IOPort('OpenSerialPort', portString, 'ReceiveTimeout=3, BaudRate=115200, OutputBufferSize=1000000, InputBufferSize=1000000, DTR=1');
+                    obj.Port = IOPort('OpenSerialPort', portString, ['ReceiveTimeout=3, BaudRate=' num2str(baudRate) ', OutputBufferSize=1000000, InputBufferSize=1000000, DTR=1']);
                     if (obj.Port < 0)
                         try
                             IOPort('Close', obj.Port);
@@ -150,7 +150,7 @@ classdef ArCOMObject_Bpod < handle
                             portString = ['\\\\.\\COM' num2str(PortNum)]; % As of Octave instrument control toolbox v0.2.2, ports higher than COM9 must use this syntax
                         end
                     end
-                    obj.Port = serial(portString, 115200,  1);
+                    obj.Port = serial(portString, baudRate,  1);
                     pause(.2);
                     srl_flush(obj.Port);
                 case 3

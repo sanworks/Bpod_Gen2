@@ -136,6 +136,7 @@ function obj = LoadModules(obj)
                 end
             end
         end
+        oldFirmwareFound = 0;
         for i = 1:nModules % Check for incompatible module firmware
             thisModuleName = obj.Modules.Name{i}(1:end-1);
             thisModuleFirmware = obj.Modules.FirmwareVersion(i);
@@ -143,18 +144,22 @@ function obj = LoadModules(obj)
                 if isfield(obj.CurrentFirmware, thisModuleName)
                     expectedFirmwareVersion = obj.CurrentFirmware.(thisModuleName);
                     if thisModuleFirmware < expectedFirmwareVersion
-                        disp([char(13) 'ERROR: ' thisModuleName ' module with old firmware detected, v' num2str(thisModuleFirmware) '. ' char(13)...
+                        disp([char(13) 'WARNING: ' thisModuleName ' module with old firmware detected, v' num2str(thisModuleFirmware) '. ' char(13)...
                             'Please update its firmware to v' num2str(expectedFirmwareVersion) ', restart Bpod and try again.' char(13)...
-                            'Firmware upgrade instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
-                        BpodErrorSound;
-                        errordlg('Old module firmware detected. See instructions in the MATLAB command window.');
+                            'While Bpod is still open, click <a href="matlab:UpdateBpodFirmware;">here</a> to start the update tool, UpdateBpodFirmware().' char(13)...
+                            'If necessary, manual firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
+                        oldFirmwareFound = 1;
                     elseif thisModuleFirmware > expectedFirmwareVersion
-                        Errormsg = ['The firmware on the ' thisModuleName ' module on serial port ' num2str(i) ' is newer than your Bpod software for MATLAB. ' char(13) 'Please update your MATLAB software from the Bpod repository and try again.'];
-                        errordlg(Errormsg)
-                        error(Errormsg);
+                        Errormsg = ['WARNING: The firmware on the ' thisModuleName ' module on port ' num2str(i) ' is newer than your Bpod software for MATLAB. ' char(13) 'Please update your MATLAB software from the Bpod repository and try again.'];
+                        warndlg(Errormsg)
+                        disp(Errormsg);
                     end
                 end
             end
+        end
+        if oldFirmwareFound == 1
+            BpodErrorSound;
+            warndlg('WARNING: Old module firmware detected. See instructions in the MATLAB command window.');
         end
     elseif obj.Status.BeingUsed == 1
          BpodErrorDlg(['Cannot refresh modules.' char(10) 'Stop the session first.'], 0);

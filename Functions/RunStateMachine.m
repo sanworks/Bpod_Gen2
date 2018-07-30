@@ -111,7 +111,7 @@ while BpodSystem.Status.InStateMatrix
                 BpodSystem.ManualOverrideFlag = 1;
             end
         end
-        if BpodSystem.ManualOverrideFlag == 1;
+        if BpodSystem.ManualOverrideFlag == 1
             ManualOverrideEvent = VirtualManualOverride(BpodSystem.VirtualManualOverrideBytes);
             BpodSystem.ManualOverrideFlag = 0;
         else
@@ -290,6 +290,7 @@ if BpodSystem.Status.BeingUsed == 1
     RawTrialEvents.ErrorCodes = ThisTrialErrorCodes;
 end
 SetBpodHardwareMirror2CurrentState(0);
+BpodSystem.LastStateMatrix = BpodSystem.StateMatrix;
 BpodSystem.Status.InStateMatrix = 0;
 
 function MilliOutput = Round2Cycles(DecimalInput)
