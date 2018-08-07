@@ -8,8 +8,8 @@
 function [BandPower, signal_toplot, Parameters, ThisPSD] = response_one_sound(SoundParam,BandLimits)
 global BpodSystem
 % --- Parameters of the test ---
-Parameters.ToneDuration = 1;%0.8;         % sec
-Parameters.TimeToRecord = 0.3;        % sec
+Parameters.ToneDuration = 0.8;        % sec
+Parameters.TimeToRecord = 0.4;        % sec
 Parameters.FsOut = 192000;              % Sampling frequency
 tvec = 0:1/Parameters.FsOut:Parameters.ToneDuration;
 
@@ -27,6 +27,13 @@ n_data = Parameters.TimeToRecord*Parameters.FsIn;
 % --- Creating and loading sounds ---
 SoundVec = SoundParam.Amplitude * sin(2*pi*SoundParam.Frequency*tvec);
 
+% Add ramp (will not be part of recorded signal due to acquisition delay and duration) JS 2018
+rampNsamples = 400;
+ramp = 1/rampNsamples:1/rampNsamples:1;
+endramp = ramp(end:-1:1);
+SoundVec(1:rampNsamples) = SoundVec(1:rampNsamples) .* ramp;
+    SoundVec(end-rampNsamples+1:end) = SoundVec(end-rampNsamples+1:end).* endramp;
+
 if SoundParam.Speaker==1
     SoundVec = [ SoundVec; zeros(1,length(SoundVec)) ];
 end
@@ -37,14 +44,27 @@ end
 % Load sound
 PsychToolboxSoundServer('Load', 1, SoundVec);
 
-% --- Play the sound ---
-PsychToolboxSoundServer('Play', 1);
-
-pause(0.1);
 if ispc
-    start(BpodSystem.PluginObjects.USB1608G.Board);
-    pause(.5);
-    RawSignal = getdata(BpodSystem.PluginObjects.USB1608G.Board)';
+    if strcmp(BpodSystem.GUIData.SoundCalSys, 'MC')
+        % --- Play the sound ---
+        PsychToolboxSoundServer('Play', 1);
+        pause(0.1);
+        start(BpodSystem.PluginObjects.USB1608G.Board);
+        pause(.5);
+        RawSignal = getdata(BpodSystem.PluginObjects.USB1608G.Board)';
+    elseif strcmp(BpodSystem.GUIData.SoundCalSys, 'NI')
+        NI = NI_AnalogIn(Parameters.TimeToRecord);
+        % --- Play the sound ---
+        PsychToolboxSoundServer('Play', 1);
+        pause(0.1);
+         NI.startAcquiring();
+         pause(0.4);
+        RawSignal =  NI.GetData();
+        RawSignal = RawSignal.Data;
+        clear NI
+    else
+        error('Error: Unknown sound calibration interface');
+    end
 else
     data = mcc_daq('n_scan',n_data,'freq',Parameters.FsIn,'n_chan',n_chan);
     RawSignal = data(channel,:); 

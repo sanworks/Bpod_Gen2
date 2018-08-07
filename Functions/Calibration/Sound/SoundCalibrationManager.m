@@ -53,13 +53,45 @@ function SoundCalibrationManager_OpeningFcn(hObject, eventdata, handles, varargi
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to SoundCalibrationManager (see VARARGIN)
 global BpodSystem
+hasDAQ = license('test', 'data_acq_toolbox');
+if ~hasDAQ
+    error('Error: You must have the MATLAB Data Acquisition Toolbox to use the sound calibration tool.')
+end
 if ispc % Start the MCC board with PsychToolbox
-    BpodSystem.PluginObjects.USB1608G = struct;
-    warning off; BpodSystem.PluginObjects.USB1608G.Board = analoginput('mcc', 0); warning on;
-    BpodSystem.PluginObjects.USB1608G.Board.SampleRate = 200000;
-    BpodSystem.PluginObjects.USB1608G.Board.SamplesPerTrigger = 200000*.3;
-    BpodSystem.PluginObjects.USB1608G.Ch0 = addchannel(BpodSystem.PluginObjects.USB1608G.Board, 0);
-    BpodSystem.PluginObjects.USB1608G.Ch0.InputRange = [-10 10];
+    Ext = mexext; Ext = str2double(Ext(end-1:end));
+    if Ext == 32
+        BpodSystem.GUIData.SoundCalSys = 'MC';
+        BpodSystem.PluginObjects.USB1608G = struct;
+        warning off; BpodSystem.PluginObjects.USB1608G.Board = analoginput('mcc', 0); warning on;
+        BpodSystem.PluginObjects.USB1608G.Board.SampleRate = 200000;
+        BpodSystem.PluginObjects.USB1608G.Board.SamplesPerTrigger = 200000*.3;
+        BpodSystem.PluginObjects.USB1608G.Ch0 = addchannel(BpodSystem.PluginObjects.USB1608G.Board, 0);
+        BpodSystem.PluginObjects.USB1608G.Ch0.InputRange = [-10 10];
+    else
+        d = dialog('Position',[300 300 250 150],'Name','Sound Cal');
+
+        txt = uicontrol('Parent',d,...
+                   'Style','text',...
+                   'Position',[10 80 240 60],...
+                   'String',['Welcome to Bpod Sound Calibration!' char(10)... 
+                   'Connect the NI USB-6211 to your PC,' char(10)... 
+                   'Bruel & Kjær Nexus Amp to NI channel AI0,' char(10)... 
+                   'set up mic and click Ok to continue.']);
+
+        btn = uicontrol('Parent',d,...
+                   'Position',[85 20 70 25],...
+                   'String','Ok',...
+                   'Callback','delete(gcf)');
+        uiwait(d);        
+        BpodSystem.GUIData.SoundCalSys = 'NI';
+        if ~isfield(BpodSystem.PluginObjects, 'NI')
+            msgHandle = msgbox('Finding NI Card. This may take up to 30 seconds...');
+            NI = NI_AnalogIn(.3);
+            close(msgHandle);
+            clear NI
+        end
+    end
+    
 end
 % Choose default command line output for SoundCalibrationManager
 handles.output = hObject;
