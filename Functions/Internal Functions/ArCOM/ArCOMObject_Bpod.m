@@ -346,13 +346,13 @@ classdef ArCOMObject_Bpod < handle
                     case 2
                       error('Reading available bytes from a serial port buffer is not supported in Octave as of instrument control toolbox 0.2.2');
                     case 3
+                        nBytesAvailable = obj.Port.BytesAvailable;
                         if nBytesAvailable > 0
-                            nBytesAvailable = obj.Port.BytesAvailable;
                             obj.InBuffer = [obj.InBuffer  fread(obj.Port, nBytesAvailable, 'uint8')'];
                         end
                     case 4
-                        if nBytesAvailable > 0
-                            nBytesAvailable = length(pnet(obj.Port,'read', 65536, 'uint8', 'native','view', 'noblock'));
+                        nBytesAvailable = length(pnet(obj.Port,'read', 65536, 'uint8', 'native','view', 'noblock'));
+                        if nBytesAvailable > 0 
                             obj.InBuffer = [obj.InBuffer uint8(pnet(obj.Port,'read', nBytesAvailable, 'uint8'))];
                         end
                 end

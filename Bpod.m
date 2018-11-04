@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function Bpod(varargin)
+%system('wmic process where name="MATLAB.exe" CALL setpriority "high priority" > NUL');
 BpodLoaded = 0;
 try
     evalin('base', 'BpodSystem;'); % BpodSystem is a global variable in the base workspace, representing the hardware

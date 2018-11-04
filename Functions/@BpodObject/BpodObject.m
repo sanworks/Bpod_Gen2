@@ -355,6 +355,16 @@ classdef BpodObject < handle
         function obj = BeingUsed(obj)
             error('Error: "BpodSystem.BeingUsed" is now "BpodSystem.Status.BeingUsed" - Please update your protocol!')
         end
+        function obj = SetStatusLED(obj, status)
+            if obj.EmulatorMode == 0
+                if (status == 1) || (status == 0)
+                    obj.SerialPort.write([':' status], 'uint8');
+                    Confirmed = obj.SerialPort.read(1, 'uint8');
+                else
+                    error('Error: LED status must be 0 (disabled) or 1 (enabled)')
+                end
+            end
+        end
         function StartModuleRelay(obj, Module)
             if ischar(Module)
                 ModuleNum = find(strcmp(Module, obj.Modules.Name));

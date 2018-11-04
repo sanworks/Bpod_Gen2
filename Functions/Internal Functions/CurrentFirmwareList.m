@@ -14,6 +14,6 @@ Firmware.DDSSeq = 1;
 Firmware.I2C = 1;
 Firmware.PA = 1;
 Firmware.ValveDriver = 1;
-Firmware.RotaryEncoder = 3;
+Firmware.RotaryEncoder = 5;
 Firmware.EchoModule = 1;
 Firmware.AmbientModule = 1;
