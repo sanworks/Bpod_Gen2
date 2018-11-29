@@ -60,9 +60,9 @@ switch Action
         
         nTrialsToShow = 90; %default number of trials to display
         
-        if nargin > 3 %custom number of trials
-            nTrialsToShow =varargin{3};
-        end
+%         if nargin > 3 %custom number of trials
+%             nTrialsToShow =varargin{3};
+%         end
         axes(AxesHandle);
         %plot in specified axes
         Xdata = 1:nTrialsToShow; Ydata = SideList(Xdata);
