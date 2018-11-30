@@ -75,11 +75,13 @@ function obj = refreshGUIPanels(obj)
         uistack(obj.GUIHandles.OverridePanel(1),'top');
         axes(obj.GUIHandles.Console);
         uistack(obj.GUIHandles.Console,'bottom');
+          try %TR2018: does not work on ML 2018b
         if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0')
             for i = 1:obj.HW.n.SerialChannels
                 jButton = findjobj(obj.GUIHandles.PanelButton(i));
                 jButton.setBorderPainted(false);
             end
+        end
         end
     end
 end
