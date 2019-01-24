@@ -11,7 +11,7 @@ function obj = SetupHardware(obj)
         obj.HW.n.Inputs = 16;
         obj.HW.Inputs = 'UUUXBBWWPPPPPPPP';
         obj.HW.n.Outputs = 25;
-        obj.HW.Outputs = 'UUUXBBWWWPPPPPPPPVVVVVVVV';
+        obj.HW.Outputs = 'UUUXBBWWWPPPPPPPPVVVVVVVVGGG';
         close(obj.GUIHandles.LaunchEmuFig);
         disp('Connection aborted. Bpod started in Emulator mode: State Machine v0.7.')
         obj.FirmwareVersion = obj.CurrentFirmware.StateMachine;

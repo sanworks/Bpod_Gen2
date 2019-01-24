@@ -72,7 +72,7 @@ switch Function
                 for x = 1:nCandidates
                     disp(['Candidate device found! Trying candidate ' num2str(x) ' of ' num2str(nCandidates)])
                     try
-                        CandidateDevice = PsychPortAudio('Open', CandidateDevices(x), 9, 4, SF, 6 , 32);
+                        CandidateDevice = PsychPortAudio('Open', CandidateDevices(x), 9, 4, SF, 2 , 32);
                         BpodSystem.SystemSettings.SoundDeviceID = CandidateDevices(x);
                         PsychPortAudio('Close', CandidateDevice);
                         disp('Success! A compatible sound card was detected and stored in Bpod settings.')
@@ -83,12 +83,12 @@ switch Function
             else
                 disp('Error: no compatible sound subsystem detected. On Windows, ensure ASIO drivers are installed.')
             end
-            BpodSystem.PluginObjects.SoundServer.MasterOutput = PsychPortAudio('Open', BpodSystem.SystemSettings.SoundDeviceID, 9, 4, SF, 6 , 32);
+            BpodSystem.PluginObjects.SoundServer.MasterOutput = PsychPortAudio('Open', BpodSystem.SystemSettings.SoundDeviceID, 9, 4, SF, 2 , 32);
             PsychPortAudio('Start', BpodSystem.PluginObjects.SoundServer.MasterOutput, 0, 0, 1);
             for x = 1:nSlaves
                 BpodSystem.PluginObjects.SoundServer.SlaveOutput(x) = PsychPortAudio('OpenSlave', BpodSystem.PluginObjects.SoundServer.MasterOutput);
             end
-            Data = zeros(6,192);
+            Data = zeros(2,192);
             PsychPortAudio('FillBuffer', BpodSystem.PluginObjects.SoundServer.SlaveOutput(1), Data);
             PsychPortAudio('Start', BpodSystem.PluginObjects.SoundServer.SlaveOutput(1));
             disp('PsychToolbox sound server successfully initialized.')
@@ -128,10 +128,9 @@ switch Function
         end
         if BpodSystem.EmulatorMode == 0
             if Siz(1) == 1 % If mono, send the same signal on both channels
-                Data(2,:) = Data;
+                Data(2,:) = zeros(1,Siz(2));
+                Data(2,1:(SF/1000)) = ones(1,(SF/1000));
             end
-            Data(3:6,:) = zeros(4,Siz(2));
-            Data(3:6,1:(SF/1000)) = ones(4,(SF/1000));
             PsychPortAudio('FillBuffer', BpodSystem.PluginObjects.SoundServer.SlaveOutput(SlaveID), Data);
         else
             if Siz(1) == 1 % If mono, send the same signal on both channels

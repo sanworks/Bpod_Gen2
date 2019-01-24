@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -114,7 +114,7 @@ function obj = Connect2BpodSM(obj, portString, varargin)
         disp('###########################################################################')
         disp('# NOTICE: Bpod is running without Psychtoolbox installed.                 #')
         disp('# PsychToolbox integration greatly improves USB transfer speed + latency. #')
-        disp('# See http://psychtoolbox.org/download/ for installation instructions.    #')
+        disp('# See http://psychtoolbox.org/download.html for installation instructions.#')
         disp('###########################################################################')
     end
     obj.SystemSettings.LastCOMPort = Ports{thisPortIndex};

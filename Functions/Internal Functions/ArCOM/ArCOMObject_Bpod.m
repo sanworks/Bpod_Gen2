@@ -142,10 +142,6 @@ classdef ArCOMObject_Bpod < handle
                     IOPort('Verbosity', 0);
                     obj.Port = IOPort('OpenSerialPort', portString, ['ReceiveTimeout=3, BaudRate=' num2str(baudRate) ', OutputBufferSize=1000000, InputBufferSize=1000000, DTR=1']);
                     if (obj.Port < 0)
-                        try
-                            IOPort('Close', obj.Port);
-                        catch
-                        end
                         error(['Error: Unable to connect to port ' portString '. The port may be in use by another application.'])
                     end
                     pause(.1); % Helps on some platforms
@@ -405,7 +401,9 @@ classdef ArCOMObject_Bpod < handle
                     fclose(obj.Port);
                     delete(obj.Port);
                 case 1
-                    IOPort('Close', obj.Port);
+                    if (obj.Port >= 0)
+                        IOPort('Close', obj.Port);
+                    end
                 case 2
                     fclose(obj.Port);
                     obj.Port = [];
