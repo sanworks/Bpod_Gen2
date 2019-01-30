@@ -53,6 +53,7 @@ function SoundCalibrationManager_OpeningFcn(hObject, eventdata, handles, varargi
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to SoundCalibrationManager (see VARARGIN)
 global BpodSystem
+try %TR2019 for now just skip this - needs code update to comply with current ML versions
 if ispc % Start the MCC board with PsychToolbox
     BpodSystem.PluginObjects.USB1608G = struct;
     warning off; BpodSystem.PluginObjects.USB1608G.Board = analoginput('mcc', 0); warning on;
@@ -60,6 +61,7 @@ if ispc % Start the MCC board with PsychToolbox
     BpodSystem.PluginObjects.USB1608G.Board.SamplesPerTrigger = 200000*.3;
     BpodSystem.PluginObjects.USB1608G.Ch0 = addchannel(BpodSystem.PluginObjects.USB1608G.Board, 0);
     BpodSystem.PluginObjects.USB1608G.Ch0.InputRange = [-10 10];
+end
 end
 % Choose default command line output for SoundCalibrationManager
 handles.output = hObject;
