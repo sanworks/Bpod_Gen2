@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the 
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 % function OutcomePlot(AxesHandle,TrialTypeSides, OutcomeRecord, CurrentTrial)
 function OutcomePlot(AxesHandle, Action, varargin)
-%% 
+%%
 % Plug in to Plot reward side and trial outcome.
 % NOTICE: This function is deprecated. It has been renamed SideOutcomePlot for clarity.
 % AxesHandle = handle of axes to plot on
@@ -33,10 +33,10 @@ function OutcomePlot(AxesHandle, Action, varargin)
 % varargins:
 % TrialTypeSides: Vector of 0's (right) or 1's (left) to indicate reward side (0,1), or 'None' to plot trial types individually
 % OutcomeRecord:  Vector of trial outcomes
-%                 Simplest case: 
+%                 Simplest case:
 %                               1: correct trial (green)
 %                               0: incorrect trial (red)
-%                 Advanced case: 
+%                 Advanced case:
 %                               NaN: future trial (blue)
 %                                -1: withdrawal (red circle)
 %                                 0: incorrect choice (red dot)
@@ -45,7 +45,7 @@ function OutcomePlot(AxesHandle, Action, varargin)
 % OutcomeRecord can also be empty
 % Current trial: the current trial number
 
-% Adapted from BControl (SidesPlotSection.m) 
+% Adapted from BControl (SidesPlotSection.m)
 % Kachi O. 2014.Mar.17
 % Josh S. 2015.Jan.24 - optimized for speed
 
@@ -57,12 +57,12 @@ switch Action
     case 'init'
         %initialize pokes plot
         SideList = varargin{1};
-        
+
         nTrialsToShow = 90; %default number of trials to display
-        
-%         if nargin > 3 %custom number of trials
-%             nTrialsToShow =varargin{3};
-%         end
+
+        if nargin > 3 %custom number of trials
+            nTrialsToShow =varargin{3};
+        end
         axes(AxesHandle);
         %plot in specified axes
         Xdata = 1:nTrialsToShow; Ydata = SideList(Xdata);
@@ -77,19 +77,19 @@ switch Action
         set(AxesHandle,'TickDir', 'out','YLim', [-1, 2], 'YTick', [0 1],'YTickLabel', {'Right','Left'}, 'FontSize', 16);
         xlabel(AxesHandle, 'Trial#', 'FontSize', 18);
         hold(AxesHandle, 'on');
-        
+
     case 'update'
         CurrentTrial = varargin{1};
         SideList = varargin{2};
         OutcomeRecord = varargin{3};
-        
+
         if CurrentTrial<1
             CurrentTrial = 1;
         end
-        
+
         % recompute xlim
         [mn, mx] = rescaleX(AxesHandle,CurrentTrial,nTrialsToShow);
-        
+
         %axes(AxesHandle); %cla;
         %plot future trials
         FutureTrialsIndx = CurrentTrial:mx;
@@ -98,7 +98,7 @@ switch Action
         %Plot current trial
         set(BpodSystem.GUIHandles.CurrentTrialCircle, 'xdata', [CurrentTrial,CurrentTrial], 'ydata', [SideList(CurrentTrial),SideList(CurrentTrial)]);
         set(BpodSystem.GUIHandles.CurrentTrialCross, 'xdata', [CurrentTrial,CurrentTrial], 'ydata', [SideList(CurrentTrial),SideList(CurrentTrial)]);
-        
+
         %Plot past trials
         if ~isempty(OutcomeRecord)
             indxToPlot = mn:CurrentTrial-1;
@@ -133,5 +133,3 @@ mn = max(round(CurrentTrial - FractionWindowStickpoint*nTrialsToShow),1);
 mx = mn + nTrialsToShow - 1;
 set(AxesHandle,'XLim',[mn-1 mx+1]);
 end
-
-
