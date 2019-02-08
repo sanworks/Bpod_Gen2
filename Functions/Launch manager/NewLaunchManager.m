@@ -65,6 +65,7 @@ EditGFX = imread('EditButton.bmp');
 BpodSystem.GUIHandles.EditSettingsButton = uicontrol('Style', 'pushbutton', 'CData', EditGFX, 'Position', [708 399 25 25], 'Callback', @EditSettings, 'TooltipString', 'Edit Session Settings', 'FontName', 'OCRASTD', 'FontSize', 22, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
 ImportGFX = imread('ImportButton.bmp');
 BpodSystem.GUIHandles.ImportSettingsButton = uicontrol('Style', 'pushbutton', 'CData', ImportGFX, 'Position', [708 369 25 25], 'Callback', @ImportSettings, 'TooltipString', 'Import Session Settings', 'FontName', 'OCRASTD', 'FontSize', 22, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
+try %TR2018: again - ML2018b does not seem to support this kind of Java Button handling
 if ~verLessThan('matlab', '8.0.0')
     jButton = java(findjobj(BpodSystem.GUIHandles.EditProtocolButton));
     jButton.setBorderPainted(false);
@@ -84,6 +85,7 @@ if ~verLessThan('matlab', '8.0.0')
     jButton.setBorderPainted(false);
     jButton = java(findjobj(BpodSystem.GUIHandles.EditSettingsButton));
     jButton.setBorderPainted(false);
+end
 end
 BpodSystem.GUIHandles.DataFilePathDisplay = text(20, 685,'', 'FontName', 'Courier New', 'FontSize', PathFontSize, 'Color', [0.9 0.9 0.9]);
 BpodSystem.GUIHandles.DataFileLabel = text(20, 665,'Data Folder:', 'FontName', 'Arial', 'FontSize', PathFontSize, 'Color', [1 1 1], 'Interpreter', 'None');

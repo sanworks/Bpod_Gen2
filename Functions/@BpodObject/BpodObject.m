@@ -465,9 +465,11 @@ classdef BpodObject < handle
             end
             set(obj.GUIHandles.PanelButton(panel), 'BackgroundColor', [0.45 0.45 0.45]);
             if isempty(strfind(obj.HostOS, 'Linux')) % Fix buttons if not on linux
+                try %TR2018: does not work on ML 2018b
                 for i = 1:obj.HW.n.SerialChannels
                     jButton = findjobj(obj.GUIHandles.PanelButton(i));
                     jButton.setBorderPainted(false);
+                end
                 end
             end
             obj.GUIData.CurrentPanel = panel;
