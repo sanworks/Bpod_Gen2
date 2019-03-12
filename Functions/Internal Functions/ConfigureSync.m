@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -22,15 +22,16 @@ global BpodSystem
 if BpodSystem.MachineType == 1 % Bpod 0.5
     BpodErrorDlg(['Bpod 0.5 has a fixed sync' char(10) 'port. Config not required.'], 0);
 else
+    FontName = 'Courier New';
     BpodSystem.GUIHandles.PortConfigFig = figure('Position',[600 400 400 150],'name','Sync config.','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
     ha = axes('units','normalized', 'position',[0 0 1 1]);
     uistack(ha,'bottom');
     BG = imread('InputChannelConfig2.bmp');
     image(BG); axis off;
     
-    text(80, 25, 'Sync channel config', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
-    text(50, 65, 'Channel', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
-    text(210, 65, 'Signal type', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
+    text(80, 25, 'Sync channel config', 'FontName', FontName, 'FontSize', 15, 'Color', [0.8 0.8 0.8]);
+    text(50, 65, 'Channel', 'FontName', FontName, 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
+    text(210, 65, 'Signal type', 'FontName', FontName, 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
     BpodSystem.GUIHandles.SyncConfigChannel = uicontrol('Position', [55 35 80 20], 'Style', 'popupmenu', 'Callback', @UpdateSyncConfig, 'FontSize', 12);
     BpodSystem.GUIHandles.SyncConfigType = uicontrol('Position', [220 35 120 20], 'Style', 'popupmenu', 'String', {'Each_Trial', 'Each_State'}, 'Callback', @UpdateSyncConfig, 'FontSize', 12);
     

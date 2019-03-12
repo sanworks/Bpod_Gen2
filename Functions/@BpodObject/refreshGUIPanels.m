@@ -1,3 +1,22 @@
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
 function obj = refreshGUIPanels(obj)
     if obj.Status.BeingUsed == 0
         ModuleNames = {'<html>&nbsp;State<br>Machine', 'Serial 1', 'Serial 2', 'Serial 3', 'Serial 4', 'Serial 5'};
@@ -75,7 +94,7 @@ function obj = refreshGUIPanels(obj)
         uistack(obj.GUIHandles.OverridePanel(1),'top');
         axes(obj.GUIHandles.Console);
         uistack(obj.GUIHandles.Console,'bottom');
-        if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0')
+        if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
             for i = 1:obj.HW.n.SerialChannels
                 jButton = findjobj(obj.GUIHandles.PanelButton(i));
                 jButton.setBorderPainted(false);

@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -10,16 +10,16 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function obj = InitializeGUI(obj)
-    TitleFontName = 'OCRASTD';
-    FontName = 'OCRASTD';
+    TitleFontName = 'Courier New';
+    FontName = 'Courier New';
     % Add labels
     LabelFontColor = [0.8 0.8 0.8];
     if 1 %obj.EmulatorMode == 0
@@ -90,9 +90,9 @@ function obj = InitializeGUI(obj)
     TabPos = PluginPanelOffset;
     obj.GUIData.DefaultPanel = ones(1,obj.HW.n.SerialChannels);
     if verLessThan('matlab', '8')
-        ButtonFont = 'Courier';
+        ButtonFont = 'Courier New';
     else
-        ButtonFont = 'OCRASTD';
+        ButtonFont = 'Courier New';
     end
     for i = 1:obj.HW.n.SerialChannels
         % Set module names
@@ -123,7 +123,7 @@ function obj = InitializeGUI(obj)
         % Draw tab
         obj.GUIHandles.PanelButton(i) = uicontrol('Style', 'pushbutton', 'String', FormattedModuleNames{i}, 'Callback', @(h,e)obj.SwitchPanels(i), 'BackgroundColor', [0.37 0.37 0.37], 'Position', [TabPos 272 TabWidth-1 49], 'ForegroundColor', [0.9 0.9 0.9], 'FontSize', Vvsm, 'FontName', ButtonFont);
         TabPos = TabPos + TabWidth;
-        if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0')
+        if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
             jButton = findjobj(obj.GUIHandles.PanelButton(i));
             jButton.setBorderPainted(false);
         end
@@ -177,7 +177,7 @@ function obj = InitializeGUI(obj)
             TabPos = TabPos + TabWidth;
             line([TabPos-1 TabPos-1], [82 130], 'Color', [0.45 0.45 0.45], 'LineWidth', 5);
         end
-        if isempty(strfind(obj.HostOS, 'Linux'))
+        if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
             for i = 1:obj.HW.n.SerialChannels
                 jButton = findjobj(obj.GUIHandles.PanelButton(i));
                 jButton.setBorderPainted(false);
@@ -215,7 +215,7 @@ function obj = InitializeGUI(obj)
     text(15, 65,'Live Info', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
     line([10 130], [79 79], 'Color', LabelFontColor, 'LineWidth', 2);
     Ver = BpodSoftwareVersion;
-    text(10, 376,['Console v' sprintf('%3.2f', Ver)], 'FontName', FontName, 'FontSize', Vsm, 'Color', [0.6 0.6 0.6]);
+    text(10, 376,['Console v' sprintf('%3.2f', Ver)], 'FontName', FontName, 'FontSize', Vsm, 'Color', [0.8 0.8 0.8]);
     drawnow;
     if obj.IsOnline == 1
         if isfield(obj.SystemSettings, 'PhoneHome')

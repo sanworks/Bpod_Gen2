@@ -63,7 +63,7 @@ BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will b
 
 %% Initialize plots
 % Side Outcome Plot
-BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 200],'name','Outcome plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 250],'name','Outcome plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .3 .89 .6]);
 SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-TrialTypes);
 TotalRewardDisplay('init'); % Total Reward display (online display of the total amount of liquid reward earned)

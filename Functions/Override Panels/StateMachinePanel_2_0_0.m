@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -20,9 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function StateMachinePanel_2_0_0
 global BpodSystem
 
-FontName = 'OCR A STD';
+FontName = 'Courier New';
 if ismac && verLessThan('matlab', '8')
-    FontName = 'Arial';
+    FontName = 'Courier New';
 end
 %% Port override
 xOffset = 50;
@@ -50,7 +50,7 @@ text(xOffset-42, yOffset+15,'VLV', 'FontName', FontName, 'FontSize', medFontSize
 text(xOffset-42, yOffset-38,'LED', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 text(xOffset-42, yOffset-90,'POK', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 if ispc
-    TitleXOffset = 5;
+    TitleXOffset = 20;
 elseif ismac
     TitleXOffset = 7;
 else
@@ -65,7 +65,7 @@ line([xOffset+2 xOffset+178], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'Lin
 xOffset = 245;
 yOffset = 145;
 if ispc
-    TitleXOffset = 6;
+    TitleXOffset = 15;
 elseif ismac
     TitleXOffset = 14;
 else
@@ -168,10 +168,10 @@ if BpodSystem.HW.n.WireOutputs > 2
     text(xOffset+13, yOffset-15,'3', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
     text(xOffset+53, yOffset-15,'4', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 end
-xPos = 350;
+xPos = 370;
 if ismac
     xPos = 380;
 end
-text(xPos, 190,' Bpod Finite', 'FontName', FontName, 'FontSize', 16, 'Color', [.6 .6 .6]);
-text(xPos, 130,'State Machine', 'FontName', FontName, 'FontSize', 16, 'Color', [.6 .6 .6]);
-text(xPos, 70, '    v2.0', 'FontName', FontName, 'FontSize', 16, 'Color', [.6 .6 .6]);
+text(xPos, 190,' Bpod Finite', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
+text(xPos, 130,'State Machine', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
+text(xPos, 70, '    v2.0', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
