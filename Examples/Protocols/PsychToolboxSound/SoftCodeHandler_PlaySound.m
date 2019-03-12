@@ -1,6 +1,7 @@
 function SoftCodeHandler_PlaySound(SoundID)
+global BpodSystem
 if SoundID ~= 255
-    PsychToolboxSoundServer('Play', SoundID);
+    BpodSystem.PluginObjects.Sound.play(SoundID);
 else
-    PsychToolboxSoundServer('StopAll');
+    BpodSystem.PluginObjects.Sound.stopAll;
 end

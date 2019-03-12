@@ -46,6 +46,7 @@ switch Function
             AudioDevices = PsychPortAudio('GetDevices');
             nDevices = length(AudioDevices);
             CandidateDevices = []; nCandidates = 0;
+            isWASAPI = zeros(1,100);
             if ispc
                 for x = 1:nDevices
                     if strcmp(AudioDevices(x).HostAudioAPIName, 'ASIO')
@@ -53,10 +54,11 @@ switch Function
                             nCandidates = nCandidates + 1;
                             CandidateDevices(nCandidates) = AudioDevices(x).DeviceIndex;
                         end
-                    elseif strcmp(AudioDevices(x).HostAudioAPIName, 'WASAPI')
+                    elseif strcmp(AudioDevices(x).HostAudioAPIName, 'Windows WASAPI')
                         if AudioDevices(x).NrOutputChannels == 8
                             nCandidates = nCandidates + 1;
                             CandidateDevices(nCandidates) = AudioDevices(x).DeviceIndex;
+                            isWASAPI(nCandidates) = 1;
                         end
                     end
                 end
@@ -73,12 +75,17 @@ switch Function
                     end
                 end
             end
-            
+            isWASAPI = isWASAPI(1:nCandidates);
             if nCandidates > 0
                 for x = 1:nCandidates
                     disp(['Candidate device found! Trying candidate ' num2str(x) ' of ' num2str(nCandidates)])
+                    if isWASAPI(x)
+                        bufferSize = SF/100;
+                    else
+                        bufferSize = 32;
+                    end
                     try
-                        CandidateDevice = PsychPortAudio('Open', CandidateDevices(x), 9, 4, SF, nOutputChannels, 32);
+                        CandidateDevice = PsychPortAudio('Open', CandidateDevices(x), 9, 4, SF, nOutputChannels, bufferSize);
                         BpodSystem.SystemSettings.SoundDeviceID = CandidateDevices(x);
                         PsychPortAudio('Close', CandidateDevice);
                         disp('Success! A compatible sound card was detected and stored in Bpod settings.')
@@ -89,7 +96,7 @@ switch Function
             else
                 disp('Error: no compatible sound subsystem detected.')
             end
-            BpodSystem.PluginObjects.SoundServer.MasterOutput = PsychPortAudio('Open', BpodSystem.SystemSettings.SoundDeviceID, 9, 4, SF, nOutputChannels , 32);
+            BpodSystem.PluginObjects.SoundServer.MasterOutput = PsychPortAudio('Open', BpodSystem.SystemSettings.SoundDeviceID, 9, 4, SF, nOutputChannels , bufferSize);
             PsychPortAudio('Start', BpodSystem.PluginObjects.SoundServer.MasterOutput, 0, 0, 1);
             for x = 1:nSlaves
                 BpodSystem.PluginObjects.SoundServer.SlaveOutput(x) = PsychPortAudio('OpenSlave', BpodSystem.PluginObjects.SoundServer.MasterOutput);

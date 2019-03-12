@@ -37,7 +37,7 @@ classdef PsychToolboxAudio < handle
         function obj = PsychToolboxAudio
             global BpodSystem
             if isprop(BpodSystem, 'EmulatorMode')
-                obj.EmulatorMode = 1;
+                obj.EmulatorMode = BpodSystem.EmulatorMode;
             else
                 obj.EmulatorMode = 0;
             end
@@ -51,27 +51,37 @@ classdef PsychToolboxAudio < handle
                 PsychPortAudio('Close');
                 devices = PsychPortAudio('GetDevices');
                 DeviceID = -1;
+                isWASAPI = 0;
                 if ispc
                     ASIODevices = ismember({devices(:).HostAudioAPIName}, 'ASIO');
-                    WASAPIDevices = ismember({devices(:).HostAudioAPIName}, 'WASAPI');
+                    WASAPIDevices = ismember({devices(:).HostAudioAPIName}, 'Windows WASAPI');
                     if sum(ASIODevices | WASAPIDevices) == 0
                         error(['Error: Compatible sound card not found. ' char(10) ...
                             'PsychToolboxAudio requires an ASIO-compatible sound card if used with PsychToolbox r3.0.14 or earlier (using ASIO drivers + the old ASIO-compatible DLL).' char(10) ...
                             'With PsychToolbox r3.0.15 or newer, you must use a WASAPI-compatible sound card.'])
                     end
-                    CandidateDevices = [find(ASIODevices) find(WASAPIDevices)];
+                    asioList = find(ASIODevices);
+                    wasapiList = find(WASAPIDevices);
+                    CandidateDevices = [asioList wasapiList];
+                    deviceType = [zeros(1,length(asioList)) ones(1,length(wasapiList))];
                     CardFound = 0; i = 0; DeviceID = 0;
                     while (CardFound == 0) && (i < length(CandidateDevices))
                         i = i + 1;
-                        if devices(CandidateDevices(i)).NrOutputChannels == 8 || devices(CandidateDevices(i)).NrOutputChannels == 6
-                            CardFound = 1;
-                            DeviceID = devices(CandidateDevices(i)).DeviceIndex;
+                        if devices(CandidateDevices(i)).NrOutputChannels > 3 
+                            if isempty(strfind(devices(CandidateDevices(i)).DeviceName, 'SPDIF'))
+                                CardFound = 1;
+                                DeviceID = devices(CandidateDevices(i)).DeviceIndex;
+                                if deviceType(i) == 1
+                                    isWASAPI = 1;
+                                end
+                            end
                         end
                     end
                 elseif ismac
                     error('Error: the PsychToolboxAudio plugin is not supported on OS X.')
                 else
                     CardFound = 0;
+                    nDevices = length(devices);
                     for i = 1:nDevices
                         if CardFound == 0
                             DeviceName = devices(i).DeviceName;
@@ -87,12 +97,17 @@ classdef PsychToolboxAudio < handle
                 if DeviceID == -1
                     error('Error: A compatible sound card was not found.')
                 end
-                obj.MasterOutput = PsychPortAudio('Open', DeviceID, 9, 4, obj.SamplingRate, obj.nOutputChannels , 32);
+                if isWASAPI
+                    bufferSize = obj.SamplingRate/100;
+                else
+                    bufferSize = 32;
+                end
+                obj.MasterOutput = PsychPortAudio('Open', DeviceID, 9, 4, obj.SamplingRate, obj.nOutputChannels , bufferSize);
                 PsychPortAudio('Start', obj.MasterOutput, 0, 0, 1);
                 for i = 1:obj.MaxSounds
                     obj.SlaveOutput(i) = PsychPortAudio('OpenSlave', obj.MasterOutput);
                 end
-                Data = zeros(obj.nOutputChannels,192);
+                Data = zeros(obj.nOutputChannels,obj.SamplingRate/1000);
                 PsychPortAudio('FillBuffer', obj.SlaveOutput(1), Data);
                 PsychPortAudio('Start', obj.SlaveOutput(1));
             else
