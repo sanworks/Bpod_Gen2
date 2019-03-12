@@ -30,7 +30,7 @@ function obj = InitializeGUI(obj)
         TitleColor = [0.9 0 0];
     end
     if ispc
-        Vvsm = 10; Vsm = 10; Sm = 12; Med = 13; Lg = 20;
+        Vvsm = 12; Vsm = 11; Sm = 12; Med = 13; Lg = 20;
     elseif ismac
         Vvsm = 12; Vsm = 14; Sm = 16; Med = 17; Lg = 22;
         FontName = 'Arial';
@@ -68,7 +68,7 @@ function obj = InitializeGUI(obj)
     obj.GUIHandles.USBButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [733 227 29 29], 'Callback', 'ConfigureModuleUSB', 'CData', obj.GUIData.USBButton, 'TooltipString', 'Configure module USB ports');
     obj.GUIHandles.DocButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [796 371 29 29], 'Callback', @(h,e)obj.Wiki(), 'CData', obj.GUIData.DocButton, 'TooltipString', 'Documentation wiki');
     if ispc
-        CfgXpos = 735; Movpos = 335; Sesspos = 731;
+        CfgXpos = 740; Movpos = 345; Sesspos = 735;
     elseif ismac
         CfgXpos = 745; Movpos = 360; Sesspos = 741;
     else
@@ -205,14 +205,14 @@ function obj = InitializeGUI(obj)
     obj.GUIHandles.USBPortDisplay = uicontrol('Style', 'text', 'String', PortString, 'Position', [12 Ypos InfoDispBoxWidth PortDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize);
     obj.FixPushbuttons;
     text(15, 30, Title, 'FontName', TitleFontName, 'FontSize', Lg, 'Color', TitleColor);
-    line([280 770], [30 30], 'Color', LabelFontColor, 'LineWidth', 4);
+    line([220 780], [30 30], 'Color', LabelFontColor, 'LineWidth', 4);
 
     text(10, 102,'Current State', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 153,'Previous State', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 204,'Last Event', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 255,'Trial-Start', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 306,'Port', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
-    text(15, 65,'Live Info', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
+    text(23, 65,'Live Info', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
     line([10 130], [79 79], 'Color', LabelFontColor, 'LineWidth', 2);
     Ver = BpodSoftwareVersion;
     text(10, 376,['Console v' sprintf('%3.2f', Ver)], 'FontName', FontName, 'FontSize', Vsm, 'Color', [0.8 0.8 0.8]);

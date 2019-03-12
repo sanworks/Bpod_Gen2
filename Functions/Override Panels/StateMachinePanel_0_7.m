@@ -50,7 +50,7 @@ text(xOffset-42, yOffset+15,'VLV', 'FontName', FontName, 'FontSize', medFontSize
 text(xOffset-42, yOffset-30,'LED', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 text(xOffset-42, yOffset-75,'POK', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 if ispc
-    TitleXOffset = 80;
+    TitleXOffset = 88;
 elseif ismac
     TitleXOffset = 105;
 else
@@ -85,7 +85,7 @@ for x = 1:BpodSystem.HW.n.BNCInputs
 end
 
 % Outputs
-xOffset = 485;
+xOffset = 484;
 yOffset = 150;
 text(xOffset+TitleXOffset, yOffset+80,'BncOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineWidth', 2);
@@ -102,14 +102,14 @@ end
 
 %% Wire override
 if ispc
-    TitleXOffset = 2;
+    TitleXOffset = 5;
 elseif ismac
     TitleXOffset = 10;
 else
     TitleXOffset = 2;
 end
 % Inputs
-xOffset = 395;
+xOffset = 394;
 yOffset = 60;
 text(xOffset+TitleXOffset, yOffset+72,'WireIn', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+58 yOffset+58], 'Color', [.8 .8 .8], 'LineWidth', 2);
@@ -144,7 +144,7 @@ end
 % Outputs
 xOffset = 485;
 yOffset = 60;
-text(xOffset+TitleXOffset, yOffset+72,'WireOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
+text(xOffset+TitleXOffset+3, yOffset+72,'WireOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+58 yOffset+58], 'Color', [.8 .8 .8], 'LineWidth', 2);
 xPos = xOffset; ypos = yOffset;
 for i = 1:2
