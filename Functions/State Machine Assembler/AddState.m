@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the 
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -180,10 +180,10 @@ for x = 1:2:length(OutputActions)
         switch MetaAction
             case 1
                 ValvePos = BpodSystem.HW.Pos.Output_Valve;
-                ValveLogic = double(dec2bin(Value) == '1'); 
-                ValveLogic = ValveLogic(end:-1:1); 
+                ValveLogic = double(dec2bin(Value) == '1');
+                ValveLogic = ValveLogic(end:-1:1);
                 nValvesAddressed = length(ValveLogic);
-                if nValvesAddressed > BpodSystem.HW.n.Valves 
+                if nValvesAddressed > BpodSystem.HW.n.Valves
                     error(['Error: tried to access valve# ' num2str(nValvesAddressed) ' but only ' num2str(BpodSystem.HW.n.Valves) ' valves exist on the connected state machine.'])
                 else
                     ValveLogic = [ValveLogic zeros(1,BpodSystem.HW.n.Valves-length(ValveLogic))];
@@ -214,28 +214,45 @@ for x = 1:2:length(OutputActions)
         TargetEventCode = find(strcmp(OutputActions{x}, OutputChannelNames));
         if ~isempty(TargetEventCode)
             Value = OutputActions{x+1};
-            if ischar(Value) 
-                if (sum(Value == '0') + sum(Value == '1')) == length(Value) % Assume binary string, convert to decimal
-                    Value = bin2dec(Value);
-                elseif length(Value) == 1
-                    Value = uint8(Value);
-                else
-                    error('Error: value of an output action must be a byte, a character or a binary string of up to 8 1s and 0s')
-                end
-            else
-               if (TargetEventCode == BpodSystem.HW.Pos.GlobalTimerTrig) || (TargetEventCode == BpodSystem.HW.Pos.GlobalTimerCancel)
+            vLength = length(Value);
+            if vLength == 1
+                if (TargetEventCode == BpodSystem.HW.Pos.GlobalTimerTrig) || (TargetEventCode == BpodSystem.HW.Pos.GlobalTimerCancel)
                     % For backwards compatability, integers specifying
                     % global timers convert to equivalent binary decimals. To
                     % specify binary, use a string of bits.
                     Value = 2^(Value-1);
-               end 
+                else
+                    Value = uint8(Value);
+                end
+            else
+                if ischar(Value) && ((sum(Value == '0') + sum(Value == '1')) == length(Value)) % Assume binary string, convert to decimal
+                        Value = bin2dec(Value);
+                else
+                    sma.SerialMessageMode = 1;
+                    messageIndex = 0;
+                    for i = 1:sma.nSerialMessages(TargetEventCode)
+                        thisMessage = sma.SerialMessages{i};
+                        if length(thisMessage) == vLength
+                            if sum(thisMessage == Value) == vLength
+                                messageIndex = i;
+                            end
+                        end
+                    end
+                    if messageIndex > 0
+                        Value = messageIndex;
+                    else
+                        sma.nSerialMessages(TargetEventCode) = sma.nSerialMessages(TargetEventCode) + 1;
+                        thisMessageIndex = sma.nSerialMessages(TargetEventCode);
+                        sma.SerialMessages{TargetEventCode,thisMessageIndex} = uint8(Value);
+                        Value = thisMessageIndex;
+                    end
+                end
             end
             sma.OutputMatrix(CurrentState,TargetEventCode) = Value;
         else
             error(['Check spelling of your output actions for state: ' StateName '.']);
         end
     end
-    
 end
 
 %% Add self timer

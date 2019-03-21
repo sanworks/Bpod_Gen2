@@ -219,5 +219,8 @@ function obj = SetupStateMachine(obj)
     sma.ConditionSet = zeros(1,obj.HW.n.Conditions);
     sma.StateTimers = 0;
     sma.StatesDefined = 1; % Referenced states are set to 0. Defined states are set to 1. Both occur with AddState
+    sma.SerialMessageMode = 0; % 0 if manually programmed with LoadSerialMessages(), 1 if programmed implicitly
+    sma.nSerialMessages = zeros(1,obj.HW.n.UartSerialChannels);
+    sma.SerialMessages = cell(obj.HW.n.UartSerialChannels,256);
     obj.BlankStateMachine = sma;
 end

@@ -30,7 +30,7 @@ classdef PsychToolboxAudio < handle
         MasterOutput
         SlaveOutput
         nOutputChannels = 4;
-        EmulatorMode
+        EmulatorMode = 0;
     end
     
     methods
@@ -67,7 +67,7 @@ classdef PsychToolboxAudio < handle
                     CardFound = 0; i = 0; DeviceID = 0;
                     while (CardFound == 0) && (i < length(CandidateDevices))
                         i = i + 1;
-                        if devices(CandidateDevices(i)).NrOutputChannels > 3 
+                        if devices(CandidateDevices(i)).NrOutputChannels > 3
                             if isempty(strfind(devices(CandidateDevices(i)).DeviceName, 'SPDIF'))
                                 CardFound = 1;
                                 DeviceID = devices(CandidateDevices(i)).DeviceIndex;
@@ -99,6 +99,7 @@ classdef PsychToolboxAudio < handle
                 end
                 if isWASAPI
                     bufferSize = obj.SamplingRate/100;
+                    %bufferSize = 32; %obj.SamplingRate/100;
                 else
                     bufferSize = 32;
                 end
