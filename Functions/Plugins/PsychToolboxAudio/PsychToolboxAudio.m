@@ -30,7 +30,8 @@ classdef PsychToolboxAudio < handle
         MasterOutput
         SlaveOutput
         nOutputChannels = 4;
-        EmulatorMode
+        EmulatorMode = 0;
+        isFenix = 0;
     end
     
     methods
@@ -51,7 +52,7 @@ classdef PsychToolboxAudio < handle
                 PsychPortAudio('Close');
                 devices = PsychPortAudio('GetDevices');
                 DeviceID = -1;
-                isWASAPI = 0;
+                isWASAPIWinXonar = 0;
                 if ispc
                     ASIODevices = ismember({devices(:).HostAudioAPIName}, 'ASIO');
                     WASAPIDevices = ismember({devices(:).HostAudioAPIName}, 'Windows WASAPI');
@@ -67,12 +68,17 @@ classdef PsychToolboxAudio < handle
                     CardFound = 0; i = 0; DeviceID = 0;
                     while (CardFound == 0) && (i < length(CandidateDevices))
                         i = i + 1;
-                        if devices(CandidateDevices(i)).NrOutputChannels > 3 
+                        if devices(CandidateDevices(i)).NrOutputChannels > 3
                             if isempty(strfind(devices(CandidateDevices(i)).DeviceName, 'SPDIF'))
                                 CardFound = 1;
                                 DeviceID = devices(CandidateDevices(i)).DeviceIndex;
                                 if deviceType(i) == 1
-                                    isWASAPI = 1;
+                                    if ~isempty(strfind(devices(CandidateDevices(i)).DeviceName, 'XONAR'))
+                                        isWASAPIWinXonar = 1;
+                                    end
+                                    if ~isempty(strfind(devices(CandidateDevices(i)).DeviceName, 'FENIX'))
+                                        obj.isFenix = 1;
+                                    end
                                 end
                             end
                         end
@@ -86,7 +92,7 @@ classdef PsychToolboxAudio < handle
                         if CardFound == 0
                             DeviceName = devices(i).DeviceName;
                             if sum(strcmpi(DeviceName(1:4), {'XONA', 'ASUS'})) > 0 % Assumes ASUS Xonar series
-                                if devices(i).NrOutputChannels == 8
+                                if devices(i).NrOutputChannels > 3
                                     CardFound = 1;
                                     DeviceID = devices(i).DeviceIndex;
                                 end
@@ -97,8 +103,8 @@ classdef PsychToolboxAudio < handle
                 if DeviceID == -1
                     error('Error: A compatible sound card was not found.')
                 end
-                if isWASAPI
-                    bufferSize = obj.SamplingRate/100;
+                if isWASAPIWinXonar
+                    bufferSize = obj.SamplingRate/100; % A larger buffer is used with Xonar AE and SE to prevent underruns on some systems (tested on Lenovo M920T Win10 Corei5 8GB RAM)
                 else
                     bufferSize = 32;
                 end
@@ -132,6 +138,9 @@ classdef PsychToolboxAudio < handle
                 error(['The PsychToolboxAudio plugin currently supports only ' num2str(obj.MaxSounds) ' sounds.'])
             end
             if obj.EmulatorMode == 0
+                if obj.isFenix
+                    waveform = waveform*.75; % To avoid saturation
+                end
                 if Siz(1) == 1 % If mono, send the same signal on both channels
                     waveform(2,:) = waveform;
                 end

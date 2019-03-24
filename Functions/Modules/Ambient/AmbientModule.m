@@ -31,6 +31,7 @@ classdef AmbientModule < handle
             Measurements = typecast(RawBytes, 'single');
             Data = struct;
             Data.Temperature_C = Measurements(1);
+            Data.Temperature_F = Measurements(1)*(9/5)+32;
             Data.AirPressure_mb = Measurements(2)/100;
             Data.RelativeHumidity = Measurements(3);
         end

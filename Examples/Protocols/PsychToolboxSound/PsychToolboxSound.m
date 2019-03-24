@@ -63,7 +63,7 @@ BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will b
 
 %% Initialize plots
 % Side Outcome Plot
-BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 250],'name','Outcome plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 200],'name','Outcome plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .3 .89 .6]);
 SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-TrialTypes);
 TotalRewardDisplay('init'); % Total Reward display (online display of the total amount of liquid reward earned)
@@ -71,9 +71,9 @@ BpodParameterGUI('init', S); % Initialize parameter GUI plugin
 
 %% Define stimuli and send to sound server
 SF = 192000; % Sound card sampling rate
-LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration)*.1; % Sampling freq (hz), Sine frequency (hz), duration (s)
-RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration)*.1; % Sampling freq (hz), Sine frequency (hz), duration (s)
-PunishSound = ((rand(1,SF*.5)*2) - 1)*.1;
+LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
+RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
+PunishSound = ((rand(1,SF*.5)*2) - 1);
 % Generate early withdrawal sound
 W1 = GenerateSineWave(SF, 1000, .5); W2 = GenerateSineWave(SF, 1200, .5); EarlyWithdrawalSound = W1+W2;
 P = SF/100; Interval = P;
@@ -89,7 +89,7 @@ end
 BpodSystem.PluginObjects.Sound.load(1, LeftSound);
 BpodSystem.PluginObjects.Sound.load(2, RightSound);
 BpodSystem.PluginObjects.Sound.load(3, PunishSound);
-BpodSystem.PluginObjects.Sound.load(4, EarlyWithdrawalSound*.1);
+BpodSystem.PluginObjects.Sound.load(4, EarlyWithdrawalSound);
 
 % Set soft code handler to trigger sounds
 BpodSystem.SoftCodeHandlerFunction = 'SoftCodeHandler_PlaySound';

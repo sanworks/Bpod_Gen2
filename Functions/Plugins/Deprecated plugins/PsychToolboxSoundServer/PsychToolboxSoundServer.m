@@ -47,18 +47,32 @@ switch Function
             nDevices = length(AudioDevices);
             CandidateDevices = []; nCandidates = 0;
             isWASAPI = zeros(1,100);
+            isFENIX = zeros(1,100);
+            isWASAPIWinXonar = zeros(1,100);
+            BpodSystem.PluginObjects.SoundServerType = 0;
             if ispc
                 for x = 1:nDevices
-                    if strcmp(AudioDevices(x).HostAudioAPIName, 'ASIO')
-                        if AudioDevices(x).NrOutputChannels == 8
-                            nCandidates = nCandidates + 1;
-                            CandidateDevices(nCandidates) = AudioDevices(x).DeviceIndex;
-                        end
-                    elseif strcmp(AudioDevices(x).HostAudioAPIName, 'Windows WASAPI')
-                        if AudioDevices(x).NrOutputChannels == 8
-                            nCandidates = nCandidates + 1;
-                            CandidateDevices(nCandidates) = AudioDevices(x).DeviceIndex;
-                            isWASAPI(nCandidates) = 1;
+                    if isempty(strfind(AudioDevices(x).DeviceName, 'SPDIF'))
+                        if strcmp(AudioDevices(x).HostAudioAPIName, 'ASIO')
+                            if AudioDevices(x).NrOutputChannels > 3
+                                nCandidates = nCandidates + 1;
+                                CandidateDevices(nCandidates) = AudioDevices(x).DeviceIndex;
+                                if ~isempty(strfind(AudioDevices(x).DeviceName, 'FENIX'))
+                                    isFENIX(nCandidates) = 1;
+                                end
+                            end
+                        elseif strcmp(AudioDevices(x).HostAudioAPIName, 'Windows WASAPI')
+                            if AudioDevices(x).NrOutputChannels > 3
+                                nCandidates = nCandidates + 1;
+                                CandidateDevices(nCandidates) = AudioDevices(x).DeviceIndex;
+                                isWASAPI(nCandidates) = 1;
+                                if ~isempty(strfind(AudioDevices(x).DeviceName, 'XONAR'))
+                                    isWASAPIWinXonar(nCandidates) = 1;
+                                end
+                                if ~isempty(strfind(AudioDevices(x).DeviceName, 'FENIX'))
+                                    isFENIX(nCandidates) = 1;
+                                end
+                            end
                         end
                     end
                 end
@@ -68,7 +82,7 @@ switch Function
                 for x = 1:nDevices
                     DeviceName = AudioDevices(x).DeviceName;
                     if sum(strcmpi(DeviceName(1:4), {'ASIO', 'XONA', 'ASUS'})) > 0 % Assumes ASUS Xonar series or other Asio Soundcard
-                        if AudioDevices(x).NrOutputChannels == 8
+                        if AudioDevices(x).NrOutputChannels > 3
                             nCandidates = nCandidates + 1;
                             CandidateDevices(nCandidates) = AudioDevices(x).DeviceIndex;
                         end
@@ -79,7 +93,7 @@ switch Function
             if nCandidates > 0
                 for x = 1:nCandidates
                     disp(['Candidate device found! Trying candidate ' num2str(x) ' of ' num2str(nCandidates)])
-                    if isWASAPI(x)
+                    if isWASAPIWinXonar(x)
                         bufferSize = SF/100;
                     else
                         bufferSize = 32;
@@ -87,6 +101,9 @@ switch Function
                     try
                         CandidateDevice = PsychPortAudio('Open', CandidateDevices(x), 9, 4, SF, nOutputChannels, bufferSize);
                         BpodSystem.SystemSettings.SoundDeviceID = CandidateDevices(x);
+                        if isFENIX(x) == 1
+                            BpodSystem.PluginObjects.SoundServerType = 1;
+                        end
                         PsychPortAudio('Close', CandidateDevice);
                         disp('Success! A compatible sound card was detected and stored in Bpod settings.')
                     catch
@@ -141,6 +158,9 @@ switch Function
         end
         if BpodSystem.EmulatorMode == 0
             if nOutputChannels > 2
+                if BpodSystem.PluginObjects.SoundServerType == 1
+                    Data = Data*0.75; % Avoid saturation on Fenix
+                end
                 if Siz(1) == 1 % If mono, send the same signal on both channels
                     Data(2,:) = Data;
                 end
