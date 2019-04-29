@@ -20,6 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function ConfigureModuleUSB(junk, morejunk)
 global BpodSystem
 FontName = 'Courier New';
+if ~ismac && ~ispc
+    FontName = 'DejaVu Sans Mono';
+end
 if BpodSystem.EmulatorMode == 0
     BpodSystem.GUIHandles.ModuleUSBFig = figure('Position',[600 400 600 250],'name','Module USB config.','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
     ha = axes('units','normalized', 'position',[0 0 1 1]);

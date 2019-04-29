@@ -21,8 +21,8 @@ function StateMachinePanel_0_7
 global BpodSystem
 
 FontName = 'Courier New';
-if ismac
-    FontName = 'Courier New';
+if ~ismac && ~ispc
+    FontName = 'DejaVu Sans Mono';
 end
 %% Port override
 xOffset = 50;
@@ -54,7 +54,7 @@ if ispc
 elseif ismac
     TitleXOffset = 105;
 else
-    TitleXOffset = 80;
+    TitleXOffset = 95;
 end
 
 text(xOffset+TitleXOffset, yOffset+80,'Behavior Ports', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
@@ -64,12 +64,14 @@ line([xOffset xOffset+320], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineW
 % Inputs
 xOffset = 395;
 yOffset = 150;
+Correction = 0;
 if ispc
     TitleXOffset = 6;
 elseif ismac
     TitleXOffset = 14;
 else
-    TitleXOffset = 6;
+    TitleXOffset = 14;
+    Correction = -4;
 end
 text(xOffset+TitleXOffset, yOffset+80,'BncIn', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineWidth', 2);
@@ -87,7 +89,7 @@ end
 % Outputs
 xOffset = 484;
 yOffset = 150;
-text(xOffset+TitleXOffset, yOffset+80,'BncOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
+text(xOffset+TitleXOffset+Correction, yOffset+80,'BncOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineWidth', 2);
 xPos = xOffset;
 for i = 1:BpodSystem.HW.n.BNCOutputs
@@ -106,7 +108,7 @@ if ispc
 elseif ismac
     TitleXOffset = 10;
 else
-    TitleXOffset = 2;
+    TitleXOffset = 10;
 end
 % Inputs
 xOffset = 394;

@@ -21,8 +21,8 @@ function DefaultBpodModule_Panel(PanelHandle, ModuleName)
 global BpodSystem
 
 FontName = 'Courier New';
-if ismac
-    FontName = 'Courier New';
+if ~ismac && ~ispc
+    FontName = 'DejaVu Sans Mono';
 end
 
 if ispc

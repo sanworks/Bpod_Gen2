@@ -36,6 +36,7 @@ function obj = InitializeGUI(obj)
         FontName = 'Arial';
     else
         Vvsm = 10; Vsm = 10; Sm = 12; Med = 13; Lg = 20;
+        FontName = 'DejaVu Sans Mono';
     end
 
     obj.GUIHandles.MainFig = figure('Position',[80 100 825 400],'name','Bpod Console','numbertitle','off',...
@@ -72,7 +73,7 @@ function obj = InitializeGUI(obj)
     elseif ismac
         CfgXpos = 745; Movpos = 360; Sesspos = 741;
     else
-        CfgXpos = 735; Movpos = 335; Sesspos = 731;
+        CfgXpos = 735; Movpos = 345; Sesspos = 731;
     end
     text(CfgXpos, 65,'Config', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
     line([730 815], [79 79], 'Color', LabelFontColor, 'LineWidth', 2);
@@ -89,11 +90,12 @@ function obj = InitializeGUI(obj)
     FormattedModuleNames = ModuleNames;
     TabPos = PluginPanelOffset;
     obj.GUIData.DefaultPanel = ones(1,obj.HW.n.SerialChannels);
-    if verLessThan('matlab', '8')
-        ButtonFont = 'Courier New';
-    else
-        ButtonFont = 'Courier New';
+    
+    ButtonFont = 'Courier New';
+    if ~ispc && ~ismac 
+        ButtonFont = 'DejaVu Sans Mono';
     end
+    
     for i = 1:obj.HW.n.SerialChannels
         % Set module names
         if i > 1
@@ -189,7 +191,7 @@ function obj = InitializeGUI(obj)
     elseif ismac
         InfoDispFontSize = 12; InfoDispBoxHeight = 22; PortDispBoxHeight = 28; InfoDispBoxWidth = 115; Ypos = 264;
     else
-        InfoDispFontSize = 7.5; InfoDispBoxHeight = 23; PortDispBoxHeight = 23; InfoDispBoxWidth = 120; Ypos = 268;
+        InfoDispFontSize = 9; InfoDispBoxHeight = 23; PortDispBoxHeight = 23; InfoDispBoxWidth = 120; Ypos = 268;
     end
     
     if obj.EmulatorMode == 1

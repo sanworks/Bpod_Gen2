@@ -52,6 +52,7 @@ classdef PsychToolboxAudio < handle
                 PsychPortAudio('Close');
                 devices = PsychPortAudio('GetDevices');
                 DeviceID = -1;
+                isXonarDX = 0;
                 isWASAPIWinXonar = 0;
                 if ispc
                     ASIODevices = ismember({devices(:).HostAudioAPIName}, 'ASIO');
@@ -65,7 +66,7 @@ classdef PsychToolboxAudio < handle
                     wasapiList = find(WASAPIDevices);
                     CandidateDevices = [asioList wasapiList];
                     deviceType = [zeros(1,length(asioList)) ones(1,length(wasapiList))];
-                    CardFound = 0; i = 0; DeviceID = 0;
+                    CardFound = 0; i = 0; 
                     while (CardFound == 0) && (i < length(CandidateDevices))
                         i = i + 1;
                         if devices(CandidateDevices(i)).NrOutputChannels > 3
@@ -79,6 +80,12 @@ classdef PsychToolboxAudio < handle
                                     if ~isempty(strfind(devices(CandidateDevices(i)).DeviceName, 'FENIX'))
                                         obj.isFenix = 1;
                                     end
+                                end
+                            end
+                        else
+                            if deviceType(i) == 1 
+                                if (~isempty(strfind(lower(devices(CandidateDevices(i)).DeviceName), 'xonar dx')) || (~isempty(strfind(lower(devices(CandidateDevices(i)).DeviceName), 'xonar dsx'))))
+                                    isXonarDX = 1;
                                 end
                             end
                         end
@@ -101,7 +108,13 @@ classdef PsychToolboxAudio < handle
                     end
                 end
                 if DeviceID == -1
-                    error('Error: A compatible sound card was not found.')
+                    if isXonarDX == 1 && ispc
+                        error(['Error: ASUS Xonar DX and DSX are not supported with the latest version of PsychToolbox.' char(10) 'There are two ways to fix this: ' char(10) '1. Switch to the HTOmega FENIX sound card OR' char(10) '2. Downgrade PsychToolbox to v3.0.14 and contact support@sanworks.io for a software patch.']);
+                        
+                    else
+                        error('Error: A compatible sound card was not found.')
+                        
+                    end
                 end
                 if isWASAPIWinXonar
                     bufferSize = obj.SamplingRate/100; % A larger buffer is used with Xonar AE and SE to prevent underruns on some systems (tested on Lenovo M920T Win10 Corei5 8GB RAM)
