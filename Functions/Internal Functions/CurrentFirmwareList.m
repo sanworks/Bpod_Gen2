@@ -16,4 +16,4 @@ Firmware.PA = 1;
 Firmware.ValveDriver = 1;
 Firmware.RotaryEncoder = 5;
 Firmware.EchoModule = 1;
-Firmware.AmbientModule = 1;
+Firmware.AmbientModule = 2;

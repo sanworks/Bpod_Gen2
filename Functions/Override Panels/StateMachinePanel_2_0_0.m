@@ -168,7 +168,7 @@ if BpodSystem.HW.n.WireOutputs > 2
     text(xOffset+13, yOffset-15,'3', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
     text(xOffset+53, yOffset-15,'4', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 end
-xPos = [370 370 370];
+xPos = [370 370 375];
 if ismac
     xPos = [380 380 380];
 end
