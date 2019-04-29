@@ -1,3 +1,22 @@
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
 function obj = SetupStateMachine(obj)
     % Set up event and output names
     EventNames = cell(1,sum(obj.Modules.nSerialEvents) + obj.HW.n.SoftCodes + obj.HW.n.DigitalInputs*2 + 16);
@@ -200,5 +219,8 @@ function obj = SetupStateMachine(obj)
     sma.ConditionSet = zeros(1,obj.HW.n.Conditions);
     sma.StateTimers = 0;
     sma.StatesDefined = 1; % Referenced states are set to 0. Defined states are set to 1. Both occur with AddState
+    sma.SerialMessageMode = 0; % 0 if manually programmed with LoadSerialMessages(), 1 if programmed implicitly
+    sma.nSerialMessages = zeros(1,obj.HW.n.UartSerialChannels);
+    sma.SerialMessages = cell(obj.HW.n.UartSerialChannels,256);
     obj.BlankStateMachine = sma;
 end

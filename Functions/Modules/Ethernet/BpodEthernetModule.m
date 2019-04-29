@@ -17,34 +17,36 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-classdef AmbientModule < handle
+classdef BpodEthernetModule < handle
     properties
         Port % ArCOM Serial port
     end
+    properties (Access = protected)
+        MessageLibrary = cell(1,256);
+    end
+    properties (Access = private)
+        MaxMessageLength = 128;
+    end
     methods
-        function obj = AmbientModule(portString)
+        function obj = BpodEthernetModule(portString)
             obj.Port = ArCOMObject_Bpod(portString, 115200);
         end
-        function Data = getMeasurements(obj)
-            obj.Port.write('R', 'uint8');
-            RawBytes = obj.Port.read(12, 'uint8');
-            Measurements = typecast(RawBytes, 'single');
-            Data = struct;
-            Data.Temperature_C = Measurements(1);
-            Data.Temperature_F = Measurements(1)*(9/5)+32;
-            Data.AirPressure_mb = Measurements(2)/100;
-            Data.RelativeHumidity = Measurements(3);
+        function OK = setMessage(obj, messageNum, messageBytes)
+            if (messageNum < 0) || (messageNum > 255)
+                error('Error: Message index must be in range 0-255')
+            end
+            mLength = length(messageBytes);
+            if mLength > obj.MaxMessageLength
+                error(['Error: Message length must be ' num2str(obj.MaxMessageLength) ' bytes or less'])
+            end
+            obj.Port.write(['M' messageNum mLength messageBytes], 'uint8');
+            OK = obj.Port.read(1, 'uint8');
         end
-        function Calibration = getCalibration(obj)
-            Calibration = struct;
-            obj.Port.write('G', 'uint8');
-            Cal = typecast(obj.Port.read(12, 'uint8'), 'single');
-            Calibration.Temperature_C = Cal(1);
-            Calibration.AirPressure_mb = Cal(2);
-            Calibration.RelativeHumidity = Cal(3);
-        end
-        function setCalibration(obj, tempOffsetCelsius, pressureOffset, humidityOffset)
-            obj.Port.write('C', 'uint8', [tempOffsetCelsius*1000 pressureOffset humidityOffset*1000], 'int32');
+        function triggerMessage(obj, messageNum)
+            if (messageNum < 0) || (messageNum > 255)
+                error('Error: Message index must be in range 0-255')
+            end
+            obj.Port.write(['T' messageNum]);
         end
         function delete(obj)
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)

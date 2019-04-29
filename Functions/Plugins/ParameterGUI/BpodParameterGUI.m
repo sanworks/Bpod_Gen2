@@ -184,7 +184,7 @@ switch Op
                     if single(GUIParam) ~= single(ThisParamLastValue)
                         Params.GUI.(ThisParamName) = GUIParam;
                     elseif single(ThisParamCurrentValue) ~= single(ThisParamLastValue)
-                        set(ThisParamHandle, 'String', num2str(ThisParamCurrentValue));
+                        set(ThisParamHandle, 'String', num2str(ThisParamCurrentValue, 8));
                     end
                 case 2 % Text
                     GUIParam = ThisParamCurrentValue;

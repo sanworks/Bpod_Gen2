@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -27,45 +27,40 @@ uistack(ha,'bottom');
 BG = imread('LaunchManagerBG2.bmp');
 image(BG); axis off;
 if ispc
-    lmYpos = 130; SelectorFontSize = 11; PathFontSize = 10;
+    lmYpos = 150; SelectorFontSize = 11; PathFontSize = 10;
 elseif ismac
     lmYpos = 160; SelectorFontSize = 14; PathFontSize = 14;
 else 
     lmYpos = 130; SelectorFontSize = 11; PathFontSize = 10;
 end
-if verLessThan('matlab', '8')
-    ButtonFont = 'Courier';
-else
-    ButtonFont = 'OCRASTD';
-end
-text(lmYpos, 45,'Protocol Launch Manager', 'FontName', 'OCRASTD', 'FontSize', 20, 'Color', [0.8 0.8 0.8]);
+FontName = 'Courier New';
+
+text(lmYpos, 45,'Protocol Launch Manager', 'FontName', FontName, 'FontSize', 20, 'Color', [0.8 0.8 0.8]);
 line([10 590], [80 80], 'Color', [0.8 0.8 0.8], 'LineWidth', 1);
 BpodSystem.GUIHandles.ProtocolSelector = uicontrol('Style', 'listbox','Position', [25 95 200 390], 'String', 'Folder not found', 'Callback', @ProtocolSelectorNavigate, 'FontWeight', 'bold', 'FontSize', SelectorFontSize, 'BackgroundColor', [.8 .8 .8]);
 BpodSystem.GUIHandles.SubjectSelector = uicontrol('Style', 'listbox','Position', [265 95 200 390], 'String', 'Folder not found', 'Callback', @SubjectSelectorNavigate, 'FontWeight', 'bold', 'FontSize', SelectorFontSize, 'BackgroundColor', [.8 .8 .8]);
 BpodSystem.GUIHandles.SettingsSelector = uicontrol('Style', 'listbox','Position', [505 95 200 390], 'String', 'Folder not found', 'FontWeight', 'bold', 'FontSize', SelectorFontSize, 'BackgroundColor', [.8 .8 .8]);
-text(20, 120,'Protocol', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
-text(212, 120,'Subject', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
-text(405, 120,'Settings', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
-BpodSystem.GUIHandles.LaunchButton = uicontrol('Position', [590 10 150 65], 'Style', 'pushbutton', 'String', ['Launch ' char(187)], 'FontName', ButtonFont, 'FontSize', 16, 'Callback', @LaunchProtocol, 'TooltipString', 'Launch Protocol', 'BackgroundColor', [.37 .37 .37], 'ForegroundColor', [.8 .8 .8]);
-%BpodSystem.GUIHandles.BackButton = uicontrol('Style', 'pushbutton',
-%'String', [char(171) ' Return'], 'Position', [15 10 150 65], 'Callback', @CloseLaunchManager, 'TooltipString', 'Close Launch Manager', 'FontName', 'OCRASTD', 'FontSize', 16, 'BackgroundColor', [.37 .37 .37], 'ForegroundColor', [.8 .8 .8]);
+text(20, 120,'Protocol', 'FontName', FontName, 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
+text(212, 120,'Subject', 'FontName', FontName, 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
+text(405, 120,'Settings', 'FontName', FontName, 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
+BpodSystem.GUIHandles.LaunchButton = uicontrol('Position', [590 10 150 65], 'Style', 'pushbutton', 'String', ['Launch ' char(187)], 'FontName', FontName, 'FontSize', 16, 'Callback', @LaunchProtocol, 'TooltipString', 'Launch Protocol', 'BackgroundColor', [.37 .37 .37], 'ForegroundColor', [.8 .8 .8]);
 AddGFX = imread('PlusButton.bmp');
-BpodSystem.GUIHandles.AddProtocolButton = uicontrol('Style', 'pushbutton', 'CData', AddGFX, 'Position', [228 459 25 25], 'Callback', @CreateProtocol, 'TooltipString', 'Create Protocol', 'FontName', 'OCRASTD', 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
+BpodSystem.GUIHandles.AddProtocolButton = uicontrol('Style', 'pushbutton', 'CData', AddGFX, 'Position', [228 459 25 25], 'Callback', @CreateProtocol, 'TooltipString', 'Create Protocol', 'FontName', FontName, 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
 DelGFX = imread('MinusButton.bmp');
-BpodSystem.GUIHandles.DelProtocolButton = uicontrol('Style', 'pushbutton', 'CData', DelGFX, 'Position', [228 429 25 25], 'Callback', @DeleteProtocol, 'TooltipString', 'Delete Protocol', 'FontName', 'OCRASTD', 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
+BpodSystem.GUIHandles.DelProtocolButton = uicontrol('Style', 'pushbutton', 'CData', DelGFX, 'Position', [228 429 25 25], 'Callback', @DeleteProtocol, 'TooltipString', 'Delete Protocol', 'FontName', FontName, 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
 EditGFX = imread('EditButton.bmp');
-BpodSystem.GUIHandles.EditProtocolButton = uicontrol('Style', 'pushbutton', 'CData', EditGFX, 'Position', [228 399 25 25], 'Callback', @EditProtocol, 'TooltipString', 'Edit Protocol', 'FontName', 'OCRASTD', 'FontSize', 22, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
+BpodSystem.GUIHandles.EditProtocolButton = uicontrol('Style', 'pushbutton', 'CData', EditGFX, 'Position', [228 399 25 25], 'Callback', @EditProtocol, 'TooltipString', 'Edit Protocol', 'FontName', FontName, 'FontSize', 22, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
 ImportGFX = imread('ImportButton.bmp');
-BpodSystem.GUIHandles.AddSubjectButton = uicontrol('Style', 'pushbutton', 'CData', AddGFX, 'Position', [468 459 25 25], 'Callback', @AddSubject, 'TooltipString', 'Add Test Subject', 'FontName', 'OCRASTD', 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
-BpodSystem.GUIHandles.DelSubjectButton = uicontrol('Style', 'pushbutton', 'CData', DelGFX, 'Position', [468 429 25 25], 'Callback', @DeleteSubject, 'TooltipString', 'Delete Test Subject', 'FontName', 'OCRASTD', 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
-BpodSystem.GUIHandles.AddSettingsButton = uicontrol('Style', 'pushbutton', 'CData', AddGFX, 'Position', [708 459 25 25], 'Callback', @AddSettings, 'TooltipString', 'Create Session Settings', 'FontName', 'OCRASTD', 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
+BpodSystem.GUIHandles.AddSubjectButton = uicontrol('Style', 'pushbutton', 'CData', AddGFX, 'Position', [468 459 25 25], 'Callback', @AddSubject, 'TooltipString', 'Add Test Subject', 'FontName', FontName, 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
+BpodSystem.GUIHandles.DelSubjectButton = uicontrol('Style', 'pushbutton', 'CData', DelGFX, 'Position', [468 429 25 25], 'Callback', @DeleteSubject, 'TooltipString', 'Delete Test Subject', 'FontName', FontName, 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
+BpodSystem.GUIHandles.AddSettingsButton = uicontrol('Style', 'pushbutton', 'CData', AddGFX, 'Position', [708 459 25 25], 'Callback', @AddSettings, 'TooltipString', 'Create Session Settings', 'FontName', FontName, 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
 DelGFX = imread('MinusButton.bmp');
-BpodSystem.GUIHandles.DelSettingsButton = uicontrol('Style', 'pushbutton', 'CData', DelGFX, 'Position', [708 429 25 25], 'Callback', @DeleteSettings, 'TooltipString', 'Delete Session Settings', 'FontName', 'OCRASTD', 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
+BpodSystem.GUIHandles.DelSettingsButton = uicontrol('Style', 'pushbutton', 'CData', DelGFX, 'Position', [708 429 25 25], 'Callback', @DeleteSettings, 'TooltipString', 'Delete Session Settings', 'FontName', FontName, 'FontSize', 18, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
 EditGFX = imread('EditButton.bmp');
-BpodSystem.GUIHandles.EditSettingsButton = uicontrol('Style', 'pushbutton', 'CData', EditGFX, 'Position', [708 399 25 25], 'Callback', @EditSettings, 'TooltipString', 'Edit Session Settings', 'FontName', 'OCRASTD', 'FontSize', 22, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
+BpodSystem.GUIHandles.EditSettingsButton = uicontrol('Style', 'pushbutton', 'CData', EditGFX, 'Position', [708 399 25 25], 'Callback', @EditSettings, 'TooltipString', 'Edit Session Settings', 'FontName', FontName, 'FontSize', 22, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
 ImportGFX = imread('ImportButton.bmp');
-BpodSystem.GUIHandles.ImportSettingsButton = uicontrol('Style', 'pushbutton', 'CData', ImportGFX, 'Position', [708 369 25 25], 'Callback', @ImportSettings, 'TooltipString', 'Import Session Settings', 'FontName', 'OCRASTD', 'FontSize', 22, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
-if ~verLessThan('matlab', '8.0.0')
+BpodSystem.GUIHandles.ImportSettingsButton = uicontrol('Style', 'pushbutton', 'CData', ImportGFX, 'Position', [708 369 25 25], 'Callback', @ImportSettings, 'TooltipString', 'Import Session Settings', 'FontName', FontName, 'FontSize', 22, 'BackgroundColor', [.5 .5 .5], 'ForegroundColor', [.95 .95 .95]);
+if isempty(strfind(BpodSystem.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
     jButton = java(findjobj(BpodSystem.GUIHandles.EditProtocolButton));
     jButton.setBorderPainted(false);
     jButton = java(findjobj(BpodSystem.GUIHandles.AddProtocolButton));
@@ -313,12 +308,12 @@ BpodSystem.Path.CurrentDataFile = fullfile(BpodSystem.Path.DataFolder, SubjectNa
 function AddSubject(a,b)
 global BpodSystem
 NewSubjectGFX = imread('NameInputBG.bmp');
-NameInputFig = figure('Position',[550 600 200 100],'name','New test subject','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+NameInputFig = figure('Position',[550 600 250 100],'name','New test subject','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 ha = axes('units','normalized', 'position',[0 0 1 1]);
 uistack(ha,'bottom');
 BG = imread('NameInputBG.bmp');
 image(BG); axis off;
-text(15, 20,'Subject Name:', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
+text(15, 20,'Subject Name:', 'FontName', 'Courier New', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
 if ispc
     NameEntryYwidth = 200;
 elseif ismac
@@ -387,7 +382,7 @@ ha = axes('units','normalized', 'position',[0 0 1 1]);
 uistack(ha,'bottom');
 BG = imread('NameInputBG.bmp');
 image(BG); axis off;
-text(15, 20,'Protocol Name:', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
+text(15, 20,'Protocol Name:', 'FontName', 'Courier New', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
 NewProtocolName = uicontrol('Style', 'edit', 'String', '', 'Position', [25 25 200 25], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [1 1 1]);
 uicontrol(NewProtocolName)
 waitfor(NewProtocolName,'String')
@@ -402,7 +397,10 @@ if isgraphics(NameInputFig)
 else
     NewName = [];
 end
+try
 close(NameInputFig);
+catch
+end
 if ~isempty(NewName)
     NewProtocolName = Spaces2Underscores(NewName);
     % Check to see if protocol already exists
@@ -436,11 +434,11 @@ else
     NameEntryYwidth = 200;
 end
 NewSubjectGFX = imread('NameInputBG.bmp');
-NameInputFig = figure('Position',[550 600 200 100],'name','New settings file','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+NameInputFig = figure('Position',[550 600 250 100],'name','New settings file','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 ha = axes('units','normalized', 'position',[0 0 1 1]);
 uistack(ha,'bottom');
 image(NewSubjectGFX); axis off;
-text(15, 20,'Settings Name:', 'FontName', 'OCRASTD', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
+text(15, 20,'Settings Name:', 'FontName', 'Courier New', 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
 NewSettingsName = uicontrol('Style', 'edit', 'String', '', 'Position', [25 25 NameEntryYwidth 25], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [1 1 1]);
 uicontrol(NewSettingsName)
 waitfor(NewSettingsName,'String')
@@ -573,7 +571,10 @@ if SelectedProtocol ~= 1
         OkToDelete = sum(get(BackupCheck, 'Value') + get(IntentCheck, 'Value') == 2);
     catch
     end
-    close(DeleteFig);
+    try
+        close(DeleteFig);
+    catch
+    end
     if ((OkToDelete == 1) && (~isempty(SelectedProtocolName)))
         rmdir(ProtocolPath, 's');
         set(BpodSystem.GUIHandles.ProtocolSelector,'Value',1);

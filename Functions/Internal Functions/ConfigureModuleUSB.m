@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -19,16 +19,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function ConfigureModuleUSB(junk, morejunk)
 global BpodSystem
+FontName = 'Courier New';
+if ~ismac && ~ispc
+    FontName = 'DejaVu Sans Mono';
+end
 if BpodSystem.EmulatorMode == 0
     BpodSystem.GUIHandles.ModuleUSBFig = figure('Position',[600 400 600 250],'name','Module USB config.','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
     ha = axes('units','normalized', 'position',[0 0 1 1]);
     uistack(ha,'bottom');
     BG = imread('InputChannelConfig2.bmp');
     image(BG); axis off;
-    text(130, 15, 'Module USB config', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
-    text(15, 35, 'Module', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
-    text(140, 35, 'USB Port', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
-    text(265, 35, 'USB Available', 'FontName', 'OCRAStd', 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
+    text(130, 15, 'Module USB config', 'FontName', FontName, 'FontSize', 15, 'Color', [0.8 0.8 0.8]);
+    text(15, 35, 'Module', 'FontName', FontName, 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
+    text(140, 35, 'USB Port', 'FontName', FontName, 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
+    text(265, 35, 'USB Available', 'FontName', FontName, 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
     BpodSystem.GUIHandles.ModuleList = uicontrol('Position', [20 75 180 100], 'Style', 'listbox', 'String', BpodSystem.Modules.Name, 'FontSize', 12,...
         'FontName', 'Courier', 'FontWeight', 'Bold', 'Callback', @selectFromModuleList);
     BpodSystem.GUIHandles.PairedUSBList = uicontrol('Position', [210 75 180 100], 'Style', 'listbox', 'String', {''},...

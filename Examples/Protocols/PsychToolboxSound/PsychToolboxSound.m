@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2016 Sanworks LLC, Sound Beach, New York, USA
+Copyright (C) 2019 Sanworks LLC, Sound Beach, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -21,17 +21,18 @@ function PsychToolboxSound
 % This protocol demonstrates a 2AFC task using PsychToolbox to generate sound stimuli.
 % Subjects initialize each trial with a poke into port 2. After a delay, a tone plays.
 % Subjects are rewarded for responding left for low-pitch tones, and right for high.
-% Written by Josh Sanders, 4/2016
+% Written by Josh Sanders, 4/2016, Amended on 2/2019 to use the new PsychToolboxAudio class
 %
 % SETUP
 % You will need:
-% - Windows 7 or Ubuntu 14.XX with the -lowlatency package installed
-% - ASUS Xonar DX 7-channel sound card installed. If using Windows, install
-%   the drivers from the ASUS website, and configure the latency to 1ms in the ASUS config panel.
+% - Windows 7-10 or Ubuntu 14.XX with the -lowlatency package installed
+% - ASUS Xonar DX, AE or SE sound card installed. If using Windows, install
+%   the drivers from the ASUS website, and configure the ASIO latency to 1ms in the ASUS config panel.
 % - PsychToolbox 3 installed
 % - The Xonar DX comes with an RCA cable. Use an RCA to BNC adapter to
 %    connect channel 3 to one of Bpod's BNC input channels for a record of the
-%    exact time each sound played.
+%    exact time each sound played. For Xonar AE and SE, you'll need the
+%    Bpod AudioSync module.
 
 global BpodSystem
 
@@ -72,7 +73,7 @@ BpodParameterGUI('init', S); % Initialize parameter GUI plugin
 SF = 192000; % Sound card sampling rate
 LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
 RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-PunishSound = (rand(1,SF*.5)*2) - 1;
+PunishSound = ((rand(1,SF*.5)*2) - 1);
 % Generate early withdrawal sound
 W1 = GenerateSineWave(SF, 1000, .5); W2 = GenerateSineWave(SF, 1200, .5); EarlyWithdrawalSound = W1+W2;
 P = SF/100; Interval = P;
@@ -82,11 +83,13 @@ for x = 1:50 % Gate waveform to create pulses
 end
 
 % Program sound server
-PsychToolboxSoundServer('init')
-PsychToolboxSoundServer('Load', 1, LeftSound);
-PsychToolboxSoundServer('Load', 2, RightSound);
-PsychToolboxSoundServer('Load', 3, PunishSound);
-PsychToolboxSoundServer('Load', 4, EarlyWithdrawalSound);
+if ~isfield(BpodSystem.PluginObjects, 'Sound')
+    BpodSystem.PluginObjects.Sound = PsychToolboxAudio;
+end
+BpodSystem.PluginObjects.Sound.load(1, LeftSound);
+BpodSystem.PluginObjects.Sound.load(2, RightSound);
+BpodSystem.PluginObjects.Sound.load(3, PunishSound);
+BpodSystem.PluginObjects.Sound.load(4, EarlyWithdrawalSound);
 
 % Set soft code handler to trigger sounds
 BpodSystem.SoftCodeHandlerFunction = 'SoftCodeHandler_PlaySound';
@@ -101,8 +104,8 @@ for currentTrial = 1:MaxTrials
     end
     LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
     RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-    PsychToolboxSoundServer('Load', 1, LeftSound);
-    PsychToolboxSoundServer('Load', 2, RightSound);
+    BpodSystem.PluginObjects.Sound.load(1, LeftSound);
+    BpodSystem.PluginObjects.Sound.load(2, RightSound);
     R = GetValveTimes(S.GUI.RewardAmount, [1 3]); LeftValveTime = R(1); RightValveTime = R(2); % Update reward amounts
     switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
         case 1

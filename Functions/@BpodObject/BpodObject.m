@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -76,36 +76,6 @@ classdef BpodObject < handle
                 rng('shuffle', 'twister'); % Seed the random number generator by CPU clock
             else
                 rand('twister', sum(100*fliplr(clock))); % For older versions of MATLAB
-            end
-            
-            % Check for font
-            F = listfonts;
-            if (sum(strcmp(F, 'OCRAStd')) == 0) && (sum(strcmp(F, 'OCR A Std')) == 0)
-                disp('ALERT! Bpod needs to install a system font in order to continue.')
-                input('Press enter to install the font...');
-                FontInstalled = 0;
-                try
-                    if ispc
-                        system(fullfile(BpodPath, 'Assets', 'Fonts', 'OCRASTD.otf'));
-                        FontInstalled = 1;
-                    elseif ismac
-                        copyfile(fullfile(BpodPath, 'Assets', 'Fonts', 'OCRASTD.otf'), '/Library/Fonts');
-                        FontInstalled = 1;
-                    else
-                        disp('Please install the font using the Ubuntu font viewer, and close the font viewer to continue.')
-                        MatlabPath = getenv('LD_LIBRARY_PATH');
-                        setenv('LD_LIBRARY_PATH',getenv('PATH'));
-                        FontPath = fullfile(BpodPath, 'Assets', 'Fonts', 'OCRAStd.otf');
-                        system(['gnome-font-viewer ' FontPath]);
-                        setenv('LD_LIBRARY_PATH',MatlabPath);
-                        FontInstalled = 1;
-                    end
-                catch
-                    error('Bpod was unable to install the font. Please install it manually from /Bpod/Media/Fonts/OCRASTD, and restart MATLAB. If you are having trouble, try running "sudo apt dist-upgrade" from a terminal before launching font viewer.')
-                end
-                if FontInstalled
-                    error('Font installed. Please restart MATLAB and run Bpod again.')
-                end
             end
             
             % Check for Internet Connection
@@ -355,6 +325,16 @@ classdef BpodObject < handle
         function obj = BeingUsed(obj)
             error('Error: "BpodSystem.BeingUsed" is now "BpodSystem.Status.BeingUsed" - Please update your protocol!')
         end
+        function obj = SetStatusLED(obj, status)
+            if obj.EmulatorMode == 0
+                if (status == 1) || (status == 0)
+                    obj.SerialPort.write([':' status], 'uint8');
+                    Confirmed = obj.SerialPort.read(1, 'uint8');
+                else
+                    error('Error: LED status must be 0 (disabled) or 1 (enabled)')
+                end
+            end
+        end
         function StartModuleRelay(obj, Module)
             if ischar(Module)
                 ModuleNum = find(strcmp(Module, obj.Modules.Name));
@@ -395,23 +375,23 @@ classdef BpodObject < handle
             uistack(ha,'bottom');
             BG = imread('PhoneHomeBG.bmp');
             image(BG); axis off; drawnow;
-            text(20, 40,'Bpod PhoneHome Program', 'FontName', 'OCRAStd', 'FontSize', 16, 'Color', [1 1 1]);
+            text(20, 40,'Bpod PhoneHome Program', 'FontName', 'Courier New', 'FontSize', 16, 'Color', [1 1 1]);
             Pos = 80; Step = 25;
-            text(20, Pos,'Bpod PhoneHome is an opt-in', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'program to send anonymous data', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'about your Bpod software setup', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'to Sanworks LLC on Bpod start.', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'This will help us understand', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'which MATLAB versions and OS', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'flavors typically run Bpod', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'+ how many rigs are out there.', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step+5;
-            text(140, Pos,'See BpodPhoneHome.m', 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'Bpod PhoneHome is an opt-in', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'program to send anonymous data', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'about your Bpod software setup', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'to Sanworks LLC on Bpod start.', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'This will help us understand', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'which MATLAB versions and OS', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'flavors typically run Bpod', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
+            text(20, Pos,'+ how many rigs are out there.', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step+5;
+            text(140, Pos,'See BpodPhoneHome.m', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
             BpodSystem.GUIHandles.PhoneHomeAcceptBtn = uicontrol('Style', 'pushbutton', 'String', 'Ok',...
                 'Position', [130 15 120 40], 'Callback', @(h,e)obj.phoneHomeRegister(1),...
-                'FontSize', 12,'Backgroundcolor',[0.29 0.29 0.43],'Foregroundcolor',[0.9 0.9 0.9], 'FontName', 'OCRAStd');
+                'FontSize', 12,'Backgroundcolor',[0.29 0.29 0.43],'Foregroundcolor',[0.9 0.9 0.9], 'FontName', 'Courier New');
             BpodSystem.GUIHandles.PhoneHomeAcceptBtn = uicontrol('Style', 'pushbutton', 'String', 'Decline',...
                 'Position', [260 15 120 40], 'Callback', @(h,e)obj.phoneHomeRegister(0),...
-                'FontSize', 12,'Backgroundcolor',[0.29 0.29 0.43],'Foregroundcolor',[0.9 0.9 0.9], 'FontName', 'OCRAStd');
+                'FontSize', 12,'Backgroundcolor',[0.29 0.29 0.43],'Foregroundcolor',[0.9 0.9 0.9], 'FontName', 'Courier New');
         end
         function OnlineStatus = check4Internet(obj)
            if ispc
@@ -464,7 +444,7 @@ classdef BpodObject < handle
                 set(obj.GUIHandles.OverridePanel(i), 'Visible', 'off');
             end
             set(obj.GUIHandles.PanelButton(panel), 'BackgroundColor', [0.45 0.45 0.45]);
-            if isempty(strfind(obj.HostOS, 'Linux')) % Fix buttons if not on linux
+            if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
                 for i = 1:obj.HW.n.SerialChannels
                     jButton = findjobj(obj.GUIHandles.PanelButton(i));
                     jButton.setBorderPainted(false);

@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -10,16 +10,16 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function obj = InitializeGUI(obj)
-    TitleFontName = 'OCRASTD';
-    FontName = 'OCRASTD';
+    TitleFontName = 'Courier New';
+    FontName = 'Courier New';
     % Add labels
     LabelFontColor = [0.8 0.8 0.8];
     if 1 %obj.EmulatorMode == 0
@@ -30,12 +30,13 @@ function obj = InitializeGUI(obj)
         TitleColor = [0.9 0 0];
     end
     if ispc
-        Vvsm = 10; Vsm = 10; Sm = 12; Med = 13; Lg = 20;
+        Vvsm = 12; Vsm = 11; Sm = 12; Med = 13; Lg = 20;
     elseif ismac
         Vvsm = 12; Vsm = 14; Sm = 16; Med = 17; Lg = 22;
         FontName = 'Arial';
     else
         Vvsm = 10; Vsm = 10; Sm = 12; Med = 13; Lg = 20;
+        FontName = 'DejaVu Sans Mono';
     end
 
     obj.GUIHandles.MainFig = figure('Position',[80 100 825 400],'name','Bpod Console','numbertitle','off',...
@@ -68,11 +69,11 @@ function obj = InitializeGUI(obj)
     obj.GUIHandles.USBButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [733 227 29 29], 'Callback', 'ConfigureModuleUSB', 'CData', obj.GUIData.USBButton, 'TooltipString', 'Configure module USB ports');
     obj.GUIHandles.DocButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [796 371 29 29], 'Callback', @(h,e)obj.Wiki(), 'CData', obj.GUIData.DocButton, 'TooltipString', 'Documentation wiki');
     if ispc
-        CfgXpos = 735; Movpos = 335; Sesspos = 731;
+        CfgXpos = 740; Movpos = 345; Sesspos = 735;
     elseif ismac
         CfgXpos = 745; Movpos = 360; Sesspos = 741;
     else
-        CfgXpos = 735; Movpos = 335; Sesspos = 731;
+        CfgXpos = 735; Movpos = 345; Sesspos = 731;
     end
     text(CfgXpos, 65,'Config', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
     line([730 815], [79 79], 'Color', LabelFontColor, 'LineWidth', 2);
@@ -89,11 +90,12 @@ function obj = InitializeGUI(obj)
     FormattedModuleNames = ModuleNames;
     TabPos = PluginPanelOffset;
     obj.GUIData.DefaultPanel = ones(1,obj.HW.n.SerialChannels);
-    if verLessThan('matlab', '8')
-        ButtonFont = 'Courier';
-    else
-        ButtonFont = 'OCRASTD';
+    
+    ButtonFont = 'Courier New';
+    if ~ispc && ~ismac 
+        ButtonFont = 'DejaVu Sans Mono';
     end
+    
     for i = 1:obj.HW.n.SerialChannels
         % Set module names
         if i > 1
@@ -123,7 +125,7 @@ function obj = InitializeGUI(obj)
         % Draw tab
         obj.GUIHandles.PanelButton(i) = uicontrol('Style', 'pushbutton', 'String', FormattedModuleNames{i}, 'Callback', @(h,e)obj.SwitchPanels(i), 'BackgroundColor', [0.37 0.37 0.37], 'Position', [TabPos 272 TabWidth-1 49], 'ForegroundColor', [0.9 0.9 0.9], 'FontSize', Vvsm, 'FontName', ButtonFont);
         TabPos = TabPos + TabWidth;
-        if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0')
+        if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
             jButton = findjobj(obj.GUIHandles.PanelButton(i));
             jButton.setBorderPainted(false);
         end
@@ -177,7 +179,7 @@ function obj = InitializeGUI(obj)
             TabPos = TabPos + TabWidth;
             line([TabPos-1 TabPos-1], [82 130], 'Color', [0.45 0.45 0.45], 'LineWidth', 5);
         end
-        if isempty(strfind(obj.HostOS, 'Linux'))
+        if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
             for i = 1:obj.HW.n.SerialChannels
                 jButton = findjobj(obj.GUIHandles.PanelButton(i));
                 jButton.setBorderPainted(false);
@@ -189,7 +191,7 @@ function obj = InitializeGUI(obj)
     elseif ismac
         InfoDispFontSize = 12; InfoDispBoxHeight = 22; PortDispBoxHeight = 28; InfoDispBoxWidth = 115; Ypos = 264;
     else
-        InfoDispFontSize = 7.5; InfoDispBoxHeight = 23; PortDispBoxHeight = 23; InfoDispBoxWidth = 120; Ypos = 268;
+        InfoDispFontSize = 9; InfoDispBoxHeight = 23; PortDispBoxHeight = 23; InfoDispBoxWidth = 120; Ypos = 268;
     end
     
     if obj.EmulatorMode == 1
@@ -205,17 +207,17 @@ function obj = InitializeGUI(obj)
     obj.GUIHandles.USBPortDisplay = uicontrol('Style', 'text', 'String', PortString, 'Position', [12 Ypos InfoDispBoxWidth PortDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize);
     obj.FixPushbuttons;
     text(15, 30, Title, 'FontName', TitleFontName, 'FontSize', Lg, 'Color', TitleColor);
-    line([280 770], [30 30], 'Color', LabelFontColor, 'LineWidth', 4);
+    line([220 780], [30 30], 'Color', LabelFontColor, 'LineWidth', 4);
 
     text(10, 102,'Current State', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 153,'Previous State', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 204,'Last Event', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 255,'Trial-Start', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 306,'Port', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
-    text(15, 65,'Live Info', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
+    text(23, 65,'Live Info', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
     line([10 130], [79 79], 'Color', LabelFontColor, 'LineWidth', 2);
     Ver = BpodSoftwareVersion;
-    text(10, 376,['Console v' sprintf('%3.2f', Ver)], 'FontName', FontName, 'FontSize', Vsm, 'Color', [0.6 0.6 0.6]);
+    text(10, 376,['Console v' sprintf('%3.2f', Ver)], 'FontName', FontName, 'FontSize', Vsm, 'Color', [0.8 0.8 0.8]);
     drawnow;
     if obj.IsOnline == 1
         if isfield(obj.SystemSettings, 'PhoneHome')

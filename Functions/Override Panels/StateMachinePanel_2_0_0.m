@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -20,9 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function StateMachinePanel_2_0_0
 global BpodSystem
 
-FontName = 'OCR A STD';
-if ismac && verLessThan('matlab', '8')
-    FontName = 'Arial';
+FontName = 'Courier New';
+if ~ismac && ~ispc
+    FontName = 'DejaVu Sans Mono';
 end
 %% Port override
 xOffset = 50;
@@ -50,11 +50,11 @@ text(xOffset-42, yOffset+15,'VLV', 'FontName', FontName, 'FontSize', medFontSize
 text(xOffset-42, yOffset-38,'LED', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 text(xOffset-42, yOffset-90,'POK', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 if ispc
-    TitleXOffset = 5;
+    TitleXOffset = 20;
 elseif ismac
     TitleXOffset = 7;
 else
-    TitleXOffset = 10;
+    TitleXOffset = 25;
 end
 xOffset = xOffset - 7;
 text(xOffset+TitleXOffset, yOffset+80,'Behavior Ports', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
@@ -65,11 +65,11 @@ line([xOffset+2 xOffset+178], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'Lin
 xOffset = 245;
 yOffset = 145;
 if ispc
-    TitleXOffset = 6;
+    TitleXOffset = 13;
 elseif ismac
     TitleXOffset = 14;
 else
-    TitleXOffset = 6;
+    TitleXOffset = 15;
 end
 text(xOffset+TitleXOffset, yOffset+80,'BncIn', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset-2 xOffset+78], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineWidth', 2);
@@ -87,7 +87,7 @@ end
 % Outputs
 xOffset = 245;
 yOffset = 40;
-text(xOffset+TitleXOffset-5, yOffset+80,'BncOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
+text(xOffset+TitleXOffset-6, yOffset+80,'BncOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset-2 xOffset+78], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineWidth', 2);
 xPos = xOffset;
 for i = 1:BpodSystem.HW.n.BNCOutputs
@@ -168,10 +168,13 @@ if BpodSystem.HW.n.WireOutputs > 2
     text(xOffset+13, yOffset-15,'3', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
     text(xOffset+53, yOffset-15,'4', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 end
-xPos = 350;
+xPos = [370 370 375];
 if ismac
-    xPos = 380;
+    xPos = [380 380 380];
 end
-text(xPos, 190,' Bpod Finite', 'FontName', FontName, 'FontSize', 16, 'Color', [.6 .6 .6]);
-text(xPos, 130,'State Machine', 'FontName', FontName, 'FontSize', 16, 'Color', [.6 .6 .6]);
-text(xPos, 70, '    v2.0', 'FontName', FontName, 'FontSize', 16, 'Color', [.6 .6 .6]);
+if ~ispc && ~ismac
+    xPos = [378 375 380];
+end
+text(xPos(1), 190,' Bpod Finite', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
+text(xPos(2), 130,'State Machine', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
+text(xPos(3), 70, '    v2.0', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);

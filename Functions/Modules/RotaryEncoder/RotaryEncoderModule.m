@@ -69,6 +69,8 @@ classdef RotaryEncoderModule < handle
         maxThresholds = 8; % Maximum number of currently supported thresholds
         usbCaptureEnabled = 0; % If 1, a timer object checks the serial port for new data every 0.1s and appends it to usbCapturedData
         usbCapturedData = []; % Stores streaming data if usbCaptureEnabled = 1
+        rollOverSum = 0; % If 32-bit micros() clock has rolled over since stream or log reset, this gets incremented by 2^32
+        LastTimeRead = 0; % Last timestamp read from the device
     end
             
     methods
@@ -205,7 +207,18 @@ classdef RotaryEncoderModule < handle
                 PosData = RawData(1:2:end);
                 TimeData = RawData(2:2:end);
                 Data.Positions = obj.pos2degrees(PosData);
-                Data.Times = double(TimeData)/1000;
+                Data.Times = double(TimeData)/1000000;
+                RolloverPoints = find(diff(Data.Times) < 0)+1;
+                nRolloverPoints = length(RolloverPoints);
+                rolloverVal = 0;
+                for i = 1:nRolloverPoints
+                    rolloverVal = rolloverVal + 4294967296;
+                    if i < nRolloverPoints
+                        Data.Times(RolloverPoints(i):RolloverPoints(i+1)-1) = Data.Times(RolloverPoints(i):RolloverPoints(i+1)-1) + rolloverVal;
+                    else
+                        Data.Times(RolloverPoints(i):end) = Data.Times(RolloverPoints(i):end) + rolloverVal;
+                    end
+                end
             else
                 Data.nPositions = 0;
                 Data.Positions = [];
@@ -236,6 +249,8 @@ classdef RotaryEncoderModule < handle
                 if obj.isLogging == 0
                     obj.acquiring = 1;
                     obj.Port.write(['S' 1], 'uint8');
+                    obj.LastTimeRead = 0;
+                    obj.rollOverSum = 0;
                     if nargin > 1
                         op = varargin{1};
                         switch lower(op)
@@ -510,6 +525,7 @@ classdef RotaryEncoderModule < handle
             nNewEvents = 0;
             nBytesAvailable = obj.Port.bytesAvailable;
             if (nBytesAvailable > 6)
+                
                 msgSize = 7*floor(nBytesAvailable/7); % Only read complete messages
                 Msg = obj.Port.read(msgSize, 'uint8');
                 MsgInd = 1;
@@ -523,7 +539,12 @@ classdef RotaryEncoderModule < handle
                             NewData.nPositions = NewData.nPositions + 1;
                             nNewDataPoints = nNewDataPoints + 1;
                             NewData.Positions(nNewDataPoints) = obj.pos2degrees(typecast(Positions(obj.positionBytemask(1:6)), 'int16'));
-                            NewData.Times(nNewDataPoints) = double(typecast(Positions(obj.timeBytemask(1:6)), 'uint32'))/1000;
+                            NewTime = double(typecast(Positions(obj.timeBytemask(1:6)), 'uint32'))/1000000;
+                            if obj.LastTimeRead > NewTime;
+                                obj.rollOverSum = obj.rollOverSum + 4294.967296;
+                            end
+                            obj.LastTimeRead = NewTime;
+                            NewData.Times(nNewDataPoints) = NewTime + obj.rollOverSum;
                         case 'E' % Event
                             MsgInd = MsgInd + 1;
                             EventData = Msg(MsgInd:MsgInd+5);
@@ -532,7 +553,12 @@ classdef RotaryEncoderModule < handle
                             NewData.nEvents = NewData.nEvents + 1;
                             NewData.EventTypes(nNewEvents) = EventData(1);
                             NewData.EventCodes(nNewEvents) = EventData(2);
-                            NewData.EventTimestamps(nNewEvents) = double(typecast(EventData(3:end), 'uint32'))/1000;
+                            NewTime = double(typecast(EventData(3:end), 'uint32'))/1000000;
+                            if obj.LastTimeRead > NewTime;
+                                obj.rollOverSum = obj.rollOverSum + 4294.967296;
+                            end
+                            obj.LastTimeRead = NewTime;
+                            NewData.EventTimestamps(nNewEvents) = NewTime + obj.rollOverSum;
                     end
                 end
                 if nNewDataPoints > 0

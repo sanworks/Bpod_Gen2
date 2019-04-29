@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2016 Sanworks LLC, Sound Beach, New York, USA
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -20,4 +20,4 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function SaveBpodSessionData
 global BpodSystem
 SessionData = BpodSystem.Data;
-save(BpodSystem.Path.CurrentDataFile, 'SessionData', '-v6');
+save(BpodSystem.Path.CurrentDataFile, 'SessionData');

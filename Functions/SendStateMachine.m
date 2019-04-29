@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ if BpodSystem.SyncConfig.Channel ~= 255
     end
     GTSyncChannels = sma.GlobalTimers.OutputChannel == BpodSystem.SyncConfig.Channel+1;
     if sum(GTSyncChannels) > 0
-        error(['Error: The sync channel cannot be used as a global timer output channel.' char(10)... 
+        error(['Error: The sync channel cannot be used as a global timer output channel.' char(10)...
             'Please check global timer number(s): ' num2str(find(GTSyncChannels))...
             char(10) 'OR change the sync channel from the Bpod console.'])
     end
@@ -303,26 +303,56 @@ GlobalTimerMatrix = [GlobalTimerTrigs GlobalTimerCancels GlobalTimerOnset_Trigge
 ThirtyTwoBitMatrix = [StateTimers GlobalTimers GlobalTimerDelays GlobalTimerLoopIntervals GlobalCounterThresholds];
 nBytes = uint16(length(EightBitMatrix) + GTbytes*length(GlobalTimerMatrix) + 4*length(ThirtyTwoBitMatrix)); % Number of bytes in state matrix (excluding nStates byte)
 
+%% Create serial message vector (if using implicit serial messages)
+SerialMessageVector = []; nModulesLoaded = 0;
+if sma.SerialMessageMode == 1
+    for i = 1:BpodSystem.HW.n.UartSerialChannels
+        if sma.nSerialMessages(i) > 0
+            SerialMessageVector = [SerialMessageVector 'L' i-1 sma.nSerialMessages(i)];
+            for j = 1:sma.nSerialMessages(i)
+                ThisMessage = sma.SerialMessages{i,j};
+                SerialMessageVector = [SerialMessageVector j length(ThisMessage) ThisMessage];
+            end
+            nModulesLoaded = nModulesLoaded + 1;
+        end
+    end
+    SerialMessageVector = uint8(SerialMessageVector);
+end
+
 if BpodSystem.EmulatorMode == 0
     %% Send state matrix to Bpod device
     ByteString = [EightBitMatrix typecast(GlobalTimerMatrix, 'uint8') typecast(ThirtyTwoBitMatrix, 'uint8')];
     if BpodSystem.Status.InStateMatrix == 1 % If loading during a trial
-        switch BpodSystem.MachineType
-            case 1
-                error('Error: Bpod 0.5 cannot send a state machine while a trial is in progress. If you need this functionality, consider switching to Bpod 0.7+')
-            case 2
-                BpodSystem.SerialPort.write(['C' runASAP use255BackSignal], 'uint8', nBytes, 'uint16'); 
-                for i = 1:length(ByteString)
-                    BpodSystem.SerialPort.write(ByteString(i), 'uint8'); % send byte-wise, to avoid HW timer overrun
-                end
-            case 3
-                BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
+        if sma.SerialMessageMode == 0
+            switch BpodSystem.MachineType
+                case 1
+                    error('Error: Bpod 0.5 cannot send a state machine while a trial is in progress. If you need this functionality, consider switching to Bpod 0.7+')
+                case 2
+                    BpodSystem.SerialPort.write(['C' runASAP use255BackSignal], 'uint8', nBytes, 'uint16');
+                    for i = 1:length(ByteString)
+                        BpodSystem.SerialPort.write(ByteString(i), 'uint8'); % send byte-wise, to avoid HW timer overrun
+                    end
+                case 3
+                    BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
+            end
+        else
+            error(['Error: TrialManager does not support state machine descriptions that' char(10)...
+                'use implicit serial messages (e.g. {''MyModule1'', [''A'' 1 2]}.' char(10)...
+                'Use LoadSerialMessages() to program them explicitly, or rewrite your protocol without using TrialManager.'])
         end
     else
         BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
+        if sma.SerialMessageMode == 1 % If SerialMessage Library was updated due to implicit programming
+            % in state machine syntax, current firmware returns an acknowledgement byte which must be read here
+            % to avoid conflicts with subsequent commands. A future firmware update will read this byte after 
+            % the next trial starts, to avoid the speed penalty of a read during dead-time (see comment below)
+            BpodSystem.SerialPort.write(SerialMessageVector, 'uint8');
+            Ack = BpodSystem.SerialPort.read(nModulesLoaded, 'uint8');
+        end
     end
-
-%% Confirm send. Note: To reduce dead time, transmission is confirmed from state machine after next call to RunStateMachine()
+    
+    %% Confirm send. Note: To reduce dead time when SerialMessageMode = 0, transmission is confirmed from 
+    %  state machine after next call to RunStateMachine()
     BpodSystem.Status.NewStateMachineSent = 1; % On next run, a byte is returned confirming that the state machine was received.
     BpodSystem.Status.SM2runASAP = runASAP;
     Confirmed = 1;

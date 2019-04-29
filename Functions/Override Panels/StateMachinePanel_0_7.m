@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -20,9 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function StateMachinePanel_0_7
 global BpodSystem
 
-FontName = 'OCR A STD';
-if ismac
-    FontName = 'Arial';
+FontName = 'Courier New';
+if ~ismac && ~ispc
+    FontName = 'DejaVu Sans Mono';
 end
 %% Port override
 xOffset = 50;
@@ -50,11 +50,11 @@ text(xOffset-42, yOffset+15,'VLV', 'FontName', FontName, 'FontSize', medFontSize
 text(xOffset-42, yOffset-30,'LED', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 text(xOffset-42, yOffset-75,'POK', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 if ispc
-    TitleXOffset = 80;
+    TitleXOffset = 88;
 elseif ismac
     TitleXOffset = 105;
 else
-    TitleXOffset = 80;
+    TitleXOffset = 95;
 end
 
 text(xOffset+TitleXOffset, yOffset+80,'Behavior Ports', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
@@ -64,12 +64,14 @@ line([xOffset xOffset+320], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineW
 % Inputs
 xOffset = 395;
 yOffset = 150;
+Correction = 0;
 if ispc
     TitleXOffset = 6;
 elseif ismac
     TitleXOffset = 14;
 else
-    TitleXOffset = 6;
+    TitleXOffset = 14;
+    Correction = -4;
 end
 text(xOffset+TitleXOffset, yOffset+80,'BncIn', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineWidth', 2);
@@ -85,9 +87,9 @@ for x = 1:BpodSystem.HW.n.BNCInputs
 end
 
 % Outputs
-xOffset = 485;
+xOffset = 484;
 yOffset = 150;
-text(xOffset+TitleXOffset, yOffset+80,'BncOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
+text(xOffset+TitleXOffset+Correction, yOffset+80,'BncOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineWidth', 2);
 xPos = xOffset;
 for i = 1:BpodSystem.HW.n.BNCOutputs
@@ -102,14 +104,14 @@ end
 
 %% Wire override
 if ispc
-    TitleXOffset = 2;
+    TitleXOffset = 5;
 elseif ismac
     TitleXOffset = 10;
 else
-    TitleXOffset = 2;
+    TitleXOffset = 10;
 end
 % Inputs
-xOffset = 395;
+xOffset = 394;
 yOffset = 60;
 text(xOffset+TitleXOffset, yOffset+72,'WireIn', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+58 yOffset+58], 'Color', [.8 .8 .8], 'LineWidth', 2);
@@ -144,7 +146,7 @@ end
 % Outputs
 xOffset = 485;
 yOffset = 60;
-text(xOffset+TitleXOffset, yOffset+72,'WireOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
+text(xOffset+TitleXOffset+3, yOffset+72,'WireOut', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([xOffset xOffset+80], [yOffset+58 yOffset+58], 'Color', [.8 .8 .8], 'LineWidth', 2);
 xPos = xOffset; ypos = yOffset;
 for i = 1:2

@@ -1,3 +1,19 @@
+---v1.59---
+-Added UI fixes for MATLAB r2018b and Ubuntu 18
+-Added new PsychToolboxAudio plugin, to improve on PsychToolboxSoundServer with an improved interface. PsychToolboxSoundServer is still supported.
+-Updated PsychToolboxAudio and PsychToolboxSoundServer plugins to support HTOmega FENIX and ASUS Xonar AE sound cards 
+-Updated PsychToolboxAudio and PsychToolboxSoundServer plugins to support WASAPI interface (ASIO is used by default if it is detected)
+-Added implicit programming of serial messages, e.g. in OutputActions, {'MyModule', ['P' 4 2]} is now valid (though not if used with TrialManager)
+-Changed saving option from -v6 to standard (this is actually faster in MATLAB r2018+ and similar in r2013-2018)
+-Added notification and instructions if user has Xonar DX or DSX on Windows without ASIO
+-Added echo module example firmware for Adafruit Metro M4 (for use with Bpod Arduino Shield)
+-Updated GUI font to courier, removed font installation requirement
+-Added preliminary interface to Champalimaud Hardware Platform's HARP sound card (note: this is an alpha release and has known issues)
+-Changed timing precision of rotary encoder module (REM) from ms to us (requires REM firmware update to v5)
+-Added plugin to interface with Pololu Maestro servo controller (can be used to trigger servo motors with soft codes)
+-Added class for Ethernet module to act as a TCP server and relay incoming bytes from clients to state machine (requires Ethernet module firmware swap)
+-Added support for sound calibration with NI USB-6211 and Bruel&Kjaer Nexus Condition amp + microphone (requires Data Acqusition Toolbox)
+
 ---v1.58---
 -Added software to keep MATLAB software current: UpdateBpodSoftware(). Currently requires Win7 or Win10 with MATLAB r2014b+
 -Added firmware update app to keep Bpod firmware current: UpdateBpodFirmware(). Currently requires Win7 or Win10.

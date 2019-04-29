@@ -57,9 +57,16 @@ classdef ArCOMObject_Bpod < handle
         validDataTypes
         PortName
     end
+    properties (Access = private)
+        InBuffer
+        InBufferBytesAvailable
+        Timeout = 3;
+    end
     methods
         function obj = ArCOMObject_Bpod(portString, baudRate, varargin)
             obj.Port = [];
+            obj.InBuffer = [];
+            obj.InBufferBytesAvailable = 0;
             if (exist('OCTAVE_VERSION'))
                 try
                     pkg load instrument-control
@@ -135,10 +142,6 @@ classdef ArCOMObject_Bpod < handle
                     IOPort('Verbosity', 0);
                     obj.Port = IOPort('OpenSerialPort', portString, ['ReceiveTimeout=3, BaudRate=' num2str(baudRate) ', OutputBufferSize=1000000, InputBufferSize=1000000, DTR=1']);
                     if (obj.Port < 0)
-                        try
-                            IOPort('Close', obj.Port);
-                        catch
-                        end
                         error(['Error: Unable to connect to port ' portString '. The port may be in use by another application.'])
                     end
                     pause(.1); % Helps on some platforms
@@ -182,15 +185,15 @@ classdef ArCOMObject_Bpod < handle
         function bytesAvailable = bytesAvailable(obj)
             switch obj.Interface
                 case 0 % MATLAB/Java
-                    bytesAvailable = obj.Port.BytesAvailable;
+                    bytesAvailable = obj.Port.BytesAvailable + obj.InBufferBytesAvailable;
                 case 1 % MATLAB/PsychToolbox
-                    bytesAvailable = IOPort('BytesAvailable', obj.Port);
+                    bytesAvailable = IOPort('BytesAvailable', obj.Port) + obj.InBufferBytesAvailable;
                 case 2 % Octave
                     error('Reading available bytes from a serial port buffer is not supported in Octave as of instrument control toolbox 0.2.2');
                 case 3
-                    bytesAvailable = obj.Port.BytesAvailable;
+                    bytesAvailable = obj.Port.BytesAvailable + obj.InBufferBytesAvailable;
                 case 4
-                    bytesAvailable = length(pnet(obj.Port,'read', 65536, 'uint8', 'native','view', 'noblock'));
+                    bytesAvailable = length(pnet(obj.Port,'read', 65536, 'uint8', 'native','view', 'noblock')) + obj.InBufferBytesAvailable;
             end
         end
         function write(obj, varargin)
@@ -312,64 +315,84 @@ classdef ArCOMObject_Bpod < handle
             nTotalBytes = 0;
             for i = 1:nArrays
                 switch dataTypes{i}
-                    case 'char'
+                    case {'char', 'uint8', 'int8'}
                         nTotalBytes = nTotalBytes + nValues(i);
-                    case 'uint8'
-                        nTotalBytes = nTotalBytes + nValues(i);
-                    case 'uint16'
+                    case {'uint16','int16'}
                         nTotalBytes = nTotalBytes + nValues(i)*2;
-                    case 'uint32'
+                    case {'uint32','int32'}
                         nTotalBytes = nTotalBytes + nValues(i)*4;
-                    case 'uint64'
-                        nTotalBytes = nTotalBytes + nValues(i)*8;
-                    case 'int8'
-                        nTotalBytes = nTotalBytes + nValues(i);
-                    case 'int16'
-                        nTotalBytes = nTotalBytes + nValues(i)*2;
-                    case 'int32'
-                        nTotalBytes = nTotalBytes + nValues(i)*4;
-                    case 'int64'
+                    case {'uint64','int64'}
                         nTotalBytes = nTotalBytes + nValues(i)*8;
                 end
             end
-            switch obj.Interface
-                case 0
-                    ByteString = fread(obj.Port, nTotalBytes, 'uint8')';
-                case 1
-                    ByteString = IOPort('Read', obj.Port, 1, nTotalBytes);
-                case 2
-                    ByteString = srl_read(obj.Port, nTotalBytes);
-                case 3
-                    ByteString = fread(obj.Port, nTotalBytes, 'uint8')';
-                case 4
-                    ByteString = uint8(pnet(obj.Port,'read', nTotalBytes, 'uint8'));
+            StartTime = now*100000;
+            while nTotalBytes > obj.InBufferBytesAvailable && ((now*100000)-StartTime < obj.Timeout)
+                switch obj.Interface
+                    case 0
+                      nBytesAvailable = obj.Port.BytesAvailable;
+                      if nBytesAvailable > 0
+                        obj.InBuffer = [obj.InBuffer  fread(obj.Port, nBytesAvailable, 'uint8')'];
+                      end
+                    case 1
+                      nBytesAvailable = IOPort('BytesAvailable', obj.Port);
+                      if nBytesAvailable > 0
+                          obj.InBuffer = [obj.InBuffer IOPort('Read', obj.Port, 1, nBytesAvailable)];
+                          %disp([num2str(nBytesAvailable) ' bytes read.'])
+                      end
+                    case 2
+                      error('Reading available bytes from a serial port buffer is not supported in Octave as of instrument control toolbox 0.2.2');
+                    case 3
+                        nBytesAvailable = obj.Port.BytesAvailable;
+                        if nBytesAvailable > 0
+                            obj.InBuffer = [obj.InBuffer  fread(obj.Port, nBytesAvailable, 'uint8')'];
+                        end
+                    case 4
+                        nBytesAvailable = length(pnet(obj.Port,'read', 65536, 'uint8', 'native','view', 'noblock'));
+                        if nBytesAvailable > 0 
+                            obj.InBuffer = [obj.InBuffer uint8(pnet(obj.Port,'read', nBytesAvailable, 'uint8'))];
+                        end
+                end
+                obj.InBufferBytesAvailable = obj.InBufferBytesAvailable + nBytesAvailable;
             end
-            if isempty(ByteString)
-                error('Error: The serial port returned 0 bytes.')
+
+            if nTotalBytes > obj.InBufferBytesAvailable
+                error('Error: The USB serial port did not return the requested number of bytes.')
             end
             Pos = 1;
             varargout = cell(1,nArrays);
             for i = 1:nArrays
                 switch dataTypes{i}
                     case 'char'
-                        varargout{i} = char(ByteString(Pos:Pos+nValues(i)-1)); Pos = Pos + nValues(i);
+                        nBytesRead = nValues(i);
+                        varargout{i} = char(obj.InBuffer(Pos:Pos+nBytesRead-1));
                     case 'uint8'
-                        varargout{i} = uint8(ByteString(Pos:Pos+nValues(i)-1)); Pos = Pos + nValues(i);
+                        nBytesRead = nValues(i);
+                        varargout{i} = uint8(obj.InBuffer(Pos:Pos+nBytesRead-1));
                     case 'uint16'
-                        varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i)*2)-1)), 'uint16'); Pos = Pos + nValues(i)*2;
+                        nBytesRead = nValues(i)*2;
+                        varargout{i} = typecast(uint8(obj.InBuffer(Pos:Pos+nBytesRead-1)), 'uint16');
                     case 'uint32'
-                        varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i)*4)-1)), 'uint32'); Pos = Pos + nValues(i)*4;
+                        nBytesRead = nValues(i)*4;
+                        varargout{i} = typecast(uint8(obj.InBuffer(Pos:Pos+nBytesRead-1)), 'uint32');
                     case 'uint64'
-                        varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i)*8)-1)), 'uint32'); Pos = Pos + nValues(i)*8;
+                        nBytesRead = nValues(i)*8;
+                        varargout{i} = typecast(uint8(obj.InBuffer(Pos:Pos+nBytesRead-1)), 'uint64');
                     case 'int8'
-                        varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i))-1)), 'int8'); Pos = Pos + nValues(i);
+                        nBytesRead = nValues(i);
+                        varargout{i} = typecast(uint8(obj.InBuffer(Pos:Pos+nBytesRead-1)), 'int8');
                     case 'int16'
-                        varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i)*2)-1)), 'int16'); Pos = Pos + nValues(i)*2;
+                        nBytesRead = nValues(i)*2;
+                        varargout{i} = typecast(uint8(obj.InBuffer(Pos:Pos+nBytesRead-1)), 'int16');
                     case 'int32'
-                        varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i)*4)-1)), 'int32'); Pos = Pos + nValues(i)*4;
+                        nBytesRead = nValues(i)*4;
+                        varargout{i} = typecast(uint8(obj.InBuffer(Pos:Pos+nBytesRead-1)), 'int32');
                     case 'int64'
-                        varargout{i} = typecast(uint8(ByteString(Pos:Pos+(nValues(i)*8)-1)), 'int32'); Pos = Pos + nValues(i)*8;
+                        nBytesRead = nValues(i)*8;
+                        varargout{i} = typecast(uint8(obj.InBuffer(Pos:Pos+nBytesRead-1)), 'int64');
                 end
+                Pos = Pos + nBytesRead;
+                obj.InBuffer = obj.InBuffer(nBytesRead+1:end);
+                obj.InBufferBytesAvailable = obj.InBufferBytesAvailable - nBytesRead;
             end
         end
         function delete(obj)
@@ -378,7 +401,9 @@ classdef ArCOMObject_Bpod < handle
                     fclose(obj.Port);
                     delete(obj.Port);
                 case 1
-                    IOPort('Close', obj.Port);
+                    if (obj.Port >= 0)
+                        IOPort('Close', obj.Port);
+                    end
                 case 2
                     fclose(obj.Port);
                     obj.Port = [];
