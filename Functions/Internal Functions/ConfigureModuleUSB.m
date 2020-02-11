@@ -92,6 +92,16 @@ global BpodSystem
 USBPorts = BpodSystem.FindUSBSerialPorts;
 USBPorts = [USBPorts.Arduino USBPorts.Teensy USBPorts.Sparkfun USBPorts.COM];
 USBPorts = USBPorts(logical(1-strcmp(USBPorts, BpodSystem.SerialPort.PortName)));
+if ispc
+    [Status RawString] = system('chgport'); % Extra step equired to find HARP Sound Card
+    if ~strcmp(RawString(1:9), 'No serial')
+        if ~isempty(strfind(RawString, '\Device\VCP'))
+            Spaces = strfind(RawString, ' ');
+            HARPCOMPort = RawString(1:Spaces(1)-1);
+            USBPorts = [USBPorts {HARPCOMPort}];
+        end
+    end
+end
 
 for i = 1:length(BpodSystem.Modules.Name)
     USBPorts = USBPorts(logical(1-strcmp(USBPorts, BpodSystem.Modules.USBport{i})));

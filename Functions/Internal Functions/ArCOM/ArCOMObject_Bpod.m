@@ -61,6 +61,7 @@ classdef ArCOMObject_Bpod < handle
         InBuffer
         InBufferBytesAvailable
         Timeout = 3;
+        TCPport = 11258;
     end
     methods
         function obj = ArCOMObject_Bpod(portString, baudRate, varargin)
@@ -115,6 +116,9 @@ classdef ArCOMObject_Bpod < handle
                         error('The third argument to ArCOM(''init'' must be either ''java'' or ''psychtoolbox''');
                 end
             end
+            if nargin > 3
+                obj.TCPport = varargin{2};
+            end
             obj.validDataTypes = {'char', 'uint8', 'uint16', 'uint32', 'int8', 'int16', 'int32'};
             % If PortString is an IP address, set Interface to 3 or 4 (TCP/IP via Instrument Control or Psych Toolbox)
             if (portString(1) > 47) && (portString(1) < 58) && sum(portString == '.') > 2
@@ -127,13 +131,17 @@ classdef ArCOMObject_Bpod < handle
                         obj.Interface = 4;
                     end
                 else
-                   obj.Interface = 3; 
+                    if obj.UsePsychToolbox == 0
+                        obj.Interface = 3; 
+                    else
+                        obj.Interface = 4;
+                    end
                 end 
             end
             originalPortString = portString;
             switch obj.Interface
                 case 0
-                    obj.Port = serial(portString, 'BaudRate', baudRate, 'Timeout', 3,'OutputBufferSize', 1000000, 'InputBufferSize', 1000000, 'DataTerminalReady', 'on', 'tag', 'ArCOM');
+                    obj.Port = serial(portString, 'BaudRate', baudRate, 'Timeout', 3,'OutputBufferSize', 2000000, 'InputBufferSize', 1000000, 'DataTerminalReady', 'on', 'tag', 'ArCOM');
                     fopen(obj.Port);
                 case 1
                     if ispc
@@ -157,7 +165,7 @@ classdef ArCOMObject_Bpod < handle
                     pause(.2);
                     srl_flush(obj.Port);
                 case 3
-                    obj.Port = tcpip(portString,11258, 'InputBufferSize', 1000000, 'OutputBufferSize', 1000000, 'Timeout', 3);
+                    obj.Port = tcpip(portString,obj.TCPport, 'InputBufferSize', 1000000, 'OutputBufferSize', 1000000, 'Timeout', 3);
                     fopen(obj.Port);
                     pause(.1);
                     fwrite(obj.Port,'H', 'uint8');
@@ -168,7 +176,7 @@ classdef ArCOMObject_Bpod < handle
                         error(['Error: Could not connect to server at ' portString])
                     end
                 case 4
-                    obj.Port = pnet('tcpconnect',portString,11258);
+                    obj.Port = pnet('tcpconnect',portString,obj.TCPport);
                     pause(.1);
                     pnet(obj.Port,'setwritetimeout',3);
                     pnet(obj.Port,'setreadtimeout',3);
