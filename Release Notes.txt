@@ -1,3 +1,8 @@
+---v1.60---
+-Optimized TrialManagerObject handling of rapid event streams
+-Updated support for CCU's HARP sound card
+-Added class for showing single frames on a second monitor using PsychToolbox (interfaced with the state machine using soft codes)
+
 ---v1.59---
 -Added UI fixes for MATLAB r2018b and Ubuntu 18
 -Added new PsychToolboxAudio plugin, to improve on PsychToolboxSoundServer with an improved interface. PsychToolboxSoundServer is still supported.
