@@ -19,6 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function TeensySoundServer(op, varargin)
 global BpodSystem
+if isempty(BpodSystem)
+    error('Error: You must run Bpod() before you can use TeensySoundServer');
+end
 Message = lower(op);
 switch Message
     case 'init'
@@ -26,12 +29,15 @@ switch Message
         SerialPort = varargin{1};
         BpodSystem.PluginSerialPorts.TeensySoundServer = serial(SerialPort, 'BaudRate', 115200, 'Timeout', 10, 'DataTerminalReady', 'on', 'OutputBufferSize', 50000000);
         fopen(BpodSystem.PluginSerialPorts.TeensySoundServer);
+        disp(['TeensySoundServer found on port ' SerialPort '.' char(10) 'Please remember to run TeensySoundServer(''end'') before closing Bpod.']);
     case 'loadwaveform'
         % Syntax: TeensySoundServer('loadwaveform', index, data);
         Index = varargin{1};
         WaveData = varargin{2};
-        FilePath = fullfile(BpodSystem.BpodPath, 'Functions', 'Plugins', 'TeensySoundServer', 'temp.wav');
-        audiowrite(FilePath, WaveData, 44100,'BitsPerSample', 16);
+        TempDir = fullfile(BpodSystem.Path.LocalDir, 'Temp');
+        mkdir(TempDir); % Fails silently if it exists
+        FilePath = fullfile(BpodSystem.Path.LocalDir, 'Temp', 'temp.wav');
+        audiowrite(FilePath, WaveData', 44100,'BitsPerSample', 16);
         F = fopen(FilePath);
         FileData = fread(F);
         fclose(F);
@@ -59,4 +65,6 @@ switch Message
         fclose(BpodSystem.PluginSerialPorts.TeensySoundServer);
         delete(BpodSystem.PluginSerialPorts.TeensySoundServer);
         BpodSystem.PluginSerialPorts = rmfield(BpodSystem.PluginSerialPorts, 'TeensySoundServer');
+    otherwise
+        error('Error: Invalid op. Valid ops are: init, loadwaveform, loadfile, play, end');
 end
