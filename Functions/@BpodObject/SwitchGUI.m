@@ -31,7 +31,7 @@ function obj = SwitchGUI(obj)
 
         else
 
-            set(obj.GUIHandles,MainFig, 'Visible', 'off');
+            set(obj.GUIHandles.MainFig, 'Visible', 'on');
     
         end
 
