@@ -38,7 +38,13 @@ global BpodSystem
 BpodPath = fileparts(which('Bpod'));
 addpath(genpath(fullfile(BpodPath, 'Functions')));
 
-BpodSystem = BpodObject;
+% adding a third argument to show the GUI: 1 = show GUI (default), 0 = don't show GUI
+if nargin > 2
+    BpodSystem = BpodObject(varargin{3});
+else
+    BpodSystem = BpodObject;
+end
+
 Ver = BpodSoftwareVersion;
 disp(['Starting Bpod Console v' sprintf('%3.2f', Ver)])
 
@@ -76,26 +82,35 @@ end
 function BpodSetup
 global BpodSystem
 BpodSystem.SetupHardware;
-BpodSystem.InitializeGUI();
+if BpodSystem.ShowGUI % check show gui flag
+    BpodSystem.InitializeGUI();
+end
 evalin('base', 'global BpodSystem')
 
 function EmulatorSetup(hObject,event)
 global BpodSystem
 BpodSystem.EmulatorMode = 1;
 BpodSystem.SetupHardware;
-BpodSystem.InitializeGUI();
+if BpodSystem.ShowGUI % check show gui flag
+    BpodSystem.InitializeGUI();
+end
 evalin('base', 'global BpodSystem')
 
 function EmulatorDialog
 global BpodSystem
 BpodErrorSound;
 BpodSystem.GUIHandles.LaunchEmuFig = figure('Position',[500 350 300 125],'name','ERROR','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
-ha = axes('units','normalized', 'position',[0 0 1 1]);
-uistack(ha,'bottom'); BG = imread('DeviceNotFound.bmp'); image(BG); axis off;
-BpodSystem.GUIData.CloseBpodButton = imread('CloseBpod.bmp');
-BpodSystem.GUIData.LaunchEMUButton = imread('StartInEmuMode.bmp');
-BpodSystem.GUIHandles.LaunchEmuModeButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [15 55 277 32], 'Callback', @EmulatorSetup, 'CData', BpodSystem.GUIData.LaunchEMUButton, 'TooltipString', 'Start Bpod in emulation mode');
-BpodSystem.GUIHandles.CloseBpodButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [15 15 277 32], 'Callback', @CloseBpodHWNotFound, 'CData', BpodSystem.GUIData.CloseBpodButton,'TooltipString', 'Close Bpod');
+if ~BpodSystem.ShowGUI %check show gui flag -- if not, just run the emulator without prompting
+    set(BpodSystem.GUIHandles.LaunchEmuFig, 'visible', 'off')
+    EmulatorSetup
+else
+    ha = axes('units','normalized', 'position',[0 0 1 1]);
+    uistack(ha,'bottom'); BG = imread('DeviceNotFound.bmp'); image(BG); axis off;
+    BpodSystem.GUIData.CloseBpodButton = imread('CloseBpod.bmp');
+    BpodSystem.GUIData.LaunchEMUButton = imread('StartInEmuMode.bmp');
+    BpodSystem.GUIHandles.LaunchEmuModeButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [15 55 277 32], 'Callback', @EmulatorSetup, 'CData', BpodSystem.GUIData.LaunchEMUButton, 'TooltipString', 'Start Bpod in emulation mode');
+    BpodSystem.GUIHandles.CloseBpodButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [15 15 277 32], 'Callback', @CloseBpodHWNotFound, 'CData', BpodSystem.GUIData.CloseBpodButton,'TooltipString', 'Close Bpod');
+end
 
 function CloseBpodHWNotFound(hObject,event)
 global BpodSystem

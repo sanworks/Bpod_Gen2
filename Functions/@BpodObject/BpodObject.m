@@ -33,6 +33,7 @@ classdef BpodObject < handle
         LastStateMatrix % Last state matrix completed. This is updated each time a trial run completes.
         HardwareState % Current state of I/O lines and serial codes
         StateMachineInfo % Struct with information about state machines (customized for connected hardware)
+        ShowGUI % Flag to control GUI display
         GUIHandles % Struct with graphics handles
         GUIData % Struct with graphics data
         InputsEnabled % Struct storing input channels that are connected to something. This is modified from the settings menu UI.
@@ -64,7 +65,7 @@ classdef BpodObject < handle
         IsOnline % 1 if connection to Internet is available, 0 if not
     end
     methods
-        function obj = BpodObject %Constructor            
+        function obj = BpodObject(varargin) %Constructor 
             % Add Bpod code to MATLAB path
             BpodPath = fileparts(which('Bpod'));
             addpath(genpath(fullfile(BpodPath, 'Assets')));
@@ -87,10 +88,22 @@ classdef BpodObject < handle
             end
             
             % Initialize fields
+            
+            if nargin > 0
+                obj.ShowGUI = varargin{1};
+            else
+                obj.ShowGUI = 1;
+            end
+
             obj.LiveTimestamps = 0;
             obj.SplashData.BG = SplashBGData;
             obj.SplashData.Messages = SplashMessageData;
             obj.GUIHandles.SplashFig = figure('Position',[400 300 485 300],'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+            
+            if ~obj.ShowGUI %check show gui flag before showing splash screen
+                set(obj.GUIHandles.SplashFig, 'visible', 'off');
+            end
+            
             obj.BonsaiSocket.Connected = 0;
             obj.Status.BpodStartTime = now;
             obj.Status = struct;
