@@ -28,7 +28,11 @@ if ~isempty(BpodSystem)
             BpodSystem.SerialPort.write('Z', 'uint8');
         end
         pause(.1);
-        delete(BpodSystem.GUIHandles.MainFig);
+
+        if isfield(BpodSystem.GUIHandles, "MainFig")
+            delete(BpodSystem.GUIHandles.MainFig);
+        end
+        
         if BpodSystem.EmulatorMode == 0
             if isfield(BpodSystem.PluginSerialPorts, 'TeensySoundServer')
                 TeensySoundServer('end');
