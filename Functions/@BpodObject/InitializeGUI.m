@@ -51,6 +51,12 @@ function obj = InitializeGUI(obj)
     obj.GUIData.PauseRequestedButton = imread('PauseRequestedButton.bmp');
     obj.GUIData.StopButton = imread('StopButton.bmp');
     obj.GUIHandles.RunButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [742 100 60 60], 'Callback', 'RunProtocol(''StartPause'')', 'CData', obj.GUIData.GoButton, 'TooltipString', 'Launch behavior session');
+    
+    % check if protocol is running, set run button to pause
+    if obj.Status.BeingUsed
+        set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
+    end
+    
     obj.GUIHandles.EndButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [742 20 60 60], 'Callback', 'RunProtocol(''Stop'')', 'CData', obj.GUIData.StopButton, 'TooltipString', 'End session');
 
     obj.GUIData.OffButton = imread('ButtonOff.bmp');

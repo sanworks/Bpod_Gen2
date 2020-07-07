@@ -39,6 +39,9 @@ switch Opstring
         if nargin == 1
             NewLaunchManager;
         else
+
+            cleanup = onCleanup(@StopProtocol);
+
             protocolName = varargin{1};
             subjectName = varargin{2};
             if nargin > 3
@@ -108,15 +111,33 @@ switch Opstring
             BpodSystem.ProtocolSettings = eval(['SettingStruct.' FieldName]);
             BpodSystem.Data = struct;
             addpath(ProtocolRunFile);
-            set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
+
+            if isfield(BpodSystem.GUIHandles, "MainFig")
+                set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
+            end
+
             IsOnline = BpodSystem.check4Internet();
             if (IsOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
                 %BpodSystem.BpodPhoneHome(1); % Disabled until server migration. -JS July 2018
             end
             BpodSystem.Status.BeingUsed = 1;
             BpodSystem.ProtocolStartTime = now*100000;
-            figure(BpodSystem.GUIHandles.MainFig);
-            run(ProtocolRunFile);
+
+            if BpodSystem.ShowGUI && isfield(BpodSystem.GUIHandles, "MainFig")
+                figure(BpodSystem.GUIHandles.MainFig);
+            end
+
+            try
+                run(ProtocolRunFile);
+            catch e
+                if strcmp(e.message, 'Reference to non-existent field ''States''.')
+                    fprintf("Protocol ended manually.\n");
+                else
+                    fprintf("An error occured while running the protocol: \n");
+                    fprintf('%s %s\n', e.identifier, e.message);
+                end
+            end
+
         end
     case 'StartPause'
         if BpodSystem.Status.BeingUsed == 0
@@ -128,14 +149,26 @@ switch Opstring
             if BpodSystem.Status.Pause == 0
                 disp('Pause requested. The system will pause after the current trial completes.')
                 BpodSystem.Status.Pause = 1;
-                set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseRequestedButton, 'TooltipString', 'Pause scheduled after trial end'); 
+
+                if isfield(BpodSystem.GUIHandles, "MainFig")
+                    set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseRequestedButton, 'TooltipString', 'Pause scheduled after trial end'); 
+                end
+
             else
                 disp('Session resumed.')
                 BpodSystem.Status.Pause = 0;
-                set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
+
+                if isfield(BposSystem.GUIHandles, "MainFig")
+                    set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
+                end
+
             end
         end
     case 'Stop'
+
+        StopProtocol;
+
+    %{
         if ~isempty(BpodSystem.Status.CurrentProtocolName)
             disp(' ')
             disp([BpodSystem.Status.CurrentProtocolName ' ended.'])
@@ -174,9 +207,16 @@ switch Opstring
             end
         catch
         end
-        set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.GoButton, 'TooltipString', 'Launch behavior session');
+
+        if isfield(BpodSystem.GUIHandles, "MainFig")
+            set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.GoButton, 'TooltipString', 'Launch behavior session');
+        end
+
         if BpodSystem.Status.Pause == 1
             BpodSystem.Status.Pause = 0;
         end
         % ---- end Shut down Plugins
+
+    %}
+
 end

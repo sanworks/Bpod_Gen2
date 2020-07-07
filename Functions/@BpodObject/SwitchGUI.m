@@ -22,16 +22,19 @@ function obj = SwitchGUI(obj)
     if ~isfield(obj.GUIHandles, "MainFig")
 
         obj.InitializeGUI();
+        BpodSystem.ShowGUI = 1;
 
     else
 
         if obj.GUIHandles.MainFig.Visible == "on"
 
             set(obj.GUIHandles.MainFig, 'Visible', 'off');
+            BpodSystem.ShowGUI = 0;
 
         else
 
             set(obj.GUIHandles.MainFig, 'Visible', 'on');
+            BpodSystem.ShowGUI = 1;
     
         end
 

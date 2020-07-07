@@ -695,7 +695,11 @@ BpodSystem.ProtocolSettings = eval(['SettingStruct.' FieldName]);
 BpodSystem.Data = struct;
 ProtocolPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName,[ProtocolName '.m']);
 addpath(ProtocolPath);
-set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
+
+if isfield(BpodSystem.GUIHandles, "MainFig")
+    set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
+end
+
 IsOnline = BpodSystem.check4Internet();
 if (IsOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
     BpodSystem.BpodPhoneHome(1);
@@ -704,7 +708,17 @@ BpodSystem.Status.BeingUsed = 1;
 BpodSystem.ProtocolStartTime = now*100000;
 BpodSystem.resetSessionClock();
 close(BpodSystem.GUIHandles.LaunchManagerFig);
-run(ProtocolPath);
+
+try
+    run(ProtocolPath);
+catch e
+    if strcmp(e.message, 'Reference to non-existent field ''States''.')
+        fprintf("Protocol ended manually.\n");
+    else
+        fprintf("An error occured while running the protocol: \n");
+        fprintf('%s %s\n', e.identifier, e.message);
+    end
+end
 
 function OutputString = Spaces2Underscores(InputString)
 SpaceIndexes = InputString == ' ';
