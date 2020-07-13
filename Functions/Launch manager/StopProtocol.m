@@ -64,7 +64,7 @@ function StopProtocol
     catch
     end
 
-    if isfield(BpodSystem.GUIHandles, "MainFig")
+    if isfield(BpodSystem.GUIHandles, 'MainFig')
         set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.GoButton, 'TooltipString', 'Launch behavior session');
     end
 

@@ -112,7 +112,7 @@ switch Opstring
             BpodSystem.Data = struct;
             addpath(ProtocolRunFile);
 
-            if isfield(BpodSystem.GUIHandles, "MainFig")
+            if isfield(BpodSystem.GUIHandles, 'MainFig')
                 set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
             end
 
@@ -123,7 +123,7 @@ switch Opstring
             BpodSystem.Status.BeingUsed = 1;
             BpodSystem.ProtocolStartTime = now*100000;
 
-            if BpodSystem.ShowGUI && isfield(BpodSystem.GUIHandles, "MainFig")
+            if BpodSystem.ShowGUI && isfield(BpodSystem.GUIHandles, 'MainFig')
                 figure(BpodSystem.GUIHandles.MainFig);
             end
 
@@ -150,7 +150,7 @@ switch Opstring
                 disp('Pause requested. The system will pause after the current trial completes.')
                 BpodSystem.Status.Pause = 1;
 
-                if isfield(BpodSystem.GUIHandles, "MainFig")
+                if isfield(BpodSystem.GUIHandles, 'MainFig')
                     set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseRequestedButton, 'TooltipString', 'Pause scheduled after trial end'); 
                 end
 
@@ -158,7 +158,7 @@ switch Opstring
                 disp('Session resumed.')
                 BpodSystem.Status.Pause = 0;
 
-                if isfield(BposSystem.GUIHandles, "MainFig")
+                if isfield(BposSystem.GUIHandles, 'MainFig')
                     set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
                 end
 
@@ -167,56 +167,5 @@ switch Opstring
     case 'Stop'
 
         StopProtocol;
-
-    %{
-        if ~isempty(BpodSystem.Status.CurrentProtocolName)
-            disp(' ')
-            disp([BpodSystem.Status.CurrentProtocolName ' ended.'])
-        end
-        rmpath(fullfile(BpodSystem.Path.ProtocolFolder, BpodSystem.Status.CurrentProtocolName));
-        BpodSystem.Status.BeingUsed = 0;
-        BpodSystem.Status.CurrentProtocolName = '';
-        BpodSystem.Path.Settings = '';
-        BpodSystem.Status.Live = 0;
-        if BpodSystem.EmulatorMode == 0
-            BpodSystem.SerialPort.write('X', 'uint8');
-            pause(.1);
-            nBytes = BpodSystem.SerialPort.bytesAvailable;
-            if nBytes > 0
-                BpodSystem.SerialPort.read(nBytes, 'uint8');
-            end
-            if isfield(BpodSystem.PluginSerialPorts, 'TeensySoundServer')
-                TeensySoundServer('end');
-            end   
-        end
-        BpodSystem.Status.InStateMatrix = 0;
-        % Shut down protocol and plugin figures (should be made more general)
-        try
-            Figs = fields(BpodSystem.ProtocolFigures);
-            nFigs = length(Figs);
-            for x = 1:nFigs
-                try
-                    close(eval(['BpodSystem.ProtocolFigures.' Figs{x}]));
-                catch
-                    
-                end
-            end
-            try
-                close(BpodNotebook)
-            catch
-            end
-        catch
-        end
-
-        if isfield(BpodSystem.GUIHandles, "MainFig")
-            set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.GoButton, 'TooltipString', 'Launch behavior session');
-        end
-
-        if BpodSystem.Status.Pause == 1
-            BpodSystem.Status.Pause = 0;
-        end
-        % ---- end Shut down Plugins
-
-    %}
 
 end

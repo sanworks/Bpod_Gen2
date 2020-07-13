@@ -696,7 +696,7 @@ BpodSystem.Data = struct;
 ProtocolPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName,[ProtocolName '.m']);
 addpath(ProtocolPath);
 
-if isfield(BpodSystem.GUIHandles, "MainFig")
+if isfield(BpodSystem.GUIHandles, 'MainFig')
     set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
 end
 

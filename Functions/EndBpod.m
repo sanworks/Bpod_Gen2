@@ -29,7 +29,7 @@ if ~isempty(BpodSystem)
         end
         pause(.1);
 
-        if isfield(BpodSystem.GUIHandles, "MainFig")
+        if isfield(BpodSystem.GUIHandles, 'MainFig')
             delete(BpodSystem.GUIHandles.MainFig);
         end
         
