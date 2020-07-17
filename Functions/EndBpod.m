@@ -48,6 +48,13 @@ if ~isempty(BpodSystem)
             close(BpodSystem.GUIHandles.ConfigureBonsaiFig)
         catch
         end
+
+        % close calibration window if it's open
+        try
+            delete(BpodSystem.GUIHandles.LiquidCalibrator.MainFig)
+        catch
+        end
+        
         clear global BpodSystem
     else
         msgbox('There is a running protocol. Please stop it first.')
