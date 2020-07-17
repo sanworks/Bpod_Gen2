@@ -7,7 +7,13 @@ ValveListboxString = {'Valve1', 'Valve2', 'Valve3', 'Valve4', 'Valve5', 'Valve6'
 switch lower(op)
     case 'calibrate' % Launch the GUI
         BpodSystem.GUIHandles.LiquidCalibrator = struct;
-        BpodSystem.GUIHandles.LiquidCalibrator.MainFig =  figure('Position',[150 180 830 370],'name','Bpod liquid calibrator','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'CloseRequestFcn', @EndCal);
+
+        % if bpod has a name, add it to the window title
+        CalibrateWindowTitle = 'Bpod liquid calibrator';
+        if ~strcmp(BpodSystem.Name, '')
+            CalibrateWindowTitle = [CalibrateWindowTitle, ': ', BpodSystem.Name];
+        end
+        BpodSystem.GUIHandles.LiquidCalibrator.MainFig =  figure('Position',[150 180 830 370],'name', CalibrateWindowTitle,'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'CloseRequestFcn', @EndCal);
         ha = axes('units','normalized', 'position',[0 0 1 1]);
         uistack(ha,'bottom');
         BG = imread('RewardCalMain.bmp');
@@ -48,7 +54,7 @@ switch lower(op)
         if strcmp(BpodSystem.Name, '')
             CalibrationFilePath = BaseCalibrationFilePath;
         else
-            CalibrationFilePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', strcat('LiquidCalibration_', BpodSystem.Name, '.mat'));
+            CalibrationFilePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', ['LiquidCalibration_' BpodSystem.Name '.mat']);
         end
 
         %check if file exiata
@@ -339,7 +345,7 @@ if isPendingMeasurement == 0
     if strcmp(BpodSyste.Name, '')
         SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
     else
-        SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', strcat('LiquidCalibration_', BpodSystem.Name, '.mat'));
+        SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', ['LiquidCalibration_' BpodSystem.Name '.mat']);
     end
     LiquidCal = BpodSystem.PluginObjects.LiquidCal.CalData;
     LiquidCal(1).LastDateModified = now;
@@ -719,7 +725,7 @@ if AllValid == 1
     if strcmp(BpodSyste.Name, '')
         SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
     else
-        SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', strcat('LiquidCalibration_', BpodSystem.Name, '.mat'));
+        SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', ['LiquidCalibration_' BpodSystem.Name '.mat']);
     end
     LiquidCal = BpodSystem.PluginObjects.LiquidCal.CalData;
     LiquidCal(1).LastDateModified = now;
