@@ -273,7 +273,7 @@ classdef TrialManagerObject < handle
                                 if BpodSystem.LiveTimestamps == 1
                                     TempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents+4, 'uint8');
                                     nBytesRead = nBytesRead + nCurrentEvents + 4;
-                                    ThisTimestamp = typecast(TempCurrentEvents(end-3:end), 'uint32')*obj.TimeScaleFactor;
+                                    ThisTimestamp = double(typecast(TempCurrentEvents(end-3:end), 'uint32'))*obj.TimeScaleFactor;
                                     TempCurrentEvents = TempCurrentEvents(1:end-4);
                                 else
                                     TempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents, 'uint8');
