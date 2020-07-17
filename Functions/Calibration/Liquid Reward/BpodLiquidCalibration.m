@@ -42,8 +42,21 @@ switch lower(op)
         
         % Setup calibration
         BpodSystem.PluginObjects.LiquidCal.PendingMeasurements = cell(1,8);
-        CalibrationFilePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
-        load(CalibrationFilePath);
+
+        % check box name for calibration path
+        BaseCalibrationFilePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
+        if strcmp(BpodSystem.Name, '')
+            CalibrationFilePath = BaseCalibrationFilePath;
+        else
+            CalibrationFilePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', strcat('LiquidCalibration_', BpodSystem.Name, '.mat'));
+        end
+
+        %check if file exiata
+        if isfile(CalibrationFilePath)
+            load(CalibrationFilePath);
+        else
+            load(BaseCalibrationFilePath);
+        end
         BpodSystem.PluginObjects.LiquidCal.CalData = LiquidCal;
         BpodSystem.PluginObjects.LiquidCal.CalibrationTargetRange = [2 10];
         DisplayValve;
@@ -320,8 +333,14 @@ if isPendingMeasurement == 0
         BpodSystem.PluginObjects.LiquidCal.CalData(CurrentValve).Table = [];
         BpodSystem.PluginObjects.LiquidCal.CalData(CurrentValve).Coeffs = [];
     end
+
     % Save file
-    SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
+    % check Bpod Name
+    if strcmp(BpodSyste.Name, '')
+        SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
+    else
+        SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', strcat('LiquidCalibration_', BpodSystem.Name, '.mat'));
+    end
     LiquidCal = BpodSystem.PluginObjects.LiquidCal.CalData;
     LiquidCal(1).LastDateModified = now;
     save(SavePath, 'LiquidCal');
@@ -695,7 +714,13 @@ if AllValid == 1
     if exist(TestSavePath) ~= 7
         mkdir(TestSavePath);
     end
-    SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
+
+    % check Bpod Name
+    if strcmp(BpodSyste.Name, '')
+        SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
+    else
+        SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', strcat('LiquidCalibration_', BpodSystem.Name, '.mat'));
+    end
     LiquidCal = BpodSystem.PluginObjects.LiquidCal.CalData;
     LiquidCal(1).LastDateModified = now;
     save(SavePath, 'LiquidCal');

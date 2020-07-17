@@ -39,8 +39,13 @@ BpodPath = fileparts(which('Bpod'));
 addpath(genpath(fullfile(BpodPath, 'Functions')));
 
 % adding a third argument to show the GUI: 1 = show GUI (default), 0 = don't show GUI
+% adding a fourth argument for Bpod name (string)
 if nargin > 2
-    BpodSystem = BpodObject(varargin{3});
+    if nargin > 3
+        BpodSystem = BpodObject(varargin{3}, varargin{4});
+    else
+        BpodSystem = BpodObject(varargin{3});
+    end
 else
     BpodSystem = BpodObject;
 end
