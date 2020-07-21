@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %     running, pauses the protocol if one is running
 % RunProtocol('Stop') - Stops the currently running protocol. Data from the
 %     partially completed trial is discarded.
+% RunProtocol('Safe') - Same as RunProtocol('Start'), but will end gracefully in protocol is ended with Ctrl-C or SIGINT event
 
 function RunProtocol(Opstring, varargin)
 global BpodSystem
@@ -39,9 +40,6 @@ switch Opstring
         if nargin == 1
             NewLaunchManager;
         else
-
-            cleanup = onCleanup(@StopProtocol);
-
             protocolName = varargin{1};
             subjectName = varargin{2};
             if nargin > 3
@@ -127,6 +125,7 @@ switch Opstring
                 figure(BpodSystem.GUIHandles.MainFig);
             end
 
+
             try
                 run(ProtocolRunFile);
             catch e
@@ -139,6 +138,26 @@ switch Opstring
             end
 
         end
+    case 'StartSafe'
+
+        % if protocol ended with keyboard interrupt or sigint,
+        % uses same ending procedure as RunProtocol('Stop') and **saves data**
+        cleanup = onCleanup(@() StopProtocol(true));
+
+        % Run protocol as normal
+        if nargin == 1
+            RunProtocol('Start');
+        else
+            protocolName = varargin{1};
+            subjectName = varargin{2};
+            if nargin > 3
+                settingsName = varargin{3};
+            else
+                settingsName = 'DefaultSettings';
+            end
+            RunProtocol('Start', protocolName, subjectName, settingsName);
+        end
+        
     case 'StartPause'
         if BpodSystem.Status.BeingUsed == 0
             if BpodSystem.EmulatorMode == 0
@@ -166,6 +185,10 @@ switch Opstring
         end
     case 'Stop'
 
-        StopProtocol;
+        if nargin > 1
+            StopProtocol(varargin{2});
+        else
+            StopProtocol;
+        end
 
 end

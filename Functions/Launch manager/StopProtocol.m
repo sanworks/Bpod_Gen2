@@ -21,9 +21,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % Usage:
 % StopProtocol - Stops the running protocol. same as RunProtocol('Stop')
 
-function StopProtocol
+function StopProtocol(varargin)
 
     global BpodSystem
+
+    if nargin > 0
+        if varargin{1}
+            SaveBpodSessionData;
+        end
+    end
 
     if ~isempty(BpodSystem.Status.CurrentProtocolName)
         disp(' ')
