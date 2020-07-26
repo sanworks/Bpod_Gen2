@@ -716,7 +716,9 @@ catch e
         fprintf("Protocol ended manually.\n");
     else
         fprintf("An error occured while running the protocol: \n");
+        fprintf("Function = %s on line = %d\n", e.stack(1).name, e.stack(1).line);
         fprintf('%s %s\n', e.identifier, e.message);
+        fprintf("")
     end
 end
 
