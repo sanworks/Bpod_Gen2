@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %     running, pauses the protocol if one is running
 % RunProtocol('Stop') - Stops the currently running protocol. Data from the
 %     partially completed trial is discarded.
+% RunProtocol('Safe') - Same as RunProtocol('Start'), but will end gracefully in protocol is ended with Ctrl-C or SIGINT event
 
 function RunProtocol(Opstring, varargin)
 global BpodSystem
@@ -39,9 +40,6 @@ switch Opstring
         if nargin == 1
             NewLaunchManager;
         else
-
-            cleanup = onCleanup(@StopProtocol);
-
             protocolName = varargin{1};
             subjectName = varargin{2};
             if nargin > 3
@@ -112,7 +110,7 @@ switch Opstring
             BpodSystem.Data = struct;
             addpath(ProtocolRunFile);
 
-            if isfield(BpodSystem.GUIHandles, "MainFig")
+            if isfield(BpodSystem.GUIHandles, 'MainFig')
                 set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
             end
 
@@ -123,9 +121,10 @@ switch Opstring
             BpodSystem.Status.BeingUsed = 1;
             BpodSystem.ProtocolStartTime = now*100000;
 
-            if BpodSystem.ShowGUI && isfield(BpodSystem.GUIHandles, "MainFig")
+            if BpodSystem.ShowGUI && isfield(BpodSystem.GUIHandles, 'MainFig')
                 figure(BpodSystem.GUIHandles.MainFig);
             end
+
 
             try
                 run(ProtocolRunFile);
@@ -134,11 +133,32 @@ switch Opstring
                     fprintf("Protocol ended manually.\n");
                 else
                     fprintf("An error occured while running the protocol: \n");
+                    fprintf("Function = %s on line = %d\n", e.stack(1).name, e.stack(1).line);
                     fprintf('%s %s\n', e.identifier, e.message);
                 end
             end
 
         end
+    case 'StartSafe'
+
+        % if protocol ended with keyboard interrupt or sigint,
+        % uses same ending procedure as RunProtocol('Stop') and **saves data**
+        cleanup = onCleanup(@() StopProtocol(true));
+
+        % Run protocol as normal
+        if nargin == 1
+            RunProtocol('Start');
+        else
+            protocolName = varargin{1};
+            subjectName = varargin{2};
+            if nargin > 3
+                settingsName = varargin{3};
+            else
+                settingsName = 'DefaultSettings';
+            end
+            RunProtocol('Start', protocolName, subjectName, settingsName);
+        end
+        
     case 'StartPause'
         if BpodSystem.Status.BeingUsed == 0
             if BpodSystem.EmulatorMode == 0
@@ -150,7 +170,7 @@ switch Opstring
                 disp('Pause requested. The system will pause after the current trial completes.')
                 BpodSystem.Status.Pause = 1;
 
-                if isfield(BpodSystem.GUIHandles, "MainFig")
+                if isfield(BpodSystem.GUIHandles, 'MainFig')
                     set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseRequestedButton, 'TooltipString', 'Pause scheduled after trial end'); 
                 end
 
@@ -158,7 +178,7 @@ switch Opstring
                 disp('Session resumed.')
                 BpodSystem.Status.Pause = 0;
 
-                if isfield(BposSystem.GUIHandles, "MainFig")
+                if isfield(BposSystem.GUIHandles, 'MainFig')
                     set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
                 end
 
@@ -166,57 +186,10 @@ switch Opstring
         end
     case 'Stop'
 
-        StopProtocol;
-
-    %{
-        if ~isempty(BpodSystem.Status.CurrentProtocolName)
-            disp(' ')
-            disp([BpodSystem.Status.CurrentProtocolName ' ended.'])
+        if nargin > 1
+            StopProtocol(varargin{2});
+        else
+            StopProtocol;
         end
-        rmpath(fullfile(BpodSystem.Path.ProtocolFolder, BpodSystem.Status.CurrentProtocolName));
-        BpodSystem.Status.BeingUsed = 0;
-        BpodSystem.Status.CurrentProtocolName = '';
-        BpodSystem.Path.Settings = '';
-        BpodSystem.Status.Live = 0;
-        if BpodSystem.EmulatorMode == 0
-            BpodSystem.SerialPort.write('X', 'uint8');
-            pause(.1);
-            nBytes = BpodSystem.SerialPort.bytesAvailable;
-            if nBytes > 0
-                BpodSystem.SerialPort.read(nBytes, 'uint8');
-            end
-            if isfield(BpodSystem.PluginSerialPorts, 'TeensySoundServer')
-                TeensySoundServer('end');
-            end   
-        end
-        BpodSystem.Status.InStateMatrix = 0;
-        % Shut down protocol and plugin figures (should be made more general)
-        try
-            Figs = fields(BpodSystem.ProtocolFigures);
-            nFigs = length(Figs);
-            for x = 1:nFigs
-                try
-                    close(eval(['BpodSystem.ProtocolFigures.' Figs{x}]));
-                catch
-                    
-                end
-            end
-            try
-                close(BpodNotebook)
-            catch
-            end
-        catch
-        end
-
-        if isfield(BpodSystem.GUIHandles, "MainFig")
-            set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.GoButton, 'TooltipString', 'Launch behavior session');
-        end
-
-        if BpodSystem.Status.Pause == 1
-            BpodSystem.Status.Pause = 0;
-        end
-        % ---- end Shut down Plugins
-
-    %}
 
 end

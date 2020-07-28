@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function obj = SwitchGUI(obj)
 
-    if ~isfield(obj.GUIHandles, "MainFig")
+    if ~isfield(obj.GUIHandles, 'MainFig')
 
         obj.InitializeGUI();
         BpodSystem.ShowGUI = 1;

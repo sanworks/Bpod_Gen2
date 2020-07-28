@@ -39,7 +39,12 @@ function obj = InitializeGUI(obj)
         FontName = 'DejaVu Sans Mono';
     end
 
-    obj.GUIHandles.MainFig = figure('Position',[80 100 825 400],'name','Bpod Console','numbertitle','off',...
+    % add bpod name to window title
+    FigTitle = 'Bpod Console';
+    if ~strcmp(obj.Name, '')
+        FigTitle = [FigTitle ': ' obj.Name];
+    end
+    obj.GUIHandles.MainFig = figure('Position',[80 100 825 400],'name',FigTitle,'numbertitle','off',...
         'MenuBar', 'none', 'Resize', 'off', 'CloseRequestFcn', 'EndBpod');
     obj.GUIHandles.Console = axes('units','normalized', 'position',[0 0 1 1]);
     uistack(obj.GUIHandles.Console,'bottom');

@@ -81,7 +81,7 @@ JumpOffset = ConditionOffset+BpodSystem.HW.n.Conditions;
 nTotalStates = BpodSystem.StateMatrix.nStatesInManifest;
 
 % check if gui has been created
-if isfield(BpodSystem.GUIHandles, "MainFig")
+if isfield(BpodSystem.GUIHandles, 'MainFig')
     BpodSystem.RefreshGUI; % Reads BpodSystem.HardwareState and BpodSystem.LastEvent to commander GUI.
 
     % Update time display
@@ -98,7 +98,7 @@ end
 SetBpodHardwareMirror2CurrentState(1);
 
 % check if gui has been created
-if isfield(BpodSystem.GUIHandles, "MainFig")
+if isfield(BpodSystem.GUIHandles, 'MainFig')
     BpodSystem.RefreshGUI;
 end
 
@@ -225,7 +225,7 @@ while BpodSystem.Status.InStateMatrix
                 if BpodSystem.Status.InStateMatrix == 1
 
                     % check if gui has been created
-                    if isfield(BpodSystem.GUIHandles, "MainFig")
+                    if isfield(BpodSystem.GUIHandles, 'MainFig')
                         BpodSystem.RefreshGUI;
                     end
 
@@ -237,7 +237,7 @@ while BpodSystem.Status.InStateMatrix
                     CurrentEvent(1:nCurrentEvents) = 0;
 
                     % check if gui has been created
-                    if isfield(BpodSystem.GUIHandles, "MainFig")
+                    if isfield(BpodSystem.GUIHandles, 'MainFig')
                         set(BpodSystem.GUIHandles.LastEventDisplay, 'string', EventNames{BpodSystem.Status.LastEvent});
                     end
 
@@ -325,7 +325,7 @@ else
     BpodSystem.HardwareState.InputState(1:end) = 0;
     BpodSystem.HardwareState.OutputState(1:end) = 0;
     % check if gui has been created
-    if isfield(BpodSystem.GUIHandles, "MainFig")
+    if isfield(BpodSystem.GUIHandles, 'MainFig')
         BpodSystem.RefreshGUI;
     end
 end

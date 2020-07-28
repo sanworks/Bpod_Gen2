@@ -25,6 +25,7 @@ classdef BpodObject < handle
         HW % Hardware description
         Modules % Connected UART serial module description
         ModuleUSB % Struct containing a field for each connected module, listing its paired USB port (i.e. ModuleUSB.ModuleName = 'COM3')
+        Name % String with user supplied name for Bpod
         Status % Struct with system status variables
         Path % Struct with paths to Bpod root folder and specific sub-folders
         Data % Struct storing all data collected in the current session. SaveBpodSessionData saves this to the current data file.
@@ -93,6 +94,12 @@ classdef BpodObject < handle
                 obj.ShowGUI = varargin{1};
             else
                 obj.ShowGUI = 1;
+            end
+
+            if nargin > 1
+                obj.Name = varargin{2};
+            else
+                obj.Name = '';
             end
 
             obj.LiveTimestamps = 0;

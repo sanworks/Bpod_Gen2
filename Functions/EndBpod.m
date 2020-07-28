@@ -17,42 +17,51 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-global BpodSystem
-if ~isempty(BpodSystem)
-    try
-        close(BpodSystem.GUIHandles.LiveDispFig)
-    catch
-    end
-    if BpodSystem.Status.BeingUsed == 0
-        if BpodSystem.EmulatorMode == 0
-            BpodSystem.SerialPort.write('Z', 'uint8');
-        end
-        pause(.1);
-
-        if isfield(BpodSystem.GUIHandles, "MainFig")
-            delete(BpodSystem.GUIHandles.MainFig);
-        end
-        
-        if BpodSystem.EmulatorMode == 0
-            if isfield(BpodSystem.PluginSerialPorts, 'TeensySoundServer')
-                TeensySoundServer('end');
-            end
-        end
-        if BpodSystem.EmulatorMode == 0
-            disp('Bpod successfully disconnected.')
-        else
-            disp('Bpod emulator successfully closed.')
-        end
-        BpodSocketServer('close');
+function EndBpod
+    global BpodSystem
+    if ~isempty(BpodSystem)
         try
-            close(BpodSystem.GUIHandles.ConfigureBonsaiFig)
+            close(BpodSystem.GUIHandles.LiveDispFig)
         catch
         end
-        clear global BpodSystem
+        if BpodSystem.Status.BeingUsed == 0
+            if BpodSystem.EmulatorMode == 0
+                BpodSystem.SerialPort.write('Z', 'uint8');
+            end
+            pause(.1);
+
+            if isfield(BpodSystem.GUIHandles, 'MainFig')
+                delete(BpodSystem.GUIHandles.MainFig);
+            end
+            
+            if BpodSystem.EmulatorMode == 0
+                if isfield(BpodSystem.PluginSerialPorts, 'TeensySoundServer')
+                    TeensySoundServer('end');
+                end
+            end
+            if BpodSystem.EmulatorMode == 0
+                disp('Bpod successfully disconnected.')
+            else
+                disp('Bpod emulator successfully closed.')
+            end
+            BpodSocketServer('close');
+            try
+                close(BpodSystem.GUIHandles.ConfigureBonsaiFig)
+            catch
+            end
+
+            % close calibration window if it's open
+            try
+                delete(BpodSystem.GUIHandles.LiquidCalibrator.MainFig)
+            catch
+            end
+            
+            clear global BpodSystem
+        else
+            msgbox('There is a running protocol. Please stop it first.')
+            BpodErrorSound;
+        end
     else
-        msgbox('There is a running protocol. Please stop it first.')
-        BpodErrorSound;
+        clear global BpodSystem
     end
-else
-    clear global BpodSystem
 end

@@ -39,8 +39,13 @@ BpodPath = fileparts(which('Bpod'));
 addpath(genpath(fullfile(BpodPath, 'Functions')));
 
 % adding a third argument to show the GUI: 1 = show GUI (default), 0 = don't show GUI
+% adding a fourth argument for Bpod name (string)
 if nargin > 2
-    BpodSystem = BpodObject(varargin{3});
+    if nargin > 3
+        BpodSystem = BpodObject(varargin{3}, varargin{4});
+    else
+        BpodSystem = BpodObject(varargin{3});
+    end
 else
     BpodSystem = BpodObject;
 end
@@ -98,12 +103,12 @@ evalin('base', 'global BpodSystem')
 
 function EmulatorDialog
 global BpodSystem
-BpodErrorSound;
 BpodSystem.GUIHandles.LaunchEmuFig = figure('Position',[500 350 300 125],'name','ERROR','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 if ~BpodSystem.ShowGUI %check show gui flag -- if not, just run the emulator without prompting
     set(BpodSystem.GUIHandles.LaunchEmuFig, 'visible', 'off')
-    EmulatorSetup
+    EmulatorSetup;
 else
+    BpodErrorSound;
     ha = axes('units','normalized', 'position',[0 0 1 1]);
     uistack(ha,'bottom'); BG = imread('DeviceNotFound.bmp'); image(BG); axis off;
     BpodSystem.GUIData.CloseBpodButton = imread('CloseBpod.bmp');
