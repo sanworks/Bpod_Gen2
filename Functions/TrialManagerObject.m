@@ -50,6 +50,7 @@ classdef TrialManagerObject < handle
         MaxEvents = 10000; % Maximum number of events possible in 1 trial (for preallocation)
         TimeScaleFactor
         TrialStartTimestamp
+        LastTrialEndTime
     end
     methods
         function obj = TrialManagerObject %Constructor
@@ -61,6 +62,7 @@ classdef TrialManagerObject < handle
                 error('Error: The Bpod emulator does not currently support running state machines with TrialManager.')
             end
             obj.TimeScaleFactor = (BpodSystem.HW.CyclePeriod/1000);
+            obj.LastTrialEndTime = 0;
             obj.Timer = timer('TimerFcn',@(h,e)obj.processLiveEvents(), 'ExecutionMode', 'fixedRate', 'Period', 0.01);
         end
         function startTrial(obj, varargin)
@@ -180,6 +182,22 @@ classdef TrialManagerObject < handle
                 RawTrialEvents.TrialEndTimestamp = obj.Round2Cycles(TrialEndTimestamp);
                 RawTrialEvents.StateTimestamps(end+1) = RawTrialEvents.EventTimestamps(end);
                 RawTrialEvents.ErrorCodes = ThisTrialErrorCodes;
+                if obj.LastTrialEndTime > 0
+                    LastTrialDeadTime = RawTrialEvents.TrialStartTimestamp - obj.LastTrialEndTime;
+                    if LastTrialDeadTime > 0.0002
+                        disp(' ');
+                        disp('*********************************************************************');
+                        disp('*                            WARNING                                *');
+                        disp('*********************************************************************');
+                        disp('TrialManager reported an inter-trial dead time of >200 microseconds.');
+                        disp('This may indicate that inter-trial code (e.g. plotting, saving data)');
+                        disp('took MATLAB more than 1 trial duration to execute. MATLAB must reach');
+                        disp('TrialManager.getTrialData() before trial end. Please check lines of');
+                        disp('your protocol main loop (e.g. with tic/toc) and optimize accordingly.');
+                        disp('*********************************************************************');
+                    end
+                end
+                obj.LastTrialEndTime = RawTrialEvents.TrialEndTimestamp;
             else
                 stop(obj.Timer);
                 delete(obj.Timer);
