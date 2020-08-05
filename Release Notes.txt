@@ -1,3 +1,11 @@
+---v1.61---
+-Added warning (to command window) when TrialManager detects inter-trial intervals longer than 200 microseconds (e.g. if inter-trial code took longer than 1 trial duration to complete)
+-Fixed bug where LoadSerialMessages() did not accept third argument for message index
+-Updated comments in example protocols, and to include usage of NewStateMachine() instead of deprecated NewStateMatrix()
+-Set default precision of timestamps returned by TrialManager to 0.1ms
+-Added example Python code for Bpod Raspberry Pi Shim. The example runs an 'echo module' as per example Arduino and Teensy firmware. Comments in the example file are important for setup.
+-Added compatability fixes to TeensySoundServer plugin. Please note that TeensySoundServer is deprecated, and new projects should use TeensyAudioPlayer instead (see /Modules/ folder).
+
 ---v1.60---
 -Optimized TrialManagerObject handling of rapid event streams
 -Updated support for CCU's HARP sound card

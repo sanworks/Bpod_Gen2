@@ -25,7 +25,7 @@ function Ack = LoadSerialMessages(Module, Messages, varargin)
 % Messages = cell array of up to 255 byte strings, each 1-3 bytes in length
 % Optional argument MessageIndexes is a vector with the intended index of each message in Messages (from 1 to 255)
 % Example1: LoadSerialMessages(1, {[5 10], [2 3 4]}); % Loads 0x5 0x10 as message#1, and 0x2 0x3 0x4 as message#2 on serial port 1
-% Example2: LoadSerialMessages('AnalogIn1', ['X' 3], 23) % Loads 'X' 0x3 as message#23 on the channel attached to AnalogIn1
+% Example2: LoadSerialMessages('AnalogIn1', ['X' 3], 23) % Loads ['X' 0x3] as message#23 on the channel attached to AnalogIn1
 
 global BpodSystem
 nMessages = length(Messages);
@@ -41,7 +41,7 @@ if ischar(Module)
     Module = find(MatchingModules);
 end
 SerialMessage = zeros(1,nMessages*4); % Preallocate
-if nargin > 3
+if nargin >= 3
     MessageIndexes = varargin{1};
 else
     MessageIndexes = 1:nMessages;

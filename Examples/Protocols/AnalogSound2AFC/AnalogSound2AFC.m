@@ -155,7 +155,7 @@ for currentTrial = 1:MaxTrials
     if S.GUI.TrainingLevel == 1 % Reward both sides (overriding switch/case above)
         RightActionState = 'Reward'; LeftActionState = 'Reward';
     end
-    sma = NewStateMatrix(); % Assemble state matrix
+    sma = NewStateMachine(); % Initialize new state machine description
     sma = SetCondition(sma, 1, 'Port1', 0); % Condition 1: Port 1 low (is out)
     sma = SetCondition(sma, 2, 'Port3', 0); % Condition 2: Port 3 low (is out)
     sma = AddState(sma, 'Name', 'WaitForCenterPoke', ...
