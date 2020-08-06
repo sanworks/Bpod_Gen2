@@ -342,7 +342,7 @@ if isPendingMeasurement == 0
 
     % Save file
     % check Bpod Name
-    if strcmp(BpodSyste.Name, '')
+    if strcmp(BpodSystem.Name, '')
         SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
     else
         SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', ['LiquidCalibration_' BpodSystem.Name '.mat']);
