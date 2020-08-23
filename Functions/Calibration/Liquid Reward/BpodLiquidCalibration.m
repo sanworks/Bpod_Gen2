@@ -57,7 +57,7 @@ switch lower(op)
             CalibrationFilePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', ['LiquidCalibration_' BpodSystem.Name '.mat']);
         end
 
-        %check if file exiata
+        %check if file exists
         if isfile(CalibrationFilePath)
             load(CalibrationFilePath);
         else

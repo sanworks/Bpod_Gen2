@@ -198,7 +198,11 @@ classdef BpodObject < handle
             end
             % Liquid
             try
-                LiquidCalibrationFilePath = fullfile(obj.Path.LocalDir, 'Calibration Files', ['LiquidCalibration_' obj.Name '.mat']);
+                if strcmp(obj.Name, '')
+                    LiquidCalibrationFilePath = fullfile(obj.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
+                else
+                    LiquidCalibrationFilePath = fullfile(obj.Path.LocalDir, 'Calibration Files', ['LiquidCalibration_' obj.Name '.mat']);
+                end
                 load(LiquidCalibrationFilePath);
                 obj.CalibrationTables.LiquidCal = LiquidCal;
             catch
