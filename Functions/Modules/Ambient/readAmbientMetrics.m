@@ -41,6 +41,7 @@ ModuleWrite(ModuleName, 'R', 'uint8');
 Measures = struct;
 Reply = ModuleRead(ModuleName, 12, 'uint8');
 Measures.Temperature_C  = typecast(Reply(1:4), 'single');
+Measures.Temperature_F = Measures.Temperature_C *(9/5)+32;
 Measures.AirPressure_mb  = typecast(Reply(5:8), 'single')/100;
 Measures.RelativeHumidity  = typecast(Reply(9:12), 'single');
 BpodSystem.StopModuleRelay;
