@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2020 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -23,18 +23,18 @@ function Light2AFC_TrialManager
 % TrialManager allows heavy MATLAB-side processing (i.e., plots,
 % saving data, computing and loading the next trial's state machine)
 % without causing a long period of dead-time between trials. For more info
-% see the TrialManager documentation on the Bpod wiki.
+% see the TrialManager documentation on the Bpod wiki:
+% https://sites.google.com/site/bpoddocumentation/bpod-user-guide/function-reference-beta/trialmanagerobject
 %
 % After initiating each trial with a center-poke,
 % the subject is rewarded for choosing the port that is lit.
-% Written by Josh Sanders, 4/2017.
 %
 % SETUP
 % You will need:
-% - A Bpod MouseBox (or equivalent) configured with 3 ports.
-% > Connect the left port in the box to Bpod Port#1.
-% > Connect the center port in the box to Bpod Port#2.
-% > Connect the right port in the box to Bpod Port#3.
+% - A set of 3 behavior ports (e.g. Bpod MouseBox).
+% > Connect the left port in the box to State Machine Behavior Port#1.
+% > Connect the center port in the box to State Machine Behavior Port#2.
+% > Connect the right port in the box to State Machine Behavior Port#3.
 % > Make sure the liquid calibration tables for ports 1 and 3 have 
 %   calibration curves with several points surrounding 3ul.
 
@@ -56,7 +56,7 @@ end
 MaxTrials = 1000;
 TrialTypes = ceil(rand(1,MaxTrials)*2);
 BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
-tic;
+
 %% Initialize plots
 BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 250],'name','Outcome plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .35 .89 .6]);
@@ -64,6 +64,8 @@ SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-TrialTypes);
 BpodNotebook('init');
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin   
 PokesPlot('init', getStateColors, getPokeColors);
+
+%% Prepare and start first trial
 sma = PrepareStateMachine(S, TrialTypes, 1, []); % Prepare state machine for trial 1 with empty "current events" variable
 TrialManager.startTrial(sma); % Sends & starts running first trial's state machine. A MATLAB timer object updates the 
                               % console UI, while code below proceeds in parallel.
@@ -87,8 +89,8 @@ for currentTrial = 1:MaxTrials
         BpodSystem.Data = BpodNotebook('sync', BpodSystem.Data); % Sync with Bpod notebook plugin
         BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)
         BpodSystem.Data.TrialTypes(currentTrial) = TrialTypes(currentTrial); % Adds the trial type of the current trial to data
-        PokesPlot('update');
-        UpdateSideOutcomePlot(TrialTypes, BpodSystem.Data);
+        PokesPlot('update'); % Update Pokes Plot
+        UpdateSideOutcomePlot(TrialTypes, BpodSystem.Data); % Update side outcome plot
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
     end
 end
@@ -104,7 +106,7 @@ switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
     case 2
         LeftPokeAction = 'Punish'; RightPokeAction = 'RightRewardDelay'; StimulusOutput = {'PWM3', 255};
 end
-sma = NewStateMatrix(); % Assemble state matrix
+sma = NewStateMachine(); % Initialize new state machine description
 sma = SetCondition(sma, 1, 'Port1', 0); % Condition 1: Port 1 low (is out)
 sma = SetCondition(sma, 2, 'Port3', 0); % Condition 2: Port 3 low (is out)
 sma = AddState(sma, 'Name', 'WaitForPoke', ...
@@ -191,6 +193,7 @@ state_colors = struct( ...
     'Punish',[1,0,0],...
     'CorrectEarlyWithdrawal',0.75*[0,1,1],...
     'TimeOutState',[1,0,0]);
+
 function poke_colors = getPokeColors
 poke_colors = struct( ...
       'L', 0.6*[1 0.66 0], ...
