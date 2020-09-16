@@ -24,11 +24,11 @@ function StateTiming(t0)
 
 % obtain access to Bpod data, return if empty
 global BpodSystem
-if isempty(BpodSystem) || isempty(fieldnames(BpodSystem.Data))
+if isempty(BpodSystem) || isempty(BpodSystem.Data)
     return
 end
 
-% obtain axes handle for plots
+% obtain axes handle for plots, prepare axes
 persistent hAx
 if isempty(hAx) || ~isvalid(hAx)
     tmp = figure( ...
@@ -43,10 +43,12 @@ if isempty(hAx) || ~isvalid(hAx)
         'TickDir',              'out', ...
         'PickableParts',        'none', ...
         'HitTest',              'off', ...
-        'TickLabelInterpreter', 'none');
+        'TickLabelInterpreter', 'none', ...
+        'NextPlot',             'add');
     set(tmp,'HandleVisibility', 'off')
     xlabel(hAx,'Time [s]')
 end
+cla(hAx)
 
 % handle user input for shifting the x-axis
 if ~exist('t0','var')
@@ -54,21 +56,23 @@ if ~exist('t0','var')
 end
 
 % some variables
-states  = BpodSystem.Data.RawEvents.Trial{end}.States;  % the most recent state timings
-names   = fieldnames(states);                           % state names
-nStates = numel(names);                                 % number of states
-nTrial  = numel(BpodSystem.Data.RawEvents.Trial);       % number of current trial
-hBar    = .9;                                           % height of bars
-colors  = colororder;                                   % a list of face colors
+trials  = BpodSystem.Data.RawEvents.Trial;  % trial structure
+timings = struct2cell(trials{end}.States);  % the most recent state timings
+names   = fieldnames(trials{end}.States);  	% state names
+nStates = numel(names);                    	% number of states
+nTrial  = numel(trials);                    % number of current trial
+hBar    = .9;                              	% height of bars
+colors  = colororder;                   	% a list of face colors
 
-% plot state timings
-cla(hAx)
-hold(hAx,'on')
+% correct timings by t0 & indicate it
 if t0
+    timings = cellfun(@(x) {x - t0},timings);
     xline(hAx,0,':');
 end
+
+% plot state timings
 for idxState = 1:nStates
-    x = states.(names{idxState}) - t0;
+    x = timings{idxState};
     x = [x fliplr(x)]';
     y = repmat(idxState + hBar./[2;2;-2;-2],1,size(x,2));
     c = colors(mod(idxState-1,size(colors,1))+1,:);
