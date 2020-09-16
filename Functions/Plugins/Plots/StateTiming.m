@@ -24,7 +24,7 @@ function StateTiming(t0)
 
 % obtain access to Bpod data, return if empty
 global BpodSystem
-if isempty(fieldnames(BpodSystem.Data))
+if isempty(BpodSystem) || isempty(fieldnames(BpodSystem.Data))
     return
 end
 
