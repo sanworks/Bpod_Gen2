@@ -50,11 +50,6 @@ if isempty(hAx) || ~isvalid(hAx)
 end
 cla(hAx)
 
-% handle user input for shifting the x-axis
-if ~exist('t0','var')
-    t0  = 0;
-end
-
 % some variables
 trials  = BpodSystem.Data.RawEvents.Trial;  % trial structure
 timings = struct2cell(trials{end}.States);  % the most recent state timings
@@ -65,7 +60,7 @@ hBar    = .9;                              	% height of bars
 colors  = colororder;                   	% a list of face colors
 
 % correct timings by t0 & indicate it
-if t0
+if exist('t0','var')
     timings = cellfun(@(x) {x - t0},timings);
     xline(hAx,0,':');
 end
