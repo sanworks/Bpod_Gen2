@@ -24,7 +24,8 @@ function StateTiming(t0)
 
 % obtain access to Bpod data, return if empty
 global BpodSystem
-if isempty(BpodSystem) || isempty(BpodSystem.Data)
+if isempty(BpodSystem) || ~isstruct(BpodSystem.Data) || ...
+        isempty(fieldnames(BpodSystem.Data))
     return
 end
 
@@ -60,7 +61,7 @@ hBar    = .9;                               % height of bars
 colors  = colororder;                       % a list of face colors
 
 % correct timings by t0 & indicate it
-if exist('t0','var')
+if exist('t0','var') && t0
     timings = cellfun(@(x) {x - t0},timings);
     xline(hAx,0,':');
 end
