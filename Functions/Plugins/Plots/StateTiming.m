@@ -53,11 +53,11 @@ cla(hAx)
 % some variables
 trials  = BpodSystem.Data.RawEvents.Trial;  % trial structure
 timings = struct2cell(trials{end}.States);  % the most recent state timings
-names   = fieldnames(trials{end}.States);  	% state names
-nStates = numel(names);                    	% number of states
+names   = fieldnames(trials{end}.States);   % state names
+nStates = numel(names);                     % number of states
 nTrial  = numel(trials);                    % number of current trial
-hBar    = .9;                              	% height of bars
-colors  = colororder;                   	% a list of face colors
+hBar    = .9;                               % height of bars
+colors  = colororder;                       % a list of face colors
 
 % correct timings by t0 & indicate it
 if exist('t0','var')
