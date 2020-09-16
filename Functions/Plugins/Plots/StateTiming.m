@@ -44,7 +44,7 @@ if isempty(hAx) || ~isvalid(hAx)
         'PickableParts',        'none', ...
         'HitTest',              'off', ...
         'TickLabelInterpreter', 'none');
-    set(tmp,'HandleVisibility','off')
+    set(tmp,'HandleVisibility', 'off')
     xlabel(hAx,'Time [s]')
 end
 
@@ -63,25 +63,21 @@ colors  = colororder;                                   % a list of face colors
 
 % plot state timings
 cla(hAx)
+hold(hAx,'on')
 if t0
     xline(hAx,0,':');
 end
 for idxState = 1:nStates
     x = states.(names{idxState}) - t0;
-    y = idxState - hBar/2;
-    w = diff(x,[],2);
+    x = [x fliplr(x)]';
+    y = repmat(idxState + hBar./[2;2;-2;-2],1,size(x,2));
     c = colors(mod(idxState-1,size(colors,1))+1,:);
-    for ii = 1:size(x,1)
-        rectangle(hAx, ...
-            'Position',     [x(ii,1) y w(ii) hBar], ...
-            'FaceColor',    c, ...
-            'EdgeColor',    'k')
-    end
+    patch(hAx,x,y,c)
 end
 
 % format axes & labels
 set(hAx, ...
-    'YTick',                1:nStates, ...
-    'YTickLabel',           names, ...
-    'YLim',                 [.5 nStates+.5])
+    'YTick',        1:nStates, ...
+    'YTickLabel', 	names, ...
+    'YLim',       	[.5 nStates+.5])
 title(hAx,sprintf('State Timing, Trial %d',nTrial))
