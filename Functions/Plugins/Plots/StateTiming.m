@@ -74,16 +74,13 @@ for idxState = 1:nStates
     patch(hAx,x,y,c)
 end
 
-% set limits
-tmp = reshape(vertcat(timings{:}),1,[]);
-xlim(hAx,[min(tmp) max(tmp)])
-ylim(hAx,[.5 nStates+.5])
-
 % format axes & labels
 title(hAx,sprintf('State Timing, Trial %d',nTrial))
+axis(hAx,'tight')
 set(hAx, ...
     'YTick',      1:nStates, ...
-    'YTickLabel', names)
+    'YTickLabel', names, ...
+    'YLim',       [.5 nStates+.5])
 drawnow
 hAx.YRuler.Axle.Visible = 'off';
 hAx.YRuler.TickLength   = [0 0];
