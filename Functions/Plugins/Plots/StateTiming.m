@@ -63,8 +63,8 @@ colors  = colororder;                       % a list of face colors
 % correct timings by t0 & indicate it
 if exist('t0','var') && t0
     timings = cellfun(@(x) {x - t0},timings);
-    xline(hAx,0,':');
 end
+xline(hAx,0,':');
 
 % plot state timings
 for idxState = 1:nStates
@@ -74,9 +74,16 @@ for idxState = 1:nStates
     patch(hAx,x,y,c)
 end
 
+% set limits
+tmp = reshape(vertcat(timings{:}),1,[]);
+xlim(hAx,[min(tmp) max(tmp)])
+ylim(hAx,[.5 nStates+.5])
+
 % format axes & labels
-set(hAx, ...
-    'YTick',        1:nStates, ...
-    'YTickLabel',   names, ...
-    'YLim',         [.5 nStates+.5])
 title(hAx,sprintf('State Timing, Trial %d',nTrial))
+set(hAx, ...
+    'YTick',      1:nStates, ...
+    'YTickLabel', names)
+drawnow
+hAx.YRuler.Axle.Visible = 'off';
+hAx.YRuler.TickLength   = [0 0];
