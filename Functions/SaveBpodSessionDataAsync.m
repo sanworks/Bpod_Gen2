@@ -28,8 +28,7 @@ function SaveBpodSessionDataAsync(filename, SessionData, protocolQueue)
                 'RawEvents';
                 'RawData';
                 'TrialStartTimestamp';
-                'TrialEndTimestamp';
-                'SettingsFile'}
+                'TrialEndTimestamp'};
 
     new = false;
 
@@ -82,6 +81,35 @@ function SaveBpodSessionDataAsync(filename, SessionData, protocolQueue)
             end
 
         elseif new
+
+            %%% check for new day of trials
+
+            [newDayTrials, latestFileTime] = CheckBpodSessionDay(BpodSystem.Data);
+
+            if ~isempty(newDayTrials)
+
+                % split data into structs with only old and only new data
+        
+                [oldData, newData] = SplitBpodSessionData(SessionData, newDayTrials(1));
+        
+                % save original data
+        
+                SessionData = oldData;
+                save(filename, 'SessionData');
+        
+                % set new file path and data
+        
+                [fp, fn, ext] = fileparts(filename);
+                fspl = split(fn, '_');
+                ctime = datestr(latestFileTime, 'HHMMSS');
+                cdate = datestr(now, 'yyyymmdd');
+                filename = fullfile(fp, [fspl{0} '_' fspl{1} '_' cdate '_' ctime], ext);
+                
+                newData.Info.FileStartTime_MATLAB = latestFileTime;
+                SessionData = newData;
+        
+            end
+
 
             %%% save to file %%%
 
