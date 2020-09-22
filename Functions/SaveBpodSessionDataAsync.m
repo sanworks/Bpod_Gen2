@@ -103,7 +103,7 @@ function SaveBpodSessionDataAsync(filename, SessionData, protocolQueue)
                 fspl = split(fn, '_');
                 ctime = datestr(latestFileTime, 'HHMMSS');
                 cdate = datestr(now, 'yyyymmdd');
-                filename = fullfile(fp, [fspl{0} '_' fspl{1} '_' cdate '_' ctime], ext);
+                filename = fullfile(fp, [fspl{1} '_' fspl{2} '_' cdate '_' ctime ext]);
                 
                 newData.Info.FileStartTime_MATLAB = latestFileTime;
                 SessionData = newData;

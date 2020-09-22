@@ -43,7 +43,7 @@ function SaveBpodSessionData
         fspl = split(fn, '_');
         ctime = datestr(latestFileTime, 'HHMMSS');
         cdate = datestr(now, 'yyyymmdd');
-        BpodSystem.Path.CurrentDataFile = fullfile(fp, [fspl{0} '_' fspl{1} '_' cdate '_' ctime], ext);
+        BpodSystem.Path.CurrentDataFile = fullfile(fp, [fspl{1} '_' fspl{2} '_' cdate '_' ctime ext]);
         
         newData.Info.FileStartTime_MATLAB = latestFileTime;
         BpodSystem.Data = newData;
