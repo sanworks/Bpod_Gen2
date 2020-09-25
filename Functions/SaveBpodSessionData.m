@@ -21,34 +21,34 @@ function SaveBpodSessionData
 
     global BpodSystem
 
-    %%% check time and date; create a new data file every 24 hours
-    % uses the 'DataTimestamp' field. If this doesn't exist, will ignore
+    % %%% check time and date; create a new data file every 24 hours
+    % % uses the 'DataTimestamp' field. If this doesn't exist, will ignore
 
-    [newDayTrials, latestFileTime] = CheckBpodSessionDay(BpodSystem.Data);
+    % [newDayTrials, latestFileTime] = CheckBpodSessionDay(BpodSystem.Data);
 
-    if ~isempty(newDayTrials)
+    % if ~isempty(newDayTrials)
 
-        % split data into structs with only old and only new data
+    %     % split data into structs with only old and only new data
 
-        [oldData, newData] = SplitBpodSessionData(BpodSystem.Data, newDayTrials(1));
+    %     [oldData, newData] = SplitBpodSessionData(BpodSystem.Data, newDayTrials(1));
 
-        % save original data
+    %     % save original data
 
-        SessionData = oldData;
-        save(BpodSystem.Path.CurrentDataFile, 'SessionData');
+    %     SessionData = oldData;
+    %     save(BpodSystem.Path.CurrentDataFile, 'SessionData');
 
-        % set new file path and data
+    %     % set new file path and data
 
-        [fp, fn, ext] = fileparts(BpodSystem.Path.CurrentDataFile);
-        fspl = split(fn, '_');
-        ctime = datestr(latestFileTime, 'HHMMSS');
-        cdate = datestr(now, 'yyyymmdd');
-        BpodSystem.Path.CurrentDataFile = fullfile(fp, [fspl{1} '_' fspl{2} '_' cdate '_' ctime ext]);
+    %     [fp, fn, ext] = fileparts(BpodSystem.Path.CurrentDataFile);
+    %     fspl = split(fn, '_');
+    %     ctime = datestr(latestFileTime, 'HHMMSS');
+    %     cdate = datestr(now, 'yyyymmdd');
+    %     BpodSystem.Path.CurrentDataFile = fullfile(fp, [fspl{1} '_' fspl{2} '_' cdate '_' ctime ext]);
         
-        newData.Info.FileStartTime_MATLAB = latestFileTime;
-        BpodSystem.Data = newData;
+    %     newData.Info.FileStartTime_MATLAB = latestFileTime;
+    %     BpodSystem.Data = newData;
 
-    end
+    % end
 
     SessionData = BpodSystem.Data;
     save(BpodSystem.Path.CurrentDataFile, 'SessionData');

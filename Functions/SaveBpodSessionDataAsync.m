@@ -82,33 +82,33 @@ function SaveBpodSessionDataAsync(filename, SessionData, protocolQueue)
 
         elseif new
 
-            %%% check for new day of trials
+            % %%% check for new day of trials
 
-            [newDayTrials, latestFileTime] = CheckBpodSessionDay(BpodSystem.Data);
+            % [newDayTrials, latestFileTime] = CheckBpodSessionDay(BpodSystem.Data);
 
-            if ~isempty(newDayTrials)
+            % if ~isempty(newDayTrials)
 
-                % split data into structs with only old and only new data
+            %     % split data into structs with only old and only new data
         
-                [oldData, newData] = SplitBpodSessionData(SessionData, newDayTrials(1));
+            %     [oldData, newData] = SplitBpodSessionData(SessionData, newDayTrials(1));
         
-                % save original data
+            %     % save original data
         
-                SessionData = oldData;
-                save(filename, 'SessionData');
+            %     SessionData = oldData;
+            %     save(filename, 'SessionData');
         
-                % set new file path and data
+            %     % set new file path and data
         
-                [fp, fn, ext] = fileparts(filename);
-                fspl = split(fn, '_');
-                ctime = datestr(latestFileTime, 'HHMMSS');
-                cdate = datestr(now, 'yyyymmdd');
-                filename = fullfile(fp, [fspl{1} '_' fspl{2} '_' cdate '_' ctime ext]);
+            %     [fp, fn, ext] = fileparts(filename);
+            %     fspl = split(fn, '_');
+            %     ctime = datestr(latestFileTime, 'HHMMSS');
+            %     cdate = datestr(now, 'yyyymmdd');
+            %     filename = fullfile(fp, [fspl{1} '_' fspl{2} '_' cdate '_' ctime ext]);
                 
-                newData.Info.FileStartTime_MATLAB = latestFileTime;
-                SessionData = newData;
+            %     newData.Info.FileStartTime_MATLAB = latestFileTime;
+            %     SessionData = newData;
         
-            end
+            % end
 
 
             %%% save to file %%%
