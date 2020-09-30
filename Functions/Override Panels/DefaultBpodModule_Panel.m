@@ -115,27 +115,7 @@ if ~isempty(Message)
     if BpodSystem.EmulatorMode == 0
         % Format message. Default = char
         if Format_Byte || Format_Message
-            SpacePos = find(Message == ' ');
-            nSpaces = length(SpacePos);
-            ByteMessage = [];
-            if nSpaces == 0
-                ByteMessage = AddCandidateByte(ByteMessage,Message);
-            else
-                Candidate = Message(1:SpacePos(1)-1);
-                ByteMessage = AddCandidateByte(ByteMessage,Candidate);
-                if nSpaces == 1
-                    Candidate = Message(SpacePos(end)+1:end);
-                    ByteMessage = AddCandidateByte(ByteMessage,Candidate);
-                elseif nSpaces > 1
-                    for i = 2:nSpaces
-                        Candidate = Message(SpacePos(i-1)+1:SpacePos(i)-1);
-                        ByteMessage = AddCandidateByte(ByteMessage,Candidate);
-                    end
-                    Candidate = Message(SpacePos(end)+1:end);
-                    ByteMessage = AddCandidateByte(ByteMessage,Candidate); 
-                end
-            end
-            Message = ByteMessage;
+            Message = uint8(str2num(Message)); %#ok<ST2NM>
         end
         if Format_Message
             for i = 1:length(Message)
@@ -194,17 +174,4 @@ if sum(strcmp(CurrentString, ModeInstructions)) > 0
     set(BpodSystem.GUIHandles.SerialTerminalInput(ModuleNumber), 'Enable', 'on', 'String', '',...
         'ForegroundColor', [0 0 0], 'FontSize', BpodSystem.GUIData.InputFontSize);
     uicontrol(BpodSystem.GUIHandles.SerialTerminalInput(ModuleNumber));
-end
-
-function ByteMessage = AddCandidateByte(ByteMessage, Candidate)
-if ~isempty(Candidate)
-    if Candidate(1) == ''''
-        CharString = Candidate(2:end-1);
-        ByteMessage = [ByteMessage CharString];
-    else
-        CandidateByte = uint8(str2double(Candidate));
-        if (CandidateByte < 255) && (CandidateByte > -1)
-            ByteMessage = [ByteMessage CandidateByte];
-        end
-    end
 end
