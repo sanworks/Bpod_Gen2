@@ -115,7 +115,11 @@ if ~isempty(Message)
     if BpodSystem.EmulatorMode == 0
         % Format message. Default = char
         if Format_Byte || Format_Message
-            Message = uint8(str2num(Message)); %#ok<ST2NM>
+            frags  = strsplit(Message);
+            isChar = ~cellfun(@isempty, regexp(frags,'^''\S*''$'));
+            frags(isChar)  = cellfun(@(x) {x(2:end-1)}, frags(isChar));
+            frags(~isChar) = cellfun(@(x) {str2double(x)}, frags(~isChar));
+            Message = uint8([frags{:}]);
         end
         if Format_Message
             for i = 1:length(Message)
