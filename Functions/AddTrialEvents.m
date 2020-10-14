@@ -48,6 +48,9 @@ else
     TE.Info.SessionStartTime_UTC = datestr(TheTime, 13);
     TE.Info.SessionStartTime_MATLAB = TheTime;
     TE.Info.SettingsFile = BpodSystem.ProtocolSettings;
+    if ~strcmp(BpodSystem.Name, '')
+        TE.Info.BpodName = BpodSystem.Name;
+    end
 end
 TE.nTrials = TrialNum;
 %% Parse and add raw events for this trial
