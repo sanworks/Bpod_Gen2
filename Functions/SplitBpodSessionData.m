@@ -17,57 +17,75 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see < http: // www.gnu.org / licenses /> .
 %}
-function [oldData, newData] = SplitBpodSessionData(data, trialNum)
+function [oldData, newData] = SplitBpodSessionData(data, splitTime)
 
-    dataFields = fieldnames(data);
-    defaults = {'Info', 'nTrials', 'RawEvents', 'RawData', 'TrialStartTimestamp', 'TrialEndTimestamp'};
-    manuallyAdded = setdiff(dataFields, defaults);
+    split_time_from_start = data.TrialStartTimestamp(1) + splitTime;
+    newTrials = find(data.TrialStartTimestamp > split_time_from_start);
 
-    newData = data;
     oldData = data;
+    newData = struct();
 
-    if (trialNum > 0) && (trialNum <= data.nTrials)
+    if ~isempty(newTrials)
+
+        dataFields = fieldnames(data);
+        defaults = {'Info', 'nTrials', 'RawEvents', 'RawData', 'TrialStartTimestamp', 'TrialEndTimestamp'};
+        manuallyAdded = setdiff(dataFields, defaults);
+
+        newData = data;
+
+        if isfield(newData.Info, 'FileStartTime_MATLAB')
+            newTime = newData.Info.FileStartTime_MATLAB + splitTime / 60/60/24;
+        else
+            newTime = newData.Info.SessionStartTime_MATLAB + splitTime / 60/60/24;
+        end
+
+        new_dt = datestr(newTime);
+        new_dt_split = split(new_dt);
+        newData.Info.FileDate = new_dt_split{1};
+        newData.Info.FileStartTime_UTC = new_dt_split{2};
+        newData.Info.FileStartTime_MATLAB = newTime;
+        newData.Info.FileStartTime_BPOD = split_time_from_start;
 
         % create new struct with only new trials
 
-        newData.nTrials = data.nTrials - trialNum + 1;
-        newData.RawEvents.Trial = newData.RawEvents.Trial{trialNum:end};
-        newData.RawData.OriginalStateNamesByNumber = newData.RawData.OriginalStateNamesByNumber{trialNum:end};
-        newData.RawData.OriginalStateData = newData.RawData.OriginalStateData{trialNum:end};
-        newData.RawData.OriginalEventData = newData.RawData.OriginalEventData{trialNum:end};
-        newData.RawData.OriginalStateTimestamps = newData.RawData.OriginalStateTimestamps{trialNum:end};
-        newData.RawData.OriginalEventTimestamps = newData.RawData.OriginalEventTimestamps{trialNum:end};
-        newData.RawData.StateMachineErrorCodes = newData.RawData.StateMachineErrorCodes{trialNum:end};
-        newData.TrialStartTimestamp = newData.TrialStartTimestamp(trialNum:end);
-        newData.TrialEndTimestamp = newData.TrialEndTimestamp(trialNum:end);
+        newData.nTrials = length(newTrials);
+        newData.RawEvents.Trial = newData.RawEvents.Trial(newTrials(1):end);
+        newData.RawData.OriginalStateNamesByNumber = newData.RawData.OriginalStateNamesByNumber(newTrials(1):end);
+        newData.RawData.OriginalStateData = newData.RawData.OriginalStateData(newTrials(1):end);
+        newData.RawData.OriginalEventData = newData.RawData.OriginalEventData(newTrials(1):end);
+        newData.RawData.OriginalStateTimestamps = newData.RawData.OriginalStateTimestamps(newTrials(1):end);
+        newData.RawData.OriginalEventTimestamps = newData.RawData.OriginalEventTimestamps(newTrials(1):end);
+        newData.RawData.StateMachineErrorCodes = newData.RawData.StateMachineErrorCodes(newTrials(1):end);
+        newData.TrialStartTimestamp = newData.TrialStartTimestamp(newTrials(1):end);
+        newData.TrialEndTimestamp = newData.TrialEndTimestamp(newTrials(1):end);
 
         for f = 1:length(manuallyAdded)
 
             if iscell(newData.(manuallyAdded{f}))
-                newData.(manuallyAdded{f}) = newData.(manuallyAdded{f}){trialNum:end};
+                newData.(manuallyAdded{f}) = newData.(manuallyAdded{f})(newTrials(1):end);
             else
-                newData.(manuallyAdded{f}) = newData.(manuallyAdded{f})(trialNum:end);
+                newData.(manuallyAdded{f}) = newData.(manuallyAdded{f})(newTrials(1):end);
             end
 
         end
 
         % remove new trials from original data
 
-        oldData.nTrials = trialNum - 1;
-        oldData.RawEvents.Trial(trialNum:end) = [];
-        oldData.RawData.OriginalStateNamesByNumber(trialNum:end) = [];
-        oldData.RawData.OriginalStateData(trialNum:end) = [];
-        oldData.RawData.OriginalEventData(trialNum:end) = [];
-        oldData.RawData.OriginalStateTimestamps(trialNum:end) = [];
-        oldData.RawData.OriginalEventTimestamps(trialNum:end) = [];
-        oldData.RawData.StateMachineErrorCodes(trialNum:end) = [];
-        oldData.TrialStartTimestamp(trialNum:end) = [];
-        oldData.TrialEndTimestamp(trialNum:end) = [];
+        oldData.nTrials = newTrials(1) - 1;
+        oldData.RawEvents.Trial(newTrials(1):end) = [];
+        oldData.RawData.OriginalStateNamesByNumber(newTrials(1):end) = [];
+        oldData.RawData.OriginalStateData(newTrials(1):end) = [];
+        oldData.RawData.OriginalEventData(newTrials(1):end) = [];
+        oldData.RawData.OriginalStateTimestamps(newTrials(1):end) = [];
+        oldData.RawData.OriginalEventTimestamps(newTrials(1):end) = [];
+        oldData.RawData.StateMachineErrorCodes(newTrials(1):end) = [];
+        oldData.TrialStartTimestamp(newTrials(1):end) = [];
+        oldData.TrialEndTimestamp(newTrials(1):end) = [];
 
         for f = 1:length(manuallyAdded)
 
             if length(oldData.(manuallyAdded{f})) >= oldData.nTrials
-                oldData.(manuallyAdded{f})(trialNum:end) = [];
+                oldData.(manuallyAdded{f})(newTrials(1):end) = [];
             end
 
         end

@@ -17,38 +17,40 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see < http: // www.gnu.org / licenses /> .
 %}
-function SaveBpodSessionData
+function SaveBpodSessionData(varargin)
 
     global BpodSystem
 
-    % %%% check time and date; create a new data file every 24 hours
-    % % uses the 'DataTimestamp' field. If this doesn't exist, will ignore
+    if nargin > 0
+        checkDay = varargin{1};
+    else
+        checkDay = false;
+    end
 
-    % [newDayTrials, latestFileTime] = CheckBpodSessionDay(BpodSystem.Data);
+    if checkDay
 
-    % if ~isempty(newDayTrials)
+        %%% create new data file every 24 hours %%%
+        seconds_per_day = 60 * 60 * 24;
+        [oldData, newData] = SplitBpodSessionData(BpodSystem.Data, seconds_per_day);
 
-    %     % split data into structs with only old and only new data
+        if ~isequal(newData, struct())
 
-    %     [oldData, newData] = SplitBpodSessionData(BpodSystem.Data, newDayTrials(1));
+            % save original data
+            SessionData = oldData;
+            save(BpodSystem.Path.CurrentDataFile, 'SessionData');
 
-    %     % save original data
+            % set new file path
+            [fp, fn, ext] = fileparts(BpodSystem.Path.CurrentDataFile);
+            fspl = split(fn, '_');
+            fspl{3} = datestr(datetime(fspl{3}, "InputFormat", "yyyyMMdd") + 1, "yyyymmdd");
+            BpodSystem.Path.CurrentDataFile = fullfile(fp, [strjoin(fspl, "_"), ext]);
 
-    %     SessionData = oldData;
-    %     save(BpodSystem.Path.CurrentDataFile, 'SessionData');
+            % set new data
+            BpodSystem.Data = newData;
 
-    %     % set new file path and data
+        end
 
-    %     [fp, fn, ext] = fileparts(BpodSystem.Path.CurrentDataFile);
-    %     fspl = split(fn, '_');
-    %     ctime = datestr(latestFileTime, 'HHMMSS');
-    %     cdate = datestr(now, 'yyyymmdd');
-    %     BpodSystem.Path.CurrentDataFile = fullfile(fp, [fspl{1} '_' fspl{2} '_' cdate '_' ctime ext]);
-        
-    %     newData.Info.FileStartTime_MATLAB = latestFileTime;
-    %     BpodSystem.Data = newData;
-
-    % end
+    end
 
     SessionData = BpodSystem.Data;
     save(BpodSystem.Path.CurrentDataFile, 'SessionData');

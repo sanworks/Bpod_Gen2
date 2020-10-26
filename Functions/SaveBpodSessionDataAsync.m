@@ -17,8 +17,14 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see < http: // www.gnu.org / licenses /> .
 %}
-function SaveBpodSessionDataAsync(filename, SessionData, protocolQueue)
+function SaveBpodSessionDataAsync(filename, SessionData, protocolQueue, varargin)
     % SaveBpodSessionDataAsync: Save Bpod data asynchronously (in a background process)
+
+    if nargin > 0
+        checkDay = varargin{1};
+    else
+        checkDay = false;
+    end
 
     saverQueue = parallel.pool.PollableDataQueue;
     send(protocolQueue, saverQueue);
@@ -82,34 +88,30 @@ function SaveBpodSessionDataAsync(filename, SessionData, protocolQueue)
 
         elseif new
 
-            % %%% check for new day of trials
+            if checkDay
 
-            % [newDayTrials, latestFileTime] = CheckBpodSessionDay(BpodSystem.Data);
+                %%% create new data file every 24 hours %%%
+                seconds_per_day = 60 * 60 * 24;
+                [oldData, newData] = SplitBpodSessionData(SessionData, seconds_per_day);
 
-            % if ~isempty(newDayTrials)
+                if ~isequal(newData, struct())
 
-            %     % split data into structs with only old and only new data
-        
-            %     [oldData, newData] = SplitBpodSessionData(SessionData, newDayTrials(1));
-        
-            %     % save original data
-        
-            %     SessionData = oldData;
-            %     save(filename, 'SessionData');
-        
-            %     % set new file path and data
-        
-            %     [fp, fn, ext] = fileparts(filename);
-            %     fspl = split(fn, '_');
-            %     ctime = datestr(latestFileTime, 'HHMMSS');
-            %     cdate = datestr(now, 'yyyymmdd');
-            %     filename = fullfile(fp, [fspl{1} '_' fspl{2} '_' cdate '_' ctime ext]);
-                
-            %     newData.Info.FileStartTime_MATLAB = latestFileTime;
-            %     SessionData = newData;
-        
-            % end
+                    % save original data
+                    SessionData = oldData;
+                    save(filename, 'SessionData');
 
+                    % set new file path
+                    [fp, fn, ext] = fileparts(filename);
+                    fspl = split(fn, '_');
+                    fspl{3} = datestr(datetime(fspl{3}, "InputFormat", "yyyyMMdd") + 1, "yyyymmdd");
+                    filename = fullfile(fp, [strjoin(fspl, "_"), ext]);
+
+                    % set new data
+                    SessionData = newData;
+
+                end
+
+            end
 
             %%% save to file %%%
 
