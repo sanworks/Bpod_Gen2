@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2020 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -27,7 +27,7 @@ if nAvailable > 0
         if length(CurrentString) > 256
             CurrentString = '';
         end
-        if BpodSystem.GUIData.SelectedTermDisplayMode == 2
+        if (BpodSystem.GUIData.SelectedTermDisplayMode == 2 || BpodSystem.GUIData.SelectedTermDisplayMode == 3)
             CodedMessage = zeros(1,10000);
             Pos = 1;
             for i = 1:length(Message)

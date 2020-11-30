@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2020 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -17,6 +17,10 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% This file includes bug fixes and/or feature updates contributed by:
+% - Florian Rau, Poulet Lab, Max Delbruck Center, Berlin Germany
+
 function DefaultBpodModule_Panel(PanelHandle, ModuleName)
 global BpodSystem
 
@@ -160,7 +164,6 @@ ClearTerminal(ModuleNumber)
 
 function SelectMessagemode(ModuleNumber)
 global BpodSystem
-
 ModeInstructions = get(BpodSystem.GUIHandles.SerialTerminalInput(ModuleNumber), 'UserData');
 set(BpodSystem.GUIHandles.SerialTerminalBytesSelect(ModuleNumber), 'Value', 0);
 set(BpodSystem.GUIHandles.SerialTerminalMessageSelect(ModuleNumber), 'Value', 1);
