@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2020 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -62,6 +62,8 @@ classdef ArCOMObject_Bpod < handle
         InBufferBytesAvailable
         Timeout = 3;
         TCPport = 11258;
+        OutputBufferSize = 1000000; % Bytes
+        InputBufferSize = 1000000; % Bytes
     end
     methods
         function obj = ArCOMObject_Bpod(portString, baudRate, varargin)
@@ -141,14 +143,14 @@ classdef ArCOMObject_Bpod < handle
             originalPortString = portString;
             switch obj.Interface
                 case 0
-                    obj.Port = serial(portString, 'BaudRate', baudRate, 'Timeout', 3,'OutputBufferSize', 2000000, 'InputBufferSize', 1000000, 'DataTerminalReady', 'on', 'tag', 'ArCOM');
+                    obj.Port = serial(portString, 'BaudRate', baudRate, 'Timeout', 3,'OutputBufferSize', obj.OutputBufferSize, 'InputBufferSize', obj.InputBufferSize, 'DataTerminalReady', 'on', 'tag', 'ArCOM');
                     fopen(obj.Port);
                 case 1
                     if ispc
                         portString = ['\\.\' portString];
                     end
                     IOPort('Verbosity', 0);
-                    obj.Port = IOPort('OpenSerialPort', portString, ['ReceiveTimeout=3, BaudRate=' num2str(baudRate) ', OutputBufferSize=1000000, InputBufferSize=1000000, DTR=1']);
+                    obj.Port = IOPort('OpenSerialPort', portString, ['ReceiveTimeout=3, BaudRate=' num2str(baudRate) ', OutputBufferSize=' num2str(obj.OutputBufferSize) ', InputBufferSize=' num2str(obj.InputBufferSize) ', DTR=1']);
                     if (obj.Port < 0)
                         error(['Error: Unable to connect to port ' portString '. The port may be in use by another application.'])
                     end
@@ -165,7 +167,7 @@ classdef ArCOMObject_Bpod < handle
                     pause(.2);
                     srl_flush(obj.Port);
                 case 3
-                    obj.Port = tcpip(portString,obj.TCPport, 'InputBufferSize', 1000000, 'OutputBufferSize', 1000000, 'Timeout', 3);
+                    obj.Port = tcpip(portString,obj.TCPport, 'InputBufferSize', obj.InputBufferSize, 'OutputBufferSize', obj.OutputBufferSize, 'Timeout', 3);
                     fopen(obj.Port);
                     pause(.1);
                     fwrite(obj.Port,'H', 'uint8');
@@ -296,11 +298,27 @@ classdef ArCOMObject_Bpod < handle
                         error(['The datatype ' dataType ' is not currently supported by ArCOM.']);
                 end
             end
+            nFullWrites = floor(length(ByteString)/obj.OutputBufferSize);
+            partialWriteLength = length(ByteString)-(nFullWrites*obj.OutputBufferSize);
+            Pos = 1;
             switch obj.Interface
                 case 0
-                    fwrite(obj.Port, ByteString, 'uint8');
+                    for i = 1:nFullWrites
+                        fwrite(obj.Port, ByteString(Pos:Pos+obj.OutputBufferSize-1), 'uint8');
+                        Pos = Pos + obj.OutputBufferSize;
+                        pause(.0001);
+                    end
+                    if partialWriteLength > 0
+                        fwrite(obj.Port, ByteString(Pos:end), 'uint8');
+                    end
                 case 1
-                    IOPort('Write', obj.Port, ByteString, 1);
+                    for i = 1:nFullWrites
+                        IOPort('Write', obj.Port, ByteString(Pos:Pos+obj.OutputBufferSize-1), 1);
+                        Pos = Pos + obj.OutputBufferSize;
+                    end
+                    if partialWriteLength > 0
+                        IOPort('Write', obj.Port, ByteString(Pos:end), 1);
+                    end
                 case 2
                     srl_write(obj.Port, char(ByteString));
                 case 3

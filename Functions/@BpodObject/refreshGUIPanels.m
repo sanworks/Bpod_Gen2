@@ -26,7 +26,7 @@ function obj = refreshGUIPanels(obj)
             if obj.Modules.Connected(i-1)
                 ThisModuleName = obj.Modules.Name{i-1};
                 UCase = (ThisModuleName > 64 & ThisModuleName < 91);
-                if sum(UCase) == 2 && length(UCase) > 3
+                if sum(UCase) == 2 && length(UCase) > 5
                     CapPos = find(UCase);
                     NamePart1 = ThisModuleName(1:CapPos(2)-1);
                     NamePart2 = ThisModuleName(CapPos(2):end);
