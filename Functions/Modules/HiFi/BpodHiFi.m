@@ -1,17 +1,20 @@
 classdef BpodHiFi < handle
     properties
         Port
+        SamplingRate
         LoadMode % 'Fast' to load sounds fast (potentially disrupting playback) or 'Safe' to load slower, but playback-safe
         AMenvelope % If defined, a vector of amplitude coefficients for each waveform on onest + offset (in reverse)
         LoopMode %For each wave, 'On' loops the waveform until LoopDuration seconds, or until toggled off. 'Off' = one shot.
         LoopDuration % (seconds) In loop mode, specifies the duration to loop the waveform following a trigger. 0 = until canceled.
+        HeadphoneAmpEnabled
+        HeadphoneAmpGain
     end
     properties (Access = private)
         maxWaves = 20;
+        maxSamplesPerWaveform = 0;
         maxEnvelopeSamples = 2000;
         waveforms;
         LoadOp = 'L';
-        SamplingRate = 192000;
         Initialized = 0;
     end
     methods
@@ -22,11 +25,37 @@ classdef BpodHiFi < handle
             if Ack ~= 244
                 error('Error: Incorrect handshake byte returned');
             end
+            obj.Port.write('I', 'uint8');
+            InfoParams = obj.Port.read(4, 'uint32');
+            obj.SamplingRate = InfoParams(1);
+            obj.maxWaves = InfoParams(2);
+            obj.maxSamplesPerWaveform = InfoParams(3)*obj.SamplingRate;
+            obj.maxEnvelopeSamples = InfoParams(4);
             obj.LoadMode = 'Fast';
+            obj.HeadphoneAmpEnabled = false;
+            obj.HeadphoneAmpGain = 52;
             waveforms = cell(1,obj.maxWaves);
             obj.LoopMode = logical(zeros(1,obj.maxWaves));
             obj.LoopDuration = zeros(1,obj.maxWaves);
             obj.Initialized = 1;
+        end
+        function set.SamplingRate(obj, SF)
+            if obj.Initialized == 1
+                switch SF
+                    case 44100
+                    case 48000
+                    case 96000
+                    case 192000
+                    otherwise
+                        error('Error: Invalid sampling rate.');
+                end
+                obj.Port.write('S', 'uint8', SF, 'uint32');
+                Confirmed = obj.Port.read(1, 'uint8');
+                if Confirmed ~= 1
+                    error('Error setting sampling rate. Confirm code not returned.');
+                end
+            end
+            obj.SamplingRate = SF;
         end
         function set.LoadMode(obj,Mode)
             switch Mode
@@ -55,14 +84,37 @@ classdef BpodHiFi < handle
             end
             obj.LoopMode = LoopModes; 
         end
-        function set.LoopDuration(obj, Duration)
-            if length(Duration) ~= obj.maxWaves
-                error('Error setting loop durations - a duration must exist for each wave.')
-            end
-            obj.Port.write('-', 'uint8', Duration*obj.SamplingRate, 'uint32');
+        function set.HeadphoneAmpEnabled(obj,State)
+            State = logical(State);
+            obj.Port.write(['H' uint8(State)], 'uint8');
             Confirmed = obj.Port.read(1, 'uint8');
             if Confirmed ~= 1
-                error('Error setting loop duration. Confirm code not returned.');
+                error('Error enabling headphone amp. Confirm code not returned.');
+            end
+            obj.HeadphoneAmpEnabled = State;
+        end
+        function set.HeadphoneAmpGain(obj,Gain)
+            Gain = uint8(Gain);
+            if Gain > 63 || Gain < 0
+                 error('Error: Gain must be in range 0-63.');
+            end
+            obj.Port.write(['G' Gain], 'uint8');
+            Confirmed = obj.Port.read(1, 'uint8');
+            if Confirmed ~= 1
+                error('Error setting headphone amp gain. Confirm code not returned.');
+            end
+            obj.HeadphoneAmpGain = Gain;
+        end
+        function set.LoopDuration(obj, Duration)
+            if obj.Initialized == 1
+                if length(Duration) ~= obj.maxWaves
+                    error('Error setting loop durations - a duration must exist for each wave.')
+                end
+                obj.Port.write('-', 'uint8', Duration*obj.SamplingRate, 'uint32');
+                Confirmed = obj.Port.read(1, 'uint8');
+                if Confirmed ~= 1
+                    error('Error setting loop duration. Confirm code not returned.');
+                end
             end
             obj.LoopDuration = Duration;
         end
@@ -97,13 +149,16 @@ classdef BpodHiFi < handle
                 otherwise
                     error('Error: Audio data must be a 1xn (Mono) or 2xn (Stereo) array of sound samples')
             end
+            if length(waveform) > obj.maxSamplesPerWaveform
+                error(['Error: Waveform too long. The current firmware supports up to ' num2str(obj.maxSamplesPerWaveform) ' samples per waveform.']);
+            end
             formattedWaveform = waveform(1:end)*32767;
             % The single line transmission writes too fast, causing dropped data
             %obj.Port.write([obj.LoadOp waveIndex-1], 'uint8', nSamples, 'uint32', formattedWaveform, 'int16');
             
             % Breaking the transmission into packets fixes the issue
             PacketSize = 200;
-            nFullPackets = length(formattedWaveform)/PacketSize;
+            nFullPackets = floor(length(formattedWaveform)/PacketSize);
             Pos = 1;
             partialPacketLength = rem(length(formattedWaveform), PacketSize);
             obj.Port.write(['L' waveIndex-1], 'uint8', nSamples, 'uint32');
