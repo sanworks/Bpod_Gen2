@@ -1,7 +1,7 @@
 classdef BpodHiFi < handle
     properties
         Port
-        SamplingRate
+        samplingRate
         LoadMode % 'Fast' to load sounds fast (potentially disrupting playback) or 'Safe' to load slower, but playback-safe
         AMenvelope % If defined, a vector of amplitude coefficients for each waveform on onest + offset (in reverse)
         LoopMode %For each wave, 'On' loops the waveform until LoopDuration seconds, or until toggled off. 'Off' = one shot.
@@ -16,6 +16,8 @@ classdef BpodHiFi < handle
         waveforms;
         LoadOp = 'L';
         Initialized = 0;
+        bitDepth
+        audioDataType
     end
     methods
         function obj = BpodHiFi(portString)
@@ -26,20 +28,27 @@ classdef BpodHiFi < handle
                 error('Error: Incorrect handshake byte returned');
             end
             obj.Port.write('I', 'uint8');
-            InfoParams = obj.Port.read(4, 'uint32');
-            obj.SamplingRate = InfoParams(1);
-            obj.maxWaves = InfoParams(2);
-            obj.maxSamplesPerWaveform = InfoParams(3)*obj.SamplingRate;
-            obj.maxEnvelopeSamples = InfoParams(4);
+            InfoParams = obj.Port.read(5, 'uint32');
+            obj.samplingRate = InfoParams(1);
+            obj.bitDepth = InfoParams(2);
+            obj.maxWaves = InfoParams(3);
+            obj.maxSamplesPerWaveform = InfoParams(4)*obj.samplingRate;
+            obj.maxEnvelopeSamples = InfoParams(5);
             obj.LoadMode = 'Fast';
             obj.HeadphoneAmpEnabled = false;
             obj.HeadphoneAmpGain = 52;
             waveforms = cell(1,obj.maxWaves);
             obj.LoopMode = logical(zeros(1,obj.maxWaves));
             obj.LoopDuration = zeros(1,obj.maxWaves);
+            switch obj.bitDepth
+                case 16
+                    obj.audioDataType = 'int16';
+                case 32
+                    obj.audioDataType = 'int32';
+            end
             obj.Initialized = 1;
         end
-        function set.SamplingRate(obj, SF)
+        function set.samplingRate(obj, SF)
             if obj.Initialized == 1
                 switch SF
                     case 44100
@@ -55,7 +64,7 @@ classdef BpodHiFi < handle
                     error('Error setting sampling rate. Confirm code not returned.');
                 end
             end
-            obj.SamplingRate = SF;
+            obj.samplingRate = SF;
         end
         function set.LoadMode(obj,Mode)
             switch Mode
@@ -110,7 +119,7 @@ classdef BpodHiFi < handle
                 if length(Duration) ~= obj.maxWaves
                     error('Error setting loop durations - a duration must exist for each wave.')
                 end
-                obj.Port.write('-', 'uint8', Duration*obj.SamplingRate, 'uint32');
+                obj.Port.write('-', 'uint8', Duration*obj.samplingRate, 'uint32');
                 Confirmed = obj.Port.read(1, 'uint8');
                 if Confirmed ~= 1
                     error('Error setting loop duration. Confirm code not returned.');
@@ -152,7 +161,11 @@ classdef BpodHiFi < handle
             if length(waveform) > obj.maxSamplesPerWaveform
                 error(['Error: Waveform too long. The current firmware supports up to ' num2str(obj.maxSamplesPerWaveform) ' samples per waveform.']);
             end
-            formattedWaveform = waveform(1:end)*32767;
+            if obj.bitDepth == 16
+                formattedWaveform = waveform(1:end)*32767;
+            elseif obj.bitDepth == 32
+                formattedWaveform = waveform(1:end)*2147483647;
+            end
             % The single line transmission writes too fast, causing dropped data
             %obj.Port.write([obj.LoadOp waveIndex-1], 'uint8', nSamples, 'uint32', formattedWaveform, 'int16');
             
@@ -163,18 +176,18 @@ classdef BpodHiFi < handle
             partialPacketLength = rem(length(formattedWaveform), PacketSize);
             obj.Port.write(['L' waveIndex-1], 'uint8', nSamples, 'uint32');
             for i = 1:nFullPackets
-                obj.Port.write(formattedWaveform(Pos:Pos+PacketSize-1), 'int16');
+                obj.Port.write(formattedWaveform(Pos:Pos+PacketSize-1), obj.audioDataType);
                 Pos = Pos + PacketSize;
             end
             if partialPacketLength > 0
-                obj.Port.write(formattedWaveform(Pos:end), 'int16');
+                obj.Port.write(formattedWaveform(Pos:end), obj.audioDataType);
             end
             
             Confirmed = obj.Port.read(1, 'uint8');
             if Confirmed ~= 1
                 error('Error loading waveform. Confirm code not returned.');
             end
-            obj.waveforms{waveIndex} = int16(formattedWaveform*32767);
+            obj.waveforms{waveIndex} = formattedWaveform;
         end
         function play(obj, waveIndex) % Play a waveform immediately on specified channel(s)
             if waveIndex <= obj.maxWaves
