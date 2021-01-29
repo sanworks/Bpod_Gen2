@@ -33,18 +33,20 @@ function [oldData, newData] = SplitBpodSessionData(data, splitTime)
 
         newData = data;
 
+        dayOffset = data.TrialStartTimestamp(newTrials(1)) - data.TrialStartTimestamp(1);
+        timeOffsetOld = (data.TrialEndTimestamp(1) - data.TrialStartTimestamp(1)) / 1000;
+        timeOffsetNew = (data.TrialEndTimestamp(newTrials(1)) - data.TrialStartTimestamp(newTrials(1))) / 1000;
+        fullOffset = -timeOffsetOld + dayOffset + timeOffsetNew;
+
         if isfield(newData.Info, 'FileStartTime_MATLAB')
-            newTime = newData.Info.FileStartTime_MATLAB + splitTime / 60/60/24;
+            newStartTime = newData.Info.FileStartTime_MATLAB + seconds(fullOffset);
         else
-            newTime = newData.Info.SessionStartTime_MATLAB + splitTime / 60/60/24;
+            newStartTime = newData.Info.SessionStartTime_MATLAB + seconds(fullOffset);
         end
 
-        new_dt = datestr(newTime);
-        new_dt_split = split(new_dt);
-        newData.Info.FileDate = new_dt_split{1};
-        newData.Info.FileStartTime_UTC = new_dt_split{2};
-        newData.Info.FileStartTime_MATLAB = newTime;
-        newData.Info.FileStartTime_BPOD = split_time_from_start;
+        newData.Info.FileDate = datestr(newStartTime, 1)
+        newData.Info.FileStartTime_UTC = datestr(newStartTime, 13)
+        newData.Info.FileStartTime_MATLAB = newStartTime;
 
         % create new struct with only new trials
 

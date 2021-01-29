@@ -42,7 +42,7 @@ else
             case 3
                 TE.Info.StateMachineVersion = 'Bpod 2.0';
         end
-    end
+    end    
     TE.Info.SessionDate = datestr(now, 1);
     TheTime = now;
     TE.Info.SessionStartTime_UTC = datestr(TheTime, 13);

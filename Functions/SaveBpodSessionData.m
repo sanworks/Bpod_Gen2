@@ -42,8 +42,9 @@ function SaveBpodSessionData(varargin)
             % set new file path
             [fp, fn, ext] = fileparts(BpodSystem.Path.CurrentDataFile);
             fspl = split(fn, '_');
-            fspl{3} = datestr(datetime(fspl{3}, "InputFormat", "yyyyMMdd") + 1, "yyyymmdd");
-            BpodSystem.Path.CurrentDataFile = fullfile(fp, [strjoin(fspl, "_"), ext]);
+
+            newDateStr = datestr(newData.Info.FileStartTime_MATLAB, 'YYYYmmdd_HHMMSS');
+            BpodSystem.Path.CurrentDataFile = fullfile(fp, [fspl{1}, '_', fspl{2}, '_', newDateStr, ext]);
 
             % set new data
             BpodSystem.Data = newData;
@@ -52,7 +53,9 @@ function SaveBpodSessionData(varargin)
 
     end
 
-    SessionData = BpodSystem.Data;
-    save(BpodSystem.Path.CurrentDataFile, 'SessionData');
+    if isfield(BpodSystem.Data, 'Info')
+        SessionData = BpodSystem.Data;
+        save(BpodSystem.Path.CurrentDataFile, 'SessionData');
+    end
 
 end
