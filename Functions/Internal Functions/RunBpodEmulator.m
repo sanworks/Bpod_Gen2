@@ -34,6 +34,7 @@ switch Op
         BpodSystem.Emulator.GlobalTimersTriggered = zeros(1,BpodSystem.HW.n.GlobalTimers);
         BpodSystem.Emulator.GlobalTimersActive = zeros(1,BpodSystem.HW.n.GlobalTimers);
         BpodSystem.Emulator.GlobalCounterCounts = zeros(1,BpodSystem.HW.n.GlobalCounters);
+        BpodSystem.Emulator.GlobalCounterHandled = zeros(1,BpodSystem.HW.n.GlobalCounters);
         BpodSystem.Emulator.ConditionChannels = zeros(1,BpodSystem.HW.n.Conditions);
         BpodSystem.Emulator.ConditionValues = zeros(1,BpodSystem.HW.n.Conditions);
         BpodSystem.Emulator.Timestamps = zeros(1,10000);
@@ -117,10 +118,11 @@ switch Op
             end
             % Evaluate global counter transitions
             for x = 1:BpodSystem.HW.n.GlobalCounters
-                if BpodSystem.StateMatrix.GlobalCounterEvents(x) ~= 255
+                if BpodSystem.StateMatrix.GlobalCounterEvents(x) ~= 255 && BpodSystem.Emulator.GlobalCounterHandled(x) == 0
                     if BpodSystem.Emulator.GlobalCounterCounts(x) == BpodSystem.StateMatrix.GlobalCounterThresholds(x)
                         BpodSystem.Emulator.nCurrentEvents = BpodSystem.Emulator.nCurrentEvents + 1;
                         VirtualCurrentEvents(BpodSystem.Emulator.nCurrentEvents) = GlobalCounterOffset+x;
+                        BpodSystem.Emulator.GlobalCounterHandled(x) = 1;
                     end
                     if VirtualCurrentEvents(1) == BpodSystem.StateMatrix.GlobalCounterEvents(x)
                         BpodSystem.Emulator.GlobalCounterCounts(x) = BpodSystem.Emulator.GlobalCounterCounts(x) + 1;
