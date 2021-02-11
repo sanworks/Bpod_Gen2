@@ -18,6 +18,7 @@ classdef BpodHiFi < handle
         Initialized = 0;
         bitDepth
         audioDataType
+        teensyI2SMaster
     end
     methods
         function obj = BpodHiFi(portString)
@@ -28,12 +29,14 @@ classdef BpodHiFi < handle
                 error('Error: Incorrect handshake byte returned');
             end
             obj.Port.write('I', 'uint8');
-            InfoParams = obj.Port.read(5, 'uint32');
-            obj.samplingRate = InfoParams(1);
-            obj.bitDepth = InfoParams(2);
-            obj.maxWaves = InfoParams(3);
-            obj.maxSamplesPerWaveform = InfoParams(4)*obj.samplingRate;
-            obj.maxEnvelopeSamples = InfoParams(5);
+            InfoParams8Bit = obj.Port.read(3, 'uint8');
+            InfoParams32Bit = obj.Port.read(3, 'uint32');
+            obj.samplingRate = InfoParams32Bit(1);
+            obj.teensyI2SMaster = InfoParams8Bit(1);
+            obj.bitDepth = InfoParams8Bit(2);
+            obj.maxWaves = InfoParams8Bit(3);
+            obj.maxSamplesPerWaveform = InfoParams32Bit(2)*obj.samplingRate;
+            obj.maxEnvelopeSamples = InfoParams32Bit(3);
             obj.LoadMode = 'Fast';
             obj.HeadphoneAmpEnabled = false;
             obj.HeadphoneAmpGain = 52;
@@ -49,6 +52,9 @@ classdef BpodHiFi < handle
             obj.Initialized = 1;
         end
         function set.samplingRate(obj, SF)
+            if obj.teensyI2SMaster == 1
+                error('Error: Cannot set sampling rate from MATLAB because Teensy is configured as I2S Master in firmware. Instead, set MaxSamplingRate in firmware and reload.');
+            end
             if obj.Initialized == 1
                 switch SF
                     case 44100
