@@ -18,7 +18,7 @@ classdef BpodHiFi < handle
         Initialized = 0;
         bitDepth
         audioDataType
-        teensyI2SMaster
+        isHD
     end
     methods
         function obj = BpodHiFi(portString)
@@ -32,7 +32,7 @@ classdef BpodHiFi < handle
             InfoParams8Bit = obj.Port.read(3, 'uint8');
             InfoParams32Bit = obj.Port.read(3, 'uint32');
             obj.samplingRate = InfoParams32Bit(1);
-            obj.teensyI2SMaster = InfoParams8Bit(1);
+            obj.isHD = InfoParams8Bit(1);
             obj.bitDepth = InfoParams8Bit(2);
             obj.maxWaves = InfoParams8Bit(3);
             obj.maxSamplesPerWaveform = InfoParams32Bit(2)*obj.samplingRate;
@@ -40,7 +40,6 @@ classdef BpodHiFi < handle
             obj.LoadMode = 'Fast';
             obj.HeadphoneAmpEnabled = false;
             obj.HeadphoneAmpGain = 52;
-            waveforms = cell(1,obj.maxWaves);
             obj.LoopMode = logical(zeros(1,obj.maxWaves));
             obj.LoopDuration = zeros(1,obj.maxWaves);
             switch obj.bitDepth
@@ -52,9 +51,6 @@ classdef BpodHiFi < handle
             obj.Initialized = 1;
         end
         function set.samplingRate(obj, SF)
-            if obj.teensyI2SMaster == 1
-                error('Error: Cannot set sampling rate from MATLAB because Teensy is configured as I2S Master in firmware. Instead, set MaxSamplingRate in firmware and reload.');
-            end
             if obj.Initialized == 1
                 switch SF
                     case 44100
@@ -211,18 +207,6 @@ classdef BpodHiFi < handle
         end
         function stop(obj)
             obj.Port.write('X', 'uint8');
-        end
-        function setupSDCard(obj)
-            disp('Preparing SD card. This may take up to 1 minute. Please wait.')
-            obj.Port.write('Y', 'uint8');
-            while obj.Port.bytesAvailable == 0
-                pause(.001);
-            end
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error clearing data. Confirm code not returned.');
-            end
-            disp('SD Card setup complete.')
         end
         function delete(obj)
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
