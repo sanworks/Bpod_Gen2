@@ -8,11 +8,17 @@ classdef BpodHiFi < handle
         LoopDuration % (seconds) In loop mode, specifies the duration to loop the waveform following a trigger. 0 = until canceled.
         HeadphoneAmpEnabled
         HeadphoneAmpGain
+        SynthAmplitude
+        SynthFrequency
+        SynthWaveform
     end
     properties (Access = private)
         maxWaves = 20;
         maxSamplesPerWaveform = 0;
         maxEnvelopeSamples = 2000;
+        MaxAmplitudeBits = 30000;
+        MaxSynthFrequency = 80000;
+        validSynthWaveforms = {'WhiteNoise', 'Sine'};
         waveforms;
         LoadOp = 'L';
         Initialized = 0;
@@ -31,7 +37,7 @@ classdef BpodHiFi < handle
             obj.Port.write('I', 'uint8');
             InfoParams8Bit = obj.Port.read(3, 'uint8');
             InfoParams32Bit = obj.Port.read(3, 'uint32');
-            obj.samplingRate = InfoParams32Bit(1);
+            obj.samplingRate = double(InfoParams32Bit(1));
             obj.isHD = InfoParams8Bit(1);
             obj.bitDepth = InfoParams8Bit(2);
             obj.maxWaves = InfoParams8Bit(3);
@@ -40,6 +46,9 @@ classdef BpodHiFi < handle
             obj.LoadMode = 'Fast';
             obj.HeadphoneAmpEnabled = false;
             obj.HeadphoneAmpGain = 52;
+            obj.SynthAmplitude = 0;
+            obj.SynthFrequency = 1000;
+            obj.SynthWaveform = 'WhiteNoise';
             obj.LoopMode = logical(zeros(1,obj.maxWaves));
             obj.LoopDuration = zeros(1,obj.maxWaves);
             switch obj.bitDepth
@@ -66,7 +75,7 @@ classdef BpodHiFi < handle
                     error('Error setting sampling rate. Confirm code not returned.');
                 end
             end
-            obj.samplingRate = SF;
+            obj.samplingRate = double(SF);
         end
         function set.LoadMode(obj,Mode)
             switch Mode
@@ -78,6 +87,40 @@ classdef BpodHiFi < handle
                     error(['Error: ' Mode ' is not a valid load mode. Valid modes are: ''Fast'', ''Safe'''])
             end
             obj.LoadMode = Mode;
+        end
+        function set.SynthAmplitude(obj, AmplitudeBits)
+            if (AmplitudeBits < 0) || (AmplitudeBits > obj.MaxAmplitudeBits)
+                error(['Error: Synth amplitude must fall in range 0-' num2str(obj.MaxAmplitudeBits)])
+            end
+            obj.Port.write('N', 'uint8', AmplitudeBits, 'uint16');
+            Confirmed = obj.Port.read(1, 'uint8');
+            if Confirmed ~= 1
+                error('Error setting synth amplitude. Confirm code not returned.');
+            end
+            obj.SynthAmplitude = AmplitudeBits;
+        end
+        function set.SynthFrequency(obj, NewFrequency)
+            if (NewFrequency < 0) || (NewFrequency > obj.MaxSynthFrequency)
+                error(['Error: Synth frequency must fall in range 0-' num2str(obj.MaxSynthFrequency)])
+            end
+            obj.Port.write('Q', 'uint8', NewFrequency*1000, 'uint32');
+            Confirmed = obj.Port.read(1, 'uint8');
+            if Confirmed ~= 1
+                error('Error setting synth frequency. Confirm code not returned.');
+            end
+            obj.SynthFrequency = NewFrequency;
+        end
+        function set.SynthWaveform(obj, NewWaveform)
+            thisWaveform = find(strcmp(NewWaveform, obj.validSynthWaveforms));
+            if isempty(thisWaveform)
+                error(['Error: Invalid Waveform name. Valid waveforms are: WhiteNoise, Sine'])
+            end
+            obj.Port.write(['W' thisWaveform-1], 'uint8');
+            Confirmed = obj.Port.read(1, 'uint8');
+            if Confirmed ~= 1
+                error('Error setting synth waveform. Confirm code not returned.');
+            end
+            obj.SynthWaveform = NewWaveform;
         end
         function set.LoopMode(obj, LoopModes)
             if length(LoopModes) ~= obj.maxWaves
@@ -176,7 +219,7 @@ classdef BpodHiFi < handle
             nFullPackets = floor(length(formattedWaveform)/PacketSize);
             Pos = 1;
             partialPacketLength = rem(length(formattedWaveform), PacketSize);
-            obj.Port.write(['L' waveIndex-1], 'uint8', nSamples, 'uint32');
+            obj.Port.write([obj.LoadOp waveIndex-1], 'uint8', nSamples, 'uint32');
             for i = 1:nFullPackets
                 obj.Port.write(formattedWaveform(Pos:Pos+PacketSize-1), obj.audioDataType);
                 Pos = Pos + PacketSize;
