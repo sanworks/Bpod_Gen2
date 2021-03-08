@@ -211,11 +211,16 @@ classdef BpodHiFi < handle
             elseif obj.bitDepth == 32
                 formattedWaveform = waveform(1:end)*2147483647;
             end
-            % The single line transmission writes too fast, causing dropped data
+            % The single line transmission writes too fast, causing dropped data (Oddly not with PySerial!)
             %obj.Port.write([obj.LoadOp waveIndex-1], 'uint8', nSamples, 'uint32', formattedWaveform, 'int16');
             
             % Breaking the transmission into packets fixes the issue
-            PacketSize = 200;
+            switch obj.LoadOp
+                case 'L'
+                    PacketSize = 200;
+                case '>'
+                    PacketSize = 128;
+            end
             nFullPackets = floor(length(formattedWaveform)/PacketSize);
             Pos = 1;
             partialPacketLength = rem(length(formattedWaveform), PacketSize);
