@@ -1,7 +1,7 @@
 classdef BpodHiFi < handle
     properties
         Port
-        samplingRate
+        SamplingRate
         LoadMode % 'Fast' to load sounds fast (potentially disrupting playback) or 'Safe' to load slower, but playback-safe
         AMenvelope % If defined, a vector of amplitude coefficients for each waveform on onest + offset (in reverse)
         LoopMode %For each wave, 'On' loops the waveform until LoopDuration seconds, or until toggled off. 'Off' = one shot.
@@ -11,6 +11,7 @@ classdef BpodHiFi < handle
         SynthAmplitude
         SynthFrequency
         SynthWaveform
+        DigitalAttenuation_dB
     end
     properties (Access = private)
         maxWaves = 20;
@@ -25,6 +26,8 @@ classdef BpodHiFi < handle
         bitDepth
         audioDataType
         isHD
+        minAttenuation_Pro = -103;
+        minAttenuation_HD = -120;
     end
     methods
         function obj = BpodHiFi(portString)
@@ -35,13 +38,15 @@ classdef BpodHiFi < handle
                 error('Error: Incorrect handshake byte returned');
             end
             obj.Port.write('I', 'uint8');
-            InfoParams8Bit = obj.Port.read(3, 'uint8');
+            InfoParams8Bit = obj.Port.read(4, 'uint8');
             InfoParams32Bit = obj.Port.read(3, 'uint32');
-            obj.samplingRate = double(InfoParams32Bit(1));
+            obj.SamplingRate = double(InfoParams32Bit(1));
             obj.isHD = InfoParams8Bit(1);
             obj.bitDepth = InfoParams8Bit(2);
             obj.maxWaves = InfoParams8Bit(3);
-            obj.maxSamplesPerWaveform = InfoParams32Bit(2)*obj.samplingRate;
+            digitalAttBits = InfoParams8Bit(4);
+            obj.DigitalAttenuation_dB = double(digitalAttBits)*-0.5;
+            obj.maxSamplesPerWaveform = InfoParams32Bit(2)*obj.SamplingRate;
             obj.maxEnvelopeSamples = InfoParams32Bit(3);
             obj.LoadMode = 'Fast';
             obj.HeadphoneAmpEnabled = false;
@@ -59,7 +64,7 @@ classdef BpodHiFi < handle
             end
             obj.Initialized = 1;
         end
-        function set.samplingRate(obj, SF)
+        function set.SamplingRate(obj, SF)
             if obj.Initialized == 1
                 switch SF
                     case 44100
@@ -75,7 +80,26 @@ classdef BpodHiFi < handle
                     error('Error setting sampling rate. Confirm code not returned.');
                 end
             end
-            obj.samplingRate = double(SF);
+            obj.SamplingRate = double(SF);
+        end
+        function set.DigitalAttenuation_dB(obj, attenuation)
+            if obj.Initialized == 1
+                if obj.isHD
+                    minimumAttenuation = obj.minAttenuation_HD;
+                else
+                    minimumAttenuation = obj.minAttenuation_Pro;
+                end
+                if (attenuation > 0) || (attenuation < minimumAttenuation)
+                    error(['Error: digital attenuation must fall between 0 and ' num2str(minimumAttenuation) ' dB']);
+                end
+                attenuationBits = attenuation*-2;
+                obj.Port.write(['A' attenuationBits], 'uint8');
+                Confirmed = obj.Port.read(1, 'uint8');
+                if Confirmed ~= 1
+                    error('Error setting digital attenuation. Confirm code not returned.');
+                end
+            end
+            obj.DigitalAttenuation_dB = attenuation;
         end
         function set.LoadMode(obj,Mode)
             switch Mode
@@ -164,7 +188,7 @@ classdef BpodHiFi < handle
                 if length(Duration) ~= obj.maxWaves
                     error('Error setting loop durations - a duration must exist for each wave.')
                 end
-                obj.Port.write('-', 'uint8', Duration*obj.samplingRate, 'uint32');
+                obj.Port.write('-', 'uint8', Duration*obj.SamplingRate, 'uint32');
                 Confirmed = obj.Port.read(1, 'uint8');
                 if Confirmed ~= 1
                     error('Error setting loop duration. Confirm code not returned.');
