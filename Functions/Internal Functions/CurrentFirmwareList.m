@@ -5,7 +5,7 @@ function Firmware = CurrentFirmwareList
 
 Firmware = struct;
 Firmware.StateMachine = 22;
-Firmware.WavePlayer = 1;
+Firmware.WavePlayer = 2;
 Firmware.AudioPlayer = 2;
 Firmware.PulsePal = 1;
 Firmware.AnalogIn = 2;
