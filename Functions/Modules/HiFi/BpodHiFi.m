@@ -215,7 +215,7 @@ classdef BpodHiFi < handle
         end
         function load(obj, waveIndex, waveform) % Must be stereo 2xn vector
             if (waveIndex < 1) || (waveIndex > obj.maxWaves)
-                error(['Error: waveIndex must be in range 1: ' num2str(obj.maxWaves)])
+                error(['Error: wave index must be in range [1, ' num2str(obj.maxWaves) ']'])
             end
             [nChannels,nSamples] = size(waveform);
             
@@ -241,7 +241,7 @@ classdef BpodHiFi < handle
             % Breaking the transmission into packets fixes the issue
             switch obj.LoadOp
                 case 'L'
-                    PacketSize = 200;
+                    PacketSize = 192;
                 case '>'
                     PacketSize = 128;
             end
