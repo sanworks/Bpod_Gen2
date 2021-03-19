@@ -103,7 +103,7 @@ function obj = InitializeGUI(obj)
                 ThisModuleName = obj.Modules.Name{i-1};
                 UCase = (ThisModuleName > 64 & ThisModuleName < 91);
                 LCase = (ThisModuleName > 96 & ThisModuleName < 123);
-                if sum(UCase) == 2 && length(UCase) > 3 && sum(LCase) > 0
+                if sum(UCase) == 2 && length(UCase) > 5 && sum(LCase) > 0
                     CapPos = find(UCase);
                     NamePart1 = ThisModuleName(1:CapPos(2)-1);
                     NamePart2 = ThisModuleName(CapPos(2):end);
@@ -145,6 +145,8 @@ function obj = InitializeGUI(obj)
                     StateMachinePanel_0_7;
                 case 3
                     StateMachinePanel_2_0_0;
+                case 4
+                    StateMachinePanel_2Plus;
             end
         else % Module panel
             % Find module panel function and draw panel, otherwise draw default panel
