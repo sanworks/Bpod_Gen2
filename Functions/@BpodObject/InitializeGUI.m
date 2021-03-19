@@ -145,6 +145,8 @@ function obj = InitializeGUI(obj)
                     StateMachinePanel_0_7;
                 case 3
                     StateMachinePanel_2_0_0;
+                case 4
+                    StateMachinePanel_2Plus;
             end
         else % Module panel
             % Find module panel function and draw panel, otherwise draw default panel

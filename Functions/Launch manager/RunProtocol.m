@@ -138,9 +138,11 @@ switch Opstring
     case 'Stop'
         if ~isempty(BpodSystem.Status.CurrentProtocolName)
             disp(' ')
-            disp([BpodSystem.Status.CurrentProtocolName ' ended.'])
+            disp([BpodSystem.Status.CurrentProtocolName ' ended'])
         end
+        warning off % Suppress warning, in case protocol folder has already been removed
         rmpath(fullfile(BpodSystem.Path.ProtocolFolder, BpodSystem.Status.CurrentProtocolName));
+        warning on
         BpodSystem.Status.BeingUsed = 0;
         BpodSystem.Status.CurrentProtocolName = '';
         BpodSystem.Path.Settings = '';

@@ -41,6 +41,9 @@ end
 % obtain axes handle for plots, prepare axes
 persistent hAx
 if isempty(hAx) || ~isvalid(hAx)
+    if verLessThan('matlab','9.5')
+        error('Error: the StateTiming plot requires MATLAB r2018b or newer');
+    end
     BpodSystem.ProtocolFigures.StateTimingFig = figure( ...
         'Name',                 'State Timing', ...
         'NumberTitle',          'off', ...
@@ -63,7 +66,9 @@ end
 
 ch = get(hAx, 'Children');
 delete(ch(1:end-1)); % Clear the previous patches. Last item is always the xline
-
+if ~isfield(BpodSystem.Data, 'RawEvents') % If BpodSystem.Data has been initialized by the user but events have not been added
+    return
+end
 % some variables
 trials  = BpodSystem.Data.RawEvents.Trial;  % trial structure
 timings = struct2cell(trials{end}.States);  % the most recent state timings

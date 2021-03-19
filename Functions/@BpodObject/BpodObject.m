@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 classdef BpodObject < handle
     properties
-        MachineType % 1 = Bpod 0.5, 2 = Bpod 0.7+, 3 = Pocket State Machine
+        MachineType % 1 = Bpod 0.5, 2 = Bpod 0.7+, 3 = 2.X, 4 = 2+
         FirmwareVersion % An integer specifying the firmware on the connected device
         SerialPort % ArCOM serial port object
         HW % Hardware description
@@ -315,6 +315,7 @@ classdef BpodObject < handle
             if ispc || ismac
                 web ('https://www.sites.google.com/site/bpoddocumentation/home', '-browser');
             else
+                disp('**NOTE** If MATLAB is running as root, Firefox may fail to open. The wiki is at: https://www.sites.google.com/site/bpoddocumentation/home');
                 web ('https://www.sites.google.com/site/bpoddocumentation/home');
             end
         end
@@ -469,8 +470,10 @@ classdef BpodObject < handle
         function FixPushbuttons(obj)
             % Remove all the nasty borders around pushbuttons on platforms besides win7
             if isempty(strfind(obj.HostOS, 'Windows 7'))
+                warning off
                 handles = findjobj('class', 'pushbutton');
                 set(handles, 'border', []);
+                warning on
             end
         end
         

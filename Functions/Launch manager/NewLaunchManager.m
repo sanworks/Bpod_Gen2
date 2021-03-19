@@ -121,10 +121,11 @@ else
     ProtocolName = BpodSystem.Status.CurrentProtocolName;
 
     %Make standard folders for this protocol.  This will fail silently if the folders exist
+    warning off % Suppress warning that directory already exists
     mkdir(DataPath, ProtocolName);
     mkdir(fullfile(DataPath,ProtocolName,'Session Data'))
     mkdir(fullfile(DataPath,ProtocolName,'Session Settings'))
-
+    warning on
     % Ensure that a default settings file exists
     DefaultSettingsFilePath = fullfile(DataPath,ProtocolName,'Session Settings', 'DefaultSettings.mat');
     if ~exist(DefaultSettingsFilePath)
@@ -151,6 +152,7 @@ if currentValue == BpodSystem.GUIData.ProtocolSelectorLastValue
         else
             BpodSystem.Path.ProtocolFolder = fullfile(BpodSystem.Path.ProtocolFolder, FolderName);
         end
+        BpodSystem.GUIData.ProtocolSelectorLastValue = 1;
         loadProtocols;
     end
 else
@@ -300,7 +302,7 @@ global BpodSystem
 DateInfo = datestr(now, 30); 
 DateInfo(DateInfo == 'T') = '_';
 LocalDir = BpodSystem.Path.DataFolder(max(find(BpodSystem.Path.DataFolder(1:end-1) == filesep)+1):end);
-set(BpodSystem.GUIHandles.DataFilePathDisplay, 'String', [filesep fullfile(LocalDir, SubjectName, ProtocolName, 'Session Data') filesep]);
+set(BpodSystem.GUIHandles.DataFilePathDisplay, 'String', [filesep fullfile(LocalDir, SubjectName, ProtocolName, 'Session Data') filesep],'interpreter','none');
 FileName = [SubjectName '_' ProtocolName '_' DateInfo '.mat'];
 set(BpodSystem.GUIHandles.DataFileDisplay, 'String', FileName);
 BpodSystem.Path.CurrentDataFile = fullfile(BpodSystem.Path.DataFolder, SubjectName, ProtocolName, 'Session Data', FileName);
@@ -693,8 +695,9 @@ F = fieldnames(SettingStruct);
 FieldName = F{1};
 BpodSystem.ProtocolSettings = eval(['SettingStruct.' FieldName]);
 BpodSystem.Data = struct;
+ProtocolFolderPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName);
 ProtocolPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName,[ProtocolName '.m']);
-addpath(ProtocolPath);
+addpath(ProtocolFolderPath);
 set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
 IsOnline = BpodSystem.check4Internet();
 if (IsOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
@@ -704,6 +707,8 @@ BpodSystem.Status.BeingUsed = 1;
 BpodSystem.ProtocolStartTime = now*100000;
 BpodSystem.resetSessionClock();
 close(BpodSystem.GUIHandles.LaunchManagerFig);
+disp(' ');
+disp(['Starting ' ProtocolName]);
 run(ProtocolPath);
 
 function OutputString = Spaces2Underscores(InputString)
