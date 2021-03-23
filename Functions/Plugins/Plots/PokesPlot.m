@@ -31,7 +31,7 @@ switch action
         state_colors = varargin{2};
         poke_colors = varargin{3};
 
-        BpodSystem.ProtocolFigures.PokesPlot = figure('Position', [50 50 300 700],'name','PokesPlot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'on');
+        BpodSystem.ProtocolFigures.PokesPlot = figure('Position', [450 50 300 700],'name','PokesPlot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'on');
 
         BpodSystem.GUIHandles.PokesPlot.StateColors= state_colors;
         BpodSystem.GUIHandles.PokesPlot.PokeColors= poke_colors;

@@ -209,6 +209,7 @@ while BpodSystem.Status.InStateMatrix
                             ThisGlobalCounter = BpodSystem.StateMatrix.OutputMatrix(NewState,BpodSystem.HW.Pos.GlobalCounterReset);
                             if ThisGlobalCounter ~= 0
                                 BpodSystem.Emulator.GlobalCounterCounts(ThisGlobalCounter) = 0;
+                                BpodSystem.Emulator.GlobalCounterHandled(ThisGlobalCounter) = 0;
                             end
                             % Update soft code
                             BpodSystem.Emulator.SoftCode = BpodSystem.StateMatrix.OutputMatrix(NewState,BpodSystem.HW.Pos.Output_USB);

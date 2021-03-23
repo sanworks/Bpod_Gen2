@@ -1,3 +1,16 @@
+---v1.62---
+-Fixed crash issue with small (128-1024 sample) acquisition sessions in Analog Input firmware (requires firmware update)
+-Fixed issue with loop mode in WavePlayer firmware (requires firmware update)
+-Fixed rendering issues with TrialManager and Bpod Console on newer verisons of MATLAB
+-Fixed issue with default manual override panel's serial terminal handling of byte 255 (Contributed by Florian Rau in Poulet Lab @ MDC Berlin)
+-Added StateTiming plot (Contributed by Florian Rau in Poulet Lab @ MDC Berlin)
+-Fixed issue in Bpod Emulator handling of global counters
+-Fixed issue in Bpod Emulator handling of conditions
+-Fixed issue with Rotary Encoder class - a confirmation byte is received on setting current position
+-Added Farenheit readout to ambient module read function
+-Added support for HiFi Module (beta) with example protocols
+-Added PCLink example code for Teensy Shield (this is one way for the state machine to relay bytes to a separate PC)
+
 ---v1.61---
 -Added warning (to command window) when TrialManager detects inter-trial intervals longer than 200 microseconds (e.g. if inter-trial code took longer than 1 trial duration to complete)
 -Fixed bug where LoadSerialMessages() did not accept third argument for message index

@@ -54,6 +54,8 @@ function obj = SetupHardware(obj)
                SMName = 'r0.7-1.0';
             case 3
                SMName = 'r2.0';
+            case 4
+               SMName = 'r2_Plus';
         end
         disp(['Bpod State Machine ' SMName ' connected on port ' obj.SerialPort.PortName])
         if obj.FirmwareVersion ~= obj.CurrentFirmware.StateMachine 

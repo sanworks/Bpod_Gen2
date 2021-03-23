@@ -239,6 +239,7 @@ classdef RotaryEncoderModule < handle
         function setPosition(obj, Pos)
             PositionTics = obj.degrees2pos(Pos);
             obj.Port.write('P', 'uint8', PositionTics, 'int16');
+            obj.ConfirmUSBTransmission('Rotary Encoder Position');
         end
         function enableThresholds(obj, ThresholdsEnabled)
             ThresholdEnabledBits = sum(ThresholdsEnabled.*2.^((0:length(ThresholdsEnabled)-1)));

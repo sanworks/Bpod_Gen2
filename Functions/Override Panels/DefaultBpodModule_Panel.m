@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2020 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -17,6 +17,10 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% This file includes bug fixes and/or feature updates contributed by:
+% - Florian Rau, Poulet Lab, Max Delbruck Center, Berlin Germany
+
 function DefaultBpodModule_Panel(PanelHandle, ModuleName)
 global BpodSystem
 
@@ -115,27 +119,11 @@ if ~isempty(Message)
     if BpodSystem.EmulatorMode == 0
         % Format message. Default = char
         if Format_Byte || Format_Message
-            SpacePos = find(Message == ' ');
-            nSpaces = length(SpacePos);
-            ByteMessage = [];
-            if nSpaces == 0
-                ByteMessage = AddCandidateByte(ByteMessage,Message);
-            else
-                Candidate = Message(1:SpacePos(1)-1);
-                ByteMessage = AddCandidateByte(ByteMessage,Candidate);
-                if nSpaces == 1
-                    Candidate = Message(SpacePos(end)+1:end);
-                    ByteMessage = AddCandidateByte(ByteMessage,Candidate);
-                elseif nSpaces > 1
-                    for i = 2:nSpaces
-                        Candidate = Message(SpacePos(i-1)+1:SpacePos(i)-1);
-                        ByteMessage = AddCandidateByte(ByteMessage,Candidate);
-                    end
-                    Candidate = Message(SpacePos(end)+1:end);
-                    ByteMessage = AddCandidateByte(ByteMessage,Candidate); 
-                end
-            end
-            Message = ByteMessage;
+            frags  = strsplit(Message);
+            isChar = ~cellfun(@isempty, regexp(frags,'^''\S*''$'));
+            frags(isChar)  = cellfun(@(x) {x(2:end-1)}, frags(isChar));
+            frags(~isChar) = cellfun(@(x) {str2double(x)}, frags(~isChar));
+            Message = uint8([frags{:}]);
         end
         if Format_Message
             for i = 1:length(Message)
@@ -176,7 +164,6 @@ ClearTerminal(ModuleNumber)
 
 function SelectMessagemode(ModuleNumber)
 global BpodSystem
-
 ModeInstructions = get(BpodSystem.GUIHandles.SerialTerminalInput(ModuleNumber), 'UserData');
 set(BpodSystem.GUIHandles.SerialTerminalBytesSelect(ModuleNumber), 'Value', 0);
 set(BpodSystem.GUIHandles.SerialTerminalMessageSelect(ModuleNumber), 'Value', 1);
@@ -194,17 +181,4 @@ if sum(strcmp(CurrentString, ModeInstructions)) > 0
     set(BpodSystem.GUIHandles.SerialTerminalInput(ModuleNumber), 'Enable', 'on', 'String', '',...
         'ForegroundColor', [0 0 0], 'FontSize', BpodSystem.GUIData.InputFontSize);
     uicontrol(BpodSystem.GUIHandles.SerialTerminalInput(ModuleNumber));
-end
-
-function ByteMessage = AddCandidateByte(ByteMessage, Candidate)
-if ~isempty(Candidate)
-    if Candidate(1) == ''''
-        CharString = Candidate(2:end-1);
-        ByteMessage = [ByteMessage CharString];
-    else
-        CandidateByte = uint8(str2double(Candidate));
-        if (CandidateByte < 255) && (CandidateByte > -1)
-            ByteMessage = [ByteMessage CandidateByte];
-        end
-    end
 end
