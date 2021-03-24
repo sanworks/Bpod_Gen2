@@ -717,7 +717,7 @@ try
     disp(['Starting ' ProtocolName]);
     run(ProtocolPath);
 catch e
-    if strcmp(e.message, 'Reference to non-existent field ''States''.')
+    if strcmp(e.message, 'Reference to non-existent field ''States''.') || strcmp(e.message, 'Unrecognized field name "States".')
         fprintf("Protocol ended manually.\n");
     else
         fprintf("An error occured while running the protocol: \n");
@@ -726,7 +726,7 @@ catch e
             fprintf("Function = %s on line = %d\n", e.stack(i).name, e.stack(i).line);
         end
 
-        fprintf('%s %s\n', e.identifier, e.message);
+        fprintf('%s; %s\n', e.identifier, e.message);
         fprintf("")
     end
 end

@@ -152,7 +152,7 @@ function RunProtocol(Opstring, varargin)
                     run(ProtocolRunFile);
                 catch e
 
-                    if strcmp(e.message, 'Reference to non-existent field ''States''.')
+                    if strcmp(e.message, 'Reference to non-existent field ''States''.') || strcmp(e.message, 'Unrecognized field name "States".')
                         fprintf("Protocol ended manually.\n");
                     else
                         fprintf("An error occured while running the protocol: \n");
@@ -161,7 +161,7 @@ function RunProtocol(Opstring, varargin)
                             fprintf("Function = %s on line = %d\n", e.stack(i).name, e.stack(i).line);
                         end
 
-                        fprintf('%s %s\n', e.identifier, e.message);
+                        fprintf('%s; %s\n', e.identifier, e.message);
                     end
 
                 end
@@ -213,55 +213,8 @@ function RunProtocol(Opstring, varargin)
                     disp('Session resumed.')
                     BpodSystem.Status.Pause = 0;
 
-                    if isfield(BposSystem.GUIHandles, 'MainFig')
+                    if isfield(BpodSystem.GUIHandles, 'MainFig')
                         set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
-                    end
-
-                end
-
-            end
-
-        case 'Stop'
-
-            if ~isempty(BpodSystem.Status.CurrentProtocolName)
-                disp(' ')
-                disp([BpodSystem.Status.CurrentProtocolName ' ended'])
-            end
-
-            warning off % Suppress warning, in case protocol folder has already been removed
-            rmpath(fullfile(BpodSystem.Path.ProtocolFolder, BpodSystem.Status.CurrentProtocolName));
-            warning on
-            BpodSystem.Status.BeingUsed = 0;
-            BpodSystem.Status.CurrentProtocolName = '';
-            BpodSystem.Path.Settings = '';
-            BpodSystem.Status.Live = 0;
-
-            if BpodSystem.EmulatorMode == 0
-                BpodSystem.SerialPort.write('X', 'uint8');
-                pause(.1);
-                nBytes = BpodSystem.SerialPort.bytesAvailable;
-
-                if nBytes > 0
-                    BpodSystem.SerialPort.read(nBytes, 'uint8');
-                end
-
-                if isfield(BpodSystem.PluginSerialPorts, 'TeensySoundServer')
-                    TeensySoundServer('end');
-                end
-
-            end
-
-            BpodSystem.Status.InStateMatrix = 0;
-            % Shut down protocol and plugin figures (should be made more general)
-            try
-                Figs = fields(BpodSystem.ProtocolFigures);
-                nFigs = length(Figs);
-
-                for x = 1:nFigs
-
-                    try
-                        close(eval(['BpodSystem.ProtocolFigures.' Figs{x}]));
-                    catch
                     end
 
                 end
