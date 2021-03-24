@@ -151,7 +151,7 @@ classdef BpodHiFi < handle
             obj.SynthWaveform = NewWaveform;
         end
         function set.SynthAmplitudeFade(obj, nSamples)
-            if (nSamples < 0) || (nSamples > obj.MaxFadeTime)
+            if (nSamples < 0) || (nSamples > obj.MaxAmplitudeFadeSamples)
                 error(['Error: Amplitude fade must fall in range 0-' num2str(obj.MaxAmplitudeFadeSamples) ' samples.'])
             end
             obj.Port.write('Z', 'uint8', nSamples, 'uint32');
