@@ -1,3 +1,6 @@
+---v1.63---
+-Fixed bug introduced in v1.62 - Previously, when the user navigated to a folder of protocols, the protocol path did not correctly update if the first protocol in the new folder was selected. This would result in data being saved into the folder for the previous protocol selected, with an the previously selected protocol in the file name.
+
 ---v1.62---
 -Fixed crash issue with small (128-1024 sample) acquisition sessions in Analog Input firmware (requires firmware update)
 -Fixed issue with loop mode in WavePlayer firmware (requires firmware update)
