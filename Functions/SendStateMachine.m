@@ -334,6 +334,8 @@ if BpodSystem.EmulatorMode == 0
                     end
                 case 3
                     BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
+                case 4
+                    BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
             end
         else
             error(['Error: TrialManager does not support state machine descriptions that' char(10)...

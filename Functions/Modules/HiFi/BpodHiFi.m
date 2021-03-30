@@ -30,6 +30,8 @@ classdef BpodHiFi < handle
         isHD
         minAttenuation_Pro = -103;
         minAttenuation_HD = -120;
+        headphoneAmpEnableWarned = false;
+        headphoneAmpGainWarned = false;
     end
     methods
         function obj = BpodHiFi(portString)
@@ -38,6 +40,9 @@ classdef BpodHiFi < handle
             Ack = obj.Port.read(1, 'uint8');
             if Ack ~= 244
                 error('Error: Incorrect handshake byte returned');
+            end
+            if ~obj.Port.UsePsychToolbox == 1
+                warning('HiFi Module data transfer may be unstable unless PsychToolbox is installed. Please install PsychToolbox for optimal performance.');
             end
             obj.Port.write('I', 'uint8');
             InfoParams8Bit = obj.Port.read(4, 'uint8');
@@ -179,10 +184,17 @@ classdef BpodHiFi < handle
         end
         function set.HeadphoneAmpEnabled(obj,State)
             State = logical(State);
-            obj.Port.write(['H' uint8(State)], 'uint8');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error enabling headphone amp. Confirm code not returned.');
+            if ~obj.isHD
+                obj.Port.write(['H' uint8(State)], 'uint8');
+                Confirmed = obj.Port.read(1, 'uint8');
+                if Confirmed ~= 1
+                    error('Error enabling headphone amp. Confirm code not returned.');
+                end
+            else
+                if ~obj.headphoneAmpEnableWarned && obj.Initialized == 1
+                    disp('Warning: HeadphoneAmpEnabled setting ignored. The HD version of the HiFi Module does not have a headphone amplifier.');
+                    obj.headphoneAmpEnableWarned = true;
+                end
             end
             obj.HeadphoneAmpEnabled = State;
         end
@@ -191,10 +203,17 @@ classdef BpodHiFi < handle
             if Gain > 63 || Gain < 0
                  error('Error: Gain must be in range 0-63.');
             end
-            obj.Port.write(['G' Gain], 'uint8');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error setting headphone amp gain. Confirm code not returned.');
+            if ~obj.isHD
+                obj.Port.write(['G' Gain], 'uint8');
+                Confirmed = obj.Port.read(1, 'uint8');
+                if Confirmed ~= 1
+                    error('Error setting headphone amp gain. Confirm code not returned.');
+                end
+            else
+                if ~obj.headphoneAmpGainWarned && obj.Initialized == 1
+                    disp('Warning: HeadphoneAmpGain setting ignored. The HD version of the HiFi Module does not have a headphone amplifier.');
+                    obj.headphoneAmpGainWarned = true;
+                end
             end
             obj.HeadphoneAmpGain = Gain;
         end
