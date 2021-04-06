@@ -89,11 +89,9 @@ RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration)*.
 PunishSound = (rand(2,SF*.5)*2) - 1;
 % Generate early withdrawal sound
 W1 = GenerateSineWave(SF, 1000, .5)*.5; W2 = GenerateSineWave(SF, 1200, .5)*.5; EarlyWithdrawalSound = W1+W2;
-P = SF/100; Interval = P;
-for x = 1:50 % Gate waveform to create pulses
-    EarlyWithdrawalSound(P:P+Interval) = 0;
-    P = P+(Interval*2);
-end
+P = SF/100;
+GateVector = repmat([ones(1,P) zeros(1,P)], 1, 25);
+EarlyWithdrawalSound = EarlyWithdrawalSound.*GateVector; % Gate waveform to create aversive pulses
 
 H.HeadphoneAmpEnabled = true; H.HeadphoneAmpGain = 15; % Ignored if using HD version of the HiFi module
 H.DigitalAttenuation_dB = -20; % Set a comfortable listening level for most headphones (useful during protocol dev).

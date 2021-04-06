@@ -88,11 +88,9 @@ RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration)*.
 PunishSound = (rand(2,SF*S.GUI.PunishDelay)*2) - 1;
 % Generate early withdrawal sound
 W1 = GenerateSineWave(SF, 1000, .5)*.5; W2 = GenerateSineWave(SF, 1200, .5)*.5; EarlyWithdrawalSound = W1+W2;
-P = SF/100; Interval = P;
-for x = 1:50 % Gate waveform to create pulses
-    EarlyWithdrawalSound(P:P+Interval) = 0;
-    P = P+(Interval*2);
-end
+P = SF/100;
+GateVector = repmat([ones(1,P) zeros(1,P)], 1, 25);
+EarlyWithdrawalSound = EarlyWithdrawalSound.*GateVector; % Gate waveform to create aversive pulses
 
 % Program sound server
 % A.BpodEvents = 'On';
