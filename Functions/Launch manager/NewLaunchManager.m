@@ -140,6 +140,7 @@ end
 
 function ProtocolSelectorNavigate (a,b)
 global BpodSystem
+isNewFolder = false;
 currentValue = get(BpodSystem.GUIHandles.ProtocolSelector, 'Value');
 String = get(BpodSystem.GUIHandles.ProtocolSelector, 'String');
 if currentValue == BpodSystem.GUIData.ProtocolSelectorLastValue
@@ -152,7 +153,7 @@ if currentValue == BpodSystem.GUIData.ProtocolSelectorLastValue
         else
             BpodSystem.Path.ProtocolFolder = fullfile(BpodSystem.Path.ProtocolFolder, FolderName);
         end
-        BpodSystem.GUIData.ProtocolSelectorLastValue = 1;
+        isNewFolder = true;
         loadProtocols;
     end
 else
@@ -176,7 +177,11 @@ else
         BpodSystem.Status.CurrentProtocolName = ProtocolName;
     end
 end
-BpodSystem.GUIData.ProtocolSelectorLastValue = currentValue;
+if isNewFolder
+    BpodSystem.GUIData.ProtocolSelectorLastValue = 1;
+else
+    BpodSystem.GUIData.ProtocolSelectorLastValue = currentValue;
+end
 
 
 function SubjectSelectorNavigate (a,b)

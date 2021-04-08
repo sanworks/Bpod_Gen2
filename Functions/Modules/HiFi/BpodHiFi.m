@@ -11,14 +11,16 @@ classdef BpodHiFi < handle
         SynthAmplitude
         SynthFrequency
         SynthWaveform
+        SynthAmplitudeFade % nSamples to reach setpoint (instant if set to 0)
         DigitalAttenuation_dB
     end
     properties (Access = private)
         maxWaves = 20;
         maxSamplesPerWaveform = 0;
         maxEnvelopeSamples = 2000;
-        MaxAmplitudeBits = 30000;
+        MaxAmplitudeBits = 32767;
         MaxSynthFrequency = 80000;
+        MaxAmplitudeFadeSamples = 1920000;
         validSynthWaveforms = {'WhiteNoise', 'Sine'};
         waveforms;
         LoadOp = 'L';
@@ -54,6 +56,7 @@ classdef BpodHiFi < handle
             obj.SynthAmplitude = 0;
             obj.SynthFrequency = 1000;
             obj.SynthWaveform = 'WhiteNoise';
+            obj.SynthAmplitudeFade = 0;
             obj.LoopMode = logical(zeros(1,obj.maxWaves));
             obj.LoopDuration = zeros(1,obj.maxWaves);
             switch obj.bitDepth
@@ -112,10 +115,11 @@ classdef BpodHiFi < handle
             end
             obj.LoadMode = Mode;
         end
-        function set.SynthAmplitude(obj, AmplitudeBits)
-            if (AmplitudeBits < 0) || (AmplitudeBits > obj.MaxAmplitudeBits)
-                error(['Error: Synth amplitude must fall in range 0-' num2str(obj.MaxAmplitudeBits)])
+        function set.SynthAmplitude(obj, Amplitude)
+            if (Amplitude < 0) || (Amplitude > 1)
+                error(['Error: Synth amplitude must fall in range 0-1 where 0 is no signal, and 1 is max range'])
             end
+            AmplitudeBits = round(Amplitude*obj.MaxAmplitudeBits);
             obj.Port.write('N', 'uint8', AmplitudeBits, 'uint16');
             Confirmed = obj.Port.read(1, 'uint8');
             if Confirmed ~= 1
@@ -127,7 +131,7 @@ classdef BpodHiFi < handle
             if (NewFrequency < 0) || (NewFrequency > obj.MaxSynthFrequency)
                 error(['Error: Synth frequency must fall in range 0-' num2str(obj.MaxSynthFrequency)])
             end
-            obj.Port.write('Q', 'uint8', NewFrequency*1000, 'uint32');
+            obj.Port.write('F', 'uint8', NewFrequency*1000, 'uint32');
             Confirmed = obj.Port.read(1, 'uint8');
             if Confirmed ~= 1
                 error('Error setting synth frequency. Confirm code not returned.');
@@ -145,6 +149,17 @@ classdef BpodHiFi < handle
                 error('Error setting synth waveform. Confirm code not returned.');
             end
             obj.SynthWaveform = NewWaveform;
+        end
+        function set.SynthAmplitudeFade(obj, nSamples)
+            if (nSamples < 0) || (nSamples > obj.MaxAmplitudeFadeSamples)
+                error(['Error: Amplitude fade must fall in range 0-' num2str(obj.MaxAmplitudeFadeSamples) ' samples.'])
+            end
+            obj.Port.write('Z', 'uint8', nSamples, 'uint32');
+            Confirmed = obj.Port.read(1, 'uint8');
+            if Confirmed ~= 1
+                error('Error setting amplitude fade. Confirm code not returned.');
+            end
+            obj.SynthAmplitudeFade = nSamples;
         end
         function set.LoopMode(obj, LoopModes)
             if length(LoopModes) ~= obj.maxWaves
