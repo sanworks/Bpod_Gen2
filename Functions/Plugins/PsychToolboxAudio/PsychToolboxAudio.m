@@ -35,12 +35,15 @@ classdef PsychToolboxAudio < handle
     end
     
     methods
-        function obj = PsychToolboxAudio
+        function obj = PsychToolboxAudio(emulator_flag)
             global BpodSystem
             if isprop(BpodSystem, 'EmulatorMode')
                 obj.EmulatorMode = BpodSystem.EmulatorMode;
             else
                 obj.EmulatorMode = 0;
+            end
+            if nargin == 1
+                obj.EmulatorMode = emulator_flag;
             end
             if obj.EmulatorMode == 0
                 try
