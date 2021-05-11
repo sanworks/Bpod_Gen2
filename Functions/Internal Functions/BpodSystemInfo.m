@@ -44,7 +44,7 @@ obj.GUIHandles.Console = axes('units','normalized', 'position',[0 0 1 1]);
             image(BG); axis off;
 
 YPos = 25; XPos = 30;
-MachineTypes = {'v0.5', 'v0.7-1.0', 'v2.0'};
+MachineTypes = {'v0.5', 'v0.7-1.0', 'v2.0', 'v2.0+'};
 text(XPos, 10,'State Machine', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor, 'FontWeight', 'Bold'); 
 text(XPos, YPos,['Firmware Version: ' num2str(BpodSystem.FirmwareVersion)], 'FontSize', 11, 'FontWeight', 'Bold'); YPos = YPos + 15;
 text(XPos, YPos,['Hardware: ' MachineTypes{BpodSystem.MachineType}], 'FontSize', Med); YPos = YPos + 15;

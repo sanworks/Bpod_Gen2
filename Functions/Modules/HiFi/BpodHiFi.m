@@ -22,7 +22,6 @@ classdef BpodHiFi < handle
         MaxSynthFrequency = 80000;
         MaxAmplitudeFadeSamples = 1920000;
         validSynthWaveforms = {'WhiteNoise', 'Sine'};
-        waveforms;
         LoadOp = 'L';
         Initialized = 0;
         bitDepth
@@ -32,6 +31,7 @@ classdef BpodHiFi < handle
         minAttenuation_HD = -120;
         headphoneAmpEnableWarned = false;
         headphoneAmpGainWarned = false;
+        MaxDataTransferAttempts = 3;
     end
     methods
         function obj = BpodHiFi(portString)
@@ -55,7 +55,7 @@ classdef BpodHiFi < handle
             obj.DigitalAttenuation_dB = double(digitalAttBits)*-0.5;
             obj.maxSamplesPerWaveform = InfoParams32Bit(2)*obj.SamplingRate;
             obj.maxEnvelopeSamples = InfoParams32Bit(3);
-            obj.LoadMode = 'Fast';
+            obj.LoadMode = 'Safe';
             obj.HeadphoneAmpEnabled = false;
             obj.HeadphoneAmpGain = 52;
             obj.SynthAmplitude = 0;
@@ -71,6 +71,12 @@ classdef BpodHiFi < handle
                     obj.audioDataType = 'int32';
             end
             obj.Initialized = 1;
+            try
+                % Load 1s of blank audio data. This will force Windows to configure USB serial interface for high speed transfer.
+                obj.Port.write([obj.LoadOp 0], 'uint8', obj.SamplingRate, 'uint32', zeros(1,2*obj.SamplingRate), 'int16');
+                Confirmed = obj.Port.read(1, 'uint8');
+            catch
+            end
         end
         function set.SamplingRate(obj, SF)
             if obj.Initialized == 1
@@ -247,7 +253,11 @@ classdef BpodHiFi < handle
             end
              obj.AMenvelope = Envelope;
         end
-        function load(obj, waveIndex, waveform) % Must be stereo 2xn vector
+        function load(obj, waveIndex, waveform, varargin) % Must be stereo 2xn vector
+            PacketSize = 0;
+            if nargin > 3
+                PacketSize = varargin{1};
+            end
             if (waveIndex < 1) || (waveIndex > obj.maxWaves)
                 error(['Error: wave index must be in range [1, ' num2str(obj.maxWaves) ']'])
             end
@@ -269,33 +279,22 @@ classdef BpodHiFi < handle
             elseif obj.bitDepth == 32
                 formattedWaveform = waveform(1:end)*2147483647;
             end
-            % The single line transmission writes too fast, causing dropped data (Oddly not with PySerial!)
-            %obj.Port.write([obj.LoadOp waveIndex-1], 'uint8', nSamples, 'uint32', formattedWaveform, 'int16');
-            
-            % Breaking the transmission into packets fixes the issue
-            switch obj.LoadOp
-                case 'L'
-                    PacketSize = 192;
-                case '>'
-                    PacketSize = 128;
+            nTries = 0;
+            while nTries < obj.MaxDataTransferAttempts
+                obj.Port.write([obj.LoadOp waveIndex-1], 'uint8', nSamples, 'uint32', formattedWaveform, 'int16');
+                Confirmed = obj.Port.read(1, 'uint8');
+                if Confirmed == 1
+                    break;
+                elseif Confirmed == 0
+                    disp(['HiFi Module: Data was dropped during USB transfer. Retries attempted = ' num2str(nTries)])
+                    nTries = nTries + 1;
+                else
+                    error('Error loading waveform. Confirm code not returned.');
+                end
             end
-            nFullPackets = floor(length(formattedWaveform)/PacketSize);
-            Pos = 1;
-            partialPacketLength = rem(length(formattedWaveform), PacketSize);
-            obj.Port.write([obj.LoadOp waveIndex-1], 'uint8', nSamples, 'uint32');
-            for i = 1:nFullPackets
-                obj.Port.write(formattedWaveform(Pos:Pos+PacketSize-1), obj.audioDataType);
-                Pos = Pos + PacketSize;
+            if nTries > 0
+                disp('HiFi Module: Transfer retry success');
             end
-            if partialPacketLength > 0
-                obj.Port.write(formattedWaveform(Pos:end), obj.audioDataType);
-            end
-            
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error loading waveform. Confirm code not returned.');
-            end
-            obj.waveforms{waveIndex} = formattedWaveform;
         end
         function play(obj, waveIndex) % Play a waveform immediately on specified channel(s)
             if waveIndex <= obj.maxWaves
