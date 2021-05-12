@@ -31,17 +31,17 @@ classdef BpodHiFi < handle
         minAttenuation_HD = -120;
         headphoneAmpEnableWarned = false;
         headphoneAmpGainWarned = false;
-        MaxDataTransferAttempts = 3;
+        MaxDataTransferAttempts = 5;
     end
     methods
         function obj = BpodHiFi(portString)
-            obj.Port = ArCOMObject_Bpod(portString, 115200);
+            obj.Port = ArCOMObject_Bpod(portString, 115200, 'Java');
             obj.Port.write(243, 'uint8');
             Ack = obj.Port.read(1, 'uint8');
             if Ack ~= 244
                 error('Error: Incorrect handshake byte returned');
             end
-            if ~obj.Port.UsePsychToolbox == 1
+            if ~ispc && ~obj.Port.UsePsychToolbox == 1
                 warning('HiFi Module data transfer may be unstable unless PsychToolbox is installed. Please install PsychToolbox for optimal performance.');
             end
             obj.Port.write('I', 'uint8');
@@ -72,8 +72,8 @@ classdef BpodHiFi < handle
             end
             obj.Initialized = 1;
             try
-                % Load 1s of blank audio data. This will force Windows to configure USB serial interface for high speed transfer.
-                obj.Port.write([obj.LoadOp 0], 'uint8', obj.SamplingRate, 'uint32', zeros(1,2*obj.SamplingRate), 'int16');
+                % Load 10s of blank audio data. This will force Windows to configure USB serial interface for high speed transfer.
+                obj.Port.write([obj.LoadOp 0], 'uint8', obj.SamplingRate*10, 'uint32', zeros(1,20*obj.SamplingRate), 'int16');
                 Confirmed = obj.Port.read(1, 'uint8');
             catch
             end
