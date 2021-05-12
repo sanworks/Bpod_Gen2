@@ -22,7 +22,7 @@ classdef BpodHiFi < handle
         MaxSynthFrequency = 80000;
         MaxAmplitudeFadeSamples = 1920000;
         validSynthWaveforms = {'WhiteNoise', 'Sine'};
-        LoadOp = 'L';
+        LoadOp = '>';
         Initialized = 0;
         bitDepth
         audioDataType
