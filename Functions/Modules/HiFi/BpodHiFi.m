@@ -35,7 +35,7 @@ classdef BpodHiFi < handle
     end
     methods
         function obj = BpodHiFi(portString)
-            obj.Port = ArCOMObject_Bpod(portString, 115200, 'Java');
+            obj.Port = ArCOMObject_Bpod(portString, 115200);
             obj.Port.write(243, 'uint8');
             Ack = obj.Port.read(1, 'uint8');
             if Ack ~= 244
@@ -280,8 +280,9 @@ classdef BpodHiFi < handle
                 formattedWaveform = waveform(1:end)*2147483647;
             end
             nTries = 0;
+            byteString = [uint8([obj.LoadOp waveIndex-1]) typecast(uint32(nSamples), 'uint8') typecast(int16(formattedWaveform), 'uint8')];
             while nTries < obj.MaxDataTransferAttempts
-                obj.Port.write([obj.LoadOp waveIndex-1], 'uint8', nSamples, 'uint32', formattedWaveform, 'int16');
+                obj.Port.write(byteString, 'uint8');
                 Confirmed = obj.Port.read(1, 'uint8');
                 if Confirmed == 1
                     break;
