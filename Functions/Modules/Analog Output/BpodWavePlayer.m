@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2021 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -368,6 +368,21 @@ classdef BpodWavePlayer < handle
         end
         function stop(obj)
             obj.Port.write('X', 'uint8');
+        end
+        function setFixedOutput(obj, Channels, DACOutputBits) % Channels are a list of channels to set. DACOutputBits range from 0-65535, mapped to current output range
+            if obj.nChannels > 4
+                error('Error: While in beta testing, this function is only supported on the 4ch version of the analog output module')
+            end
+            ChannelBits = 0;
+            for i = 1:length(Channels)
+                ChannelBits = ChannelBits + 2^(Channels(i)-1);
+            end
+            ChannelBits = ChannelBits + 128; % Op codes in range 129-143 indicate channels to set, with last 4 bits encoding target channel(s)
+            obj.Port.write(ChannelBits, 'uint8', DACOutputBits, 'uint16');
+            Confirmed = obj.Port.read(1, 'uint8');
+            if Confirmed ~= 1
+                error('Error setting fixed output voltage(s). Confirm code not returned.');
+            end
         end
         function delete(obj)
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
