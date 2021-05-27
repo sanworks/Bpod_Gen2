@@ -2,7 +2,6 @@ classdef BpodHiFi < handle
     properties
         Port
         SamplingRate
-        LoadMode % 'Fast' to load sounds fast (potentially disrupting playback) or 'Safe' to load slower, but playback-safe
         AMenvelope % If defined, a vector of amplitude coefficients for each waveform on onest + offset (in reverse)
         LoopMode %For each wave, 'On' loops the waveform until LoopDuration seconds, or until toggled off. 'Off' = one shot.
         LoopDuration % (seconds) In loop mode, specifies the duration to loop the waveform following a trigger. 0 = until canceled.
@@ -22,7 +21,6 @@ classdef BpodHiFi < handle
         MaxSynthFrequency = 80000;
         MaxAmplitudeFadeSamples = 1920000;
         validSynthWaveforms = {'WhiteNoise', 'Sine'};
-        LoadOp = '>';
         Initialized = 0;
         bitDepth
         audioDataType
@@ -55,7 +53,6 @@ classdef BpodHiFi < handle
             obj.DigitalAttenuation_dB = double(digitalAttBits)*-0.5;
             obj.maxSamplesPerWaveform = InfoParams32Bit(2)*obj.SamplingRate;
             obj.maxEnvelopeSamples = InfoParams32Bit(3);
-            obj.LoadMode = 'Safe';
             obj.HeadphoneAmpEnabled = false;
             obj.HeadphoneAmpGain = 52;
             obj.SynthAmplitude = 0;
@@ -73,7 +70,7 @@ classdef BpodHiFi < handle
             obj.Initialized = 1;
             try
                 % Load 10s of blank audio data. This will force Windows to configure USB serial interface for high speed transfer.
-                obj.Port.write([obj.LoadOp 0], 'uint8', obj.SamplingRate*10, 'uint32', zeros(1,20*obj.SamplingRate), 'int16');
+                obj.Port.write(['L' 0], 'uint8', obj.SamplingRate*10, 'uint32', zeros(1,20*obj.SamplingRate), 'int16');
                 Confirmed = obj.Port.read(1, 'uint8');
             catch
             end
@@ -114,17 +111,6 @@ classdef BpodHiFi < handle
                 end
             end
             obj.DigitalAttenuation_dB = attenuation;
-        end
-        function set.LoadMode(obj,Mode)
-            switch Mode
-                case 'Fast'
-                    obj.LoadOp = 'L';
-                case 'Safe'
-                    obj.LoadOp = '>';
-                otherwise
-                    error(['Error: ' Mode ' is not a valid load mode. Valid modes are: ''Fast'', ''Safe'''])
-            end
-            obj.LoadMode = Mode;
         end
         function set.SynthAmplitude(obj, Amplitude)
             if (Amplitude < 0) || (Amplitude > 1)
@@ -280,7 +266,7 @@ classdef BpodHiFi < handle
                 formattedWaveform = waveform(1:end)*2147483647;
             end
             nTries = 0;
-            byteString = [uint8([obj.LoadOp waveIndex-1]) typecast(uint32(nSamples), 'uint8') typecast(int16(formattedWaveform), 'uint8')];
+            byteString = [uint8(['L' waveIndex-1]) typecast(uint32(nSamples), 'uint8') typecast(int16(formattedWaveform), 'uint8')];
             while nTries < obj.MaxDataTransferAttempts
                 obj.Port.write(byteString, 'uint8');
                 Confirmed = obj.Port.read(1, 'uint8');
