@@ -96,9 +96,8 @@ EarlyWithdrawalSound = EarlyWithdrawalSound.*GateVector; % Gate waveform to crea
 % A.BpodEvents = 'On';
 % A.TriggerMode = 'Master';
 H.HeadphoneAmpEnabled = true; H.HeadphoneAmpGain = 20; % Ignored if using HD version of the HiFi module
-H.DigitalAttenuation_dB = -20; % Set a comfortable listening level for most headphones (useful during protocol dev).
-H.LoadMode = 'Fast';
-% NOTE!! Temporary hack to make all sounds stereo
+H.DigitalAttenuation_dB = -25; % Set a comfortable listening level for most headphones (useful during protocol dev).
+
 H.load(1, LeftSound);
 H.load(2, RightSound);
 H.load(3, PunishSound);
@@ -107,7 +106,6 @@ H.push;
 Envelope = 1/(SF*0.001):1/(SF*0.001):1; % Define 1ms linear ramp envelope of amplitude coefficients, to apply at sound onset + in reverse at sound offset
 %Envelope = [];
 H.AMenvelope = Envelope;
-H.LoadMode = 'Safe';
 LoadSerialMessages('HiFi1', {['P' 0],['P' 1],['P' 2],['P' 3],['X'], ['*']});
 
 %% Prepare and start first trial
@@ -127,8 +125,8 @@ for currentTrial = 1:MaxTrials
     % the state machine as fields of settings struct S e.g. S.learningRate = 0.2.
     SendStateMachine(sma, 'RunASAP'); % With TrialManager, you can send the next trial's state machine while the current trial is ongoing
     % Update sounds
-    LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration)*.9; % Sampling freq (hz), Sine frequency (hz), duration (s)
-    RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration)*.9; % Sampling freq (hz), Sine frequency (hz), duration (s)
+    LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
+    RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
     H.load(1, LeftSound);
     H.load(2, RightSound);
     RawEvents = TrialManager.getTrialData; % Hangs here until trial is over, then retrieves full trial's raw data
@@ -166,7 +164,7 @@ sma = SetCondition(sma, 2, 'Port3', 0); % Condition 2: Port 3 low (is out)
 sma = AddState(sma, 'Name', 'WaitForPoke', ...
     'Timer', 0,...
     'StateChangeConditions', {'Port2In', 'CueDelay'},...
-    'OutputActions', {'HiFi1', 6}); % Push command 
+    'OutputActions', {'HiFi1', 6, 'LED', 2}); % Serial message #6 = 'Push' command, to make any newly loaded sounds current
 sma = AddState(sma, 'Name', 'CueDelay', ...
     'Timer', S.GUI.CueDelay,...
     'StateChangeConditions', {'Port2Out', 'EarlyWithdrawal', 'Tup', 'DeliverStimulus'},...
