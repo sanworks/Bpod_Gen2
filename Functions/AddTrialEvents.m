@@ -42,11 +42,15 @@ else
             case 3
                 TE.Info.StateMachineVersion = 'Bpod 2.0';
         end
-    end
+    end    
     TE.Info.SessionDate = datestr(now, 1);
     TheTime = now;
     TE.Info.SessionStartTime_UTC = datestr(TheTime, 13);
     TE.Info.SessionStartTime_MATLAB = TheTime;
+    TE.Info.SettingsFile = BpodSystem.ProtocolSettings;
+    if ~strcmp(BpodSystem.Name, '')
+        TE.Info.BpodName = BpodSystem.Name;
+    end
 end
 TE.nTrials = TrialNum;
 %% Parse and add raw events for this trial
@@ -90,8 +94,8 @@ TE.RawData.OriginalStateData{TrialNum} = RawTrialEvents.States;
 TE.RawData.OriginalEventData{TrialNum} = RawTrialEvents.Events;
 TE.RawData.OriginalStateTimestamps{TrialNum} = RawTrialEvents.StateTimestamps;
 TE.RawData.OriginalEventTimestamps{TrialNum} = RawTrialEvents.EventTimestamps;
+TE.RawData.StateMachineErrorCodes{TrialNum} = RawTrialEvents.ErrorCodes;
 TE.TrialStartTimestamp(TrialNum) = RawTrialEvents.TrialStartTimestamp;
 TE.TrialEndTimestamp(TrialNum) = RawTrialEvents.TrialEndTimestamp;
-TE.RawData.StateMachineErrorCodes{TrialNum} = RawTrialEvents.ErrorCodes;
-TE.SettingsFile = BpodSystem.ProtocolSettings;
+TE.DataTimestamp(TrialNum) = now;
 newTE = TE;
