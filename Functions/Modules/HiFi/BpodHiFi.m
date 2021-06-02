@@ -51,7 +51,7 @@ classdef BpodHiFi < handle
             obj.maxWaves = InfoParams8Bit(3);
             digitalAttBits = InfoParams8Bit(4);
             obj.DigitalAttenuation_dB = double(digitalAttBits)*-0.5;
-            obj.maxSamplesPerWaveform = InfoParams32Bit(2)*obj.SamplingRate;
+            obj.maxSamplesPerWaveform = InfoParams32Bit(2)*192000;
             obj.maxEnvelopeSamples = InfoParams32Bit(3);
             obj.HeadphoneAmpEnabled = false;
             obj.HeadphoneAmpGain = 52;
