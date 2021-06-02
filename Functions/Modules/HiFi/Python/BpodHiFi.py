@@ -19,6 +19,7 @@ class BpodHiFi(object):
     
     def load(self, waveIndex, waveform):
         # waveform must be a 1xN or 2xN numpy array in range [-1, 1]
+        isStereo = 1 # Placeholder for future mono data transfer
         bitDepth = 16
         if waveform.ndim == 1:
             waveform = np.stack((waveform, waveform))
@@ -26,7 +27,7 @@ class BpodHiFi(object):
         if bitDepth == 16:
             waveform = waveform*32767
         formattedWaveform = np.ravel(waveform, order='F')
-        self.Port.write((ord('L'),waveIndex), 'uint8', nSamples, 'uint32', formattedWaveform, 'int16')
+        self.Port.write((ord('L'),waveIndex,isStereo), 'uint8', nSamples, 'uint32', formattedWaveform, 'int16')
         confirm = self.Port.read(1, 'uint8')
         if confirm != 1:
              raise HiFiError('Error: Confirm code not returned.')

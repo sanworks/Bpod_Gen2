@@ -1,7 +1,7 @@
 from BpodHiFi import BpodHiFi
 import numpy as np
 import time
-H = BpodHiFi('COM32')
+H = BpodHiFi('COM22')
 time.sleep(0.01)
 SF = 192000
 Freq = 1000

@@ -70,7 +70,7 @@ classdef BpodHiFi < handle
             obj.Initialized = 1;
             try
                 % Load 10s of blank audio data. This will force Windows to configure USB serial interface for high speed transfer.
-                obj.Port.write(['L' 0], 'uint8', obj.SamplingRate*10, 'uint32', zeros(1,20*obj.SamplingRate), 'int16');
+                obj.Port.write(['L' 0 1], 'uint8', obj.SamplingRate*10, 'uint32', zeros(1,20*obj.SamplingRate), 'int16');
                 Confirmed = obj.Port.read(1, 'uint8');
             catch
             end
@@ -240,7 +240,7 @@ classdef BpodHiFi < handle
              obj.AMenvelope = Envelope;
         end
         function load(obj, waveIndex, waveform, varargin) % Must be stereo 2xn vector
-            PacketSize = 0;
+            isStereo = 1; % Placeholder for stereo indicator (all waveforms are converted to stereo in this version)
             if nargin > 3
                 PacketSize = varargin{1};
             end
@@ -266,7 +266,7 @@ classdef BpodHiFi < handle
                 formattedWaveform = waveform(1:end)*2147483647;
             end
             nTries = 0;
-            byteString = [uint8(['L' waveIndex-1]) typecast(uint32(nSamples), 'uint8') typecast(int16(formattedWaveform), 'uint8')];
+            byteString = [uint8(['L' waveIndex-1 isStereo]) typecast(uint32(nSamples), 'uint8') typecast(int16(formattedWaveform), 'uint8')];
             while nTries < obj.MaxDataTransferAttempts
                 obj.Port.write(byteString, 'uint8');
                 Confirmed = obj.Port.read(1, 'uint8');
