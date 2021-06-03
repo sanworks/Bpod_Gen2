@@ -12,6 +12,7 @@ classdef BpodHiFi < handle
         SynthWaveform
         SynthAmplitudeFade % nSamples to reach setpoint (instant if set to 0)
         DigitalAttenuation_dB
+        VerboseMode = false;
     end
     properties (Access = private)
         maxWaves = 20;
@@ -61,6 +62,7 @@ classdef BpodHiFi < handle
             obj.SynthAmplitudeFade = 0;
             obj.LoopMode = logical(zeros(1,obj.maxWaves));
             obj.LoopDuration = zeros(1,obj.maxWaves);
+            obj.AMenvelope = [];
             switch obj.bitDepth
                 case 16
                     obj.audioDataType = 'int16';
@@ -184,8 +186,10 @@ classdef BpodHiFi < handle
                 end
             else
                 if ~obj.headphoneAmpEnableWarned && obj.Initialized == 1
-                    disp('Warning: HeadphoneAmpEnabled setting ignored. The HD version of the HiFi Module does not have a headphone amplifier.');
-                    obj.headphoneAmpEnableWarned = true;
+                    if obj.VerboseMode
+                        disp('HiFi Module: HeadphoneAmpEnabled setting ignored. The HD version of the HiFi Module does not have a headphone amplifier.');
+                        obj.headphoneAmpEnableWarned = true;
+                    end
                 end
             end
             obj.HeadphoneAmpEnabled = State;
@@ -203,8 +207,10 @@ classdef BpodHiFi < handle
                 end
             else
                 if ~obj.headphoneAmpGainWarned && obj.Initialized == 1
-                    disp('Warning: HeadphoneAmpGain setting ignored. The HD version of the HiFi Module does not have a headphone amplifier.');
-                    obj.headphoneAmpGainWarned = true;
+                    if obj.VerboseMode
+                        disp('HiFi Module: HeadphoneAmpGain setting ignored. The HD version of the HiFi Module does not have a headphone amplifier.');
+                        obj.headphoneAmpGainWarned = true;
+                    end
                 end
             end
             obj.HeadphoneAmpGain = Gain;
@@ -240,7 +246,9 @@ classdef BpodHiFi < handle
              obj.AMenvelope = Envelope;
         end
         function load(obj, waveIndex, waveform, varargin) % Must be stereo 2xn vector
-            isStereo = 1; % Placeholder for stereo indicator (all waveforms are converted to stereo in this version)
+            if obj.VerboseMode
+                startTime = now;
+            end
             if nargin > 3
                 PacketSize = varargin{1};
             end
@@ -248,17 +256,23 @@ classdef BpodHiFi < handle
                 error(['Error: wave index must be in range [1, ' num2str(obj.maxWaves) ']'])
             end
             [nChannels,nSamples] = size(waveform);
-            
             switch nChannels
                 case 1
-                    waveform = [waveform; waveform]; % Convert to Stereo
+                    isStereo = 0;
                 case 2
-                    
+                    isStereo = 1;
                 otherwise
                     error('Error: Audio data must be a 1xn (Mono) or 2xn (Stereo) array of sound samples')
             end
             if length(waveform) > obj.maxSamplesPerWaveform
                 error(['Error: Waveform too long. The current firmware supports up to ' num2str(obj.maxSamplesPerWaveform) ' samples per waveform.']);
+            end
+            if obj.VerboseMode
+                WaveType = 'Mono';
+                if isStereo
+                   WaveType = 'Stereo'; 
+                end
+                disp(['HiFi Module: Loading a ' num2str(nSamples) ' sample ' WaveType ' waveform to slot#' num2str(waveIndex) '.']); 
             end
             if obj.bitDepth == 16
                 formattedWaveform = waveform(1:end)*32767;
@@ -273,14 +287,23 @@ classdef BpodHiFi < handle
                 if Confirmed == 1
                     break;
                 elseif Confirmed == 0
-                    disp(['HiFi Module: Data was dropped during USB transfer. Retries attempted = ' num2str(nTries)])
+                    if obj.VerboseMode
+                        disp(['HiFi Module: Data was dropped during USB transfer. Retries attempted = ' num2str(nTries)])
+                    end
                     nTries = nTries + 1;
                 else
                     error('Error loading waveform. Confirm code not returned.');
                 end
             end
             if nTries > 0
-                disp('HiFi Module: Transfer retry success');
+                if obj.VerboseMode
+                    disp('HiFi Module: Transfer retry success');
+                end
+            end
+            if obj.VerboseMode
+                transferTime = (now - startTime)*100000;
+                transferSpeed = ((length(byteString) / transferTime)/1000000)*8;
+                disp(['HiFi Module: Transfer complete. Transfer time: ' num2str(transferTime) 's. Transfer speed: ' num2str(transferSpeed) ' Mb/s']); 
             end
         end
         function play(obj, waveIndex) % Play a waveform immediately on specified channel(s)
