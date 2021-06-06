@@ -389,6 +389,9 @@ if OpCode == 'V'
 elseif OpCode == 'S'
     HandleSoftCode(uint8(OverrideMessage(2)));
     ManualOverrideEvent = [];
+elseif OpCode == '~'
+    SoftCodeChannel = uint8(OverrideMessage(2));
+    ManualOverrideEvent = BpodSystem.HW.Pos.Event_USB + SoftCodeChannel;
 else
     ManualOverrideEvent = [];
 end
