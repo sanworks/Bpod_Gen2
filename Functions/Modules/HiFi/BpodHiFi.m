@@ -1,6 +1,7 @@
 classdef BpodHiFi < handle
     properties
         Port
+        Info
         SamplingRate
         AMenvelope % If defined, a vector of amplitude coefficients for each waveform on onest + offset (in reverse)
         LoopMode %For each wave, 'On' loops the waveform until LoopDuration seconds, or until toggled off. 'Off' = one shot.
@@ -63,6 +64,12 @@ classdef BpodHiFi < handle
             obj.LoopMode = logical(zeros(1,obj.maxWaves));
             obj.LoopDuration = zeros(1,obj.maxWaves);
             obj.AMenvelope = [];
+            obj.Info = struct;
+            obj.Info.bitDepth = obj.bitDepth;
+            obj.Info.maxSounds = obj.maxWaves;
+            obj.Info.maxSamplesPerWaveform = obj.maxSamplesPerWaveform;
+            obj.Info.maxEnvelopeSamples = obj.maxEnvelopeSamples;
+            obj.Info.maxAmplitudeFadeSamples = obj.MaxAmplitudeFadeSamples;
             switch obj.bitDepth
                 case 16
                     obj.audioDataType = 'int16';
@@ -278,6 +285,11 @@ classdef BpodHiFi < handle
                 formattedWaveform = waveform(1:end)*32767;
             elseif obj.bitDepth == 32
                 formattedWaveform = waveform(1:end)*2147483647;
+            end
+            if nSamples == 1 
+                if isStereo == 1
+                    formattedWaveform = formattedWaveform';
+                end
             end
             nTries = 0;
             byteString = [uint8(['L' waveIndex-1 isStereo]) typecast(uint32(nSamples), 'uint8') typecast(int16(formattedWaveform), 'uint8')];

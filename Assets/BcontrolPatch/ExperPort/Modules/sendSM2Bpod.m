@@ -7,6 +7,9 @@ if nargin > 1
     end
 end
 AudioPlayerOutputCh = find(strcmp(BpodSystem.Modules.Name, 'AudioPlayer1'));
+if isempty(AudioPlayerOutputCh)
+    AudioPlayerOutputCh = find(strcmp(BpodSystem.Modules.Name, 'HiFi1'));
+end
 WavePlayerOutputCh = find(strcmp(BpodSystem.Modules.Name, 'WavePlayer1'));
 HasAudioPlayer = 0;
 if ~isempty(AudioPlayerOutputCh)
@@ -187,7 +190,11 @@ if HasAudioPlayer == 0
         error('Error: A Bpod AudioPlayer module is required to run this state matrix, but none is connected.')
     end
 else
-    BpodOutputMatrixCol_Snd = find(strcmp(BpodSystem.StateMachineInfo.OutputChannelNames, 'AudioPlayer1'));
+    if BpodSystem.PluginObjects.SoundServerType == 1
+        BpodOutputMatrixCol_Snd = find(strcmp(BpodSystem.StateMachineInfo.OutputChannelNames, 'AudioPlayer1'));
+    elseif BpodSystem.PluginObjects.SoundServerType == 2
+        BpodOutputMatrixCol_Snd = find(strcmp(BpodSystem.StateMachineInfo.OutputChannelNames, 'HiFi1'));
+    end
     nSoundsSupported = BpodSystem.PluginObjects.SoundServer.Info.maxSounds;
     SoundOut(SoundOut < 0) = (SoundOut(SoundOut < 0)*-1)+double(nSoundsSupported); % 1 more than the max number of sounds begins sound-off codes.
     SoundOut(1) = uint8('*'); % State 1 (equiv to state 0) sends a "push" signal to the sound server, to set newly
