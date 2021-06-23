@@ -79,7 +79,7 @@ classdef BpodHiFi < handle
             obj.Initialized = 1;
             try
                 % Load 10s of blank audio data. This will force Windows to configure USB serial interface for high speed transfer.
-                obj.Port.write(['L' 0 1], 'uint8', obj.SamplingRate*10, 'uint32', zeros(1,20*obj.SamplingRate), 'int16');
+                obj.Port.write(['L' 0 1], 'uint8', obj.SamplingRate*10, 'uint32', zeros(2,20*obj.SamplingRate), 'int16');
                 Confirmed = obj.Port.read(1, 'uint8');
             catch
             end
