@@ -23,7 +23,7 @@ import serial
 class ArCOMObject(object):
     def __init__(self, serialPortName, baudRate):
         self.serialObject = 0
-        self.typeNames = ('uint8', 'int8', 'char', 'uint16', 'int16', 'uint32', 'int32')
+        self.typeNames = ('uint8', 'int8', 'char', 'uint16', 'int16', 'uint32', 'int32', 'single')
         self.typeBytes = (1, 1, 1, 2, 2, 4, 4)
         self.typeSymbols = ('B', 'b', 'c', 'H', 'h', 'L', 'l')
         self.serialObject = serial.Serial(serialPortName, timeout=10, rtscts=True)
