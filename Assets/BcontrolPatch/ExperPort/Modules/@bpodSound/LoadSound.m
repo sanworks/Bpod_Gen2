@@ -66,10 +66,7 @@ function [sm] = LoadSound(sm, trignum, sound, side, tau_ms, predelay_s, loop_fg)
      if BpodSystem.PluginObjects.SoundServerType == 1
         BpodSystem.PluginObjects.SoundServer.loadSound(trignum, sound, loop_fg);
      elseif BpodSystem.PluginObjects.SoundServerType == 2
-        BpodSystem.PluginObjects.SoundServer.load(trignum, sound);
-        if loop_fg ~= BpodSystem.PluginObjects.SoundServer.LoopMode(trignum)
-            BpodSystem.PluginObjects.SoundServer.LoopMode(trignum) = loop_fg;
-        end
+        BpodSystem.PluginObjects.SoundServer.load(trignum, sound, loop_fg);
      end
      return
    end;

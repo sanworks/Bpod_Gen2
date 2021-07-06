@@ -4,8 +4,6 @@ classdef BpodHiFi < handle
         Info
         SamplingRate
         AMenvelope % If defined, a vector of amplitude coefficients for each waveform on onest + offset (in reverse)
-        LoopMode %For each wave, 'On' loops the waveform until LoopDuration seconds, or until toggled off. 'Off' = one shot.
-        LoopDuration % (seconds) In loop mode, specifies the duration to loop the waveform following a trigger. 0 = until canceled.
         HeadphoneAmpEnabled
         HeadphoneAmpGain
         SynthAmplitude
@@ -61,8 +59,6 @@ classdef BpodHiFi < handle
             obj.SynthFrequency = 1000;
             obj.SynthWaveform = 'WhiteNoise';
             obj.SynthAmplitudeFade = 0;
-            obj.LoopMode = logical(zeros(1,obj.maxWaves));
-            obj.LoopDuration = zeros(1,obj.maxWaves);
             obj.AMenvelope = [];
             obj.Info = struct;
             obj.Info.bitDepth = obj.bitDepth;
@@ -77,12 +73,8 @@ classdef BpodHiFi < handle
                     obj.audioDataType = 'int32';
             end
             obj.Initialized = 1;
-            try
-                % Load 10s of blank audio data. This will force Windows to configure USB serial interface for high speed transfer.
-                obj.Port.write(['L' 0 1], 'uint8', obj.SamplingRate*10, 'uint32', zeros(2,20*obj.SamplingRate), 'int16');
-                Confirmed = obj.Port.read(1, 'uint8');
-            catch
-            end
+            % Load 10s of blank audio data. This will force Windows to configure USB serial interface for high speed transfer.
+            obj.load(1, zeros(2,10*obj.SamplingRate));
         end
         function set.SamplingRate(obj, SF)
             if obj.Initialized == 1
@@ -167,22 +159,6 @@ classdef BpodHiFi < handle
             end
             obj.SynthAmplitudeFade = nSamples;
         end
-        function set.LoopMode(obj, LoopModes)
-            if length(LoopModes) ~= obj.maxWaves
-                error('Error setting loop modes - one loop mode must exist for each wave.')
-            end
-            if ~islogical(LoopModes)
-                if sum(LoopModes > 1)>0 || (sum(LoopModes < 0))>0
-                    error('Error: LoopModes must be 0 (looping disabled) or 1 (looping enabled)')
-                end
-            end
-            obj.Port.write(['O' uint8(LoopModes)], 'uint8');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error setting loop mode. Confirm code not returned.');
-            end
-            obj.LoopMode = LoopModes; 
-        end
         function set.HeadphoneAmpEnabled(obj,State)
             State = logical(State);
             if ~obj.isHD
@@ -222,19 +198,6 @@ classdef BpodHiFi < handle
             end
             obj.HeadphoneAmpGain = Gain;
         end
-        function set.LoopDuration(obj, Duration)
-            if obj.Initialized == 1
-                if length(Duration) ~= obj.maxWaves
-                    error('Error setting loop durations - a duration must exist for each wave.')
-                end
-                obj.Port.write('-', 'uint8', Duration*obj.SamplingRate, 'uint32');
-                Confirmed = obj.Port.read(1, 'uint8');
-                if Confirmed ~= 1
-                    error('Error setting loop duration. Confirm code not returned.');
-                end
-            end
-            obj.LoopDuration = Duration;
-        end
         function set.AMenvelope(obj, Envelope)
             if isempty(Envelope)
                 obj.Port.write(['E' 0], 'uint8');
@@ -253,14 +216,25 @@ classdef BpodHiFi < handle
              obj.AMenvelope = Envelope;
         end
         function load(obj, waveIndex, waveform, varargin) % Must be stereo 2xn vector
+            % Optional arguments: (...'LoopMode', LM, 'LoopDuration', LD)
+            % Where LM = 0 (off) or 1 (on) and LD = Loop Duration in seconds (total time to play looped sound before stopping)
+            % Arguments must be given in this order and with argument/value pairs as shown above for efficient processing
             if obj.VerboseMode
                 startTime = now;
             end
-            if nargin > 3
-                PacketSize = varargin{1};
+            LoopMode = 0;
+            LoopDuration = 0;
+            if nargin > 4 
+                LoopMode = varargin{2};
+            end
+            if nargin > 6 
+                LoopDuration = varargin{4}*obj.SamplingRate;
             end
             if (waveIndex < 1) || (waveIndex > obj.maxWaves)
                 error(['Error: wave index must be in range [1, ' num2str(obj.maxWaves) ']'])
+            end
+            if (LoopDuration < 0)
+                error('Error: loop duration must be 0 or a positive value in seconds')
             end
             [nChannels,nSamples] = size(waveform);
             switch nChannels
@@ -292,7 +266,8 @@ classdef BpodHiFi < handle
                 end
             end
             nTries = 0;
-            byteString = [uint8(['L' waveIndex-1 isStereo]) typecast(uint32(nSamples), 'uint8') typecast(int16(formattedWaveform), 'uint8')];
+            byteString = [uint8(['L' waveIndex-1 isStereo LoopMode]) typecast(uint32([LoopDuration nSamples]), 'uint8')...
+                          typecast(int16(formattedWaveform), 'uint8')];
             while nTries < obj.MaxDataTransferAttempts
                 obj.Port.write(byteString, 'uint8');
                 Confirmed = obj.Port.read(1, 'uint8');
