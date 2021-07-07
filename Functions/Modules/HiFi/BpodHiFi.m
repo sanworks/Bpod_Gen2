@@ -310,6 +310,20 @@ classdef BpodHiFi < handle
         function stop(obj)
             obj.Port.write('X', 'uint8');
         end
+        function result = testPSRAM(obj)
+            obj.Port.write('T', 'uint8');
+            memSize = obj.Port.read(1, 'uint8');
+            disp(['Testing PSRAM. ' num2str(memSize) ' MB detected. This may take up to 20 seconds.']);
+            while obj.Port.bytesAvailable == 0
+                pause(.1);
+            end
+            result = obj.Port.read(1, 'uint8');
+            if result
+                disp('Test PASSED');
+            else
+                disp('Test FAILED');
+            end
+        end
         function delete(obj)
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
         end
