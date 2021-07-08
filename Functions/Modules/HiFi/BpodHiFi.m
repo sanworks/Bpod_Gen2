@@ -61,6 +61,7 @@ classdef BpodHiFi < handle
             obj.SynthAmplitudeFade = 0;
             obj.AMenvelope = [];
             obj.Info = struct;
+            obj.Info.isHD = obj.isHD;
             obj.Info.bitDepth = obj.bitDepth;
             obj.Info.maxSounds = obj.maxWaves;
             obj.Info.maxSamplesPerWaveform = obj.maxSamplesPerWaveform;

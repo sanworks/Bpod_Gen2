@@ -12,7 +12,7 @@ classdef LoadBpodFirmware < handle
             addpath(genpath(fullfile(BpodPath, 'Functions')));
             AllDevices = {'StateMachine_Bpod2_Standard', 'StateMachine_Bpod0_789', 'BpodWavePlayer_4ch',...
                 'BpodWavePlayer_8ch','AnalogInputModule_8ch', 'RotaryEncoderModule', 'DDSModule',...
-                'AmbientModule','BpodAudioPlayerLive_4ch', 'BpodHiFiModule_Base', 'BpodHiFiModule_HD', 'StateMachine_Bpod0_5'};
+                'AmbientModule','BpodAudioPlayerLive_4ch', 'BpodHiFiModule_SD', 'BpodHiFiModule_HD', 'StateMachine_Bpod0_5'};
             SerialPortKeywords = {'COM'};
             nKeywords = length(SerialPortKeywords);
             for k = 1:nKeywords
@@ -108,7 +108,7 @@ classdef LoadBpodFirmware < handle
                         suffix = '.hex';
                         boardType = 'Teensy3_x';
                         PauseFor = 1;
-                    case 'BpodHiFiModule_Base'
+                    case 'BpodHiFiModule_SD'
                         suffix = '.hex';
                         boardType = 'Teensy4_x';
                         PauseFor = 1;
