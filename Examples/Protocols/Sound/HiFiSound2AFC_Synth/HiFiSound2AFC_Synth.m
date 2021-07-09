@@ -18,16 +18,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function HiFiSound2AFC
-% This protocol demonstrates a 2AFC task using the HiFi module to generate sound stimuli.
+% This protocol demonstrates a 2AFC task using the HiFi module's synth features to generate sound stimuli.
 % Subjects initialize each trial with a poke into port 2. After a delay, a tone plays.
-% If subjects exit the port before the tone is finished playing, a dissonant error sound is played.
+% If subjects exit the port before the tone is finished playing, a white noise pulse train is played.
 % Subjects are rewarded for responding left for low-pitch tones, and right for high.
-% A white noise pulse indicates incorrect choice.
+% A long white noise pulse indicates incorrect choice.
 % A TTL pulse is delivered from BNC output CH1 with the tone stimulus. This is
 % useful for viewing stimulus onset latency (e.g. on an oscilloscope).
 % A 1ms linear ramp envelope is applied to the stimulus at onset and offset
-% (even when offset is triggered by the test subject). See 'H.AMenvelope'
-% below to configure a custom envelope, or to disable it by setting to [].
+% (even when offset is triggered by the test subject). See 'H.SynthAmplitudeFade'
+% below to configure a custom envelope duration, or to disable it by setting to 0.
 
 global BpodSystem
 
@@ -57,14 +57,17 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
     S.GUI.SoundDuration = 0.5; % Duration of sound (s)
     S.GUI.SinWaveFreqLeft = 500; % Frequency of left cue
     S.GUI.SinWaveFreqRight = 2000; % Frequency of right cue
+    S.GUI.AmplitudeRamp_ms = 2;
     S.GUI.RewardAmount = 5; % in ul
     S.GUI.StimulusDelayDuration = 0; % Seconds before stimulus plays on each trial
     S.GUI.TimeForResponse = 5; % Seconds after stimulus sampling for a response
+    S.GUI.EarlyWithdrawalTimeout = 0.5; % Seconds to wait on early withdrawal before next trial can start
     S.GUI.PunishTimeoutDuration = 2; % Seconds to wait on errors before next trial can start
     S.GUI.PunishSound = 1; % if 1, plays a white noise pulse on error. if 0, no sound is played.
+    S.GUI.InterTrialInterval = 0; % Extra delay between trials (adds to inter-trial dead-time)
     S.GUIMeta.PunishSound.Style = 'checkbox';
-    S.GUIPanels.Task = {'TrainingLevel', 'RewardAmount', 'PunishSound'}; % GUIPanels organize the parameters into groups.
-    S.GUIPanels.Sound = {'SinWaveFreqLeft', 'SinWaveFreqRight', 'SoundDuration'};
+    S.GUIPanels.Task = {'TrainingLevel', 'RewardAmount', 'PunishSound', 'InterTrialInterval'}; % GUIPanels organize the parameters into groups.
+    S.GUIPanels.Sound = {'SinWaveFreqLeft', 'SinWaveFreqRight', 'SoundDuration', 'AmplitudeRamp_ms'};
     S.GUIPanels.Time = {'StimulusDelayDuration', 'TimeForResponse', 'PunishTimeoutDuration'};
 end
 
@@ -82,67 +85,38 @@ TotalRewardDisplay('init'); % Total Reward display (online display of the total 
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin
 
 %% Define stimuli and send to analog module
+MaxAmplitude_Bits = 32767;
 SF = 192000; % Use max supported sampling rate
 H.SamplingRate = SF;
-LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration)*.9; % Sampling freq (hz), Sine frequency (hz), duration (s)
-RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration)*.9; % Sampling freq (hz), Sine frequency (hz), duration (s)
-PunishSound = (rand(2,SF*.5)*2) - 1;
-% Generate early withdrawal sound
-W1 = GenerateSineWave(SF, 1000, .5)*.5; W2 = GenerateSineWave(SF, 1200, .5)*.5; EarlyWithdrawalSound = W1+W2;
-P = SF/100;
-GateVector = repmat([ones(1,P) zeros(1,P)], 1, 25);
-EarlyWithdrawalSound = EarlyWithdrawalSound.*GateVector; % Gate waveform to create aversive pulses
-
 H.HeadphoneAmpEnabled = true; H.HeadphoneAmpGain = 15; % Ignored if using HD version of the HiFi module
-H.DigitalAttenuation_dB = -20; % Set a comfortable listening level for most headphones (useful during protocol dev).
-H.load(1, LeftSound);
-H.load(2, RightSound);
-H.load(3, PunishSound);
-H.load(4, EarlyWithdrawalSound);
-Envelope = 1/(SF*0.001):1/(SF*0.001):1; % Define 1ms linear ramp envelope of amplitude coefficients, to apply at sound onset + in reverse at sound offset
-%Envelope = [];
-H.AMenvelope = Envelope;
-
-% Remember values of left and right frequencies & durations, so a new one only gets uploaded if it was changed
-LastLeftFrequency = S.GUI.SinWaveFreqLeft; 
-LastRightFrequency = S.GUI.SinWaveFreqRight;
-LastSoundDuration = S.GUI.SoundDuration;
+H.DigitalAttenuation_dB = -15; % Set a comfortable listening level for most headphones (useful during protocol dev).
+H.SynthAmplitude = 0;
+SoundOnBytes = ['N' typecast(uint16(MaxAmplitude_Bits), 'uint8')];
+SoundOffBytes = ['N' typecast(uint16(0), 'uint8')];
 
 %% Main trial loop
 for currentTrial = 1:MaxTrials
     S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
     if S.GUI.PunishSound
-        PunishOutputAction = {'HiFi1', ['P' 2]};
+        PunishOutputAction = {'HiFi1', SoundOnBytes}; % ['N' X X] where X X are bytes of the 16-bit synth waveform amplitude
     else
-        PunishOutputAction = {};
+        PunishOutputAction = {'HiFi1', SoundOffBytes};
     end
-    if S.GUI.SinWaveFreqLeft ~= LastLeftFrequency
-        LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-        H.load(1, [LeftSound;LeftSound]);
-        LastLeftFrequency = S.GUI.SinWaveFreqLeft;
-    end
-    if S.GUI.SinWaveFreqRight ~= LastRightFrequency
-        RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-        H.load(2, [RightSound; RightSound]);
-        LastRightFrequency = S.GUI.SinWaveFreqRight;
-    end
-    if S.GUI.SoundDuration ~= LastSoundDuration
-        LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-        RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-        H.load(1, LeftSound); H.load(2, RightSound);
-        LastSoundDuration = S.GUI.SoundDuration;
-    end
+    H.SynthAmplitudeFade = (SF/1000)*S.GUI.AmplitudeRamp_ms; % number of samples for amplitude transitions
     R = GetValveTimes(S.GUI.RewardAmount, [1 3]); LeftValveTime = R(1); RightValveTime = R(2); % Update reward amounts
     switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
         case 1
-            OutputActionArgument = {'HiFi1', ['P' 0], 'BNCState', 1}; 
-            LeftActionState = 'Reward';  RightActionState = 'Punish'; CorrectWithdrawalEvent = 'Port1Out';
+            FrequencyBytes = typecast(uint32(S.GUI.SinWaveFreqLeft*1000), 'uint8'); % Frequency*1000 is sent to the device to encode Frequency
+            LeftActionState = 'Reward';  RightActionState = 'PunishSetup'; CorrectWithdrawalEvent = 'Port1Out';
             ValveCode = 1; ValveTime = LeftValveTime;
         case 2
-            OutputActionArgument = {'HiFi1', ['P' 1], 'BNCState', 1};
-            LeftActionState = 'Punish'; RightActionState = 'Reward'; CorrectWithdrawalEvent = 'Port3Out';
+            FrequencyBytes = typecast(uint32(S.GUI.SinWaveFreqRight*1000), 'uint8');
+            LeftActionState = 'PunishSetup'; RightActionState = 'Reward'; CorrectWithdrawalEvent = 'Port3Out';
             ValveCode = 4; ValveTime = RightValveTime;
     end
+    %FrequencyBytes = FrequencyBytes(end:-1:1);
+    OutputActionArgument1 = {'HiFi1', ['F' FrequencyBytes(1:2)]}; 
+    OutputActionArgument2 = {'HiFi1', [FrequencyBytes(3:4)], 'BNCState', 1}; 
     if S.GUI.TrainingLevel == 1 % Reward both sides (overriding switch/case above)
         RightActionState = 'Reward'; LeftActionState = 'Reward';
     end
@@ -152,23 +126,27 @@ for currentTrial = 1:MaxTrials
     sma = AddState(sma, 'Name', 'WaitForCenterPoke', ...
         'Timer', 0,...
         'StateChangeConditions', {'Port2In', 'Delay'},...
-        'OutputActions', {'HiFi1','*'}); % Code to push newly uploaded waves to front (playback) buffers
+        'OutputActions', {}); 
     sma = AddState(sma, 'Name', 'Delay', ...
         'Timer', S.GUI.StimulusDelayDuration,...
-        'StateChangeConditions', {'Port2Out', 'EarlyWithdrawal', 'Tup', 'DeliverStimulus'},...
-        'OutputActions', {}); 
+        'StateChangeConditions', {'Port2Out', 'EarlyWithdrawalSetup', 'Tup', 'SetWaveformFrequency1'},...
+        'OutputActions', {'HiFi1',['W' 1]}); % Select sine waveform
+    sma = AddState(sma, 'Name', 'SetWaveformFrequency1', ...
+        'Timer', 0,...
+        'StateChangeConditions', {'Tup', 'SetWaveformFrequency2'},...
+        'OutputActions', OutputActionArgument1);
+    sma = AddState(sma, 'Name', 'SetWaveformFrequency2', ...
+        'Timer', 0,...
+        'StateChangeConditions', {'Tup', 'DeliverStimulus'},...
+        'OutputActions', OutputActionArgument2);
     sma = AddState(sma, 'Name', 'DeliverStimulus', ...
         'Timer', S.GUI.SoundDuration,...
-        'StateChangeConditions', {'Tup', 'WaitForResponse', 'Port2Out', 'ResetBNC'},...
-        'OutputActions', OutputActionArgument);
-    sma = AddState(sma, 'Name', 'ResetBNC', ...
-        'Timer', 0.001,...
-        'StateChangeConditions', {'Tup', 'EarlyWithdrawal'},...
-        'OutputActions', {});
+        'StateChangeConditions', {'Tup', 'WaitForResponse', 'Port2Out', 'EarlyWithdrawalSetup'},...
+        'OutputActions', {'HiFi1', SoundOnBytes});
     sma = AddState(sma, 'Name', 'WaitForResponse', ...
         'Timer', S.GUI.TimeForResponse,...
-        'StateChangeConditions', {'Tup', '>exit', 'Port1In', LeftActionState, 'Port3In', RightActionState},...
-        'OutputActions', {'PWM1', 255, 'PWM3', 255});
+        'StateChangeConditions', {'Tup', 'ITI', 'Port1In', LeftActionState, 'Port3In', RightActionState},...
+        'OutputActions', {'PWM1', 255, 'PWM3', 255, 'HiFi1', SoundOffBytes});
     sma = AddState(sma, 'Name', 'Reward', ...
         'Timer', ValveTime,...
         'StateChangeConditions', {'Tup', 'Drinking'},...
@@ -179,16 +157,28 @@ for currentTrial = 1:MaxTrials
         'OutputActions', {});
     sma = AddState(sma, 'Name', 'DrinkingGrace', ...
         'Timer', 0.5,...
-        'StateChangeConditions', {'Tup', '>exit', 'Port1In', 'Drinking', 'Port3In', 'Drinking'},...
+        'StateChangeConditions', {'Tup', 'ITI', 'Port1In', 'Drinking', 'Port3In', 'Drinking'},...
         'OutputActions', {});
+    sma = AddState(sma, 'Name', 'PunishSetup', ...
+        'Timer', 0,...
+        'StateChangeConditions', {'Tup', 'Punish'},...
+        'OutputActions', {'HiFi1',['W' 0]}); % Set white noise waveform
     sma = AddState(sma, 'Name', 'Punish', ...
         'Timer', S.GUI.PunishTimeoutDuration,...
-        'StateChangeConditions', {'Tup', '>exit'},...
+        'StateChangeConditions', {'Tup', 'ITI'},...
         'OutputActions', PunishOutputAction);
+    sma = AddState(sma, 'Name', 'EarlyWithdrawalSetup', ...
+        'Timer', 0,...
+        'StateChangeConditions', {'Tup', 'EarlyWithdrawal'},...
+        'OutputActions', {'HiFi1',['W' 0]}); % Set white noise waveform
     sma = AddState(sma, 'Name', 'EarlyWithdrawal', ...
-        'Timer', S.GUI.PunishTimeoutDuration,...
+        'Timer', S.GUI.EarlyWithdrawalTimeout,...
+        'StateChangeConditions', {'Tup', 'ITI'},...
+        'OutputActions', {'HiFi1', SoundOnBytes});
+    sma = AddState(sma, 'Name', 'ITI', ...
+        'Timer', S.GUI.InterTrialInterval,...
         'StateChangeConditions', {'Tup', '>exit'},...
-        'OutputActions', {'HiFi1', ['P' 3], 'BNCState', 1});
+        'OutputActions', {'HiFi1', SoundOffBytes});
     SendStateMatrix(sma); % Send the state matrix to the Bpod device
     RawEvents = RunStateMatrix; % Run the trial and return events
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned (i.e. if not final trial, interrupted by user)

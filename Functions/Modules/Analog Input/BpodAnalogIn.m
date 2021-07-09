@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 classdef BpodAnalogIn < handle
-   
+    
     properties
         About = struct; % Contains a text string describing each field
         Port % ArCOM Serial port
@@ -34,6 +34,8 @@ classdef BpodAnalogIn < handle
         Stream2Module % Logical vector indicating channels to stream to output module (raw data)
         StreamPrefix % Prefix byte sent before each sample when streaming to output module
         nSamplesToLog = Inf; % Number of samples to log on trigger, 0 = infinite
+        Stream2USB % Logical vector indicating channels to stream to USB when streaming is enabled
+        USBStreamFile = []; % Full path to file for data acquired with scope() GUI. If empty, scope() data is not saved.
     end
     
     properties(Constant)
@@ -53,10 +55,13 @@ classdef BpodAnalogIn < handle
         nPhysicalChannels = 8; % Number of physical channels
         RootPath = fileparts(which('AnalogInObject'));
         FirmwareVersion = 0;
-        Stream2USB % Logical vector indicating channels to stream to USB (raw data)
         Initialized = 0; % Set to 1 after object constructor is done running
         Streaming = 0; % Set to 1 if the oscope display is streaming
         chBits = (2^13); % Bit width of ADC
+        USBstream2File = false; % True if data acquired with the scope() GUI is streamed to a file
+        USBstreamFile % A memory-mapped .mat file accessed with MATLAB's matfile() function
+        USBFile_SamplePos = 1;
+        USBFile_EventPos = 1;
     end
     
     methods
@@ -110,7 +115,7 @@ classdef BpodAnalogIn < handle
             obj.Status.EventReporting = 0;
             obj.Status.USBStreamEnabled = 0;
             obj.Status.ModuleStreamEnabled = 0;
-            obj.nActiveChannels = obj.nPhysicalChannels;            
+            obj.nActiveChannels = obj.nPhysicalChannels;
             obj.Thresholds = ones(1,obj.nPhysicalChannels)*10; % Initialized to max voltage of default range
             obj.ResetVoltages = ones(1,obj.nPhysicalChannels)*-10;
             obj.SMeventsEnabled = zeros(1,obj.nPhysicalChannels);
@@ -143,14 +148,17 @@ classdef BpodAnalogIn < handle
                 obj.Port.write([obj.opMenuByte 'W'], 'uint8', nSamples2Send, 'uint32');
                 obj.confirmTransmission('nSamplesToLog');
                 if nSamples == 0
-                   nSamples = Inf;
+                    nSamples = Inf;
                 end
             end
             obj.nSamplesToLog = nSamples;
         end
-               
+        
         function set.SamplingRate(obj, sf)
             if obj.Initialized
+                if obj.USBstream2File
+                    error('Error: The analog input module sampling rate cannot be changed while streaming to a file.');
+                end
                 if sf < obj.ValidSamplingRates(1) || sf > obj.ValidSamplingRates(2)
                     error(['Error setting sampling rate: valid rates are in range: [' num2str(obj.ValidSamplingRates) '] Hz'])
                 end
@@ -162,7 +170,7 @@ classdef BpodAnalogIn < handle
         
         function set.StreamPrefix(obj, prefix)
             if obj.Initialized
-                if length(prefix) > 1 
+                if length(prefix) > 1
                     error(['Error setting prefix: the prefix must be a single byte.'])
                 end
                 obj.Port.write([obj.opMenuByte 'P' prefix], 'uint8');
@@ -171,8 +179,38 @@ classdef BpodAnalogIn < handle
             obj.StreamPrefix = prefix;
         end
         
+        function set.USBStreamFile(obj, fileName)
+            obj.USBstream2File = false;
+            if isempty(fileName)
+                obj.USBStreamFile = [];
+                obj.USBstreamFile = [];
+            else
+                FP = fileparts(fileName);
+                if isempty(FP)
+                    error(['Error setting AnalogInput data file: ' fileName ' is not a valid filename. The filename must be the full path of the target data file.'])
+                end
+                if exist(FP) ~= 7
+                    error(['Error setting AnalogInput data file: ' FP ' is not a valid folder.'])
+                end
+                if exist(fileName) == 2
+                    error(['Error setting AnalogInput data file: ' fileName ' already exists. Please manually delete the file or change the target filename before acquiring.'])
+                end
+                obj.USBFile_SamplePos = 1;
+                obj.USBFile_EventPos = 1;
+                obj.USBstream2File = true;
+                obj.USBstreamFile = matfile(fileName,'Writable',true);
+                obj.USBstreamFile.Samples = [];
+                obj.USBstreamFile.SyncEvents = []; % Data of each sync event (range = 0-255)
+                obj.USBstreamFile.SyncEventTimes = []; % Indexes of the sample during which each sync event was captured
+                obj.USBStreamFile = fileName;
+            end
+        end
+        
         function set.nActiveChannels(obj, nChannels)
             if obj.Initialized
+                if obj.USBstream2File
+                    error('Error: The analog input module active channel set cannot be changed while streaming to a file.');
+                end
                 if nChannels < 1 || nChannels > obj.nPhysicalChannels
                     error(['Error setting active channel count: nChannels must be in the range 1:' num2str(obj.nPhysicalChannels)]);
                 end
@@ -182,9 +220,12 @@ classdef BpodAnalogIn < handle
             obj.nActiveChannels = nChannels;
         end
         
-        function set.InputRange(obj, value)          
-            %1: '-10V - 10V' 2: '-5V - 5V' 3: '-2.5V - 2.5V' 4: '0V - 10V' 
+        function set.InputRange(obj, value)
+            %1: '-10V - 10V' 2: '-5V - 5V' 3: '-2.5V - 2.5V' 4: '0V - 10V'
             if obj.Initialized
+                if obj.USBstream2File
+                    error('Error: The analog input module voltage range cannot be changed while streaming to a file.');
+                end
                 InputRangeIndex = ones(1,obj.nPhysicalChannels);
                 for i = 1:obj.nPhysicalChannels
                     RangeString = value{i};
@@ -198,7 +239,7 @@ classdef BpodAnalogIn < handle
                 obj.confirmTransmission('voltage range');
                 oldRangeIndex = obj.RangeIndex;
                 obj.RangeIndex = InputRangeIndex;
-                % Set thresholds and reset values (expressed in voltages) to values in new range. 
+                % Set thresholds and reset values (expressed in voltages) to values in new range.
                 % Thresholds that are out of range are set to maximum range.
                 NewThresholds = obj.Thresholds;
                 NewResets = obj.ResetVoltages;
@@ -222,18 +263,18 @@ classdef BpodAnalogIn < handle
                         NewResets(i) = ThisRangeMin;
                     end
                 end
-                 obj.InputRange = value;
-                 % Reset and threshold must be set simultanesously, since they
-                 % were changed simultaneously. Instead of calling
-                 % set.Thresholds, and set.ResetVoltages, the next 4 lines do both at once.
-                 ResetValueBits = obj.Volts2Bits(NewResets, obj.RangeIndex);
-                 ThresholdBits = obj.Volts2Bits(NewThresholds, obj.RangeIndex);
-                 obj.Port.write([obj.opMenuByte 'T'], 'uint8', [ThresholdBits ResetValueBits], 'uint16');
-                 obj.confirmTransmission('thresholds');
-                 obj.Initialized = 0; % Disable updating to change the object
-                 obj.Thresholds = NewThresholds;
-                 obj.ResetVoltages = NewResets;
-                 obj.Initialized = 1;
+                obj.InputRange = value;
+                % Reset and threshold must be set simultanesously, since they
+                % were changed simultaneously. Instead of calling
+                % set.Thresholds, and set.ResetVoltages, the next 4 lines do both at once.
+                ResetValueBits = obj.Volts2Bits(NewResets, obj.RangeIndex);
+                ThresholdBits = obj.Volts2Bits(NewThresholds, obj.RangeIndex);
+                obj.Port.write([obj.opMenuByte 'T'], 'uint8', [ThresholdBits ResetValueBits], 'uint16');
+                obj.confirmTransmission('thresholds');
+                obj.Initialized = 0; % Disable updating to change the object
+                obj.Thresholds = NewThresholds;
+                obj.ResetVoltages = NewResets;
+                obj.Initialized = 1;
             else
                 obj.InputRange = value;
             end
@@ -255,7 +296,7 @@ classdef BpodAnalogIn < handle
             end
             obj.Thresholds = value;
         end
-
+        
         function set.ResetVoltages(obj, value)
             if obj.Initialized
                 for i = 1:obj.nPhysicalChannels
@@ -310,6 +351,7 @@ classdef BpodAnalogIn < handle
         function stopUSBStream(obj)
             if obj.Initialized
                 obj.Port.write([obj.opMenuByte 'S' 0 0], 'uint8');
+                obj.USBStreamFile = []; % Stop writing to the current file
                 % Do not confirm; data bytes in buffer may be expected by
                 % another application
             end
@@ -372,7 +414,7 @@ classdef BpodAnalogIn < handle
         function FV = getFirmwareVersion(obj)
             FV = obj.FirmwareVersion;
         end
-        function data = getData(obj)   
+        function data = getData(obj)
             if obj.Port.bytesAvailable > 0
                 obj.Port.read(obj.Port.bytesAvailable); % Clear buffer
             end
@@ -383,7 +425,7 @@ classdef BpodAnalogIn < handle
             MaxReadSize = 50000;
             if nValues < MaxReadSize
                 RawData = obj.Port.read(nValues, 'uint16');
-            else 
+            else
                 RawData = uint16(zeros(1,nValues));
                 nReads = floor(nValues/MaxReadSize);
                 remainder = rem(nValues,MaxReadSize);
@@ -415,6 +457,12 @@ classdef BpodAnalogIn < handle
         end
         
         function scope(obj)
+            if isfield(obj.UIhandles, 'OscopeFig')
+                if ~isempty(obj.UIhandles.OscopeFig)
+                    figure(obj.UIhandles.OscopeFig);
+                    return
+                end
+            end
             obj.UIhandles.nXDivisions = 12;
             obj.UIhandles.nYDivisions = 8;
             obj.UIdata.VoltDivPos = 9;
@@ -427,7 +475,7 @@ classdef BpodAnalogIn < handle
                 TitleFontSize = 16;
                 ScaleFontSize = 14;
                 SubTitleFontSize = 12;
-                lineEdge = 0.25; 
+                lineEdge = 0.25;
                 figHeight = 470;
                 dropFontSize = 8;
             else
@@ -445,16 +493,16 @@ classdef BpodAnalogIn < handle
                 ResetLineColors{i} = LineColors{i}*0.5;
             end
             obj.UIhandles.OscopeFig = figure('Name','Scope',...
-                                                 'NumberTitle','off',...
-                                                 'MenuBar','none',...
-                                                 'Color',OscBGColor,...
-                                                 'Position',[100,100,1024,figHeight],...
-                                                 'CloseRequestFcn',@(h,e)obj.endAcq());
+                'NumberTitle','off',...
+                'MenuBar','none',...
+                'Color',OscBGColor,...
+                'Position',[100,100,1024,figHeight],...
+                'CloseRequestFcn',@(h,e)obj.endAcq());
             obj.UIhandles.Plot = axes('units','pixels', 'position',[10 10 640 480], ...
-                                 'box', 'off', 'tickdir', 'out', 'Color', [0.1 0.1 0.1]);
+                'box', 'off', 'tickdir', 'out', 'Color', [0.1 0.1 0.1]);
             set(gca, 'xlim', [0 obj.UIhandles.nXDivisions], 'ylim', [-0.4 obj.UIhandles.nYDivisions], 'ytick', [], 'xtick', []);
             Interval = obj.UIhandles.nXDivisions/obj.UIdata.nDisplaySamples;
-            obj.UIdata.Xdata = 0:Interval:obj.UIhandles.nXDivisions-Interval; 
+            obj.UIdata.Xdata = 0:Interval:obj.UIhandles.nXDivisions-Interval;
             obj.UIdata.Ydata = nan(obj.nPhysicalChannels,obj.UIdata.nDisplaySamples);
             for i = 1:obj.UIhandles.nYDivisions-1
                 obj.UIhandles.GridXLines(i) = line([0,obj.UIhandles.nXDivisions],[i,i], 'Color', [.3 .3 .3], 'LineStyle',':');
@@ -472,15 +520,15 @@ classdef BpodAnalogIn < handle
                 obj.UIhandles.OscopeDataLine(i) = line([obj.UIdata.Xdata,obj.UIdata.Xdata],[obj.UIdata.Ydata(i,:),obj.UIdata.Ydata(i,:)], 'Color', LineColors{i});
             end
             currentVoltDivValue = obj.UIdata.VoltDivValues(obj.UIdata.VoltDivPos);
-            MaxVolts = currentVoltDivValue*(obj.UIhandles.nYDivisions); HalfMax = MaxVolts/2; 
+            MaxVolts = currentVoltDivValue*(obj.UIhandles.nYDivisions); HalfMax = MaxVolts/2;
             VisibilityVec = {'Off', 'On'};
             for i = 1:obj.nPhysicalChannels
                 ThreshY = ((obj.Thresholds(i)+HalfMax)/MaxVolts)*obj.UIhandles.nYDivisions;
                 obj.UIhandles.ThresholdLine(i) = line([0 obj.UIhandles.nXDivisions],[ThreshY,ThreshY],...
-                'Color', LineColors{i}, 'LineStyle', ':', 'Visible', VisibilityVec{obj.SMeventsEnabled(i)+1});
+                    'Color', LineColors{i}, 'LineStyle', ':', 'Visible', VisibilityVec{obj.SMeventsEnabled(i)+1});
                 ResetY = ((obj.ResetVoltages(i)+HalfMax)/MaxVolts)*obj.UIhandles.nYDivisions;
                 obj.UIhandles.ResetLine(i) = line([0 obj.UIhandles.nXDivisions],[ResetY,ResetY],...
-                'Color', ResetLineColors{i}, 'LineStyle', ':', 'Visible', VisibilityVec{obj.SMeventsEnabled(i)+1});
+                    'Color', ResetLineColors{i}, 'LineStyle', ':', 'Visible', VisibilityVec{obj.SMeventsEnabled(i)+1});
             end
             
             
@@ -488,9 +536,10 @@ classdef BpodAnalogIn < handle
             obj.UIhandles.VDivText = text(0.2,-0.2, 'V/div: 5.0', 'Color', 'yellow', 'FontName', 'Courier New', 'FontSize', 12);
             obj.UIhandles.TimeText = text(9.5,-0.2, 'Time 200.0ms', 'Color', 'yellow', 'FontName', 'Courier New', 'FontSize', 12);
             obj.UIhandles.StatText = text(0.2,7.7, 'Stopped', 'Color', 'red', 'FontName', 'Courier New', 'FontSize', 12);
+            obj.UIhandles.RecStatText = text(10.1,7.7, '', 'Color', 'red', 'FontName', 'Courier New', 'FontSize', 12);
             obj.UIhandles.RunButton = uicontrol('Style', 'pushbutton', 'String', 'RUN', 'Position', [895 390 120 95],...
-                'Callback',@(h,e)obj.StartStopStreaming(), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
-                'FontWeight', 'bold', 'TooltipString', 'Stream data to display');
+                'Callback',@(h,e)obj.scope_StartStop(), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
+                'FontWeight', 'bold', 'TooltipString', 'Start/Stop Data Stream');
             obj.UIhandles.TimeScaleUpButton = uicontrol('Style', 'pushbutton', 'String', '>', 'Position', [970 10 50 50],...
                 'Callback',@(h,e)obj.stepTimescale(1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
                 'FontWeight', 'bold', 'TooltipString', 'Increase time/div');
@@ -511,7 +560,7 @@ classdef BpodAnalogIn < handle
                 'BackgroundColor', OscBGColor, 'FontWeight', 'bold');
             uicontrol('Style', 'text', 'Position', [710 10 70 30], 'String', '/ div', 'FontSize', ScaleFontSize,...
                 'BackgroundColor', OscBGColor, 'FontWeight', 'bold');
-            uicontrol('Style', 'text', 'Position', [655 310 70 30], 'String', 'View', 'FontSize', SubTitleFontSize,...
+            uicontrol('Style', 'text', 'Position', [650 310 70 30], 'String', 'View', 'FontSize', SubTitleFontSize,...
                 'BackgroundColor', OscBGColor, 'FontWeight', 'bold');
             uicontrol('Style', 'text', 'Position', [720 310 90 30], 'String', 'Range', 'FontSize', SubTitleFontSize,...
                 'BackgroundColor', OscBGColor, 'FontWeight', 'bold');
@@ -521,16 +570,18 @@ classdef BpodAnalogIn < handle
                 'BackgroundColor', OscBGColor, 'FontWeight', 'bold');
             uicontrol('Style', 'text', 'Position', [955 310 60 30], 'String', 'Reset', 'FontSize', SubTitleFontSize,...
                 'BackgroundColor', OscBGColor, 'FontWeight', 'bold');
-            uicontrol('Style', 'text', 'Position', [655 460 130 30], 'String', 'Sampling', 'FontSize', TitleFontSize,...
+            uicontrol('Style', 'text', 'Position', [653 460 110 30], 'String', 'Sampling', 'FontSize', TitleFontSize,...
                 'BackgroundColor', OscBGColor, 'FontWeight', 'bold');
             uicontrol('Style', 'text', 'Position', [667 420 65 30], 'String', '#Chan', 'FontSize', SubTitleFontSize,...
                 'BackgroundColor', OscBGColor, 'FontWeight', 'bold');
             uicontrol('Style', 'text', 'Position', [740 420 140 30], 'String', 'Freq (Hz)', 'FontSize', SubTitleFontSize,...
                 'BackgroundColor', OscBGColor, 'FontWeight', 'bold');
-            uicontrol('Style', 'text', 'Position', [660 350 200 30], 'String', 'Channel Settings', 'FontSize', TitleFontSize,...
+            uicontrol('Style', 'text', 'Position', [653 350 55 30], 'String', 'File:', 'FontSize', TitleFontSize,...
                 'BackgroundColor', OscBGColor, 'FontWeight', 'bold');
             obj.UIhandles.SFEdit = uicontrol('Style', 'edit', 'Position', [760 390 100 30], 'String', num2str(obj.SamplingRate), 'FontSize', 12,...
                 'BackgroundColor', [0.8 0.8 0.8], 'FontWeight', 'bold', 'Callback',@(h,e)obj.UIsetSamplingRate());
+            obj.UIhandles.DataFileEdit = uicontrol('Style', 'edit', 'Position', [713 350 301 30], 'String', obj.USBStreamFile, 'FontSize', 10,...
+                'BackgroundColor', [0.8 0.8 0.8], 'FontName', 'Courier New', 'FontWeight', 'bold', 'Callback',@(h,e)obj.setStreamFileFromGUI(), 'TooltipString', 'Full path to .mat file to store acquired data from channels selected below (optional).');
             obj.UIhandles.nChanSelect = uicontrol('Style', 'popupmenu', 'Position', [670 390 65 30], 'String', {'1','2','3','4','5','6','7','8'}, 'FontSize', 12,...
                 'BackgroundColor', [0.8 0.8 0.8], 'FontWeight', 'bold', 'Value', obj.nActiveChannels, 'Callback',@(h,e)obj.UIsetNactiveChannels());
             YPos = 285;
@@ -539,29 +590,81 @@ classdef BpodAnalogIn < handle
                 uicontrol('Style', 'text', 'Position', [655 YPos 35 20], 'String', ['Ch' num2str(i)], 'FontSize', 12,...
                     'BackgroundColor', OscBGColor, 'FontWeight', 'bold', 'ForegroundColor', LineColors{i});
                 obj.UIhandles.chanEnable(i) = uicontrol('Style', 'checkbox', 'Position', [700 YPos 20 20], 'FontSize', 12,...
-                'BackgroundColor', OscBGColor, 'FontWeight', 'bold', 'Value', obj.Stream2USB(i), 'Callback',@(h,e)obj.UIenableChannel(i));
+                    'BackgroundColor', OscBGColor, 'FontWeight', 'bold', 'Value', obj.Stream2USB(i), 'Callback',@(h,e)obj.UIenableChannel(i));
                 obj.UIhandles.rangeSelect(i) = uicontrol('Style', 'popupmenu', 'Position', [730 YPos 85 20], 'FontSize', dropFontSize,...
-                'BackgroundColor', [0.8 0.8 0.8], 'FontWeight', 'bold', 'Value', obj.RangeIndex(i), 'Callback',@(h,e)obj.UIsetRange(i),...
-                'String',obj.ValidRanges, 'enable', EnableStrings{(i<= obj.nActiveChannels)+1});
+                    'BackgroundColor', [0.8 0.8 0.8], 'FontWeight', 'bold', 'Value', obj.RangeIndex(i), 'Callback',@(h,e)obj.UIsetRange(i),...
+                    'String',obj.ValidRanges, 'enable', EnableStrings{(i<= obj.nActiveChannels)+1});
                 obj.UIhandles.SMeventEnable(i) = uicontrol('Style', 'checkbox', 'Position', [840 YPos 20 20], 'FontSize', 12,...
-                'BackgroundColor', OscBGColor, 'FontWeight', 'bold', 'Value', obj.SMeventsEnabled(i), 'Callback',@(h,e)obj.UIenableSMEvents(i),...
-                'TooltipString', ['Send threshold crossing events from channel ' num2str(i) ' to state machine']);
+                    'BackgroundColor', OscBGColor, 'FontWeight', 'bold', 'Value', obj.SMeventsEnabled(i), 'Callback',@(h,e)obj.UIenableSMEvents(i),...
+                    'TooltipString', ['Send threshold crossing events from channel ' num2str(i) ' to state machine']);
                 obj.UIhandles.thresholdSet(i) = uicontrol('Style', 'edit', 'Position', [890 YPos 55 20], 'FontSize', 10,...
-                'BackgroundColor', [0.8 0.8 0.8], 'FontWeight', 'bold', 'Callback',@(h,e)obj.UIsetThreshold(i),...
-                'String',num2str(obj.Thresholds(i)), 'enable', EnableStrings{obj.SMeventsEnabled(i)+1});
+                    'BackgroundColor', [0.8 0.8 0.8], 'FontWeight', 'bold', 'Callback',@(h,e)obj.UIsetThreshold(i),...
+                    'String',num2str(obj.Thresholds(i)), 'enable', EnableStrings{obj.SMeventsEnabled(i)+1});
                 obj.UIhandles.resetSet(i) = uicontrol('Style', 'edit', 'Position', [960 YPos 55 20], 'FontSize', 10,...
-                'BackgroundColor', [0.8 0.8 0.8], 'FontWeight', 'bold', 'Callback',@(h,e)obj.UIsetReset(i),...
-                'String',num2str(obj.ResetVoltages(i)), 'enable', EnableStrings{obj.SMeventsEnabled(i)+1});
+                    'BackgroundColor', [0.8 0.8 0.8], 'FontWeight', 'bold', 'Callback',@(h,e)obj.UIsetReset(i),...
+                    'String',num2str(obj.ResetVoltages(i)), 'enable', EnableStrings{obj.SMeventsEnabled(i)+1});
                 YPos= YPos - 30;
             end
             set(obj.UIhandles.chanEnable(1), 'Value', 1);
             obj.Stream2USB(1) = 1;
-            drawnow;  
+            drawnow;
         end
-      
+        
+        function scope_StartStop(obj)
+            ScopeReady = 1;
+            if ~isfield(obj.UIhandles, 'OscopeFig')
+                ScopeReady = 0;
+            elseif isempty(obj.UIhandles.OscopeFig)
+                ScopeReady = 0;
+            end
+            if ScopeReady
+                if obj.Streaming == 0
+                    obj.Streaming = 1;
+                    set(obj.UIhandles.SFEdit, 'String', num2str(obj.SamplingRate));
+                    set(obj.UIhandles.DataFileEdit, 'String', obj.USBStreamFile);
+                    set(obj.UIhandles.nChanSelect, 'Value', obj.nActiveChannels);
+                    set(obj.UIhandles.StatText, 'String', 'Running', 'Color', 'green');
+                    set(obj.UIhandles.RunButton, 'String', 'Stop');
+                    if obj.USBstream2File
+                        activeChannels = find(obj.Stream2USB(1:obj.nActiveChannels));
+                        InfoStruct = struct;
+                        InfoStruct.FirmwareVersion = obj.FirmwareVersion;
+                        InfoStruct.SamplingRate_Hz = obj.SamplingRate;
+                        InfoStruct.ChannelInputRanges_V = obj.InputRange;
+                        InfoStruct.SampleUnits = 'Volts';
+                        InfoStruct.EventTimeUnits = 'Samples';
+                        InfoStruct.ChannelsRecorded = activeChannels;
+                        InfoStruct.FileDateTime = datestr(now);
+                        obj.USBstreamFile.Info = InfoStruct;
+                        set(obj.UIhandles.RecStatText, 'String', 'Recording');
+                    end
+                    obj.UIdata.SweepPos = 1;
+                    obj.startUSBStream;
+                    obj.Timer = timer('TimerFcn',@(h,e)obj.updatePlot(), 'ExecutionMode', 'fixedRate', 'Period', 0.05);
+                    start(obj.Timer);
+                else
+                    stop(obj.Timer);
+                    obj.stopUSBStream;
+                    set(obj.UIhandles.DataFileEdit, 'String', obj.USBStreamFile);
+                    set(obj.UIhandles.StatText, 'String', 'Stopped', 'Color', 'red');
+                    set(obj.UIhandles.RunButton, 'String', 'Run');
+                    set(obj.UIhandles.RecStatText, 'String', '');
+                    obj.Streaming = 0;
+                    delete(obj.Timer);
+                    pause(.1);
+                    BA = obj.Port.bytesAvailable;
+                    if BA > 0
+                        obj.Port.read(obj.Port.bytesAvailable, 'uint8');
+                    end
+                end
+                drawnow;
+            end
+        end
+        
         function endAcq(obj)
             obj.stopUIStream;
             delete(obj.UIhandles.OscopeFig);
+            obj.UIhandles.OscopeFig = [];
         end
         
         function delete(obj)
@@ -570,7 +673,7 @@ classdef BpodAnalogIn < handle
         
     end
     
-    methods (Access = private) 
+    methods (Access = private)
         function confirmTransmission(obj,paramName)
             Confirmed = obj.Port.read(1, 'uint8');
             if Confirmed == 0
@@ -589,9 +692,18 @@ classdef BpodAnalogIn < handle
                 end
             end
         end
+        function setStreamFileFromGUI(obj)
+            fileName = get(obj.UIhandles.DataFileEdit, 'String');
+            try
+                obj.USBStreamFile = fileName;
+            catch
+                set(obj.UIhandles.DataFileEdit, 'String', obj.USBStreamFile);
+                rethrow(lasterror);
+            end
+        end
         function updateThresholdLine(obj, chan)
             currentVoltDivValue = obj.UIdata.VoltDivValues(obj.UIdata.VoltDivPos);
-            MaxVolts = currentVoltDivValue*(obj.UIhandles.nYDivisions); HalfMax = MaxVolts/2;  
+            MaxVolts = currentVoltDivValue*(obj.UIhandles.nYDivisions); HalfMax = MaxVolts/2;
             ThreshY = ((obj.Thresholds(chan)+HalfMax)/MaxVolts)*obj.UIhandles.nYDivisions;
             set(obj.UIhandles.ThresholdLine(chan), 'YData', [ThreshY,ThreshY]);
             ResetY = ((obj.ResetVoltages(chan)+HalfMax)/MaxVolts)*obj.UIhandles.nYDivisions;
@@ -649,29 +761,6 @@ classdef BpodAnalogIn < handle
                 end
             end
         end
-        function StartStopStreaming(obj)
-            if obj.Streaming == 0
-                obj.Streaming = 1;
-                set(obj.UIhandles.StatText, 'String', 'Running', 'Color', 'green');
-                set(obj.UIhandles.RunButton, 'String', 'Stop');
-                obj.startUSBStream;
-                obj.Timer = timer('TimerFcn',@(h,e)obj.updatePlot(), 'ExecutionMode', 'fixedRate', 'Period', 0.05);
-                start(obj.Timer);
-            else
-                stop(obj.Timer);
-                obj.stopUSBStream;
-                set(obj.UIhandles.StatText, 'String', 'Stopped', 'Color', 'red');
-                set(obj.UIhandles.RunButton, 'String', 'Run');
-                obj.Streaming = 0;
-                delete(obj.Timer);
-                pause(.1);
-                BA = obj.Port.bytesAvailable;
-                if BA > 0
-                    obj.Port.read(obj.Port.bytesAvailable, 'uint8');
-                end
-            end
-            drawnow;
-        end
         function stepTimescale(obj, Step)
             NewPos = obj.UIdata.TimeDivPos + Step;
             if (NewPos > 0) && (NewPos <= length(obj.UIdata.TimeDivValues))
@@ -726,7 +815,12 @@ classdef BpodAnalogIn < handle
                 end
             end
             if ValidSF == 1
-                obj.SamplingRate = SF;
+                try
+                    obj.SamplingRate = SF;
+                catch
+                    set(obj.UIhandles.SFEdit, 'String', num2str(obj.SamplingRate));
+                    rethrow(lasterror);
+                end
                 obj.stepTimescale(0); % Adjusts display time scale to same window setting at new SF
             else
                 set(obj.UIhandles.SFEdit, 'String', num2str(obj.SamplingRate));
@@ -739,7 +833,7 @@ classdef BpodAnalogIn < handle
         function UIsetNactiveChannels(obj)
             nActiveChan = get(obj.UIhandles.nChanSelect, 'Value');
             obj.stopUIStream;
-            if nActiveChan <= obj.nPhysicalChannels 
+            if nActiveChan <= obj.nPhysicalChannels
                 for i = 1:nActiveChan
                     set(obj.UIhandles.chanEnable(i), 'enable', 'on');
                     set(obj.UIhandles.rangeSelect(i), 'enable', 'on');
@@ -826,7 +920,7 @@ classdef BpodAnalogIn < handle
                 end
             end
             if ~ValidThreshold
-               set(obj.UIhandles.thresholdSet(chan), 'String', num2str(obj.Thresholds(chan))); 
+                set(obj.UIhandles.thresholdSet(chan), 'String', num2str(obj.Thresholds(chan)));
             end
             if obj.Streaming
                 obj.startUSBStream;
@@ -849,7 +943,7 @@ classdef BpodAnalogIn < handle
                 end
             end
             if ~ValidThreshold
-               set(obj.UIhandles.resetSet(chan), 'String', num2str(obj.ResetVoltages(chan))); 
+                set(obj.UIhandles.resetSet(chan), 'String', num2str(obj.ResetVoltages(chan)));
             end
             if obj.Streaming
                 obj.startUSBStream;
@@ -867,18 +961,28 @@ classdef BpodAnalogIn < handle
                     nBytesToRead = floor(nBytesAvailable/nBytesPerFrame)*nBytesPerFrame;
                     NewData = obj.Port.read(nBytesToRead, 'uint8');
                     currentVoltDivValue = obj.UIdata.VoltDivValues(obj.UIdata.VoltDivPos);
-                    if NewData(1) == 'R'
+                    Prefix = NewData(1);
+                    if Prefix == 'R' || Prefix == '#'
+                        Prefixes = NewData(1:nBytesPerFrame:end);
                         NewData(1:nBytesPerFrame:end) = [];
+                        SyncData = NewData(1:nBytesPerFrame-1:end);
                         NewData(1:nBytesPerFrame-1:end) = []; % Spacer
                         NewSamples = typecast(NewData(1:end), 'uint16');
                         nNewSamples = length(NewSamples)/nChannelsStreaming;
                         SweepPos = obj.UIdata.SweepPos;
+                        SyncPrefixes = (Prefixes == '#');
+                        nSyncEvents = sum(SyncPrefixes);
+                        SyncPrefixPositions = find(SyncPrefixes);
+                        SampleDataForFile = zeros(nChannelsStreaming, nNewSamples);
                         for ch = 1:nChannelsStreaming
                             thisChIndex = updateChannels(ch);
                             NSThisCh = NewSamples(ch:nChannelsStreaming:end);
                             M = obj.RangeMultipliers(obj.RangeIndex(thisChIndex));
                             O = obj.RangeOffsets(obj.RangeIndex(thisChIndex));
                             NSThisChVolts = ((double(NSThisCh)/obj.chBits)*M)-O;
+                            if obj.USBstream2File
+                                SampleDataForFile(ch,:) = NSThisChVolts;
+                            end
                             MaxVolts = currentVoltDivValue*(obj.UIhandles.nYDivisions);
                             HalfMax = MaxVolts/2;
                             NSThisChVolts(NSThisChVolts<MaxVolts*-1 & NSThisChVolts>MaxVolts) = NaN;
@@ -896,6 +1000,15 @@ classdef BpodAnalogIn < handle
                             end
                             set(obj.UIhandles.OscopeDataLine(thisChIndex), 'Ydata', [obj.UIdata.Ydata(thisChIndex,:),obj.UIdata.Ydata(thisChIndex,:)]);
                         end
+                        if obj.USBstream2File
+                            obj.USBstreamFile.Samples(1:nChannelsStreaming,obj.USBFile_SamplePos:obj.USBFile_SamplePos+nNewSamples-1) = SampleDataForFile;
+                        end
+                        if nSyncEvents > 0
+                            obj.USBstreamFile.SyncEvents(1,obj.USBFile_EventPos:obj.USBFile_EventPos+nSyncEvents-1) = double(SyncData(SyncPrefixes));
+                            obj.USBstreamFile.SyncEventTimes(1,obj.USBFile_EventPos:obj.USBFile_EventPos+nSyncEvents-1) = double(SyncPrefixPositions + obj.USBFile_SamplePos - 1);
+                            obj.USBFile_EventPos = obj.USBFile_EventPos + nSyncEvents;
+                        end
+                        obj.USBFile_SamplePos = obj.USBFile_SamplePos + nNewSamples;
                     else
                         stop(obj.Timer);
                         delete(obj.Timer);
@@ -905,4 +1018,4 @@ classdef BpodAnalogIn < handle
             end
         end
     end
-end    
+end

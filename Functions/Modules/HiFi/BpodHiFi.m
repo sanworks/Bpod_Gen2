@@ -1,11 +1,9 @@
 classdef BpodHiFi < handle
     properties
         Port
+        Info
         SamplingRate
-        LoadMode % 'Fast' to load sounds fast (potentially disrupting playback) or 'Safe' to load slower, but playback-safe
         AMenvelope % If defined, a vector of amplitude coefficients for each waveform on onest + offset (in reverse)
-        LoopMode %For each wave, 'On' loops the waveform until LoopDuration seconds, or until toggled off. 'Off' = one shot.
-        LoopDuration % (seconds) In loop mode, specifies the duration to loop the waveform following a trigger. 0 = until canceled.
         HeadphoneAmpEnabled
         HeadphoneAmpGain
         SynthAmplitude
@@ -13,6 +11,7 @@ classdef BpodHiFi < handle
         SynthWaveform
         SynthAmplitudeFade % nSamples to reach setpoint (instant if set to 0)
         DigitalAttenuation_dB
+        VerboseMode = false;
     end
     properties (Access = private)
         maxWaves = 20;
@@ -22,14 +21,15 @@ classdef BpodHiFi < handle
         MaxSynthFrequency = 80000;
         MaxAmplitudeFadeSamples = 1920000;
         validSynthWaveforms = {'WhiteNoise', 'Sine'};
-        waveforms;
-        LoadOp = 'L';
         Initialized = 0;
         bitDepth
         audioDataType
         isHD
         minAttenuation_Pro = -103;
         minAttenuation_HD = -120;
+        headphoneAmpEnableWarned = false;
+        headphoneAmpGainWarned = false;
+        MaxDataTransferAttempts = 5;
     end
     methods
         function obj = BpodHiFi(portString)
@@ -38,6 +38,9 @@ classdef BpodHiFi < handle
             Ack = obj.Port.read(1, 'uint8');
             if Ack ~= 244
                 error('Error: Incorrect handshake byte returned');
+            end
+            if ~ispc && ~obj.Port.UsePsychToolbox == 1
+                warning('HiFi Module data transfer may be unstable unless PsychToolbox is installed. Please install PsychToolbox for optimal performance.');
             end
             obj.Port.write('I', 'uint8');
             InfoParams8Bit = obj.Port.read(4, 'uint8');
@@ -48,17 +51,22 @@ classdef BpodHiFi < handle
             obj.maxWaves = InfoParams8Bit(3);
             digitalAttBits = InfoParams8Bit(4);
             obj.DigitalAttenuation_dB = double(digitalAttBits)*-0.5;
-            obj.maxSamplesPerWaveform = InfoParams32Bit(2)*obj.SamplingRate;
+            obj.maxSamplesPerWaveform = InfoParams32Bit(2)*192000;
             obj.maxEnvelopeSamples = InfoParams32Bit(3);
-            obj.LoadMode = 'Fast';
             obj.HeadphoneAmpEnabled = false;
             obj.HeadphoneAmpGain = 52;
             obj.SynthAmplitude = 0;
             obj.SynthFrequency = 1000;
             obj.SynthWaveform = 'WhiteNoise';
             obj.SynthAmplitudeFade = 0;
-            obj.LoopMode = logical(zeros(1,obj.maxWaves));
-            obj.LoopDuration = zeros(1,obj.maxWaves);
+            obj.AMenvelope = [];
+            obj.Info = struct;
+            obj.Info.isHD = obj.isHD;
+            obj.Info.bitDepth = obj.bitDepth;
+            obj.Info.maxSounds = obj.maxWaves;
+            obj.Info.maxSamplesPerWaveform = obj.maxSamplesPerWaveform;
+            obj.Info.maxEnvelopeSamples = obj.maxEnvelopeSamples;
+            obj.Info.maxAmplitudeFadeSamples = obj.MaxAmplitudeFadeSamples;
             switch obj.bitDepth
                 case 16
                     obj.audioDataType = 'int16';
@@ -66,6 +74,8 @@ classdef BpodHiFi < handle
                     obj.audioDataType = 'int32';
             end
             obj.Initialized = 1;
+            % Load 10s of blank audio data. This will force Windows to configure USB serial interface for high speed transfer.
+            obj.load(1, zeros(2,10*obj.SamplingRate));
         end
         function set.SamplingRate(obj, SF)
             if obj.Initialized == 1
@@ -103,17 +113,6 @@ classdef BpodHiFi < handle
                 end
             end
             obj.DigitalAttenuation_dB = attenuation;
-        end
-        function set.LoadMode(obj,Mode)
-            switch Mode
-                case 'Fast'
-                    obj.LoadOp = 'L';
-                case 'Safe'
-                    obj.LoadOp = '>';
-                otherwise
-                    error(['Error: ' Mode ' is not a valid load mode. Valid modes are: ''Fast'', ''Safe'''])
-            end
-            obj.LoadMode = Mode;
         end
         function set.SynthAmplitude(obj, Amplitude)
             if (Amplitude < 0) || (Amplitude > 1)
@@ -161,28 +160,21 @@ classdef BpodHiFi < handle
             end
             obj.SynthAmplitudeFade = nSamples;
         end
-        function set.LoopMode(obj, LoopModes)
-            if length(LoopModes) ~= obj.maxWaves
-                error('Error setting loop modes - one loop mode must exist for each wave.')
-            end
-            if ~islogical(LoopModes)
-                if sum(LoopModes > 1)>0 || (sum(LoopModes < 0))>0
-                    error('Error: LoopModes must be 0 (looping disabled) or 1 (looping enabled)')
-                end
-            end
-            obj.Port.write(['O' uint8(LoopModes)], 'uint8');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error setting loop mode. Confirm code not returned.');
-            end
-            obj.LoopMode = LoopModes; 
-        end
         function set.HeadphoneAmpEnabled(obj,State)
             State = logical(State);
-            obj.Port.write(['H' uint8(State)], 'uint8');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error enabling headphone amp. Confirm code not returned.');
+            if ~obj.isHD
+                obj.Port.write(['H' uint8(State)], 'uint8');
+                Confirmed = obj.Port.read(1, 'uint8');
+                if Confirmed ~= 1
+                    error('Error enabling headphone amp. Confirm code not returned.');
+                end
+            else
+                if ~obj.headphoneAmpEnableWarned && obj.Initialized == 1
+                    if obj.VerboseMode
+                        disp('HiFi Module: HeadphoneAmpEnabled setting ignored. The HD version of the HiFi Module does not have a headphone amplifier.');
+                        obj.headphoneAmpEnableWarned = true;
+                    end
+                end
             end
             obj.HeadphoneAmpEnabled = State;
         end
@@ -191,25 +183,21 @@ classdef BpodHiFi < handle
             if Gain > 63 || Gain < 0
                  error('Error: Gain must be in range 0-63.');
             end
-            obj.Port.write(['G' Gain], 'uint8');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error setting headphone amp gain. Confirm code not returned.');
-            end
-            obj.HeadphoneAmpGain = Gain;
-        end
-        function set.LoopDuration(obj, Duration)
-            if obj.Initialized == 1
-                if length(Duration) ~= obj.maxWaves
-                    error('Error setting loop durations - a duration must exist for each wave.')
-                end
-                obj.Port.write('-', 'uint8', Duration*obj.SamplingRate, 'uint32');
+            if ~obj.isHD
+                obj.Port.write(['G' Gain], 'uint8');
                 Confirmed = obj.Port.read(1, 'uint8');
                 if Confirmed ~= 1
-                    error('Error setting loop duration. Confirm code not returned.');
+                    error('Error setting headphone amp gain. Confirm code not returned.');
+                end
+            else
+                if ~obj.headphoneAmpGainWarned && obj.Initialized == 1
+                    if obj.VerboseMode
+                        disp('HiFi Module: HeadphoneAmpGain setting ignored. The HD version of the HiFi Module does not have a headphone amplifier.');
+                        obj.headphoneAmpGainWarned = true;
+                    end
                 end
             end
-            obj.LoopDuration = Duration;
+            obj.HeadphoneAmpGain = Gain;
         end
         function set.AMenvelope(obj, Envelope)
             if isempty(Envelope)
@@ -228,55 +216,83 @@ classdef BpodHiFi < handle
             end
              obj.AMenvelope = Envelope;
         end
-        function load(obj, waveIndex, waveform) % Must be stereo 2xn vector
+        function load(obj, waveIndex, waveform, varargin) % Must be stereo 2xn vector
+            % Optional arguments: (...'LoopMode', LM, 'LoopDuration', LD)
+            % Where LM = 0 (off) or 1 (on) and LD = Loop Duration in seconds (total time to play looped sound before stopping)
+            % Arguments must be given in this order and with argument/value pairs as shown above for efficient processing
+            if obj.VerboseMode
+                startTime = now;
+            end
+            LoopMode = 0;
+            LoopDuration = 0;
+            if nargin > 4 
+                LoopMode = varargin{2};
+            end
+            if nargin > 6 
+                LoopDuration = varargin{4}*obj.SamplingRate;
+            end
             if (waveIndex < 1) || (waveIndex > obj.maxWaves)
                 error(['Error: wave index must be in range [1, ' num2str(obj.maxWaves) ']'])
             end
+            if (LoopDuration < 0)
+                error('Error: loop duration must be 0 or a positive value in seconds')
+            end
             [nChannels,nSamples] = size(waveform);
-            
             switch nChannels
                 case 1
-                    waveform = [waveform; waveform]; % Convert to Stereo
+                    isStereo = 0;
                 case 2
-                    
+                    isStereo = 1;
                 otherwise
                     error('Error: Audio data must be a 1xn (Mono) or 2xn (Stereo) array of sound samples')
             end
             if length(waveform) > obj.maxSamplesPerWaveform
                 error(['Error: Waveform too long. The current firmware supports up to ' num2str(obj.maxSamplesPerWaveform) ' samples per waveform.']);
             end
+            if obj.VerboseMode
+                WaveType = 'Mono';
+                if isStereo
+                   WaveType = 'Stereo'; 
+                end
+                disp(['HiFi Module: Loading a ' num2str(nSamples) ' sample ' WaveType ' waveform to slot#' num2str(waveIndex) '.']); 
+            end
             if obj.bitDepth == 16
                 formattedWaveform = waveform(1:end)*32767;
             elseif obj.bitDepth == 32
                 formattedWaveform = waveform(1:end)*2147483647;
             end
-            % The single line transmission writes too fast, causing dropped data (Oddly not with PySerial!)
-            %obj.Port.write([obj.LoadOp waveIndex-1], 'uint8', nSamples, 'uint32', formattedWaveform, 'int16');
-            
-            % Breaking the transmission into packets fixes the issue
-            switch obj.LoadOp
-                case 'L'
-                    PacketSize = 192;
-                case '>'
-                    PacketSize = 128;
+            if nSamples == 1 
+                if isStereo == 1
+                    formattedWaveform = formattedWaveform';
+                end
             end
-            nFullPackets = floor(length(formattedWaveform)/PacketSize);
-            Pos = 1;
-            partialPacketLength = rem(length(formattedWaveform), PacketSize);
-            obj.Port.write([obj.LoadOp waveIndex-1], 'uint8', nSamples, 'uint32');
-            for i = 1:nFullPackets
-                obj.Port.write(formattedWaveform(Pos:Pos+PacketSize-1), obj.audioDataType);
-                Pos = Pos + PacketSize;
+            nTries = 0;
+            byteString = [uint8(['L' waveIndex-1 isStereo LoopMode]) typecast(uint32([LoopDuration nSamples]), 'uint8')...
+                          typecast(int16(formattedWaveform), 'uint8')];
+            while nTries < obj.MaxDataTransferAttempts
+                obj.Port.write(byteString, 'uint8');
+                Confirmed = obj.Port.read(1, 'uint8');
+                if Confirmed == 1
+                    break;
+                elseif Confirmed == 0
+                    if obj.VerboseMode
+                        disp(['HiFi Module: Data was dropped during USB transfer. Retries attempted = ' num2str(nTries)])
+                    end
+                    nTries = nTries + 1;
+                else
+                    error('Error loading waveform. Confirm code not returned.');
+                end
             end
-            if partialPacketLength > 0
-                obj.Port.write(formattedWaveform(Pos:end), obj.audioDataType);
+            if nTries > 0
+                if obj.VerboseMode
+                    disp('HiFi Module: Transfer retry success');
+                end
             end
-            
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error loading waveform. Confirm code not returned.');
+            if obj.VerboseMode
+                transferTime = (now - startTime)*100000;
+                transferSpeed = ((length(byteString) / transferTime)/1000000)*8;
+                disp(['HiFi Module: Transfer complete. Transfer time: ' num2str(transferTime) 's. Transfer speed: ' num2str(transferSpeed) ' Mb/s']); 
             end
-            obj.waveforms{waveIndex} = formattedWaveform;
         end
         function play(obj, waveIndex) % Play a waveform immediately on specified channel(s)
             if waveIndex <= obj.maxWaves
@@ -294,6 +310,20 @@ classdef BpodHiFi < handle
         end
         function stop(obj)
             obj.Port.write('X', 'uint8');
+        end
+        function result = testPSRAM(obj)
+            obj.Port.write('T', 'uint8');
+            memSize = obj.Port.read(1, 'uint8');
+            disp(['Testing PSRAM. ' num2str(memSize) ' MB detected. This may take up to 20 seconds.']);
+            while obj.Port.bytesAvailable == 0
+                pause(.1);
+            end
+            result = obj.Port.read(1, 'uint8');
+            if result
+                disp('Test PASSED');
+            else
+                disp('Test FAILED');
+            end
         end
         function delete(obj)
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)

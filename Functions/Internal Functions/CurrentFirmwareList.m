@@ -5,10 +5,10 @@ function Firmware = CurrentFirmwareList
 
 Firmware = struct;
 Firmware.StateMachine = 22;
-Firmware.WavePlayer = 2;
+Firmware.WavePlayer = 3;
 Firmware.AudioPlayer = 2;
 Firmware.PulsePal = 1;
-Firmware.AnalogIn = 3;
+Firmware.AnalogIn = 4;
 Firmware.DDSModule = 2;
 Firmware.DDSSeq = 1;
 Firmware.I2C = 1;
