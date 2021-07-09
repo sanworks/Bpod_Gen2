@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -100,11 +100,20 @@ function obj = SetupHardware(obj)
             if obj.MachineType > 1 % v0.7+ uses optoisolators on wire channels; OK to enable by default
                 obj.InputsEnabled(obj.HW.Inputs == 'W') = 1;
             end
+            if obj.MachineType == 4
+                obj.InputsEnabled(obj.HW.Inputs == 'F') = 1; % Enable all flex inputs (for testing)
+            end
         end
         obj.SerialPort.write(['E' obj.InputsEnabled], 'uint8');
         Confirmed = obj.SerialPort.read(1, 'uint8');
         if Confirmed ~= 1
             error('Could not enable ports');
+        end
+        % Read flexIO config
+        if obj.MachineType == 4
+            nFlexIOChannels = sum(obj.HW.Outputs == 'F');
+            obj.SerialPort.write('q', 'uint8');
+            obj.HW.FlexIOChannelTypes = obj.SerialPort.read(nFlexIOChannels, 'uint8'); % Channel types are: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC
         end
         % Set up Sync config
         obj.SerialPort.write(['K' obj.SyncConfig.Channel obj.SyncConfig.SignalType], 'uint8');
@@ -119,12 +128,13 @@ function obj = SetupHardware(obj)
             error('Error: invalid timestamp scheme returned from state machine.');
         end
     end
-    obj.HW.ChannelKey = 'D = digital B/W = BNC/Wire (digital), P = Port (digital in, PWM out), U = UART, X = USB, V = Valve';
+    obj.HW.ChannelKey = 'D = digital B/W = BNC/Wire (digital), P = Port (digital in, PWM out), U = UART, X = USB, V = Valve, F = FlexI/O';
     obj.HW.n.BNCOutputs = sum(obj.HW.Outputs == 'B');
     obj.HW.n.BNCInputs = sum(obj.HW.Inputs == 'B');
     obj.HW.n.WireOutputs = sum(obj.HW.Outputs == 'W');
     obj.HW.n.WireInputs = sum(obj.HW.Inputs == 'W');
     obj.HW.n.Ports = sum(obj.HW.Outputs == 'P');
+    obj.HW.n.FlexIO = sum(obj.HW.Outputs == 'F');
     nIOvalves = sum(obj.HW.Outputs == 'V');
     if nIOvalves > 0
         obj.HW.ValveType = 'IO';
@@ -138,15 +148,16 @@ function obj = SetupHardware(obj)
     obj.HW.n.USBChannels = sum(obj.HW.Outputs == 'X');
     obj.HW.n.SerialChannels = obj.HW.n.USBChannels + obj.HW.n.UartSerialChannels;
     obj.HW.n.SoftCodes = 10;
-    obj.HW.EventTypes = [repmat('S', 1, obj.HW.n.MaxSerialEvents) repmat('I', 1, obj.HW.n.DigitalInputs*2) repmat('T', 1, obj.HW.n.GlobalTimers*2 ) repmat('+', 1, obj.HW.n.GlobalCounters)  repmat('C', 1, obj.HW.n.Conditions) 'U'];
-    obj.HW.EventKey = 'S = serial, I = i/o, T = global timer, + = global counter, C = condition, U = state timer';
+    obj.HW.EventTypes = [repmat('S', 1, obj.HW.n.MaxSerialEvents) repmat('F', 1, obj.HW.n.FlexIO*2) repmat('I', 1, obj.HW.n.DigitalInputs*2) repmat('T', 1, obj.HW.n.GlobalTimers*2 ) repmat('+', 1, obj.HW.n.GlobalCounters)  repmat('C', 1, obj.HW.n.Conditions) 'U'];
+    obj.HW.EventKey = 'S = serial, F = Flex I/O I = Digital I/O, T = global timer, + = global counter, C = condition, U = state timer';
+    obj.HW.FlexIOEventStartposition = find(obj.HW.EventTypes == 'F', 1);
     obj.HW.IOEventStartposition = find(obj.HW.EventTypes == 'I', 1);
     obj.HW.GlobalTimerStartposition = find(obj.HW.EventTypes == 'T', 1);
     obj.HW.GlobalCounterStartposition = find(obj.HW.EventTypes == '+', 1);
     obj.HW.ConditionStartposition = find(obj.HW.EventTypes == 'C', 1);
     obj.HW.StateTimerPosition = find(obj.HW.EventTypes == 'U');
     obj.HW.Pos = struct; % Positions of different channel types in hardware description vectors
-    obj.HardwareState.Key = 'D = digital B/W = BNC/Wire (digital), P = Port (digital in, PWM out), S = SPI (Valve array), U = UART, X = USB, V = Valve';
+    obj.HardwareState.Key = 'F = FlexI/O, D = digital B/W = BNC/Wire (digital), P = Port (digital in, PWM out), S = SPI (Valve array), U = UART, X = USB, V = Valve';
     obj.HardwareState.InputState = zeros(1,obj.HW.n.Inputs);
     obj.HardwareState.InputType = obj.HW.Inputs;
     obj.HardwareState.OutputState = zeros(1,obj.HW.n.Outputs+3);
@@ -154,6 +165,7 @@ function obj = SetupHardware(obj)
     obj.HardwareState.OutputOverride = zeros(1,obj.HW.n.Outputs+3);
     obj.LastHardwareState = obj.HardwareState;
     % Find positions of input channel groups
+    obj.HW.Pos.Input_FlexIO = find(obj.HW.Inputs == 'F', 1);
     obj.HW.Pos.Input_BNC = find(obj.HW.Inputs == 'B', 1);
     obj.HW.Pos.Input_Wire = find(obj.HW.Inputs == 'W', 1);
     obj.HW.Pos.Input_Port = find(obj.HW.Inputs == 'P', 1);
