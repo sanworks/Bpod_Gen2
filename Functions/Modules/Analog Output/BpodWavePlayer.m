@@ -53,6 +53,7 @@ classdef BpodWavePlayer < handle
         nTriggerProfiles = 0;
         maxWaves; % Maximum number of waveforms to store on device
         nChannels; % Number of output channels
+        channelNotice = false; % Notice of maximum channels for setting fixed voltage
         Initialized = 0; % Set to 1 when initialized (to avoid spamming device with settings as fields are populated)
     end
     methods
@@ -371,7 +372,10 @@ classdef BpodWavePlayer < handle
         end
         function setFixedOutput(obj, Channels, DACOutputBits) % Channels are a list of channels to set. DACOutputBits range from 0-65535, mapped to current output range
             if obj.nChannels > 4
-                error('Error: While in beta testing, this function is only supported on the 4ch version of the analog output module')
+                if ~obj.channelNotice
+                    disp('Note: The setFixedOutput function is only supported on the first 4 channels of the analog output module')
+                    obj.channelNotice = 1;
+                end
             end
             ChannelBits = 0;
             for i = 1:length(Channels)
