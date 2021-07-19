@@ -178,8 +178,7 @@ function obj = SetupHardware(obj)
         if obj.SystemSettings.BonsaiAutoConnect == 1
             try
                 disp('Attempting to connect to Bonsai. Timeout in 10 seconds...')
-                BpodSocketServer('connect', 11235);
-                obj.BonsaiSocket.Connected = 1;
+                obj.BonsaiSocket = TCPCom(11235);
                 disp('Connected to Bonsai on port: 11235')
             catch
                 BpodErrorSound;

@@ -91,7 +91,6 @@ classdef BpodObject < handle
             obj.SplashData.BG = SplashBGData;
             obj.SplashData.Messages = SplashMessageData;
             obj.GUIHandles.SplashFig = figure('Position',[400 300 485 300],'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
-            obj.BonsaiSocket.Connected = 0;
             obj.Status.BpodStartTime = now;
             obj.Status = struct;
             obj.Status.LastTimestamp = 0;

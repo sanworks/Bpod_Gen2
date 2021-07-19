@@ -51,6 +51,7 @@ classdef TrialManagerObject < handle
         TimeScaleFactor
         TrialStartTimestamp
         LastTrialEndTime
+        usingBonsai
     end
     methods
         function obj = TrialManagerObject %Constructor
@@ -64,6 +65,14 @@ classdef TrialManagerObject < handle
             obj.TimeScaleFactor = (BpodSystem.HW.CyclePeriod/1000);
             obj.LastTrialEndTime = 0;
             obj.Timer = timer('TimerFcn',@(h,e)obj.processLiveEvents(), 'ExecutionMode', 'fixedRate', 'Period', 0.01);
+            obj.usingBonsai = 0;
+            if ~isempty(BpodSystem.BonsaiSocket)
+                obj.usingBonsai = 1;
+                BonsaiBytesAvailable = BpodSystem.BonsaiSocket.bytesAvailable;
+                if BonsaiBytesAvailable > 0
+                    BpodSystem.BonsaiSocket.read(BonsaiBytesAvailable, 'uint8');
+                end
+            end
         end
         function startTrial(obj, varargin)
             global BpodSystem
@@ -74,12 +83,6 @@ classdef TrialManagerObject < handle
             end
             obj.PrepareNextTrialFlag = 0;
             obj.TrialEndFlag = 0;
-            if BpodSystem.BonsaiSocket.Connected == 1
-                BonsaiBytesAvailable = BpodSocketServer('bytesAvailable');
-                if BonsaiBytesAvailable > 0
-                    BpodSocketServer('read', BonsaiBytesAvailable);
-                end
-            end
             if smaSent
                 if BpodSystem.Status.SM2runASAP == 0
                     BpodSystem.SerialPort.write('R', 'uint8');
@@ -253,6 +256,18 @@ classdef TrialManagerObject < handle
     methods (Access = private)
         function processLiveEvents(obj, e)
             global BpodSystem
+            if obj.usingBonsai
+                if BpodSystem.BonsaiSocket.bytesAvailable() > 15
+                    OscMsg = BpodSystem.BonsaiSocket.read(16, 'uint8');
+                    BonsaiByte = OscMsg(end);
+                    if BpodSystem.EmulatorMode == 0
+                        SendBpodSoftCode(BonsaiByte);
+                    else
+                        BpodSystem.VirtualManualOverrideBytes = ['~' BonsaiByte];
+                        BpodSystem.ManualOverrideFlag = 1;
+                    end
+                end
+            end
             if BpodSystem.EmulatorMode == 0
                 NewMessage = 0; nBytesRead = 0;
                 MaxBytesToRead = BpodSystem.SerialPort.bytesAvailable;
@@ -260,14 +275,6 @@ classdef TrialManagerObject < handle
                     NewMessage = 1;
                 end
             else
-                if BpodSystem.BonsaiSocket.Connected == 1
-                    if BpodSocketServer('bytesAvailable') > 0
-                        Byte = ReadOscByte;
-                        OverrideMessage = ['~' Byte];
-                        BpodSystem.VirtualManualOverrideBytes = OverrideMessage;
-                        BpodSystem.ManualOverrideFlag = 1;
-                    end
-                end
                 if BpodSystem.ManualOverrideFlag == 1
                     ManualOverrideEvent = VirtualManualOverride(BpodSystem.VirtualManualOverrideBytes);
                     BpodSystem.ManualOverrideFlag = 0;
@@ -405,16 +412,6 @@ classdef TrialManagerObject < handle
                     end
                     if BpodSystem.EmulatorMode == 1
                         nBytesRead = MaxBytesToRead;
-                    end
-                end
-            else
-                if BpodSystem.EmulatorMode == 0
-                    if BpodSystem.BonsaiSocket.Connected == 1
-                        if BpodSocketServer('bytesAvailable') > 0
-                            Byte = ReadOscByte;
-                            OverrideMessage = ['~' Byte];
-                            BpodSystem.SerialPort.write(OverrideMessage, 'uint8');
-                        end
                     end
                 end
             end

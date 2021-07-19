@@ -23,10 +23,12 @@ TimeScaleFactor = (BpodSystem.HW.CyclePeriod/1000);
 if isempty(BpodSystem.StateMatrixSent)
     error('Error: A state matrix must be sent prior to calling "RunStateMatrix".')
 end
-if BpodSystem.BonsaiSocket.Connected == 1
-    BonsaiBytesAvailable = BpodSocketServer('bytesAvailable');
+usingBonsai = 0;
+if ~isempty(BpodSystem.BonsaiSocket)
+    usingBonsai = 1;
+    BonsaiBytesAvailable = BpodSystem.BonsaiSocket.bytesAvailable;
     if BonsaiBytesAvailable > 0
-        BpodSocketServer('read', BonsaiBytesAvailable);
+        BpodSystem.BonsaiSocket.read(BonsaiBytesAvailable, 'uint8');
     end
 end
 if sum(BpodSystem.Modules.RelayActive) > 0
@@ -95,6 +97,18 @@ SetBpodHardwareMirror2CurrentState(1);
 BpodSystem.RefreshGUI;
 BpodSystem.Status.InStateMatrix = 1;
 while BpodSystem.Status.InStateMatrix
+    if usingBonsai
+        if BpodSystem.BonsaiSocket.bytesAvailable() > 15
+            OscMsg = BpodSystem.BonsaiSocket.read(16, 'uint8');
+            BonsaiByte = OscMsg(end);
+            if BpodSystem.EmulatorMode == 0
+                SendBpodSoftCode(BonsaiByte);
+            else
+                BpodSystem.VirtualManualOverrideBytes = ['~' BonsaiByte];
+                BpodSystem.ManualOverrideFlag = 1;
+            end
+        end
+    end
     if BpodSystem.EmulatorMode == 0
         if BpodSystem.SerialPort.bytesAvailable > 0
             NewMessage = 1;
@@ -103,14 +117,6 @@ while BpodSystem.Status.InStateMatrix
             NewMessage = 0;
         end
     else
-        if BpodSystem.BonsaiSocket.Connected == 1
-            if BpodSocketServer('bytesAvailable') > 0
-                Byte = ReadOscByte;
-                OverrideMessage = ['~' Byte];
-                BpodSystem.VirtualManualOverrideBytes = OverrideMessage;
-                BpodSystem.ManualOverrideFlag = 1;
-            end
-        end
         if BpodSystem.ManualOverrideFlag == 1
             ManualOverrideEvent = VirtualManualOverride(BpodSystem.VirtualManualOverrideBytes);
             BpodSystem.ManualOverrideFlag = 0;
@@ -232,15 +238,6 @@ while BpodSystem.Status.InStateMatrix
                 disp('Error: Invalid op code received')
         end
     else
-        if BpodSystem.EmulatorMode == 0
-            if BpodSystem.BonsaiSocket.Connected == 1
-                if BpodSocketServer('bytesAvailable') > 0
-                    Byte = ReadOscByte;
-                    OverrideMessage = ['~' Byte];
-                    BpodSystem.SerialPort.write(OverrideMessage, 'uint8');
-                end
-            end
-        end
         drawnow;
     end
 end
@@ -389,6 +386,13 @@ if OpCode == 'V'
 elseif OpCode == 'S'
     HandleSoftCode(uint8(OverrideMessage(2)));
     ManualOverrideEvent = [];
+elseif OpCode == '~'
+    Code = OverrideMessage(2);
+    if Code <= BpodSystem.HW.n.SoftCodes && Code ~= 0
+        ManualOverrideEvent = BpodSystem.HW.Pos.Event_USB-1 + Code;
+    else
+        error(['Error: cannot send soft code ' num2str(Code) '; Soft codes must be in range: [1 ' num2str(BpodSystem.HW.n.SoftCodes) '].']) 
+    end
 else
     ManualOverrideEvent = [];
 end
