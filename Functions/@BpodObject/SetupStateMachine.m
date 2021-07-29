@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -26,6 +26,7 @@ function obj = SetupStateMachine(obj)
     nBNCs = 0;
     nWires = 0;
     nPorts = 0;
+    nFlexIO = 0;
     nChannels = 0;
     for i = 1:obj.HW.n.Inputs
         switch obj.HW.Inputs(i)
@@ -62,6 +63,24 @@ function obj = SetupStateMachine(obj)
                     for j = obj.HW.n.SoftCodes+1:obj.HW.n.SoftCodes+(obj.HW.n.MaxSerialEvents-Pos)+1
                         EventNames{Pos} = ['SoftCode' num2str(j)]; Pos = Pos + 1;
                     end
+                end
+            case 'F'
+                if nFlexIO == 0
+                    obj.HW.Pos.Event_FlexIO = Pos;
+                end
+                nChannels = nChannels + 1; nFlexIO = nFlexIO + 1;
+                if obj.HW.FlexIOChannelTypes(nFlexIO) == 0
+                    InputChannelNames{nChannels} = ['Flex' num2str(nFlexIO)];
+                    EventNames{Pos} = [InputChannelNames{nChannels} 'High']; Pos = Pos + 1;
+                    EventNames{Pos} = [InputChannelNames{nChannels} 'Low']; Pos = Pos + 1;
+                elseif obj.HW.FlexIOChannelTypes(nFlexIO) == 2
+                    InputChannelNames{nChannels} = ['Flex' num2str(nFlexIO)];
+                    EventNames{Pos} = [InputChannelNames{nChannels} 'Trig']; Pos = Pos + 1;
+                    EventNames{Pos} = [InputChannelNames{nChannels} 'Reset']; Pos = Pos + 1;
+                else
+                    InputChannelNames{nChannels} = '---';
+                    EventNames{Pos} = '---'; Pos = Pos + 1;
+                    EventNames{Pos} = '---'; Pos = Pos + 1;
                 end
             case 'P'
                 if nPorts == 0
@@ -115,6 +134,7 @@ function obj = SetupStateMachine(obj)
     OutputChannelNames = cell(1,obj.HW.n.Outputs + 3);
     Pos = 0;
     nUSB = 0;
+    nFlexIO = 0;
     nSPI = 0;
     nBNCs = 0;
     nWires = 0;
@@ -135,6 +155,18 @@ function obj = SetupStateMachine(obj)
                 if nUSB == 0
                     obj.HW.Pos.Output_USB = Pos;
                     nUSB = 1;
+                end
+            case 'F' % FlexIO output
+                if nFlexIO == 0
+                    obj.HW.Pos.Output_FlexIO = Pos;
+                end
+                nFlexIO = nFlexIO + 1;
+                if obj.HW.FlexIOChannelTypes(nFlexIO) == 1
+                    OutputChannelNames{Pos} = ['Flex' num2str(nFlexIO) 'DO'];
+                elseif obj.HW.FlexIOChannelTypes(nFlexIO) == 3
+                    OutputChannelNames{Pos} = ['Flex' num2str(nFlexIO) 'AO'];
+                else
+                    OutputChannelNames{Pos} = '---';
                 end
             case 'S' % Valves controlled by an SPI shift register
                 if nSPI == 0

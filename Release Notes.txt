@@ -1,3 +1,14 @@
+---v1.64---
+-Initial release of HiFi Module: MATLAB class, Python class, BControl patch, firmware binaries and example protocols
+-Added LoadBpodFirmware.m, a new "superuser" firmware loading tool. UpdateBpodFirmware should be used for routine updates.
+-Analog Output: Added setFixedOutput to WavePlayer module, to set a fixed voltage on any channel(s).
+-Analog Output: Updated WavePlayer firmware to support setFixedOutput, and to remove dependencies
+-Analog Output: With firmware update, setupSD is no longer necessary before first use
+-Analog Input: Added a datalogging feature to the analog input UI, and an example protocol using it.
+-Analog Input: Added serial op to sync the state machine with the AIM's USB stream via sync bytes (see new example protocol)
+-Updated firmware uploader to support Teensy 4.0 + 4.1 boards (HiFi module, State Machine r2+)
+-Fixed GenerateSineWave accessory function to remove extra sample
+
 ---v1.63---
 -Fixed bug introduced in v1.62 - Previously, when the user navigated to a folder of protocols, the protocol path did not correctly update if the first protocol in the new folder was selected. This would result in data being saved into the folder for the previous protocol selected, with an the previously selected protocol in the file name.
 

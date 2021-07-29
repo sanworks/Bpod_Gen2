@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2021 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -53,6 +53,7 @@ classdef BpodWavePlayer < handle
         nTriggerProfiles = 0;
         maxWaves; % Maximum number of waveforms to store on device
         nChannels; % Number of output channels
+        channelNotice = false; % Notice of maximum channels for setting fixed voltage
         Initialized = 0; % Set to 1 when initialized (to avoid spamming device with settings as fields are populated)
     end
     methods
@@ -368,6 +369,24 @@ classdef BpodWavePlayer < handle
         end
         function stop(obj)
             obj.Port.write('X', 'uint8');
+        end
+        function setFixedOutput(obj, Channels, DACOutputBits) % Channels are a list of channels to set. DACOutputBits range from 0-65535, mapped to current output range
+            if obj.nChannels > 4
+                if ~obj.channelNotice
+                    disp('Note: The setFixedOutput function is only supported on the first 4 channels of the analog output module')
+                    obj.channelNotice = 1;
+                end
+            end
+            ChannelBits = 0;
+            for i = 1:length(Channels)
+                ChannelBits = ChannelBits + 2^(Channels(i)-1);
+            end
+            ChannelBits = ChannelBits + 128; % Op codes in range 129-143 indicate channels to set, with last 4 bits encoding target channel(s)
+            obj.Port.write(ChannelBits, 'uint8', DACOutputBits, 'uint16');
+            Confirmed = obj.Port.read(1, 'uint8');
+            if Confirmed ~= 1
+                error('Error setting fixed output voltage(s). Confirm code not returned.');
+            end
         end
         function delete(obj)
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
