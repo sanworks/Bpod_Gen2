@@ -221,13 +221,29 @@ for x = 1:2:length(OutputActions)
                     % global timers convert to equivalent binary decimals. To
                     % specify binary, use a string of bits.
                     Value = 2^(Value-1);
+                elseif BpodSystem.MachineType == 4
+                    if (TargetEventCode >= BpodSystem.HW.Pos.Output_FlexIO) && (TargetEventCode < BpodSystem.HW.Pos.Output_BNC)
+                    % If FlexIO channel is analog output, convert volts to bits
+                        TargetFlexIOChannel = TargetEventCode - (BpodSystem.HW.Pos.Output_FlexIO-1);
+                        if BpodSystem.HW.FlexIOChannelTypes(TargetFlexIOChannel) == 3
+                            MaxFlexIOVoltage = 5;
+                            if (Value > MaxFlexIOVoltage) || (Value < 0)
+                                error('Error: Flex I/O channel voltages must be in range [0, 5]');
+                            end
+                            Value = uint16((Value/MaxFlexIOVoltage)*4095);
+                        else
+                            Value = uint16(Value);
+                        end
+                    else
+                        Value = uint16(Value);
+                    end
                 else
-                    Value = uint8(Value);
+                        Value = uint8(Value);
                 end
             else
                 if ischar(Value) && ((sum(Value == '0') + sum(Value == '1')) == length(Value)) % Assume binary string, convert to decimal
                         Value = bin2dec(Value);
-                else
+                else % Implicit programming of serial message library
                     sma.SerialMessageMode = 1;
                     messageIndex = 0;
                     for i = 1:sma.nSerialMessages(TargetEventCode)

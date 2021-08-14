@@ -368,6 +368,60 @@ classdef BpodObject < handle
             end
             obj.Modules.RelayActive(1:end) = 0;
         end
+        function setFlexIO(obj, channelTypes)
+            % ChannelTypes: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC
+            if length(channelTypes) ~= obj.HW.n.FlexIO
+                error(['Error using setFlexIO: the channelTypes vector must specify one type for each of the ' num2str(obj.HW.n.FlexIO) ' FlexIO channels.']);
+            end
+            if (sum(channelTypes > 3) > 0) || (sum(channelTypes < 0) > 0)
+                error('Error using setFlexIO: invalid channel type specified. Valid channel types are: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC');
+            end
+            if obj.Status.InStateMatrix
+                error('Error: FlexIO channels cannot be reconfigured while the state machine is running.');
+            end
+            obj.SerialPort.write(['Q' channelTypes], 'uint8');
+            OK = obj.SerialPort.read(1, 'uint8');
+            if OK ~= 1
+                error('Error configuring FlexIO channels: confirm code not returned');
+            end
+            % Reconfigure events and outputs
+            obj.HW.FlexIOChannelTypes = channelTypes;
+            InputChannelNames = cell(1,obj.HW.n.FlexIO);
+            OutputChannelNames = cell(1,obj.HW.n.FlexIO);
+            FlexEventPos = obj.HW.Pos.Event_FlexIO;
+            FlexInputPos = obj.HW.Pos.Input_FlexIO;
+            FlexOutputPos = obj.HW.Pos.Output_FlexIO;
+            for i = 1:obj.HW.n.FlexIO
+                switch channelTypes(i)
+                    case 0
+                        InputChannelNames{i} = ['Flex' num2str(i)];
+                        OutputChannelNames{i} = '---';
+                        obj.StateMachineInfo.EventNames{FlexEventPos} = [InputChannelNames{i} 'High'];
+                        obj.StateMachineInfo.EventNames{FlexEventPos+1} = [InputChannelNames{i} 'Low'];
+                        FlexEventPos = FlexEventPos + 2;
+                    case 1
+                        InputChannelNames{i} = '---';
+                        OutputChannelNames{i} = ['Flex' num2str(i) 'DO'];
+                        obj.StateMachineInfo.EventNames{FlexEventPos} = '---';
+                        obj.StateMachineInfo.EventNames{FlexEventPos+1} = '---';
+                        FlexEventPos = FlexEventPos + 2;
+                    case 2
+                        InputChannelNames{i} = ['Flex' num2str(i)];
+                        OutputChannelNames{i} = '---';
+                        obj.StateMachineInfo.EventNames{FlexEventPos} = [InputChannelNames{i} 'Trig'];
+                        obj.StateMachineInfo.EventNames{FlexEventPos+1} = [InputChannelNames{i} 'Reset'];
+                        FlexEventPos = FlexEventPos + 2;
+                    case 3
+                        InputChannelNames{i} = '---';
+                        OutputChannelNames{i} = ['Flex' num2str(i) 'AO'];
+                        obj.StateMachineInfo.EventNames{FlexEventPos} = '---';
+                        obj.StateMachineInfo.EventNames{FlexEventPos+1} = '---';
+                        FlexEventPos = FlexEventPos + 2;
+                end
+            end
+            obj.StateMachineInfo.InputChannelNames(FlexInputPos:FlexInputPos+obj.HW.n.FlexIO-1) = InputChannelNames;
+            obj.StateMachineInfo.OutputChannelNames(FlexOutputPos:FlexOutputPos+obj.HW.n.FlexIO-1) = OutputChannelNames;
+        end
         function PhoneHomeOpt_In_Out(obj)
             obj.GUIHandles.BpodPhoneHomeFig = figure('Position', [550 180 400 350],...
                 'name','Bpod Phone Home','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');

@@ -175,7 +175,11 @@ for i = 1:nStates
         Pos = Pos + nDifferences(i)*2;
     end
 end
-OutputMatrix = uint8(OutputMatrix);
+if BpodSystem.MachineType == 4
+    OutputMatrix = typecast(uint16(OutputMatrix), 'uint8');
+else
+    OutputMatrix = uint8(OutputMatrix);
+end
 
 DifferenceMatrix = (sma.GlobalTimerStartMatrix(:,1:nGlobalTimersUsed) ~= DefaultExtensionMatrix_GT)';
 nDifferences = sum(DifferenceMatrix, 1);
@@ -252,16 +256,23 @@ StateTimerMatrix = uint8(sma.StateTimerMatrix-1);
 ConditionChannels = uint8(sma.ConditionChannels(1:nConditionsUsed)-1);
 ConditionValues = uint8(sma.ConditionValues(1:nConditionsUsed));
 GlobalTimerChannels = uint8(sma.GlobalTimers.OutputChannel(1:nGlobalTimersUsed)-1);
+UARTChannels = GlobalTimerChannels < BpodSystem.HW.Pos.Input_USB-1;
 GlobalTimerOnMessages = sma.GlobalTimers.OnMessage(1:nGlobalTimersUsed);
-GlobalTimerOnMessages(GlobalTimerOnMessages==0) = 255;
-GlobalTimerOnMessages = uint8(GlobalTimerOnMessages);
+GlobalTimerOnMessages(GlobalTimerOnMessages==0 & UARTChannels) = 255;
 GlobalTimerOffMessages = sma.GlobalTimers.OffMessage(1:nGlobalTimersUsed);
-GlobalTimerOffMessages(GlobalTimerOffMessages==0) = 255;
-GlobalTimerOffMessages = uint8(GlobalTimerOffMessages);
+GlobalTimerOffMessages(GlobalTimerOffMessages==0 & UARTChannels) = 255;
 GlobalTimerLoopMode = uint8(sma.GlobalTimers.LoopMode(1:nGlobalTimersUsed));
 SendGlobalTimerEvents = uint8(sma.GlobalTimers.SendEvents(1:nGlobalTimersUsed));
 GlobalCounterAttachedEvents = uint8(sma.GlobalCounterEvents(1:nGlobalCountersUsed)-1);
 GlobalCounterThresholds = uint32(sma.GlobalCounterThresholds(1:nGlobalCountersUsed));
+
+if BpodSystem.MachineType == 4 % Global timer on/off messages are 16-bit on state machine 2+
+    GlobalTimerOnMessages = typecast(uint16(GlobalTimerOnMessages), 'uint8');
+    GlobalTimerOffMessages = typecast(uint16(GlobalTimerOffMessages), 'uint8');
+else
+    GlobalTimerOnMessages = uint8(GlobalTimerOnMessages);
+    GlobalTimerOffMessages = uint8(GlobalTimerOffMessages);
+end
 
 %% Extract and format virtual outputs (global timer trig + cancel, global counter reset)
 maxGlobalTimers = BpodSystem.HW.n.GlobalTimers;
