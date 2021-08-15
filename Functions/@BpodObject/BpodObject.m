@@ -327,6 +327,9 @@ classdef BpodObject < handle
         end
         function obj = SetStatusLED(obj, status)
             if obj.EmulatorMode == 0
+                if obj.FirmwareVersion < 23
+                    error('Error: status LED enable/disable requires firmware v23+');
+                end
                 if (status == 1) || (status == 0)
                     obj.SerialPort.write([':' status], 'uint8');
                     Confirmed = obj.SerialPort.read(1, 'uint8');

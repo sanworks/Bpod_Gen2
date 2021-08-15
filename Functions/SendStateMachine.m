@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -163,7 +163,7 @@ DifferenceMatrix = (OutputMatrixRaw ~= 0)';
 nDifferences = sum(DifferenceMatrix, 1);
 msgLength = sum(nDifferences>0)*2 + nStates;
 OutputMatrix = zeros(1,msgLength); Pos = 1;
-for i = 1:nStates    
+for i = 1:nStates
     OutputMatrix(Pos) = nDifferences(i); Pos = Pos + 1;
     if nDifferences(i) > 0
         ThisState = DifferenceMatrix(:,i)';
@@ -312,14 +312,21 @@ EightBitMatrix = [nStates nGlobalTimersUsed nGlobalCountersUsed nConditionsUsed.
     GlobalCounterAttachedEvents ConditionChannels ConditionValues GlobalCounterResets];
 GlobalTimerMatrix = [GlobalTimerTrigs GlobalTimerCancels GlobalTimerOnset_Trigger];
 ThirtyTwoBitMatrix = [StateTimers GlobalTimers GlobalTimerDelays GlobalTimerLoopIntervals GlobalCounterThresholds];
-nBytes = uint16(length(EightBitMatrix) + GTbytes*length(GlobalTimerMatrix) + 4*length(ThirtyTwoBitMatrix)); % Number of bytes in state matrix (excluding nStates byte)
+%nBytes = uint16(length(EightBitMatrix) + GTbytes*length(GlobalTimerMatrix) + 4*length(ThirtyTwoBitMatrix)); % Number of bytes in state matrix (excluding nStates byte)
 
 %% Create serial message vector (if using implicit serial messages)
 SerialMessageVector = []; nModulesLoaded = 0;
+containsAdditionalOps = [];
+finalAdditionalOps = [];
+if BpodSystem.FirmwareVersion > 22 % Additional ops can be packaged with state machine description (e.g. programming serial message library)
+    containsAdditionalOps = uint8(1);
+    finalAdditionalOps = uint8(0);
+end
+% This section can be optimized for speed (currently should take ~0.5ms per module for most tasks)
 if sma.SerialMessageMode == 1
     for i = 1:BpodSystem.HW.n.UartSerialChannels
         if sma.nSerialMessages(i) > 0
-            SerialMessageVector = [SerialMessageVector 'L' i-1 sma.nSerialMessages(i)];
+            SerialMessageVector = [SerialMessageVector containsAdditionalOps 'L' i-1 sma.nSerialMessages(i)];
             for j = 1:sma.nSerialMessages(i)
                 ThisMessage = sma.SerialMessages{i,j};
                 SerialMessageVector = [SerialMessageVector j length(ThisMessage) ThisMessage];
@@ -332,9 +339,16 @@ end
 
 if BpodSystem.EmulatorMode == 0
     %% Send state matrix to Bpod device
-    ByteString = [EightBitMatrix typecast(GlobalTimerMatrix, 'uint8') typecast(ThirtyTwoBitMatrix, 'uint8')];
+    
+    
+    if BpodSystem.FirmwareVersion > 22 % Package ops with byte string
+        ByteString = [EightBitMatrix typecast(GlobalTimerMatrix, 'uint8') typecast(ThirtyTwoBitMatrix, 'uint8') SerialMessageVector finalAdditionalOps];
+    else
+        ByteString = [EightBitMatrix typecast(GlobalTimerMatrix, 'uint8') typecast(ThirtyTwoBitMatrix, 'uint8')];
+    end
+    nBytes = uint16(length(ByteString));
     if BpodSystem.Status.InStateMatrix == 1 % If loading during a trial
-        if sma.SerialMessageMode == 0
+        if sma.SerialMessageMode == 0 || BpodSystem.FirmwareVersion > 22
             switch BpodSystem.MachineType
                 case 1
                     error('Error: Bpod 0.5 cannot send a state machine while a trial is in progress. If you need this functionality, consider switching to Bpod 0.7+')
@@ -349,22 +363,24 @@ if BpodSystem.EmulatorMode == 0
                     BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
             end
         else
-            error(['Error: TrialManager does not support state machine descriptions that' char(10)...
+            error(['Error: On state machine firmware v22 and older, TrialManager does not support state machine descriptions that' char(10)...
                 'use implicit serial messages (e.g. {''MyModule1'', [''A'' 1 2]}.' char(10)...
-                'Use LoadSerialMessages() to program them explicitly, or rewrite your protocol without using TrialManager.'])
+                'Use LoadSerialMessages() to program them explicitly, rewrite your protocol without using TrialManager, or upgrade to firmware v23+.'])
         end
     else
         BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
-        if sma.SerialMessageMode == 1 % If SerialMessage Library was updated due to implicit programming
-            % in state machine syntax, current firmware returns an acknowledgement byte which must be read here
-            % to avoid conflicts with subsequent commands. A future firmware update will read this byte after 
-            % the next trial starts, to avoid the speed penalty of a read during dead-time (see comment below)
-            BpodSystem.SerialPort.write(SerialMessageVector, 'uint8');
-            Ack = BpodSystem.SerialPort.read(nModulesLoaded, 'uint8');
+        if BpodSystem.FirmwareVersion < 23
+            if sma.SerialMessageMode == 1 % If SerialMessage Library was updated due to implicit programming
+                % in state machine syntax, current firmware returns an acknowledgement byte which must be read here
+                % to avoid conflicts with subsequent commands. A future firmware update will read this byte after
+                % the next trial starts, to avoid the speed penalty of a read during dead-time (see comment below)
+                BpodSystem.SerialPort.write(SerialMessageVector, 'uint8');
+                Ack = BpodSystem.SerialPort.read(nModulesLoaded, 'uint8');
+            end
         end
     end
     
-    %% Confirm send. Note: To reduce dead time when SerialMessageMode = 0, transmission is confirmed from 
+    %% Confirm send. Note: To reduce dead time when SerialMessageMode = 0, transmission is confirmed from
     %  state machine after next call to RunStateMachine()
     BpodSystem.Status.NewStateMachineSent = 1; % On next run, a byte is returned confirming that the state machine was received.
     BpodSystem.Status.SM2runASAP = runASAP;

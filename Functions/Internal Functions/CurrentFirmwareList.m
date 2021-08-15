@@ -4,7 +4,7 @@ function Firmware = CurrentFirmwareList
 % state machine + all curated modules.
 
 Firmware = struct;
-Firmware.StateMachine = 22;
+Firmware.StateMachine = 23;
 Firmware.WavePlayer = 3;
 Firmware.AudioPlayer = 2;
 Firmware.PulsePal = 1;
