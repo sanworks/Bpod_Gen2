@@ -234,6 +234,10 @@ while BpodSystem.Status.InStateMatrix
             case 2 % Soft-code
                 SoftCode = opCodeBytes(2);
                 HandleSoftCode(SoftCode);
+            case 3 % Incoming ADC sample
+                nChannels = opCodeBytes(2);
+                AnalogSamples = BpodSystem.SerialPort.read(nChannels, 'uint16');
+                disp(AnalogSamples);
             otherwise
                 disp('Error: Invalid op code received')
         end
