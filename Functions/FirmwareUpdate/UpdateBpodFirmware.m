@@ -108,7 +108,7 @@ classdef UpdateBpodFirmware < handle
                 'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
             for i = 1:nModules
                 ModuleName = obj.ModuleNames{i};
-                if strcmp(ModuleName(1:6), 'Serial')
+                if ~isempty(strfind(ModuleName, 'Serial'))
                     SerNum = ModuleName(end);
                     ModuleName = ['Module' num2str(SerNum)];
                 end
@@ -140,7 +140,7 @@ classdef UpdateBpodFirmware < handle
             obj.LatestModuleFirmware = zeros(1,nModules);
             for i = 1:nModules
                 ModuleName = obj.ModuleNames{i};
-                if strcmp(ModuleName(1:6), 'Serial')
+                if ~isempty(strfind(ModuleName, 'Serial'))
                     obj.LatestModuleFirmware(i) = ModuleFirmwareVersions(i);
                 else
                     obj.LatestModuleFirmware(i) = obj.CurrentFirmware.(ModuleName(1:end-1));
@@ -163,7 +163,7 @@ classdef UpdateBpodFirmware < handle
                 Enable = 'off';
             end
             obj.gui.smButton = uicontrol('Style', 'pushbutton', 'Position', [545 Ypos 170 30], 'String', 'Update', 'FontSize', 14,...
-                'FontWeight', 'bold', 'Enable', Enable,'Callback', @(h,e)obj.updateFirmware()); Ypos = Ypos - 30;
+                'FontWeight', 'bold', 'Enable', Enable, 'Callback', @(h,e)obj.updateFirmware()); Ypos = Ypos - 30;
             for i = 1:nModules
                 thisModuleFirmware = ModuleFirmwareVersions(i);
                 Enable = 'on';

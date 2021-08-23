@@ -87,14 +87,22 @@ classdef TrialManagerObject < handle
                 if BpodSystem.Status.SM2runASAP == 0
                     BpodSystem.SerialPort.write('R', 'uint8');
                 end
+                BpodSystem.Status.BeingUsed = 1;
+                BpodSystem.Status.InStateMatrix = 1;
             else
+                BpodSystem.Status.BeingUsed = 1;
+                BpodSystem.Status.InStateMatrix = 1;
                 SendStateMachine(StateMatrix, 'RunASAP');
             end
             BpodSystem.Status.SM2runASAP = 0;
             SMA_Confirmed = BpodSystem.SerialPort.read(1, 'uint8');
             if isempty(SMA_Confirmed)
+                BpodSystem.Status.BeingUsed = 0;
+                BpodSystem.Status.InStateMatrix = 0;
                 error('Error: The last state machine sent was not acknowledged by the Bpod device.');
             elseif SMA_Confirmed ~= 1
+                BpodSystem.Status.BeingUsed = 0;
+                BpodSystem.Status.InStateMatrix = 0;
                 error('Error: The last state machine sent was not acknowledged by the Bpod device.');
             end
             TrialStartTimestampBytes = BpodSystem.SerialPort.read(8, 'uint8');
@@ -110,8 +118,6 @@ classdef TrialManagerObject < handle
             TimeElapsed = ceil((now*100000) - BpodSystem.ProtocolStartTime);
             set(BpodSystem.GUIHandles.TimeDisplay, 'String', obj.Secs2HMS(TimeElapsed));
             set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton);
-            BpodSystem.Status.BeingUsed = 1;
-            BpodSystem.Status.InStateMatrix = 1;
             if BpodSystem.EmulatorMode == 1
                 RunBpodEmulator('init', []);
                 BpodSystem.ManualOverrideFlag = 0;

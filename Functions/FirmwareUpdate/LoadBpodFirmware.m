@@ -161,10 +161,13 @@ classdef LoadBpodFirmware < handle
             FirmwareFilename = [ModuleName suffix];
             progressbar(0.02); pause(.1);
             progressbar(0.6);
-            obj.uploadFirmware(PortName, FirmwareFilename, boardType, portType);
+            loadOK = obj.uploadFirmware(PortName, FirmwareFilename, boardType, portType);
             pause(PauseFor);
             progressbar(0.9);
             progressbar(1);
+            if (~loadOK)
+                error('Error: Firmware upload failed.');
+            end
             BGColor = [0.4 1 0.4];
             obj.gui.ConfirmModal  = figure('name','Firmware Update', 'position',[335,120,280,200],...
                 'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off',...
@@ -181,39 +184,44 @@ classdef LoadBpodFirmware < handle
             delete(obj.gui.ConfirmModal);
             delete(obj.gui.Fig);
         end
-        function uploadFirmware(obj, TargetPort, Filename, boardType, portType)
-            thisFolder = fileparts(which('UpdateBpodFirmware'));
+        function loadOK = uploadFirmware(obj, TargetPort, Filename, boardType, portType)
+            thisFolder = ['"' fileparts(which('UpdateBpodFirmware'))];
             firmwarePath = fullfile(thisFolder, Filename);
             switch boardType
                 case 'ArduinoDue'
                     system(['@mode ' TargetPort ':1200,N,8,1']);
                     system('PING -n 3 127.0.0.1>NUL');
-                    programPath = fullfile(thisFolder, ['bossac -i -d -U true -e -w -v -b ' firmwarePath ' -R']);
+                    programPath = fullfile(thisFolder, ['bossac" -i -d -U true -e -w -v -b ' firmwarePath '" -R']);
+                    OKstring = 'Verify successful';
                 case 'TrinketM0'
                     system(['@mode ' TargetPort ':1200,N,8,1']);
                     system('PING -n 3 127.0.0.1>NUL');
-                    programPath = fullfile(thisFolder, ['bossac -i -d -U true -e -w -v -b ' firmwarePath ' -R']);
+                    programPath = fullfile(thisFolder, ['bossac" -i -d -U true -e -w -v -b ' firmwarePath '" -R']);
+                    OKstring = 'Verify successful';
                 case 'Teensy3_x'
                     [status, msg] = system('taskkill /F /IM teensy.exe');
                     pause(.1);
                     switch portType
                         case 1
-                            programPath = fullfile(thisFolder, ['tycmd upload ' firmwarePath ' --board "@' TargetPort '"']);
+                            programPath = fullfile(thisFolder, ['tycmd" upload ' firmwarePath '" --board "@' TargetPort '"']);
                         case 2
-                            programPath = fullfile(thisFolder, ['tycmd upload ' firmwarePath ' --board "' TargetPort(5:end) '"']);
+                            programPath = fullfile(thisFolder, ['tycmd" upload ' firmwarePath '" --board "' TargetPort(5:end) '"']);
                     end
+                    OKstring = 'Sending reset command';
                 case 'Teensy4_x'
                     [status, msg] = system('taskkill /F /IM teensy.exe');
                     pause(.1);
                     switch portType
                         case 1
-                            programPath = fullfile(thisFolder, ['tycmd upload ' firmwarePath ' --board "@' TargetPort '"']);
+                            programPath = fullfile(thisFolder, ['tycmd" upload ' firmwarePath '" --board "@' TargetPort '"']);
                         case 2
-                            programPath = fullfile(thisFolder, ['tycmd upload ' firmwarePath ' --board "' TargetPort(5:end) '"']);
+                            programPath = fullfile(thisFolder, ['tycmd" upload ' firmwarePath '" --board "' TargetPort(5:end) '"']);
                     end
+                    OKstring = 'Sending reset command';
             end
             disp('------Uploading new firmware------')
-            system(programPath);
+            [Ack, Msg] = system(programPath);
+            loadOK = ~isempty(strfind(Msg, OKstring));
         end
     end
 end
