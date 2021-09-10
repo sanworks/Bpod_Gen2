@@ -119,6 +119,7 @@ classdef BpodObject < handle
             obj.Path.CurrentDataFile = '';
             obj.Path.CurrentProtocol= '';
             obj.Path.InputConfig = fullfile(obj.Path.SettingsDir, 'InputConfig.mat');
+            obj.Path.FlexConfig = fullfile(obj.Path.SettingsDir, 'FlexConfig.mat');
             obj.Path.SyncConfig = fullfile(obj.Path.SettingsDir, 'SyncConfig.mat');
             obj.Path.ModuleUSBConfig = fullfile(obj.Path.SettingsDir, 'ModuleUSBConfig.mat');
             % Initialize state machine info, to be populated in SetupStateMachine()

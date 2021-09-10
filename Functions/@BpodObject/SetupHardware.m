@@ -116,9 +116,17 @@ function obj = SetupHardware(obj)
         if Confirmed ~= 1
             error('Could not enable ports');
         end
-        % Read flexIO config
+        % Set flexIO config
         if obj.MachineType == 4
             nFlexIOChannels = sum(obj.HW.Outputs == 'F');
+            if exist(obj.Path.FlexConfig)
+                load(obj.Path.FlexConfig)
+                obj.SerialPort.write(['Q' BpodFlexConfig], 'uint8');
+                OK = obj.SerialPort.read(1, 'uint8');
+                if OK ~= 1
+                    error('Error configuring FlexIO channels: confirm code not returned');
+                end
+            end
             obj.SerialPort.write('q', 'uint8');
             obj.HW.FlexIOChannelTypes = obj.SerialPort.read(nFlexIOChannels, 'uint8'); % Channel types are: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC
         end

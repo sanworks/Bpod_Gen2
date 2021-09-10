@@ -75,8 +75,8 @@ function obj = SetupStateMachine(obj)
                     EventNames{Pos} = [InputChannelNames{nChannels} 'Low']; Pos = Pos + 1;
                 elseif obj.HW.FlexIOChannelTypes(nFlexIO) == 2
                     InputChannelNames{nChannels} = ['Flex' num2str(nFlexIO)];
-                    EventNames{Pos} = [InputChannelNames{nChannels} 'Trig']; Pos = Pos + 1;
-                    EventNames{Pos} = [InputChannelNames{nChannels} 'Reset']; Pos = Pos + 1;
+                    EventNames{Pos} = [InputChannelNames{nChannels} 'Trig1']; Pos = Pos + 1;
+                    EventNames{Pos} = [InputChannelNames{nChannels} 'Trig2']; Pos = Pos + 1;
                 else
                     InputChannelNames{nChannels} = '---';
                     EventNames{Pos} = '---'; Pos = Pos + 1;
