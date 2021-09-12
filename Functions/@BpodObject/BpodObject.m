@@ -426,6 +426,18 @@ classdef BpodObject < handle
             obj.StateMachineInfo.InputChannelNames(FlexInputPos:FlexInputPos+obj.HW.n.FlexIO-1) = InputChannelNames;
             obj.StateMachineInfo.OutputChannelNames(FlexOutputPos:FlexOutputPos+obj.HW.n.FlexIO-1) = OutputChannelNames;
         end
+        function setFlexIO_AnalogInputSF(obj, SF)
+            % Set FlexIO analog input sampling rate (Hz). Permitted range = [1, 1000]
+            nCyclesPerSample = obj.HW.CycleFrequency/SF; % Number of state machine cycles per analog sample
+            if nCyclesPerSample < 1 || nCyclesPerSample > obj.HW.CycleFrequency
+                error('Error configuring FlexIO analog input sampling rate: Rate must be in range [1, 1000]');
+            end
+            obj.SerialPort.write('^', 'uint8', nCyclesPerSample, 'uint32');
+            OK = obj.SerialPort.read(1, 'uint8');
+            if OK ~= 1
+                error('Error configuring FlexIO analog input sampling rate: confirm code not returned');
+            end
+        end
         function PhoneHomeOpt_In_Out(obj)
             obj.GUIHandles.BpodPhoneHomeFig = figure('Position', [550 180 400 350],...
                 'name','Bpod Phone Home','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
