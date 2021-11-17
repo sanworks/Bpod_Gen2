@@ -44,6 +44,18 @@ if ~isempty(BpodSystem)
             close(BpodSystem.GUIHandles.ConfigureBonsaiFig)
         catch
         end
+        try
+            close(BpodSystem.GUIHandles.OscopeFig_Builtin)
+        catch
+        end
+        stop(BpodSystem.Timers.AnalogTimer);
+        delete(BpodSystem.Timers.AnalogTimer);
+        BpodSystem.Timers.AnalogTimer = [];
+        stop(BpodSystem.Timers.PortRelayTimer);
+        delete(BpodSystem.Timers.PortRelayTimer);
+        BpodSystem.Timers.PortRelayTimer = [];
+        BpodSystem.SerialPort = [];
+        BpodSystem.AnalogSerialPort = [];
         clear global BpodSystem
     else
         msgbox('There is a running protocol. Please stop it first.')

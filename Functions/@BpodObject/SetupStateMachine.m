@@ -28,6 +28,7 @@ function obj = SetupStateMachine(obj)
     nPorts = 0;
     nFlexIO = 0;
     nChannels = 0;
+    nSoftCodesPerUSBChannel = obj.HW.n.SoftCodes/obj.HW.n.USBChannels;
     for i = 1:obj.HW.n.Inputs
         switch obj.HW.Inputs(i)
             case 'U'
@@ -56,7 +57,7 @@ function obj = SetupStateMachine(obj)
                 end
                 nChannels = nChannels + 1; nUSB = nUSB + 1;
                 InputChannelNames{nChannels} = 'USB';
-                for j = 1:obj.HW.n.SoftCodes;
+                for j = 1:nSoftCodesPerUSBChannel
                     EventNames{Pos} = ['SoftCode' num2str(j)]; Pos = Pos + 1;
                 end
                 if Pos < obj.HW.n.MaxSerialEvents
@@ -209,6 +210,14 @@ function obj = SetupStateMachine(obj)
     Pos = Pos + 1;
     OutputChannelNames{Pos} = 'GlobalCounterReset';
     obj.HW.Pos.GlobalCounterReset = Pos;
+    if obj.MachineType > 3
+        Pos = Pos + 1;
+        OutputChannelNames{Pos} = 'AnalogThreshEnable';
+        obj.HW.Pos.AnalogThreshEnable = Pos;
+        Pos = Pos + 1;
+        OutputChannelNames{Pos} = 'AnalogThreshDisable';
+        obj.HW.Pos.AnalogThreshDisable = Pos;
+    end
     obj.StateMachineInfo.OutputChannelNames = OutputChannelNames;
     obj.StateMachineInfo.nEvents = length(obj.StateMachineInfo.EventNames);
     obj.StateMachineInfo.nOutputChannels = length(obj.StateMachineInfo.OutputChannelNames);

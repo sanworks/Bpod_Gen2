@@ -81,14 +81,54 @@ function obj = SetupHardware(obj)
                 error('The firmware on the Bpod state machine is newer than your Bpod software for MATLAB. Please update your MATLAB software from the Bpod repository and try again.')
             end
         end
+        % On state machine r2+ or newer, with firmware v23 or newer, find the analog serial port
+        if obj.MachineType > 3 && obj.FirmwareVersion > 22
+            Ports = obj.FindUSBSerialPorts;
+            if ~isempty(strfind(obj.HostOS, 'Windows 10')) || ~isempty(strfind(obj.HostOS, 'Windows 8'))
+                Ports = [Ports.Arduino Ports.Teensy Ports.COM];
+            else
+                Ports = [Ports.Arduino Ports.Teensy];
+            end
+            Ports = Ports(~strcmp(Ports, obj.SerialPort.PortName)); % Eliminate state machine port
+            nPorts = length(Ports);
+            iPort = 0; Found = 0;
+            while (Found == 0) && (iPort < nPorts)
+                iPort = iPort + 1;
+                ThisPort = Ports{iPort};
+                try
+                    TestPort = ArCOMObject_Bpod(ThisPort, 115200);
+                    obj.SerialPort.write(['}' 1], 'uint8'); % the '>' op sends an ID byte on serial port SerialUSB1
+                    pause(.1);
+                    if TestPort.bytesAvailable > 0
+                        Msg = TestPort.read(1, 'uint8');
+                        if Msg == 223
+                            Found = 1;
+                        end
+                    end
+                catch
+                end
+            end
+            if Found == 0
+                error('Error: Failed to identify the analog serial port');
+            end
+            TestPort.delete;
+            obj.AnalogSerialPort = ArCOMObject_Bpod(Ports{iPort}, 115200);
+        end
+        
         % Request hardware description
         obj.SerialPort.write('H', 'uint8');
         obj.HW.n = struct; % Stores total numbers of different types of channels (e.g. 5 BNC input channels)
         obj.StateMachineInfo.MaxStates = obj.SerialPort.read(1, 'uint16');
         obj.HW.CyclePeriod = double(obj.SerialPort.read(1, 'uint16'));
         obj.HW.CycleFrequency = 1000000/double(obj.HW.CyclePeriod);
+        obj.HW.FlexIOSamplingRate = 1000;
         obj.HW.ValveType = 'SPI';
         obj.HW.n.MaxSerialEvents = double(obj.SerialPort.read(1, 'uint8'));
+        if obj.FirmwareVersion > 22
+            obj.HW.n.MaxBytesPerSerialMsg = double(obj.SerialPort.read(1, 'uint8'));
+        else
+            obj.HW.n.MaxBytesPerSerialMsg = 3;
+        end
         obj.HW.n.GlobalTimers = double(obj.SerialPort.read(1, 'uint8'));
         obj.HW.n.GlobalCounters  = double(obj.SerialPort.read(1, 'uint8'));
         obj.HW.n.Conditions  = double(obj.SerialPort.read(1, 'uint8'));
@@ -129,6 +169,12 @@ function obj = SetupHardware(obj)
             end
             obj.SerialPort.write('q', 'uint8');
             obj.HW.FlexIOChannelTypes = obj.SerialPort.read(nFlexIOChannels, 'uint8'); % Channel types are: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC
+            obj.AnalogThresholdConfig = struct;
+            obj.AnalogThresholdConfig.Threshold1 = ones(1,nFlexIOChannels)*4095;
+            obj.AnalogThresholdConfig.Threshold2 = ones(1,nFlexIOChannels)*4095;
+            obj.AnalogThresholdConfig.Polarity1 = zeros(1,nFlexIOChannels);
+            obj.AnalogThresholdConfig.Polarity2 = zeros(1,nFlexIOChannels);
+            obj.AnalogThresholdConfig.Mode = zeros(1,nFlexIOChannels);
         end
         % Set up Sync config
         obj.SerialPort.write(['K' obj.SyncConfig.Channel obj.SyncConfig.SignalType], 'uint8');

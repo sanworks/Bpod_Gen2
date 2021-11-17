@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the 
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -30,7 +30,7 @@ if ispc
     lmYpos = 150; SelectorFontSize = 11; PathFontSize = 10;
 elseif ismac
     lmYpos = 160; SelectorFontSize = 14; PathFontSize = 14;
-else 
+else
     lmYpos = 130; SelectorFontSize = 11; PathFontSize = 10;
 end
 FontName = 'Courier New';
@@ -119,7 +119,7 @@ else
     BpodSystem.Status.CurrentProtocolName = SelectedProtocolName;
     DataPath = fullfile(BpodSystem.Path.DataFolder,BpodSystem.GUIData.DummySubjectString);
     ProtocolName = BpodSystem.Status.CurrentProtocolName;
-
+    
     %Make standard folders for this protocol.  This will fail silently if the folders exist
     warning off % Suppress warning that directory already exists
     mkdir(DataPath, ProtocolName);
@@ -170,7 +170,7 @@ else
             ProtocolSettings = struct;
             save(DefaultSettingsPath, 'ProtocolSettings')
         end
-
+        
         loadSubjects(ProtocolName);
         loadSettings(ProtocolName, BpodSystem.GUIData.DummySubjectString);
         UpdateDataFile(ProtocolName, BpodSystem.GUIData.DummySubjectString);
@@ -304,7 +304,7 @@ set(BpodSystem.GUIHandles.SettingsSelector,'Value',1);
 
 function UpdateDataFile(ProtocolName, SubjectName)
 global BpodSystem
-DateInfo = datestr(now, 30); 
+DateInfo = datestr(now, 30);
 DateInfo(DateInfo == 'T') = '_';
 LocalDir = BpodSystem.Path.DataFolder(max(find(BpodSystem.Path.DataFolder(1:end-1) == filesep)+1):end);
 set(BpodSystem.GUIHandles.DataFilePathDisplay, 'String', [filesep fullfile(LocalDir, SubjectName, ProtocolName, 'Session Data') filesep],'interpreter','none');
@@ -405,7 +405,7 @@ else
     NewName = [];
 end
 try
-close(NameInputFig);
+    close(NameInputFig);
 catch
 end
 if ~isempty(NewName)
@@ -488,7 +488,7 @@ if exist(Testpath) == 0
     disp('Modify "ProtocolSettings" as desired, then run the following command to save:')
     disp('SaveProtocolSettings(ProtocolSettings);')
     disp('----------------------------')
-commandwindow
+    commandwindow
 else
     close(NameInputFig);
     BpodErrorSound;
@@ -690,6 +690,18 @@ DataFolder = fullfile(BpodSystem.Path.DataFolder,SubjectName,ProtocolName,'Sessi
 if ~exist(DataFolder)
     mkdir(DataFolder);
 end
+
+% On Bpod r2+, if FlexIO channels are configured as analog,
+% setup binary data file
+if BpodSystem.MachineType > 3
+    nAnalogChannels = sum(BpodSystem.HW.FlexIOChannelTypes == 2);
+    if nAnalogChannels > 0
+        AnalogFilename = [BpodSystem.Path.CurrentDataFile(1:end-4) '_ANLG.dat'];
+        BpodSystem.AnalogDataFile = fopen(AnalogFilename,'w');
+        BpodSystem.Status.nAnalogSamples = 0;
+    end
+end
+
 BpodSystem.Status.Live = 1;
 BpodSystem.GUIData.ProtocolName = ProtocolName;
 BpodSystem.GUIData.SubjectName = SubjectName;
@@ -700,6 +712,23 @@ F = fieldnames(SettingStruct);
 FieldName = F{1};
 BpodSystem.ProtocolSettings = eval(['SettingStruct.' FieldName]);
 BpodSystem.Data = struct;
+if BpodSystem.MachineType > 3
+    if nAnalogChannels > 0
+        BpodSystem.Data.Analog = struct;
+        BpodSystem.Data.Analog.FileName = AnalogFilename;
+        BpodSystem.Data.Analog.ImportCmd = ['myFile = fopen(SessionData.Analog.FileName, ''r''); ' ...
+                                                        'Data = fread(myFile, (SessionData.Analog.nSamples*SessionData.Analog.nChannels)+SessionData.Analog.nSamples, ''uint16''); ' ...
+                                                        'fclose(myFile); clear myFile; SessionData.Analog.Samples = []; ' ...
+                                                        'for i = 1:SessionData.Analog.nChannels; SessionData.Analog.Samples(i,:) = Data(i+1:SessionData.Analog.nChannels+1:end)''; end; ' ...
+                                                        'SessionData.Analog.Timestamps = SessionData.TrialStartTimestamp:(1/SessionData.Analog.SamplingRate):SessionData.TrialStartTimestamp+((1/SessionData.Analog.SamplingRate)*(SessionData.Analog.nSamples-1)); ' ...
+                                                        'SessionData.Analog.TrialNumber = Data(1:SessionData.Analog.nChannels+1:end)''; SessionData.Analog.TrialData = cell(1,SessionData.nTrials); '... 
+                                                        'for i = 1:SessionData.nTrials; SessionData.Analog.TrialData{i} = SessionData.Analog.Samples(:,SessionData.Analog.TrialNumber == i); end; clear Data; clear i;'];        
+        BpodSystem.Data.Analog.nChannels = nAnalogChannels;
+        BpodSystem.Data.Analog.channelNumbers = find(BpodSystem.HW.FlexIOChannelTypes == 2);
+        BpodSystem.Data.Analog.SamplingRate = BpodSystem.HW.FlexIOSamplingRate;
+        BpodSystem.Data.Analog.nSamples = 0;
+    end
+end
 ProtocolFolderPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName);
 ProtocolPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName,[ProtocolName '.m']);
 addpath(ProtocolFolderPath);
@@ -709,6 +738,7 @@ if (IsOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
     BpodSystem.BpodPhoneHome(1);
 end
 BpodSystem.Status.BeingUsed = 1;
+BpodSystem.Status.SessionStartFlag = 1;
 BpodSystem.ProtocolStartTime = now*100000;
 BpodSystem.resetSessionClock();
 close(BpodSystem.GUIHandles.LaunchManagerFig);

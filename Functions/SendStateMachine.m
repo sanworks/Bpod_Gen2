@@ -157,7 +157,7 @@ for i = 1:nStates
 end
 InputMatrix = uint8(InputMatrix);
 
-OutputMatrixRaw = sma.OutputMatrix(:, 1:BpodSystem.HW.Pos.GlobalTimerTrig-1); % All except for virtual triggers
+OutputMatrixRaw = sma.OutputMatrix(:, 1:BpodSystem.HW.Pos.GlobalTimerTrig-1); % All physical channels. Virtual outputs are handled separately
 
 DifferenceMatrix = (OutputMatrixRaw ~= 0)';
 nDifferences = sum(DifferenceMatrix, 1);
@@ -293,7 +293,46 @@ else
     GTbytes = 1;
 end
 
-GlobalCounterResets = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalCounterReset))';
+if BpodSystem.FirmwareVersion < 23
+    GlobalCounterResets = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalCounterReset))';
+else
+    GCResets = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalCounterReset))';
+    GCoverrides = find(GCResets ~= 0);
+    nOverrides = length(GCoverrides);
+    OutMatrix = [];
+    if nOverrides > 0 
+        OutMatrix = [GCOverrides-1; GCResets(GCOverrides)];
+    end
+    GlobalCounterResets = [nOverrides OutMatrix(1:end)];
+end
+
+AnalogThreshEnable = [];
+AnalogThreshDisable = [];
+if BpodSystem.MachineType == 4
+    ATEnable = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.AnalogThreshEnable))'; % Bits indicate thresholds to enable (zeros are not disabled)
+    AToverrides = find(ATEnable ~= 0);
+    nOverrides = length(AToverrides);
+    OutMatrix = [];
+    if nOverrides > 0 
+        OutMatrix = [AToverrides-1; ATEnable(AToverrides)];
+    end
+    if length(OutMatrix) == 2
+        OutMatrix = OutMatrix';
+    end
+    AnalogThreshEnable = [nOverrides OutMatrix(1:end)]; 
+    
+    ATDisable = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.AnalogThreshDisable))'; % Bits indicate thresholds to disable (zeros are not enabled)
+    AToverrides = find(ATDisable ~= 0);
+    nOverrides = length(AToverrides);
+    OutMatrix = [];
+    if nOverrides > 0 
+        OutMatrix = [AToverrides-1; ATDisable(AToverrides)];
+    end
+    if length(OutMatrix) == 2
+        OutMatrix = OutMatrix';
+    end
+    AnalogThreshDisable = [nOverrides OutMatrix(1:end)];
+end
 
 %% Format timers (doubles in seconds) into 32 bit int vectors
 StateTimers = uint32(sma.StateTimers*BpodSystem.HW.CycleFrequency);
@@ -309,7 +348,7 @@ EightBitMatrix = [nStates nGlobalTimersUsed nGlobalCountersUsed nConditionsUsed.
     StateTimerMatrix InputMatrix OutputMatrix GlobalTimerStartMatrix GlobalTimerEndMatrix...
     GlobalCounterMatrix ConditionMatrix GlobalTimerChannels GlobalTimerOnMessages...
     GlobalTimerOffMessages GlobalTimerLoopMode SendGlobalTimerEvents...
-    GlobalCounterAttachedEvents ConditionChannels ConditionValues GlobalCounterResets];
+    GlobalCounterAttachedEvents ConditionChannels ConditionValues GlobalCounterResets AnalogThreshEnable AnalogThreshDisable];
 GlobalTimerMatrix = [GlobalTimerTrigs GlobalTimerCancels GlobalTimerOnset_Trigger];
 ThirtyTwoBitMatrix = [StateTimers GlobalTimers GlobalTimerDelays GlobalTimerLoopIntervals GlobalCounterThresholds];
 %nBytes = uint16(length(EightBitMatrix) + GTbytes*length(GlobalTimerMatrix) + 4*length(ThirtyTwoBitMatrix)); % Number of bytes in state matrix (excluding nStates byte)

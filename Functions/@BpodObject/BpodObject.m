@@ -22,12 +22,15 @@ classdef BpodObject < handle
         MachineType % 1 = Bpod 0.5, 2 = Bpod 0.7+, 3 = 2.X, 4 = 2+
         FirmwareVersion % An integer specifying the firmware on the connected device
         SerialPort % ArCOM serial port object
+        AnalogSerialPort % On state machine r2+ or newer, this is a dedeicated USB serial port to handle analog data
         HW % Hardware description
         Modules % Connected UART serial module description
         ModuleUSB % Struct containing a field for each connected module, listing its paired USB port (i.e. ModuleUSB.ModuleName = 'COM3')
         Status % Struct with system status variables
         Path % Struct with paths to Bpod root folder and specific sub-folders
         Data % Struct storing all data collected in the current session. SaveBpodSessionData saves this to the current data file.
+        AnalogDataFile % On Bpod FSM 2+ or newer, a memory-mapped MAT file containing analog data (see matfile() MATLAB docs)
+        AnalogThresholdConfig % Struct containing configuration of analog thresholds for Flex I/O channels on FSM 2+, set with obj.setAnalogThreshold()
         StateMatrix % Struct of matrices describing current (running) state machine
         StateMatrixSent % StateMatrix sent to the state machine, for the next trial. At run, this replaces StateMatrix.
         LastStateMatrix % Last state matrix completed. This is updated each time a trial run completes.
@@ -108,6 +111,9 @@ classdef BpodObject < handle
             obj.Status.CurrentSubjectName = '';
             obj.Status.SerialPortName = '';
             obj.Status.NewStateMachineSent = 0;
+            obj.Status.SessionStartFlag = 0;
+            obj.Status.AnalogViewer = 0;
+            obj.Status.nAnalogSamples = 0;
             % Initialize paths
             obj.Path = struct;
             obj.Path.BpodRoot = BpodPath;
@@ -122,6 +128,7 @@ classdef BpodObject < handle
             obj.Path.FlexConfig = fullfile(obj.Path.SettingsDir, 'FlexConfig.mat');
             obj.Path.SyncConfig = fullfile(obj.Path.SettingsDir, 'SyncConfig.mat');
             obj.Path.ModuleUSBConfig = fullfile(obj.Path.SettingsDir, 'ModuleUSBConfig.mat');
+            
             % Initialize state machine info, to be populated in SetupStateMachine()
             obj.StateMachineInfo = struct;
             obj.StateMachineInfo.nEvents = 0; % Number of events the state machine can respond to
@@ -130,6 +137,7 @@ classdef BpodObject < handle
             obj.StateMachineInfo.nOutputChannels = 0; % Number of output channels
             obj.StateMachineInfo.OutputChannelNames = 0; % Cell array of strings with output channel names
             obj.StateMachineInfo.MaxStates = 0; % Maximum number of states the attached Bpod can store
+            
             % Ensure that settings, data, protocol and calibration folders exist
             if ~exist(obj.Path.LocalDir)
                 mkdir(obj.Path.LocalDir);
@@ -217,6 +225,7 @@ classdef BpodObject < handle
             % Create timer objects
             obj.Timers = struct;
             obj.Timers.PortRelayTimer = timer('TimerFcn','UpdateSerialTerminals()', 'ExecutionMode', 'fixedRate', 'Period', 0.1);
+            obj.Timers.AnalogTimer = timer('TimerFcn',@(h,e)obj.ProcessAnalogSamples(), 'ExecutionMode', 'fixedRate', 'Period', 0.1);
             obj.BpodSplashScreen(1);
         end
         
@@ -412,8 +421,8 @@ classdef BpodObject < handle
                     case 2
                         InputChannelNames{i} = ['Flex' num2str(i)];
                         OutputChannelNames{i} = '---';
-                        obj.StateMachineInfo.EventNames{FlexEventPos} = [InputChannelNames{i} 'Trig'];
-                        obj.StateMachineInfo.EventNames{FlexEventPos+1} = [InputChannelNames{i} 'Reset'];
+                        obj.StateMachineInfo.EventNames{FlexEventPos} = [InputChannelNames{i} 'Trig1'];
+                        obj.StateMachineInfo.EventNames{FlexEventPos+1} = [InputChannelNames{i} 'Trig2'];
                         FlexEventPos = FlexEventPos + 2;
                     case 3
                         InputChannelNames{i} = '---';
@@ -429,7 +438,7 @@ classdef BpodObject < handle
         function setFlexIO_AnalogInputSF(obj, SF)
             % Set FlexIO analog input sampling rate (Hz). Permitted range = [1, 1000]
             nCyclesPerSample = obj.HW.CycleFrequency/SF; % Number of state machine cycles per analog sample
-            if nCyclesPerSample < 1 || nCyclesPerSample > obj.HW.CycleFrequency
+            if nCyclesPerSample < 10 || nCyclesPerSample > obj.HW.CycleFrequency
                 error('Error configuring FlexIO analog input sampling rate: Rate must be in range [1, 1000]');
             end
             obj.SerialPort.write('^', 'uint8', nCyclesPerSample, 'uint32');
@@ -437,6 +446,7 @@ classdef BpodObject < handle
             if OK ~= 1
                 error('Error configuring FlexIO analog input sampling rate: confirm code not returned');
             end
+            obj.HW.FlexIOSamplingRate = SF;
         end
         function PhoneHomeOpt_In_Out(obj)
             obj.GUIHandles.BpodPhoneHomeFig = figure('Position', [550 180 400 350],...
@@ -480,10 +490,15 @@ classdef BpodObject < handle
             end
         end
         
+        function startAnalogViewer(obj)
+            obj.analogViewer('init', []);
+        end
+        
         function delete(obj) % Destructor
             obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
-            stop(obj.Timers.PortRelayTimer);
-            delete(obj.Timers.PortRelayTimer);
+            if obj.MachineType > 3 && obj.FirmwareVersion > 22
+                obj.AnalogSerialPort = [];
+            end 
         end
     end
     methods (Access = private)    
@@ -504,7 +519,7 @@ classdef BpodObject < handle
        end
         function SwitchPanels(obj, panel)
             obj.GUIData.CurrentPanel = 0;
-            OffPanels = 1:obj.HW.n.SerialChannels;
+            OffPanels = 1:obj.HW.n.UartSerialChannels+1;
             OffPanels = OffPanels(OffPanels~=panel);
             set(obj.GUIHandles.OverridePanel(panel), 'Visible', 'on');
             uistack(obj.GUIHandles.OverridePanel(panel), 'top');

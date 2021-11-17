@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -36,9 +36,14 @@ if sum(BpodSystem.Modules.RelayActive) > 0
 end
 RawTrialEvents = struct;
 if BpodSystem.EmulatorMode == 0
-    if BpodSystem.SerialPort.bytesAvailable > 0
-        trash = BpodSystem.SerialPort.read(BpodSystem.SerialPort.bytesAvailable, 'uint8');
+    if BpodSystem.Status.SessionStartFlag == 1 % On first run of session
+        BpodSystem.Status.SessionStartFlag = 0;
+        if BpodSystem.MachineType == 4
+            BpodSystem.AnalogSerialPort.flush;
+            start(BpodSystem.Timers.AnalogTimer);
+        end
     end
+    BpodSystem.SerialPort.flush;
     BpodSystem.SerialPort.write('R', 'uint8'); % Send the code to run the loaded matrix (character "R" for Run)
     if BpodSystem.Status.NewStateMachineSent % Read confirmation byte = successful state machine transmission
         SMA_Confirmed = BpodSystem.SerialPort.read(1, 'uint8');
@@ -50,7 +55,6 @@ if BpodSystem.EmulatorMode == 0
         BpodSystem.Status.NewStateMachineSent = 0;
     end
     TrialStartTimestampBytes = BpodSystem.SerialPort.read(8, 'uint8');
-    TrialTimestamp64 = typecast(TrialStartTimestampBytes, 'uint64');
     TrialStartTimestamp = double(typecast(TrialStartTimestampBytes, 'uint64'))/1000000; % Start-time of the trial in microseconds (compensated for 32-bit clock rollover)
 end
 BpodSystem.StateMatrix = BpodSystem.StateMatrixSent;
@@ -81,8 +85,6 @@ ConditionOffset = GlobalCounterOffset+BpodSystem.HW.n.GlobalCounters;
 JumpOffset = ConditionOffset+BpodSystem.HW.n.Conditions;
 
 nTotalStates = BpodSystem.StateMatrix.nStatesInManifest;
-BpodSystem.RefreshGUI; % Reads BpodSystem.HardwareState and BpodSystem.LastEvent to commander GUI.
-
 % Update time display
 TimeElapsed = ceil((now*100000) - BpodSystem.ProtocolStartTime);
 set(BpodSystem.GUIHandles.TimeDisplay, 'String', Secs2HMS(TimeElapsed));
@@ -234,15 +236,11 @@ while BpodSystem.Status.InStateMatrix
             case 2 % Soft-code
                 SoftCode = opCodeBytes(2);
                 HandleSoftCode(SoftCode);
-            case 3 % Incoming ADC sample
-                nChannels = opCodeBytes(2);
-                AnalogSamples = BpodSystem.SerialPort.read(nChannels, 'uint16');
-                disp(AnalogSamples);
             otherwise
                 disp('Error: Invalid op code received')
         end
     else
-        drawnow;
+        drawnow; 
     end
 end
 
@@ -318,7 +316,7 @@ for i = 1:nEvents
     if thisEvent ~= 255
         switch BpodSystem.HW.EventTypes(thisEvent)
             case 'I'
-                p = ((thisEvent-BpodSystem.HW.IOEventStartposition)/2)+BpodSystem.HW.n.SerialChannels+1;
+                p = ((thisEvent-BpodSystem.HW.IOEventStartposition)/2)+BpodSystem.HW.n.SerialChannels+BpodSystem.HW.n.FlexIO+1;
                 thisChannel = floor(p);
                 isOdd = rem(p,1);
                 if isOdd == 0

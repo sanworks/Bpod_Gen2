@@ -12,7 +12,15 @@ else
 end
 LabelFontColor = [0.9 0.9 0.9];
 ContentFontColor = [0 0 0];
-if BpodSystem.MachineType == 3
+if BpodSystem.MachineType == 4
+    if BpodSystem.StateMachineInfo.nEvents > 148
+        Xstep = 110;
+    else
+        Xstep = 120;
+    end
+    OutputActionOffset = 0;
+    EventOffset = 130;
+elseif BpodSystem.MachineType == 3
     if BpodSystem.StateMachineInfo.nEvents > 148
         Xstep = 110;
     else
@@ -29,7 +37,10 @@ else
     end
     EventOffset = 180;
 end
-if BpodSystem.StateMachineInfo.nEvents > 111
+if BpodSystem.StateMachineInfo.nEvents > 147
+    XWidth = 1200;
+    Xfactor = 5.5;
+elseif BpodSystem.StateMachineInfo.nEvents > 111
     XWidth = 1100;
     Xfactor = 5.5;
 else
@@ -44,7 +55,7 @@ obj.GUIHandles.Console = axes('units','normalized', 'position',[0 0 1 1]);
             image(BG); axis off;
 
 YPos = 25; XPos = 30;
-MachineTypes = {'v0.5', 'v0.7-1.0', 'v2.0', 'v2.0+'};
+MachineTypes = {'v0.5', 'v0.7-1.0', 'v2.0', 'v2-plus'};
 text(XPos, 10,'State Machine', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor, 'FontWeight', 'Bold'); 
 text(XPos, YPos,['Firmware Version: ' num2str(BpodSystem.FirmwareVersion)], 'FontSize', 11, 'FontWeight', 'Bold'); YPos = YPos + 15;
 text(XPos, YPos,['Hardware: ' MachineTypes{BpodSystem.MachineType}], 'FontSize', Med); YPos = YPos + 15;
@@ -53,8 +64,13 @@ text(XPos, YPos,['nModules: ' num2str(length(BpodSystem.Modules.Connected))], 'F
 text(XPos, YPos,['nPorts: ' num2str(BpodSystem.HW.n.Ports)], 'FontSize', Med); YPos = YPos + 15;
 text(XPos, YPos,['nBNCInputs: ' num2str(BpodSystem.HW.n.BNCInputs)], 'FontSize', Med); YPos = YPos + 15;
 text(XPos, YPos,['nBNCOutputs: ' num2str(BpodSystem.HW.n.BNCOutputs)], 'FontSize', Med); YPos = YPos + 15;
-text(XPos, YPos,['nWireInputs: ' num2str(BpodSystem.HW.n.WireInputs)], 'FontSize', Med); YPos = YPos + 15;
-text(XPos, YPos,['nWireOutputs: ' num2str(BpodSystem.HW.n.WireOutputs)], 'FontSize', Med); YPos = YPos + 25;
+if BpodSystem.MachineType == 4
+    text(XPos, YPos,['nWireI/O: ' num2str(BpodSystem.HW.n.WireInputs+BpodSystem.HW.n.WireOutputs)], 'FontSize', Med); YPos = YPos + 15;
+    text(XPos, YPos,['nFlexI/O: ' num2str(BpodSystem.HW.n.FlexIO)], 'FontSize', Med); YPos = YPos + 25;
+else
+    text(XPos, YPos,['nWireInputs: ' num2str(BpodSystem.HW.n.WireInputs)], 'FontSize', Med); YPos = YPos + 15;
+    text(XPos, YPos,['nWireOutputs: ' num2str(BpodSystem.HW.n.WireOutputs)], 'FontSize', Med); YPos = YPos + 25;
+end
 
 for i = 1:length(BpodSystem.Modules.Connected)
     text(XPos, YPos,['Module#' num2str(i)], 'Color', LabelFontColor, 'FontSize', 11, 'FontWeight', 'Bold'); YPos = YPos + 15;

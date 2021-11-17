@@ -63,6 +63,7 @@ function obj = InitializeGUI(obj)
     obj.GUIData.SystemInfoButton = imread('SystemInfoButton.bmp');
     obj.GUIData.DocButton = imread('DocButton.bmp');
     obj.GUIData.AddProtocolButton = imread('AddProtocolIcon.bmp');
+    obj.GUIData.AnalogViewerButton = imread('AlgViewer.bmp');
     obj.GUIHandles.SettingsButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [778 275 29 29], 'Callback', 'BpodSettingsMenu', 'CData', obj.GUIData.SettingsButton, 'TooltipString', 'Settings and calibration');
     obj.GUIHandles.RefreshButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [733 275 29 29], 'Callback', @(h,e)obj.LoadModules(), 'CData', obj.GUIData.RefreshButton, 'TooltipString', 'Refresh modules');
     obj.GUIHandles.SystemInfoButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [778 227 29 29], 'Callback', 'BpodSystemInfo', 'CData', obj.GUIData.SystemInfoButton, 'TooltipString', 'View system info');
@@ -96,7 +97,7 @@ function obj = InitializeGUI(obj)
         ButtonFont = 'DejaVu Sans Mono';
     end
     
-    for i = 1:obj.HW.n.SerialChannels
+    for i = 1:obj.HW.n.UartSerialChannels+1
         % Set module names
         if i > 1
             if obj.Modules.Connected(i-1)
@@ -182,7 +183,7 @@ function obj = InitializeGUI(obj)
             line([TabPos-1 TabPos-1], [82 130], 'Color', [0.45 0.45 0.45], 'LineWidth', 5);
         end
         if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
-            for i = 1:obj.HW.n.SerialChannels
+            for i = 1:obj.HW.n.UartSerialChannels+1
                 jButton = findjobj(obj.GUIHandles.PanelButton(i));
                 jButton.setBorderPainted(false);
             end

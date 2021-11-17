@@ -17,14 +17,13 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function SendBpodSoftCode(Code)
-global BpodSystem
-if BpodSystem.Status.InStateMatrix == 1
-    if Code <= BpodSystem.HW.n.SoftCodes && Code ~= 0
-          BpodSystem.SerialPort.write(['~' Code-1], 'uint8');
-    else
-        error(['Error: cannot send soft code ' num2str(Code) '; Soft codes must be in range: [1 ' num2str(BpodSystem.HW.n.SoftCodes) '].']) 
-    end
-else
-    error('Error sending soft code: Bpod must be running a trial.')
+function analogThresholdEnable(obj, channel, thresholdIndex, value)
+% channel = FlexIO channel (1-4)
+% thresholdIndex = index of threshold to set (1-2)
+% value = disabled (0) or enabled (1)
+if value > 1
+    value = 1; % Must be enabled or disabled
 end
+
+obj.SerialPort.write(['e' channel-1 thresholdIndex-1 value], 'uint8');
+obj.SerialPort.read(1, 'uint8'); % Confirm

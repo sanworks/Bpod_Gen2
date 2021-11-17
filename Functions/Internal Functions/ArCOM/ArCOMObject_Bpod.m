@@ -43,6 +43,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % pairs of value numbers and types can be added, to be packaged into a single
 % read operation i.e. [Array1, Array2] = MyPort.write(Data1, Type1, Data2, Type2)
 %
+% Clear unread bytes: MyPort.flush();
+%
 % End: MyPort.close() % Closes, deletes and clears the serial port
 % object in the workspace of the calling function. You can also type clear
 % MyPort - the object destructor will automatically close the port.
@@ -421,6 +423,11 @@ classdef ArCOMObject_Bpod < handle
                 obj.InBufferBytesAvailable = obj.InBufferBytesAvailable - nBytesRead;
             end
         end
+        
+        function flush(obj)
+            obj.read(obj.bytesAvailable, 'uint8');
+        end
+        
         function delete(obj)
             switch obj.Interface
                 case 0

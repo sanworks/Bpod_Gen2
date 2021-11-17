@@ -94,6 +94,22 @@ switch Opstring
             if ~exist(SettingsFileName)
                 error(['Error: Settings file: ' settingsName '.mat does not exist for test subject: ' subjectName ' in protocol: ' protocolName '.'])
             end
+            
+            % On Bpod r2+, if FlexIO channels are configured as analog,
+            % setup memory-mapped data file
+            nAnalogChannels = sum(BpodSystem.HW.FlexIOChannelTypes == 2);
+            if nAnalogChannels > 0
+%                 AnalogFilename = [subjectName '_' protocolName '_' DateInfo '_ANLG.mat'];
+%                 BpodSystem.AnalogData = matfile(AnalogFilename,'Writable',true);
+%                 BpodSystem.AnalogData.AnalogData = uint16(zeros(nAnalogChannels,0));
+%                 BpodSystem.AnalogData.TrialNumber = uint16(0);
+%                 BpodSystem.Status.nAnalogSamples = 0;
+%                 BpodSystem.AnalogData.SamplingRate = BpodSystem.HW.FlexIOSamplingRate;
+                AnalogFilename = [subjectName '_' protocolName '_' DateInfo '_ANLG.dat'];
+                BpodSystem.AnalogDataFile = fopen(AnalogFilename,'w');
+                BpodSystem.Status.nAnalogSamples = 0;
+            end
+            
             BpodSystem.Status.Live = 1;
             BpodSystem.GUIData.ProtocolName = protocolName;
             BpodSystem.GUIData.SubjectName = subjectName;
@@ -107,6 +123,23 @@ switch Opstring
             FieldName = F{1};
             BpodSystem.ProtocolSettings = eval(['SettingStruct.' FieldName]);
             BpodSystem.Data = struct;
+            if BpodSystem.MachineType > 3
+                if nAnalogChannels > 0
+                    BpodSystem.Data.Analog = struct;
+                    BpodSystem.Data.Analog.FileName = AnalogFilename;
+                    BpodSystem.Data.Analog.ImportCmd = ['myFile = fopen(SessionData.Analog.FileName, ''r''); ' ...
+                                                        'Data = fread(myFile, (SessionData.Analog.nSamples*SessionData.Analog.nChannels)+SessionData.Analog.nSamples, ''uint16''); ' ...
+                                                        'fclose(myFile); clear myFile; SessionData.Analog.Samples = []; ' ...
+                                                        'for i = 1:SessionData.Analog.nChannels; SessionData.Analog.Samples(i,:) = Data(i+1:SessionData.Analog.nChannels+1:end)''; end; ' ...
+                                                        'SessionData.Analog.Timestamps = SessionData.TrialStartTimestamp:(1/SessionData.Analog.SamplingRate):SessionData.TrialStartTimestamp+((1/SessionData.Analog.SamplingRate)*(SessionData.Analog.nSamples-1)); ' ...
+                                                        'SessionData.Analog.TrialNumber = Data(1:SessionData.Analog.nChannels+1:end)''; SessionData.Analog.TrialData = cell(1,SessionData.nTrials); '... 
+                                                        'for i = 1:SessionData.nTrials; SessionData.Analog.TrialData{i} = SessionData.Analog.Samples(:,SessionData.Analog.TrialNumber == i); end; clear Data; clear i;'];
+                    BpodSystem.Data.Analog.nChannels = nAnalogChannels;
+                    BpodSystem.Data.Analog.channelNumbers = find(BpodSystem.HW.FlexIOChannelTypes == 2);
+                    BpodSystem.Data.Analog.SamplingRate = BpodSystem.HW.FlexIOSamplingRate;
+                    BpodSystem.Data.Analog.nSamples = 0;
+                end
+            end
             addpath(ProtocolRunFile);
             set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
             IsOnline = BpodSystem.check4Internet();
@@ -114,6 +147,7 @@ switch Opstring
                 %BpodSystem.BpodPhoneHome(1); % Disabled until server migration. -JS July 2018
             end
             BpodSystem.Status.BeingUsed = 1;
+            BpodSystem.Status.SessionStartFlag = 1;
             BpodSystem.ProtocolStartTime = now*100000;
             figure(BpodSystem.GUIHandles.MainFig);
             run(ProtocolRunFile);
@@ -148,11 +182,18 @@ switch Opstring
         BpodSystem.Path.Settings = '';
         BpodSystem.Status.Live = 0;
         if BpodSystem.EmulatorMode == 0
+            if BpodSystem.MachineType > 3
+                stop(BpodSystem.Timers.AnalogTimer);
+                try
+                fclose(BpodSystem.AnalogDataFile);
+                catch
+                end
+            end
             BpodSystem.SerialPort.write('X', 'uint8');
             pause(.1);
-            nBytes = BpodSystem.SerialPort.bytesAvailable;
-            if nBytes > 0
-                BpodSystem.SerialPort.read(nBytes, 'uint8');
+            BpodSystem.SerialPort.flush;
+            if BpodSystem.MachineType > 3
+                BpodSystem.AnalogSerialPort.flush;
             end
             if isfield(BpodSystem.PluginSerialPorts, 'TeensySoundServer')
                 TeensySoundServer('end');
@@ -172,6 +213,10 @@ switch Opstring
             end
             try
                 close(BpodNotebook)
+            catch
+            end
+            try
+                BpodSystem.analogViewer('end', []);
             catch
             end
         catch

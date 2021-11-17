@@ -221,6 +221,7 @@ classdef LoadBpodFirmware < handle
             end
             disp('------Uploading new firmware------')
             [Ack, Msg] = system(programPath);
+            disp(Msg);
             loadOK = ~isempty(strfind(Msg, OKstring));
         end
     end
