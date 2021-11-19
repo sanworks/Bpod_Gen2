@@ -38,11 +38,15 @@ switch op
         obj.GUIHandles.OSC.nXDivisions = 12;
         obj.GUIHandles.OSC.nYDivisions = 8;
         obj.GUIHandles.OSC.VoltDivPos = 7;
-        obj.GUIHandles.OSC.TimeDivPos = 5;
+        obj.GUIHandles.OSC.TimeDivPos = 3;
         obj.GUIHandles.OSC.VoltDivValues = [0.02 0.05 0.1 0.2 0.5 1 2 5];
-        obj.GUIHandles.OSC.TimeDivValues = [0.01 0.02 0.05 0.1 0.2 0.5 1 2];
+        obj.GUIHandles.OSC.TimeDivValues = [0.05 0.1 0.2 0.5 1];
         obj.GUIHandles.OSC.nDisplaySamples = obj.HW.FlexIOSamplingRate*obj.GUIHandles.OSC.TimeDivValues(obj.GUIHandles.OSC.TimeDivPos)*obj.GUIHandles.OSC.nXDivisions;
         obj.GUIHandles.OSC.SweepPos = 1;
+        obj.GUIHandles.OSC.DCmode = 0;
+        obj.GUIHandles.OSC.DCOffset = zeros(1,obj.HW.n.FlexIO);
+        obj.GUIHandles.OSC.sampleSum = zeros(1,obj.HW.n.FlexIO);
+        obj.GUIHandles.OSC.nSamplesSummed = zeros(1,obj.HW.n.FlexIO);
         if isunix && ~ismac
             TitleFontSize = 16;
             ScaleFontSize = 14;
@@ -58,7 +62,7 @@ switch op
             figHeight = 500;
             dropFontSize = 10;
         end
-        obj.GUIHandles.OscopeFig_Builtin = figure('Name','Scope',...
+        obj.GUIHandles.OscopeFig_Builtin = figure('Name','Flex I/O Analog Viewer',...
             'NumberTitle','off',...
             'MenuBar','none',...
             'Color',OscBGColor,...
@@ -68,12 +72,35 @@ switch op
             'box', 'off', 'tickdir', 'out', 'Color', [0.1 0.1 0.1]);
         set(gca, 'xlim', [0 obj.GUIHandles.OSC.nXDivisions], 'ylim', [-0.4 obj.GUIHandles.OSC.nYDivisions], 'ytick', [], 'xtick', []);
         
-        obj.GUIHandles.VoltScaleUpButton = uicontrol('Style', 'pushbutton', 'String', '^', 'Position', [660 10 50 50],...
+        obj.GUIHandles.VoltScaleUpButton = uicontrol('Style', 'pushbutton', 'String', char(9650), 'Position', [661 69 50 50],...
                 'Callback',@(h,e)obj.analogViewer('stepVoltsPerDiv', 1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
-                'FontWeight', 'bold', 'TooltipString', 'Increase volts/div');
-        obj.GUIHandles.VoltScaleDnButton = uicontrol('Style', 'pushbutton', 'String', 'v', 'Position', [660 70 50 50],...
+                'FontWeight', 'bold', 'TooltipString', 'Increase Volts/div');
+        obj.GUIHandles.VoltScaleDnButton = uicontrol('Style', 'pushbutton', 'String', char(9660), 'Position', [661 9 50 50],...
                 'Callback',@(h,e)obj.analogViewer('stepVoltsPerDiv', -1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
-                'FontWeight', 'bold', 'TooltipString', 'Decrease volts/div');
+                'FontWeight', 'bold', 'TooltipString', 'Decrease Volts/div');
+        annotation('textbox',[.91 .1 .1 .2],'String','V/Div','EdgeColor','none', 'FontSize', 14, 'FontWeight', 'Bold');
+        
+        obj.GUIHandles.TimeScaleUpButton = uicontrol('Style', 'pushbutton', 'String', char(9650), 'Position', [661 224 50 50],...
+                'Callback',@(h,e)obj.analogViewer('stepTimePerDiv', 1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
+                'FontWeight', 'bold', 'TooltipString', 'Increase time/div');
+        obj.GUIHandles.TimeScaleDnButton = uicontrol('Style', 'pushbutton', 'String', char(9660), 'Position', [661 164 50 50],...
+                'Callback',@(h,e)obj.analogViewer('stepTimePerDiv', -1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
+                'FontWeight', 'bold', 'TooltipString', 'Decrease time/div');
+        annotation('textbox',[.91 .41 .1 .2],'String','s/Div','EdgeColor','none', 'FontSize', 14, 'FontWeight', 'Bold');
+        
+        obj.GUIHandles.RecordButton = uicontrol('Style', 'pushbutton', 'String', char(9210), 'Position', [661 415 50 50],...
+                'Callback',@(h,e)obj.analogViewer('logStartStop', 0), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
+                'FontWeight', 'bold', 'ForegroundColor', [.7 0 0], 'TooltipString', 'Record to data file');
+        annotation('textbox',[.915 .79 .1 .2],'String','Rec','EdgeColor','none', 'FontSize', 14, 'FontWeight', 'Bold');
+        
+        obj.GUIHandles.ZeroButton = uicontrol('Style', 'pushbutton', 'String', char(8767), 'Position', [661 322 50 50],...
+                'Callback',@(h,e)obj.analogViewer('setDC', 0), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', 30,...
+                'FontWeight', 'bold', 'ForegroundColor', [0 0 0], 'TooltipString', 'Subtract DC (in viewer only)');
+        annotation('textbox',[.922 .6 .1 .2],'String',['DC'],'EdgeColor','none', 'FontSize', 14, 'FontWeight', 'Bold');
+        
+        if obj.Status.BeingUsed
+            set(obj.GUIHandles.RecordButton, 'Enable', 'off')
+        end
         
         Interval = obj.GUIHandles.OSC.nXDivisions/obj.GUIHandles.OSC.nDisplaySamples;
         
@@ -102,8 +129,12 @@ switch op
         obj.GUIHandles.OSC.VDivText = text(0.2,-0.2, 'V/div: 2.0', 'Color', 'yellow', 'FontName', 'Courier New', 'FontSize', 12);
         obj.GUIHandles.OSC.TimeText = text(9.5,-0.2, 'Time 200.0ms', 'Color', 'yellow', 'FontName', 'Courier New', 'FontSize', 12);
         obj.GUIHandles.OSC.StatText = text(0.2,7.7, 'Stopped', 'Color', 'red', 'FontName', 'Courier New', 'FontSize', 12);
-        obj.GUIHandles.OSC.RecStatText = text(10.1,7.7, '', 'Color', 'red', 'FontName', 'Courier New', 'FontSize', 12);
+        obj.GUIHandles.OSC.RecStatText = text(10.2,7.7, '', 'Color', 'red', 'FontName', 'Courier New', 'FontSize', 12);
         obj.GUIHandles.OSC.nUpdates = 0;
+        if obj.Status.RecordAnalog
+            set(obj.GUIHandles.OSC.RecStatText, 'String', 'Recording');
+            set(obj.GUIHandles.RecordButton, 'String', char(9632), 'ForegroundColor', [0 0 0]);
+        end
         obj.Status.AnalogViewer = 1;
         drawnow;
     case 'update'
@@ -123,13 +154,24 @@ switch op
                 NSThisCh = newData(dataCh,:);
                 nNewSamples = length(NSThisCh);
                 NSThisChVolts = ((double(NSThisCh)/4095)*5);
-                NSThisChVolts(NSThisChVolts>MaxVolts) = NaN;
+                obj.GUIHandles.OSC.sampleSum(ch) = obj.GUIHandles.OSC.sampleSum(ch) + sum(NSThisChVolts);
+                obj.GUIHandles.OSC.nSamplesSummed(ch) = obj.GUIHandles.OSC.nSamplesSummed(ch) + length(NSThisChVolts);
+                if obj.GUIHandles.OSC.DCmode
+                    NSThisChVolts = NSThisChVolts - obj.GUIHandles.OSC.DCOffset(ch);
+                else
+                    NSThisChVolts(NSThisChVolts>MaxVolts) = NaN;
+                end
                 NSThisChSamples = ((NSThisChVolts+HalfMax)/MaxVolts)*obj.GUIHandles.OSC.nYDivisions;
                 if obj.GUIHandles.OSC.SweepPos == 1
                     obj.GUIHandles.OSCData.Ydata(ch,:) = NaN;
                     obj.GUIHandles.OSCData.Ydata(ch,1:nNewSamples) = NSThisChSamples;
                 elseif obj.GUIHandles.OSC.SweepPos + nNewSamples > obj.GUIHandles.OSC.nDisplaySamples
                     obj.GUIHandles.OSCData.Ydata(ch,obj.GUIHandles.OSC.SweepPos:obj.GUIHandles.OSC.nDisplaySamples-1) = NSThisChSamples(1:(obj.GUIHandles.OSC.nDisplaySamples-obj.GUIHandles.OSC.SweepPos));
+                    if obj.GUIHandles.OSC.DCmode
+                        obj.GUIHandles.OSC.DCOffset(ch) = obj.GUIHandles.OSC.sampleSum(ch)/obj.GUIHandles.OSC.nSamplesSummed(ch);
+                        obj.GUIHandles.OSC.sampleSum(ch)= 0;
+                        obj.GUIHandles.OSC.nSamplesSummed(ch) = 0;
+                    end
                     obj.GUIHandles.OSC.SweepPos = 1;
                     ResetFlag = 1;
                 else
@@ -160,6 +202,56 @@ switch op
 %                 end
 %             end
         end
+        
+    case 'stepTimePerDiv'
+        NewPos = obj.GUIHandles.OSC.TimeDivPos + newData;
+        if (NewPos > 0) && (NewPos <= length(obj.GUIHandles.OSC.TimeDivValues))
+            obj.GUIHandles.OSC.TimeDivPos = obj.GUIHandles.OSC.TimeDivPos + newData;
+            newTimeDivValue = obj.GUIHandles.OSC.TimeDivValues(obj.GUIHandles.OSC.TimeDivPos);
+            nSamplesPerSweep = obj.HW.FlexIOSamplingRate*newTimeDivValue*obj.GUIHandles.OSC.nXDivisions;
+            Interval = obj.GUIHandles.OSC.nXDivisions/(nSamplesPerSweep-1);
+            obj.GUIHandles.OSCData.Xdata = 0:Interval:obj.GUIHandles.OSC.nXDivisions;
+            obj.GUIHandles.OSC.SweepPos = 1;
+            obj.GUIHandles.OSCData.Ydata = nan(obj.HW.n.FlexIO,nSamplesPerSweep);
+            for i = 1:obj.HW.n.FlexIO
+                set(obj.GUIHandles.OSC.OscopeDataLine(i), 'XData', [obj.GUIHandles.OSCData.Xdata,obj.GUIHandles.OSCData.Xdata], 'YData', [obj.GUIHandles.OSCData.Ydata(i,:),obj.GUIHandles.OSCData.Ydata(i,:)]);
+            end
+            obj.GUIHandles.OSC.nDisplaySamples = nSamplesPerSweep;
+            
+            NewTimeDiv = obj.GUIHandles.OSC.TimeDivValues(NewPos);
+            if newTimeDivValue >= 1
+                timeString = ['Time: ' num2str(NewTimeDiv) '.00s'];
+            else
+                timeString = ['Time: ' num2str(NewTimeDiv*1000) '.0ms'];
+            end
+            set(obj.GUIHandles.OSC.TimeText, 'String', timeString);
+        end
+        
+    case 'logStartStop'
+        switch obj.Status.RecordAnalog
+            case 0
+                obj.Status.RecordAnalog = 1;
+                set(obj.GUIHandles.OSC.RecStatText, 'String', 'Recording');
+                set(obj.GUIHandles.RecordButton, 'String', char(9632), 'ForegroundColor', [0 0 0]);
+            case 1
+                obj.Status.RecordAnalog = 0;
+                set(obj.GUIHandles.OSC.RecStatText, 'String', '');
+                set(obj.GUIHandles.RecordButton, 'String', char(9210), 'ForegroundColor', [.7 0 0]);
+        end
+        
+    case 'setDC'
+        obj.GUIHandles.OSC.DCmode = 1-obj.GUIHandles.OSC.DCmode;
+        if obj.GUIHandles.OSC.DCmode
+            for ch = 1:obj.HW.n.FlexIO
+                obj.GUIHandles.OSC.DCOffset(ch) = obj.GUIHandles.OSC.sampleSum(ch)/obj.GUIHandles.OSC.nSamplesSummed(ch);
+                obj.GUIHandles.OSC.sampleSum(ch) = 0;
+                obj.GUIHandles.OSC.nSamplesSummed(ch) = 0;
+            end
+            set(obj.GUIHandles.ZeroButton, 'String', char(9107), 'TooltipString', 'Restore DC (in viewer only)');
+        else
+            set(obj.GUIHandles.ZeroButton, 'String', char(8767), 'TooltipString', 'Subtract DC (in viewer only)');
+        end
+        obj.GUIHandles.OSC.SweepPos = 1;
     case 'end'
         obj.Status.AnalogViewer = 0;
         delete(obj.GUIHandles.OscopeFig_Builtin);

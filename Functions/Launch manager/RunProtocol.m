@@ -106,7 +106,9 @@ switch Opstring
 %                 BpodSystem.Status.nAnalogSamples = 0;
 %                 BpodSystem.AnalogData.SamplingRate = BpodSystem.HW.FlexIOSamplingRate;
                 AnalogFilename = [subjectName '_' protocolName '_' DateInfo '_ANLG.dat'];
-                BpodSystem.AnalogDataFile = fopen(AnalogFilename,'w');
+                if BpodSystem.Status.RecordAnalog == 1
+                    BpodSystem.AnalogDataFile = fopen(AnalogFilename,'w');
+                end
                 BpodSystem.Status.nAnalogSamples = 0;
             end
             
@@ -145,6 +147,9 @@ switch Opstring
             IsOnline = BpodSystem.check4Internet();
             if (IsOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
                 %BpodSystem.BpodPhoneHome(1); % Disabled until server migration. -JS July 2018
+            end
+            if BpodSystem.Status.AnalogViewer
+                set(BpodSystem.GUIHandles.RecordButton, 'Enable', 'off')
             end
             BpodSystem.Status.BeingUsed = 1;
             BpodSystem.Status.SessionStartFlag = 1;
@@ -199,6 +204,7 @@ switch Opstring
                 TeensySoundServer('end');
             end   
         end
+        BpodSystem.Status.RecordAnalog = 1;
         BpodSystem.Status.InStateMatrix = 0;
         % Shut down protocol and plugin figures (should be made more general)
         try

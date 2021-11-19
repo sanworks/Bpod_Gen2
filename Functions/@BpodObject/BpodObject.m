@@ -114,6 +114,7 @@ classdef BpodObject < handle
             obj.Status.SessionStartFlag = 0;
             obj.Status.AnalogViewer = 0;
             obj.Status.nAnalogSamples = 0;
+            obj.Status.RecordAnalog = 1;
             % Initialize paths
             obj.Path = struct;
             obj.Path.BpodRoot = BpodPath;

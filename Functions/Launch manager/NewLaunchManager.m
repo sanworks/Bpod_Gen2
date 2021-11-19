@@ -697,7 +697,9 @@ if BpodSystem.MachineType > 3
     nAnalogChannels = sum(BpodSystem.HW.FlexIOChannelTypes == 2);
     if nAnalogChannels > 0
         AnalogFilename = [BpodSystem.Path.CurrentDataFile(1:end-4) '_ANLG.dat'];
-        BpodSystem.AnalogDataFile = fopen(AnalogFilename,'w');
+        if BpodSystem.Status.RecordAnalog == 1
+            BpodSystem.AnalogDataFile = fopen(AnalogFilename,'w');
+        end
         BpodSystem.Status.nAnalogSamples = 0;
     end
 end
@@ -737,6 +739,11 @@ IsOnline = BpodSystem.check4Internet();
 if (IsOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
     BpodSystem.BpodPhoneHome(1);
 end
+
+if BpodSystem.Status.AnalogViewer
+    set(BpodSystem.GUIHandles.RecordButton, 'Enable', 'off')
+end
+
 BpodSystem.Status.BeingUsed = 1;
 BpodSystem.Status.SessionStartFlag = 1;
 BpodSystem.ProtocolStartTime = now*100000;

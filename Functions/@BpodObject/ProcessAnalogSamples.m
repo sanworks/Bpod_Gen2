@@ -25,7 +25,9 @@ function ProcessAnalogSamples(obj, e)
         nSamplesToRead = floor(nBytesAvailable/((2*(nChannels+1))));
         if nSamplesToRead > 0
             Msg = obj.AnalogSerialPort.read((nSamplesToRead*(nChannels+1)), 'uint16');
-            fwrite(obj.AnalogDataFile, Msg, 'uint16');
+            if obj.Status.RecordAnalog
+                fwrite(obj.AnalogDataFile, Msg, 'uint16');
+            end
             Msg(1:nChannels+1:end) = []; % Remove trial number data
             newData = reshape(Msg, nChannels, nSamplesToRead);
             obj.Status.nAnalogSamples = obj.Status.nAnalogSamples + nSamplesToRead;
