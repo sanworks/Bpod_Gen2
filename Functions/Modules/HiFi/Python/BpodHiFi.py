@@ -69,7 +69,7 @@ class BpodHiFi(object):
     def synthAmplitude(self, value):
         if not ((value >= 0) and (value <= 1)):
             raise HiFiError('Error: Synth amplitude values must range between 0 and 1.')
-        amplitudeBits = round(value*32767);
+        amplitudeBits = round(value*65535);
         self.Port.write(ord('N'), 'uint8', amplitudeBits, 'uint16')
         confirm = self.Port.read(1, 'uint8');
         if confirm != 1:

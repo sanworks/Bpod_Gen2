@@ -17,7 +17,7 @@ classdef BpodHiFi < handle
         maxWaves = 20;
         maxSamplesPerWaveform = 0;
         maxEnvelopeSamples = 2000;
-        MaxAmplitudeBits = 32767;
+        MaxAmplitudeBits = 65535;
         MaxSynthFrequency = 80000;
         MaxAmplitudeFadeSamples = 1920000;
         validSynthWaveforms = {'WhiteNoise', 'Sine'};
