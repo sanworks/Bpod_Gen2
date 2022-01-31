@@ -227,6 +227,17 @@ classdef UpdateBpodFirmware < handle
                         elseif nChannels == 8
                             FirmwareFilename = 'BpodWavePlayer_8ch.hex';
                         end
+                    case 'HiFi'
+                        boardType = 'Teensy3_x';
+                        PauseFor = 1;
+                        H = BpodHiFi(Port);
+                        isHD = H.Info.isHD;
+                        clear H
+                        if isHD
+                            FirmwareFilename = 'BpodHiFiModule_HD.hex';
+                        else
+                            FirmwareFilename = 'BpodHiFiModule_SD.hex';
+                        end 
                     case 'AudioPlayer'
                         boardType = 'Teensy3_x';
                         PauseFor = .1;
