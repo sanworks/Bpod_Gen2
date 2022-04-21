@@ -112,13 +112,15 @@ while BpodSystem.Status.InStateMatrix
         end
     end
     if BpodSystem.EmulatorMode == 0
-        if BpodSystem.SerialPort.bytesAvailable > 0
+        SerialPortBytesAvailable = BpodSystem.SerialPort.bytesAvailable;
+        if SerialPortBytesAvailable > 0
             NewMessage = 1;
             opCodeBytes = BpodSystem.SerialPort.read(2, 'uint8');
         else
             NewMessage = 0;
         end
     else
+        SerialPortBytesAvailable = 0;
         if BpodSystem.ManualOverrideFlag == 1
             ManualOverrideEvent = VirtualManualOverride(BpodSystem.VirtualManualOverrideBytes);
             BpodSystem.ManualOverrideFlag = 0;
@@ -133,9 +135,12 @@ while BpodSystem.Status.InStateMatrix
             case 1 % Receive and handle events
                 nCurrentEvents = double(opCodeBytes(2));
                 if BpodSystem.EmulatorMode == 0
-                    TempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents, 'uint8');
                     if BpodSystem.LiveTimestamps == 1
-                        ThisTimestamp = double(BpodSystem.SerialPort.read(1, 'uint32'))*TimeScaleFactor;
+                        TempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents+4, 'uint8');
+                        ThisTimestamp = typecast(TempCurrentEvents(end-3:end), 'uint32');
+                        TempCurrentEvents = TempCurrentEvents(1:end-4);
+                    else
+                        TempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents, 'uint8');
                     end
                 else
                     TempCurrentEvents = VirtualCurrentEvents;
@@ -223,14 +228,15 @@ while BpodSystem.Status.InStateMatrix
                     end
                 end
                 if BpodSystem.Status.InStateMatrix == 1
-                    BpodSystem.RefreshGUI;
                     Events(nEvents+1:(nEvents+nCurrentEvents)) = CurrentEvent(1:nCurrentEvents);
                     if BpodSystem.LiveTimestamps == 1
                         LiveEventTimestamps(nEvents+1:(nEvents+nCurrentEvents)) = ThisTimestamp;
                     end
                     BpodSystem.Status.LastEvent = CurrentEvent(1);
+                    if SerialPortBytesAvailable < 250
+                        BpodSystem.RefreshGUI;
+                    end
                     CurrentEvent(1:nCurrentEvents) = 0;
-                    set(BpodSystem.GUIHandles.LastEventDisplay, 'string', EventNames{BpodSystem.Status.LastEvent});
                     nEvents = nEvents + uint16(nCurrentEvents);
                 end
             case 2 % Soft-code

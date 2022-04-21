@@ -22,11 +22,6 @@ function obj = Connect2BpodSM(obj, portString, varargin)
     SkipDiscovery = 0;
     if AutoMode
         Ports = obj.FindUSBSerialPorts;
-        if ~isempty(strfind(obj.HostOS, 'Windows 10')) || ~isempty(strfind(obj.HostOS, 'Windows 8'))
-            Ports = [Ports.Arduino Ports.Teensy Ports.COM];
-        else
-            Ports = [Ports.Arduino Ports.Teensy];
-        end
     else
         Ports = {portString}; SkipDiscovery = 1;
     end

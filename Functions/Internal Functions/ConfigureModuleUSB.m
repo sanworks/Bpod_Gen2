@@ -90,7 +90,6 @@ set(BpodSystem.GUIHandles.ModuleList, 'Value', selectedModule);
 function refreshFreeUSBPorts
 global BpodSystem
 USBPorts = BpodSystem.FindUSBSerialPorts;
-USBPorts = [USBPorts.Arduino USBPorts.Teensy USBPorts.Sparkfun USBPorts.COM];
 USBPorts = USBPorts(logical(1-strcmp(USBPorts, BpodSystem.SerialPort.PortName)));
 if ispc
     [Status RawString] = system('chgport'); % Extra step equired to find HARP Sound Card

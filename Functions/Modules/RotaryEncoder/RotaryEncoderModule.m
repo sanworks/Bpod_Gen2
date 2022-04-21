@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -71,6 +71,7 @@ classdef RotaryEncoderModule < handle
         usbCapturedData = []; % Stores streaming data if usbCaptureEnabled = 1
         rollOverSum = 0; % If 32-bit micros() clock has rolled over since stream or log reset, this gets incremented by 2^32
         LastTimeRead = 0; % Last timestamp read from the device
+        HardwareVersion = 0; % Major version of the connected hardware
     end
             
     methods
@@ -92,6 +93,13 @@ classdef RotaryEncoderModule < handle
             response = obj.Port.read(1, 'uint8');
             if response ~= 217
                 error('Could not connect =( ')
+            end
+            % Check for firmware version 2
+            obj.Port.write('IM', 'uint8');
+            reply = obj.Port.read(1, 'uint8');
+            obj.HardwareVersion = 1;
+            if reply == 0
+                obj.HardwareVersion = 2;
             end
             obj.resetParams();
             obj.displayPositions = nan(1,obj.nDisplaySamples); % UI y data
@@ -125,28 +133,32 @@ classdef RotaryEncoderModule < handle
             obj.thresholds = newThresholds;
         end
         function set.moduleOutputStream(obj, stateString)
-            obj.assertNotUSBStreaming;
-            stateString = lower(stateString);
-            if obj.autoSync
-                switch stateString
-                    case 'off'
-                        obj.Port.write(['O' 0], 'uint8');
-                    case 'on'
-                        obj.Port.write(['O' 1], 'uint8');
-                    otherwise
-                        error('Error setting moduleOutputStream; value must be ''on'' or ''off''');
+            if obj.HardwareVersion == 1
+                obj.assertNotUSBStreaming;
+                stateString = lower(stateString);
+                if obj.autoSync
+                    switch stateString
+                        case 'off'
+                            obj.Port.write(['O' 0], 'uint8');
+                        case 'on'
+                            obj.Port.write(['O' 1], 'uint8');
+                        otherwise
+                            error('Error setting moduleOutputStream; value must be ''on'' or ''off''');
+                    end
                 end
+                obj.ConfirmUSBTransmission('Module Output Stream Enable/Disable');
+                obj.moduleOutputStream = stateString;
             end
-            obj.ConfirmUSBTransmission('Module Output Stream Enable/Disable');
-            obj.moduleOutputStream = stateString;
         end
         function set.moduleStreamPrefix(obj, Prefix)
-            obj.assertNotUSBStreaming;
-            if (length(Prefix) > 1) || (~ischar(Prefix))
-                error('Error setting output stream prefix; Prefix must be a single character.')
+            if obj.HardwareVersion == 1
+                obj.assertNotUSBStreaming;
+                if (length(Prefix) > 1) || (~ischar(Prefix))
+                    error('Error setting output stream prefix; Prefix must be a single character.')
+                end
+                obj.Port.write(['I' Prefix], 'uint8');
+                obj.ConfirmUSBTransmission('Module Output Stream Prefix');
             end
-            obj.Port.write(['I' Prefix], 'uint8');
-            obj.ConfirmUSBTransmission('Module Output Stream Prefix');
         end
         function set.wrapPoint(obj, newWrapPoint)
             obj.assertNotUSBStreaming;
@@ -185,14 +197,23 @@ classdef RotaryEncoderModule < handle
             obj.sendThresholdEvents = stateString;
         end
         function startLogging(obj)
+            if obj.HardwareVersion == 2
+                error('Error: microSD logging is not available on Rotary Encoder Module v2');
+            end
             obj.Port.write('L', 'uint8');
             obj.isLogging = 1;
         end
         function stopLogging(obj)
-                obj.Port.write('F', 'uint8');
-                obj.isLogging = 0;
+            if obj.HardwareVersion == 2
+                error('Error: microSD logging is not available on Rotary Encoder Module v2');
+            end
+            obj.Port.write('F', 'uint8');
+            obj.isLogging = 0;
         end
         function Data = getLoggedData(obj)
+            if obj.HardwareVersion == 2
+                error('Error: microSD logging is not available on Rotary Encoder Module v2');
+            end
             if obj.uiStreaming == 1
                 stop(obj.Timer);
                 obj.stopUSBStream;
@@ -374,6 +395,9 @@ classdef RotaryEncoderModule < handle
                     'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
                 obj.gui.OutputStreamCheckbox = uicontrol('Style', 'checkbox', 'Position', [610 Ypos 30 30], 'FontSize', 12,...
                     'BackgroundColor', BGColor, 'Callback',@(h,e)obj.UIsetParams(), 'Value', strcmp(obj.moduleOutputStream, 'on'));
+                if obj.HardwareVersion == 2
+                    set(obj.gui.OutputStreamCheckbox, 'enable', 'off');
+                end
                 uicontrol('Style', 'text', 'Position', [630 Ypos-5 60 30], 'String', 'Enable', 'FontSize', 12,...
                     'BackgroundColor', BGColor); Ypos = Ypos - 45;
                 obj.displayPos = 1;
@@ -401,7 +425,9 @@ classdef RotaryEncoderModule < handle
         end
         function delete(obj)
             obj.stopUSBStream;
-            obj.stopLogging;
+            if obj.HardwareVersion == 1
+                obj.stopLogging;
+            end
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
         end
     end

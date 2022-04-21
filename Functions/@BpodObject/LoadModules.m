@@ -118,7 +118,6 @@ function obj = LoadModules(obj)
 
             % Load module USB port configuration
             USBPorts = obj.FindUSBSerialPorts;
-            USBPorts = [USBPorts.Arduino USBPorts.Teensy USBPorts.Sparkfun USBPorts.COM];
             USBPorts = USBPorts(logical(1-strcmp(USBPorts, obj.SerialPort.PortName)));
 
             for i = 1:length(obj.Modules.Name)
