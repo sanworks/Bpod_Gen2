@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -84,11 +84,6 @@ function obj = SetupHardware(obj)
         % On state machine r2+ or newer, with firmware v23 or newer, find the analog serial port
         if obj.MachineType > 3 && obj.FirmwareVersion > 22
             Ports = obj.FindUSBSerialPorts;
-            if ~isempty(strfind(obj.HostOS, 'Windows 10')) || ~isempty(strfind(obj.HostOS, 'Windows 8'))
-                Ports = [Ports.Arduino Ports.Teensy Ports.COM];
-            else
-                Ports = [Ports.Arduino Ports.Teensy];
-            end
             Ports = Ports(~strcmp(Ports, obj.SerialPort.PortName)); % Eliminate state machine port
             nPorts = length(Ports);
             iPort = 0; Found = 0;
@@ -217,6 +212,14 @@ function obj = SetupHardware(obj)
     obj.HW.GlobalCounterStartposition = find(obj.HW.EventTypes == '+', 1);
     obj.HW.ConditionStartposition = find(obj.HW.EventTypes == 'C', 1);
     obj.HW.StateTimerPosition = find(obj.HW.EventTypes == 'U');
+    obj.HW.CircuitRevision = struct;
+    obj.HW.CircuitRevision.StateMachine = NaN;
+    if obj.FirmwareVersion > 22
+        obj.SerialPort.write('v', 'uint8');
+        SM_Revision = obj.SerialPort.read(1, 'uint8');
+        obj.HW.CircuitRevision.StateMachine = SM_Revision;
+    end
+    
     obj.HW.Pos = struct; % Positions of different channel types in hardware description vectors
     obj.HardwareState.Key = 'F = FlexI/O, D = digital B/W = BNC/Wire (digital), P = Port (digital in, PWM out), S = SPI (Valve array), U = UART, X = USB, V = Valve';
     obj.HardwareState.InputState = zeros(1,obj.HW.n.Inputs);
