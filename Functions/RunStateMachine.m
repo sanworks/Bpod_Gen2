@@ -59,7 +59,7 @@ if BpodSystem.EmulatorMode == 0
 end
 BpodSystem.StateMatrix = BpodSystem.StateMatrixSent;
 EventNames = BpodSystem.StateMachineInfo.EventNames;
-MaxEvents = 10000;
+MaxEvents = 100000;
 nEvents = 0; nStates = 1;
 Events = zeros(1,MaxEvents); States = zeros(1,MaxEvents);
 LiveEventTimestamps = zeros(1,MaxEvents);
@@ -237,7 +237,7 @@ while BpodSystem.Status.InStateMatrix
                         BpodSystem.RefreshGUI;
                     end
                     CurrentEvent(1:nCurrentEvents) = 0;
-                    nEvents = nEvents + uint16(nCurrentEvents);
+                    nEvents = nEvents + uint32(nCurrentEvents);
                 end
             case 2 % Soft-code
                 SoftCode = opCodeBytes(2);

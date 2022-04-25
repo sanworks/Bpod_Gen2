@@ -47,7 +47,7 @@ classdef TrialManagerObject < handle
         States
         StateNames
         LiveEventTimestamps
-        MaxEvents = 10000; % Maximum number of events possible in 1 trial (for preallocation)
+        MaxEvents = 100000; % Maximum number of events possible in 1 trial (for preallocation)
         TimeScaleFactor
         TrialStartTimestamp
         LastTrialEndTime
@@ -408,7 +408,7 @@ classdef TrialManagerObject < handle
                                 BpodSystem.Status.LastEvent = obj.CurrentEvent(1);
                                 obj.CurrentEvent(1:nCurrentEvents) = 0;
                                 set(BpodSystem.GUIHandles.LastEventDisplay, 'string', obj.EventNames{BpodSystem.Status.LastEvent});
-                                obj.nEvents = obj.nEvents + uint16(nCurrentEvents);
+                                obj.nEvents = obj.nEvents + uint32(nCurrentEvents);
                             end
                         case 2 % Soft-code
                             SoftCode = opCodeBytes(2);
