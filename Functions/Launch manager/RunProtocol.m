@@ -175,6 +175,13 @@ switch Opstring
             end
         end
     case 'Stop'
+        % execute userkillscript when protocol stopped if found in protocol folder
+        try
+            Protocol=BpodSystem.Status.CurrentProtocolName; %look for Protocol name
+            run(fullfile(BpodSystem.Path.ProtocolFolder,Protocol,'UserKillScript.m')); %run UserKillScript script found in protocol folder
+        catch
+        end
+
         if ~isempty(BpodSystem.Status.CurrentProtocolName)
             disp(' ')
             disp([BpodSystem.Status.CurrentProtocolName ' ended'])
