@@ -72,6 +72,7 @@ classdef RotaryEncoderModule < handle
         rollOverSum = 0; % If 32-bit micros() clock has rolled over since stream or log reset, this gets incremented by 2^32
         LastTimeRead = 0; % Last timestamp read from the device
         HardwareVersion = 0; % Major version of the connected hardware
+        halfPoint = 512; % Half of total positions per revolution (depends both on encoder and encoding method)
     end
             
     methods
@@ -100,6 +101,7 @@ classdef RotaryEncoderModule < handle
             obj.HardwareVersion = 1;
             if reply == 0
                 obj.HardwareVersion = 2;
+                obj.halfPoint = 2048;
             end
             obj.resetParams();
             obj.displayPositions = nan(1,obj.nDisplaySamples); % UI y data
@@ -613,10 +615,10 @@ classdef RotaryEncoderModule < handle
             end
         end
         function degrees = pos2degrees(obj, pos)
-            degrees = round(((double(pos)/512)*180)*10)/10;
+            degrees = round(((double(pos)/obj.halfPoint)*180)*10)/10;
         end
         function pos = degrees2pos(obj, degrees)
-            pos = int16((degrees./180).*512);
+            pos = int16((degrees./180).*obj.halfPoint);
         end
         function ConfirmUSBTransmission(obj,ParamName)
             Confirm = obj.Port.read(1, 'uint8');

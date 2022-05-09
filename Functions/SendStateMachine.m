@@ -301,9 +301,13 @@ else
     nOverrides = length(GCoverrides);
     OutMatrix = [];
     if nOverrides > 0 
-        OutMatrix = [GCOverrides-1; GCResets(GCOverrides)];
+        OutMatrix = [GCoverrides-1; GCResets(GCoverrides)];
     end
-    GlobalCounterResets = [nOverrides OutMatrix(1:end)];
+    if nOverrides == 1
+        GlobalCounterResets = [nOverrides OutMatrix'];
+    else 
+        GlobalCounterResets = [nOverrides OutMatrix(1:end)];
+    end
 end
 
 AnalogThreshEnable = [];

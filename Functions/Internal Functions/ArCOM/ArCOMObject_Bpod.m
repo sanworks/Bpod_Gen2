@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -61,7 +61,6 @@ classdef ArCOMObject_Bpod < handle
     end
     properties (Access = private)
         InBuffer
-        InBufferBytesAvailable
         Timeout = 3;
         TCPport = 11258;
         OutputBufferSize = 1000000; % Bytes
@@ -70,8 +69,7 @@ classdef ArCOMObject_Bpod < handle
     methods
         function obj = ArCOMObject_Bpod(portString, baudRate, varargin)
             obj.Port = [];
-            obj.InBuffer = uint8(zeros(1,obj.InputBufferSize));
-            obj.InBufferBytesAvailable = 0;
+            obj.InBuffer = BpodDoubleSidedBuffer(obj.InputBufferSize);
             if (exist('OCTAVE_VERSION'))
                 try
                     pkg load instrument-control
@@ -197,15 +195,15 @@ classdef ArCOMObject_Bpod < handle
         function bytesAvailable = bytesAvailable(obj)
             switch obj.Interface
                 case 0 % MATLAB/Java
-                    bytesAvailable = obj.Port.BytesAvailable + obj.InBufferBytesAvailable;
+                    bytesAvailable = obj.Port.BytesAvailable + obj.InBuffer.bytesAvailable;
                 case 1 % MATLAB/PsychToolbox
-                    bytesAvailable = IOPort('BytesAvailable', obj.Port) + obj.InBufferBytesAvailable;
+                    bytesAvailable = IOPort('BytesAvailable', obj.Port) + obj.InBuffer.bytesAvailable;
                 case 2 % Octave
                     error('Reading available bytes from a serial port buffer is not supported in Octave as of instrument control toolbox 0.2.2');
                 case 3
-                    bytesAvailable = obj.Port.BytesAvailable + obj.InBufferBytesAvailable;
+                    bytesAvailable = obj.Port.BytesAvailable + obj.InBuffer.bytesAvailable;
                 case 4
-                    bytesAvailable = length(pnet(obj.Port,'read', 65536, 'uint8', 'native','view', 'noblock')) + obj.InBufferBytesAvailable;
+                    bytesAvailable = length(pnet(obj.Port,'read', 65536, 'uint8', 'native','view', 'noblock')) + obj.InBuffer.bytesAvailable;
             end
         end
         function write(obj, varargin)
@@ -356,7 +354,7 @@ classdef ArCOMObject_Bpod < handle
             CurrentTime = clock;
             StartTime = CurrentTime(end);
             CurrentTime = StartTime;
-            while nTotalBytes > obj.InBufferBytesAvailable && (CurrentTime-StartTime < obj.Timeout)
+            while nTotalBytes > obj.InBuffer.bytesAvailable && (CurrentTime-StartTime < obj.Timeout)
                 CurrentTime = clock;
                 CurrentTime = CurrentTime(end);
                 switch obj.Interface
@@ -365,15 +363,14 @@ classdef ArCOMObject_Bpod < handle
                       if nBytesAvailable > 0
                         NewBytes = fread(obj.Port, nBytesAvailable, 'uint8')';
                         pause(.0001);
-                        obj.InBuffer(obj.InBufferBytesAvailable+1:obj.InBufferBytesAvailable+nBytesAvailable) = NewBytes;
+                        obj.InBuffer.write(NewBytes);
                       end
                     case 1
                       nBytesAvailable = IOPort('BytesAvailable', obj.Port);
                       if nBytesAvailable > 0
                           NewBytes = IOPort('Read', obj.Port, 1, nBytesAvailable);
                           pause(.0001);
-                          obj.InBuffer(obj.InBufferBytesAvailable+1:obj.InBufferBytesAvailable+nBytesAvailable) = NewBytes;
-                          %disp([num2str(nBytesAvailable) ' bytes read.'])
+                          obj.InBuffer.write(NewBytes);
                       end
                     case 2
                       error('Reading available bytes from a serial port buffer is not supported in Octave as of instrument control toolbox 0.2.2');
@@ -382,19 +379,18 @@ classdef ArCOMObject_Bpod < handle
                         if nBytesAvailable > 0
                             NewBytes = fread(obj.Port, nBytesAvailable, 'uint8')';
                             pause(.0001);
-                            obj.InBuffer(obj.InBufferBytesAvailable+1:obj.InBufferBytesAvailable+nBytesAvailable) = NewBytes;
+                            obj.InBuffer.write(NewBytes);
                         end
                     case 4
                         nBytesAvailable = length(pnet(obj.Port,'read', 65536, 'uint8', 'native','view', 'noblock'));
                         if nBytesAvailable > 0 
                             NewBytes = uint8(pnet(obj.Port,'read', nBytesAvailable, 'uint8'));
                             pause(.0001);
-                            obj.InBuffer(obj.InBufferBytesAvailable+1:obj.InBufferBytesAvailable+nBytesAvailable) = NewBytes;
+                            obj.InBuffer.write(NewBytes);
                         end
                 end
-                obj.InBufferBytesAvailable = obj.InBufferBytesAvailable + nBytesAvailable;
             end
-            if nTotalBytes > obj.InBufferBytesAvailable
+            if nTotalBytes > obj.InBuffer.bytesAvailable
                 error('Error: The USB serial port did not return the requested number of bytes.')
             end
             varargout = cell(1,nArrays);
@@ -402,34 +398,32 @@ classdef ArCOMObject_Bpod < handle
                 switch dataTypes{i}
                     case 'char'
                         nBytesRead = nValues(i);
-                        varargout{i} = char(obj.InBuffer(1:nBytesRead));
+                        varargout{i} = char(obj.InBuffer.read(nBytesRead));
                     case 'uint8'
                         nBytesRead = nValues(i);
-                        varargout{i} = uint8(obj.InBuffer(1:nBytesRead));
+                        varargout{i} = obj.InBuffer.read(nBytesRead);
                     case 'uint16'
                         nBytesRead = nValues(i)*2;
-                        varargout{i} = typecast(uint8(obj.InBuffer(1:nBytesRead)), 'uint16');
+                        varargout{i} = typecast(obj.InBuffer.read(nBytesRead), 'uint16');
                     case 'uint32'
                         nBytesRead = nValues(i)*4;
-                        varargout{i} = typecast(uint8(obj.InBuffer(1:nBytesRead)), 'uint32');
+                        varargout{i} = typecast(obj.InBuffer.read(nBytesRead), 'uint32');
                     case 'uint64'
                         nBytesRead = nValues(i)*8;
-                        varargout{i} = typecast(uint8(obj.InBuffer(1:nBytesRead)), 'uint64');
+                        varargout{i} = typecast(obj.InBuffer.read(nBytesRead), 'uint64');
                     case 'int8'
                         nBytesRead = nValues(i);
-                        varargout{i} = typecast(uint8(obj.InBuffer(1:nBytesRead)), 'int8');
+                        varargout{i} = typecast(obj.InBuffer.read(nBytesRead), 'int8');
                     case 'int16'
                         nBytesRead = nValues(i)*2;
-                        varargout{i} = typecast(uint8(obj.InBuffer(1:nBytesRead)), 'int16');
+                        varargout{i} = typecast(obj.InBuffer.read(nBytesRead), 'int16');
                     case 'int32'
                         nBytesRead = nValues(i)*4;
-                        varargout{i} = typecast(uint8(obj.InBuffer(1:nBytesRead)), 'int32');
+                        varargout{i} = typecast(obj.InBuffer.read(nBytesRead), 'int32');
                     case 'int64'
                         nBytesRead = nValues(i)*8;
-                        varargout{i} = typecast(uint8(obj.InBuffer(1:nBytesRead)), 'int64');
+                        varargout{i} = typecast(obj.InBuffer.read(nBytesRead), 'int64');
                 end
-                obj.InBuffer(1:obj.InBufferBytesAvailable-nBytesRead) = obj.InBuffer(nBytesRead+1:obj.InBufferBytesAvailable);
-                obj.InBufferBytesAvailable = obj.InBufferBytesAvailable - nBytesRead;
             end
         end
         
