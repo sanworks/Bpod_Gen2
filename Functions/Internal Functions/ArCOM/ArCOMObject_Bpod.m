@@ -306,7 +306,6 @@ classdef ArCOMObject_Bpod < handle
                     for i = 1:nFullWrites
                         fwrite(obj.Port, ByteString(Pos:Pos+obj.OutputBufferSize-1), 'uint8');
                         Pos = Pos + obj.OutputBufferSize;
-                        pause(.0001);
                     end
                     if partialWriteLength > 0
                         fwrite(obj.Port, ByteString(Pos:end), 'uint8');
@@ -362,14 +361,12 @@ classdef ArCOMObject_Bpod < handle
                       nBytesAvailable = obj.Port.BytesAvailable;
                       if nBytesAvailable > 0
                         NewBytes = fread(obj.Port, nBytesAvailable, 'uint8')';
-                        pause(.0001);
                         obj.InBuffer.write(NewBytes);
                       end
                     case 1
                       nBytesAvailable = IOPort('BytesAvailable', obj.Port);
                       if nBytesAvailable > 0
                           NewBytes = IOPort('Read', obj.Port, 1, nBytesAvailable);
-                          pause(.0001);
                           obj.InBuffer.write(NewBytes);
                       end
                     case 2
@@ -378,14 +375,12 @@ classdef ArCOMObject_Bpod < handle
                         nBytesAvailable = obj.Port.BytesAvailable;
                         if nBytesAvailable > 0
                             NewBytes = fread(obj.Port, nBytesAvailable, 'uint8')';
-                            pause(.0001);
                             obj.InBuffer.write(NewBytes);
                         end
                     case 4
                         nBytesAvailable = length(pnet(obj.Port,'read', 65536, 'uint8', 'native','view', 'noblock'));
                         if nBytesAvailable > 0 
                             NewBytes = uint8(pnet(obj.Port,'read', nBytesAvailable, 'uint8'));
-                            pause(.0001);
                             obj.InBuffer.write(NewBytes);
                         end
                 end

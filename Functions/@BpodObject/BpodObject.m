@@ -435,6 +435,9 @@ classdef BpodObject < handle
             end
             obj.StateMachineInfo.InputChannelNames(FlexInputPos:FlexInputPos+obj.HW.n.FlexIO-1) = InputChannelNames;
             obj.StateMachineInfo.OutputChannelNames(FlexOutputPos:FlexOutputPos+obj.HW.n.FlexIO-1) = OutputChannelNames;
+            if isfield (obj.Data, 'Analog')
+                obj.Data.Analog.nChannels = sum(channelTypes == 2);
+            end
         end
         function setFlexIO_AnalogInputSF(obj, SF)
             % Set FlexIO analog input sampling rate (Hz). Permitted range = [1, 1000]
