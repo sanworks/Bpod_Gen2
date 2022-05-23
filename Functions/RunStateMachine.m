@@ -137,7 +137,7 @@ while BpodSystem.Status.InStateMatrix
                 if BpodSystem.EmulatorMode == 0
                     if BpodSystem.LiveTimestamps == 1
                         TempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents+4, 'uint8');
-                        ThisTimestamp = typecast(TempCurrentEvents(end-3:end), 'uint32')*TimeScaleFactor;
+                        ThisTimestamp = double(typecast(TempCurrentEvents(end-3:end), 'uint32'))*TimeScaleFactor;
                         TempCurrentEvents = TempCurrentEvents(1:end-4);
                     else
                         TempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents, 'uint8');
