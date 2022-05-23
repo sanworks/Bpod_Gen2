@@ -214,10 +214,27 @@ function obj = SetupHardware(obj)
     obj.HW.StateTimerPosition = find(obj.HW.EventTypes == 'U');
     obj.HW.CircuitRevision = struct;
     obj.HW.CircuitRevision.StateMachine = NaN;
-    if obj.FirmwareVersion > 22
+    
+    % In firmware v23 or newer, determine circuit board revision and minor firmware version
+    if obj.FirmwareVersion > 22 
         obj.SerialPort.write('v', 'uint8');
         SM_Revision = obj.SerialPort.read(1, 'uint8');
         obj.HW.CircuitRevision.StateMachine = SM_Revision;
+        obj.SerialPort.write('f', 'uint8');
+        obj.HW.minorFirmwareVersion = obj.SerialPort.read(1, 'uint16');
+        if obj.FirmwareVersion == obj.CurrentFirmware.StateMachine
+            if obj.HW.minorFirmwareVersion ~= obj.CurrentFirmware.StateMachine_Minor
+                disp(' ')
+                disp(['**********************ALERT*************************' char(10)...
+                      'State machine firmware mismatch detected (minor version).' char(10)... 
+                      'The state machine reported version ' num2str(obj.FirmwareVersion) '.' num2str(obj.HW.minorFirmwareVersion) char(10)...
+                      'The MATLAB software expects version ' num2str(obj.FirmwareVersion) '.' num2str(obj.CurrentFirmware.StateMachine_Minor) char(10)...
+                      'This can happen when using the ''develop'' branch of Bpod_Gen2 or Bpod_StateMachine_Firmware.' char(10)...
+                      'Please note that LoadBpodFirmware will not work for minor releases - the firmware update must be loaded with Arduino.' char(10)...
+                      '****************************************************'])
+                disp(' ');
+            end
+        end
     end
     
     obj.HW.Pos = struct; % Positions of different channel types in hardware description vectors

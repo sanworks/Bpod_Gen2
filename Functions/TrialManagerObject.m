@@ -193,7 +193,7 @@ classdef TrialManagerObject < handle
                 RawTrialEvents.ErrorCodes = ThisTrialErrorCodes;
                 if obj.LastTrialEndTime > 0
                     LastTrialDeadTime = RawTrialEvents.TrialStartTimestamp - obj.LastTrialEndTime;
-                    if LastTrialDeadTime > 0.0002
+                    if LastTrialDeadTime > 0.00021
                         disp(' ');
                         disp('*********************************************************************');
                         disp('*                            WARNING                                *');
