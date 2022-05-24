@@ -46,6 +46,9 @@ else
         end
         TE.Info.Firmware = struct;
         TE.Info.Firmware.StateMachine = BpodSystem.FirmwareVersion;
+        if BpodSystem.FirmwareVersion > 22
+            TE.Info.Firmware.StateMachine_Minor = BpodSystem.HW.minorFirmwareVersion;
+        end
         for i = 1:BpodSystem.Modules.nModules
             if BpodSystem.Modules.Connected(i)
                 TE.Info.Firmware.(BpodSystem.Modules.Name{i}) = BpodSystem.Modules.FirmwareVersion(i);

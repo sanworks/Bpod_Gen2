@@ -400,14 +400,16 @@ classdef TrialManagerObject < handle
                                 end
                             end
                             if BpodSystem.Status.InStateMatrix == 1
-                                BpodSystem.RefreshGUI;
+                                if MaxBytesToRead < 250 % Disable time-costly console GUI updates if data is backed up
+                                    BpodSystem.RefreshGUI;
+                                end
                                 obj.Events(obj.nEvents+1:(obj.nEvents+nCurrentEvents)) = obj.CurrentEvent(1:nCurrentEvents);
                                 if BpodSystem.LiveTimestamps == 1
                                     obj.LiveEventTimestamps(obj.nEvents+1:(obj.nEvents+nCurrentEvents)) = ThisTimestamp;
                                 end
                                 BpodSystem.Status.LastEvent = obj.CurrentEvent(1);
                                 obj.CurrentEvent(1:nCurrentEvents) = 0;
-                                set(BpodSystem.GUIHandles.LastEventDisplay, 'string', obj.EventNames{BpodSystem.Status.LastEvent});
+                                %set(BpodSystem.GUIHandles.LastEventDisplay, 'string', obj.EventNames{BpodSystem.Status.LastEvent});
                                 obj.nEvents = obj.nEvents + uint32(nCurrentEvents);
                             end
                         case 2 % Soft-code
@@ -476,7 +478,7 @@ classdef TrialManagerObject < handle
                 if thisEvent ~= 255
                     switch BpodSystem.HW.EventTypes(thisEvent)
                         case 'I'
-                            p = ((thisEvent-BpodSystem.HW.IOEventStartposition)/2)+BpodSystem.HW.n.SerialChannels+1;
+                            p = ((thisEvent-BpodSystem.HW.IOEventStartposition)/2)+BpodSystem.HW.n.SerialChannels+BpodSystem.HW.n.FlexIO+1;
                             thisChannel = floor(p);
                             isOdd = rem(p,1);
                             if isOdd == 0
