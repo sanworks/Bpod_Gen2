@@ -32,8 +32,19 @@ classdef BpodHiFi < handle
         MaxDataTransferAttempts = 5;
     end
     methods
-        function obj = BpodHiFi(portString)
-            obj.Port = ArCOMObject_Bpod(portString, 115200);
+        function obj = BpodHiFi(portString, varargin)
+            PortType = 0; 
+            if nargin > 2
+                PortString = varargin{1};
+                if strcmp(PortString, 'Java')
+                    PortType = 1;
+                end
+            end
+            if PortType == 0
+                obj.Port = ArCOMObject_Bpod(portString, 115200);
+            elseif PortType == 1
+                obj.Port = ArCOMObject_Bpod(portString, 115200, 'Java');
+            end
             obj.Port.write(243, 'uint8');
             Ack = obj.Port.read(1, 'uint8');
             if Ack ~= 244
@@ -313,14 +324,15 @@ classdef BpodHiFi < handle
         end
         function result = testPSRAM(obj)
             obj.Port.write('T', 'uint8');
-            memSize = obj.Port.read(1, 'uint8');
-            disp(['Testing PSRAM. ' num2str(memSize) ' MB detected. This may take up to 20 seconds.']);
-            while obj.Port.bytesAvailable == 0
+            
+            disp(['Testing PSRAM. This may take up to 20 seconds.']);
+            while obj.Port.bytesAvailable < 2
                 pause(.1);
             end
+            memSize = obj.Port.read(1, 'uint8');
             result = obj.Port.read(1, 'uint8');
             if result
-                disp('Test PASSED');
+                disp(['Test PASSED. ' num2str(memSize) ' MB detected.']);
             else
                 disp('Test FAILED');
             end

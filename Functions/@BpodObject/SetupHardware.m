@@ -217,11 +217,16 @@ function obj = SetupHardware(obj)
     
     % In firmware v23 or newer, determine circuit board revision and minor firmware version
     if obj.FirmwareVersion > 22 
-        obj.SerialPort.write('v', 'uint8');
-        SM_Revision = obj.SerialPort.read(1, 'uint8');
-        obj.HW.CircuitRevision.StateMachine = SM_Revision;
-        obj.SerialPort.write('f', 'uint8');
-        obj.HW.minorFirmwareVersion = obj.SerialPort.read(1, 'uint16');
+        if obj.EmulatorMode == 1
+            obj.HW.CircuitRevision.StateMachine = 0;
+             obj.HW.minorFirmwareVersion = 1;
+        else
+            obj.SerialPort.write('v', 'uint8');
+            SM_Revision = obj.SerialPort.read(1, 'uint8');
+            obj.HW.CircuitRevision.StateMachine = SM_Revision;
+            obj.SerialPort.write('f', 'uint8');
+            obj.HW.minorFirmwareVersion = obj.SerialPort.read(1, 'uint16');
+        end
         if obj.FirmwareVersion == obj.CurrentFirmware.StateMachine
             if obj.HW.minorFirmwareVersion ~= obj.CurrentFirmware.StateMachine_Minor
                 disp(' ')
