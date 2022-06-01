@@ -373,9 +373,9 @@ classdef ArCOMObject_Bpod < handle
             CurrentTime = clock;
             StartTime = CurrentTime(end);
             CurrentTime = StartTime;
-            StartTime = CurrentTime;
             while nTotalBytes > obj.InBuffer.bytesAvailable && (CurrentTime-StartTime < obj.Timeout)
-                nBytesAvailable = 0;
+                CurrentTime = clock;
+                CurrentTime = CurrentTime(end);
                 switch obj.Interface
                     case 0
                         if obj.JavaPortType == 0
@@ -411,17 +411,6 @@ classdef ArCOMObject_Bpod < handle
                             NewBytes = uint8(pnet(obj.Port,'read', nBytesAvailable, 'uint8'));
                             obj.InBuffer.write(NewBytes);
                         end
-                end
-                CurrentTime = clock;
-                CurrentTime = CurrentTime(end);
-                if nTotalBytes > 4096
-                    if nBytesAvailable > 0
-                        BytesPerSecond = 500000;
-                        EstimatedTransferTime = abs(nTotalBytes-obj.InBuffer.bytesAvailable)/BytesPerSecond;
-                        if EstimatedTransferTime > 0
-                            pause(EstimatedTransferTime);
-                        end
-                    end
                 end
             end
             if nTotalBytes > obj.InBuffer.bytesAvailable
