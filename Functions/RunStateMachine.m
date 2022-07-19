@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the 
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -47,7 +47,7 @@ if BpodSystem.EmulatorMode == 0
     BpodSystem.SerialPort.write('R', 'uint8'); % Send the code to run the loaded matrix (character "R" for Run)
     if BpodSystem.Status.NewStateMachineSent % Read confirmation byte = successful state machine transmission
         SMA_Confirmed = BpodSystem.SerialPort.read(1, 'uint8');
-        if isempty(SMA_Confirmed) 
+        if isempty(SMA_Confirmed)
             error('Error: The last state machine sent was not acknowledged by the Bpod device.');
         elseif SMA_Confirmed ~= 1
             error('Error: The last state machine sent was not acknowledged by the Bpod device.');
@@ -171,7 +171,7 @@ while BpodSystem.Status.InStateMatrix
                         TransitionEventFound = 1;
                     end
                     i = i + 1;
-                end 
+                end
                 SetBpodHardwareMirror2ReflectEvent(CurrentEvent);
                 if TransitionEventFound
                     if BpodSystem.StateMatrix.meta.use255BackSignal == 1
@@ -198,7 +198,7 @@ while BpodSystem.Status.InStateMatrix
                                     BpodSystem.Emulator.GlobalTimerEnd(ThisGlobalTimer) = BpodSystem.Emulator.CurrentTime + BpodSystem.StateMatrix.GlobalTimers.Duration(ThisGlobalTimer);
                                     BpodSystem.Emulator.GlobalTimersActive(ThisGlobalTimer) = 1;
                                     BpodSystem.Emulator.GlobalTimersTriggered(ThisGlobalTimer) = 0;
-                                else 
+                                else
                                     BpodSystem.Emulator.GlobalTimerStart(ThisGlobalTimer) = BpodSystem.Emulator.CurrentTime + BpodSystem.StateMatrix.GlobalTimers.OnsetDelay(ThisGlobalTimer);
                                     BpodSystem.Emulator.GlobalTimerEnd(ThisGlobalTimer) = BpodSystem.Emulator.GlobalTimerStart(ThisGlobalTimer) + BpodSystem.StateMatrix.GlobalTimers.Duration(ThisGlobalTimer);
                                     BpodSystem.Emulator.GlobalTimersTriggered(ThisGlobalTimer) = 1;
@@ -246,7 +246,7 @@ while BpodSystem.Status.InStateMatrix
                 disp('Error: Invalid op code received')
         end
     else
-        drawnow; 
+        drawnow;
     end
 end
 
@@ -263,7 +263,7 @@ if BpodSystem.Status.BeingUsed == 1
         Discrepancy = abs(TrialTimeFromMicros - TrialTimeFromCycles)*1000;
         if Discrepancy > 1
             disp([char(10) '***WARNING!***' char(10) 'Bpod missed hardware update deadline(s) on the past trial, by ~' num2str(Discrepancy)...
-                            'ms!' char(10) 'An error code (1) has been added to your trial data.' char(10) '**************'])
+                'ms!' char(10) 'An error code (1) has been added to your trial data.' char(10) '**************'])
             ThisTrialErrorCodes(1) = 1;
         end
     end
@@ -271,7 +271,7 @@ if BpodSystem.Status.BeingUsed == 1
         TimeStamps = LiveEventTimestamps(1:nEvents);
     end
     % Accept Timestamps
-    if BpodSystem.EmulatorMode == 0 
+    if BpodSystem.EmulatorMode == 0
         if BpodSystem.LiveTimestamps == 0
             nTimeStamps = double(BpodSystem.SerialPort.read(1, 'uint16'));
             TimeStamps = double(BpodSystem.SerialPort.read(nTimeStamps, 'uint32'))*TimeScaleFactor;
@@ -332,7 +332,7 @@ for i = 1:nEvents
                 end
             case 'T'
                 timerEvent = thisEvent-BpodSystem.HW.GlobalTimerStartposition+1;
-                if timerEvent <= BpodSystem.HW.n.GlobalTimers 
+                if timerEvent <= BpodSystem.HW.n.GlobalTimers
                     timerNumber = timerEvent;
                     EventType = 1; % On
                 else
@@ -353,18 +353,18 @@ for i = 1:nEvents
 end
 
 function TimeString = Secs2HMS(Seconds)
-H = floor(Seconds/3600); 
+H = floor(Seconds/3600);
 Seconds = Seconds-(H*3600);
-M = floor(Seconds/60); 
+M = floor(Seconds/60);
 S = Seconds - (M*60);
 if M < 10
     MPad = '0';
-else 
+else
     MPad = '';
 end
 if S < 10
     SPad = '0';
-else 
+else
     SPad = '';
 end
 TimeString = [num2str(H) ':' MPad num2str(M) ':' SPad num2str(S)];
@@ -399,7 +399,7 @@ elseif OpCode == '~'
     if Code <= BpodSystem.HW.n.SoftCodes && Code ~= 0
         ManualOverrideEvent = BpodSystem.HW.Pos.Event_USB-1 + Code;
     else
-        error(['Error: cannot send soft code ' num2str(Code) '; Soft codes must be in range: [1 ' num2str(BpodSystem.HW.n.SoftCodes) '].']) 
+        error(['Error: cannot send soft code ' num2str(Code) '; Soft codes must be in range: [1 ' num2str(BpodSystem.HW.n.SoftCodes) '].'])
     end
 else
     ManualOverrideEvent = [];

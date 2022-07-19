@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -17,7 +17,7 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function HiFiSound2AFC
+function HiFiSound2AFC_Synth
 % This protocol demonstrates a 2AFC task using the HiFi module's synth features to generate sound stimuli.
 % Subjects initialize each trial with a poke into port 2. After a delay, a tone plays.
 % If subjects exit the port before the tone is finished playing, a white noise pulse train is played.
@@ -62,13 +62,13 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
     S.GUI.StimulusDelayDuration = 0; % Seconds before stimulus plays on each trial
     S.GUI.TimeForResponse = 5; % Seconds after stimulus sampling for a response
     S.GUI.EarlyWithdrawalTimeout = 0.5; % Seconds to wait on early withdrawal before next trial can start
-    S.GUI.PunishTimeoutDuration = 2; % Seconds to wait on errors before next trial can start
-    S.GUI.PunishSound = 1; % if 1, plays a white noise pulse on error. if 0, no sound is played.
+    S.GUI.ErrorTimeoutDuration = 2; % Seconds to wait on errors before next trial can start
+    S.GUI.ErrorSound = 1; % if 1, plays a white noise pulse on error. if 0, no sound is played.
     S.GUI.InterTrialInterval = 0; % Extra delay between trials (adds to inter-trial dead-time)
-    S.GUIMeta.PunishSound.Style = 'checkbox';
-    S.GUIPanels.Task = {'TrainingLevel', 'RewardAmount', 'PunishSound', 'InterTrialInterval'}; % GUIPanels organize the parameters into groups.
+    S.GUIMeta.ErrorSound.Style = 'checkbox';
+    S.GUIPanels.Task = {'TrainingLevel', 'RewardAmount', 'ErrorSound', 'InterTrialInterval'}; % GUIPanels organize the parameters into groups.
     S.GUIPanels.Sound = {'SinWaveFreqLeft', 'SinWaveFreqRight', 'SoundDuration', 'AmplitudeRamp_ms'};
-    S.GUIPanels.Time = {'StimulusDelayDuration', 'TimeForResponse', 'PunishTimeoutDuration'};
+    S.GUIPanels.Time = {'StimulusDelayDuration', 'TimeForResponse', 'ErrorTimeoutDuration'};
 end
 
 %% Define trials
@@ -97,21 +97,21 @@ SoundOffBytes = ['N' typecast(uint16(0), 'uint8')];
 %% Main trial loop
 for currentTrial = 1:MaxTrials
     S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
-    if S.GUI.PunishSound
-        PunishOutputAction = {'HiFi1', SoundOnBytes}; % ['N' X X] where X X are bytes of the 16-bit synth waveform amplitude
+    if S.GUI.ErrorSound
+        ErrorOutputAction = {'HiFi1', SoundOnBytes}; % ['N' X X] where X X are bytes of the 16-bit synth waveform amplitude
     else
-        PunishOutputAction = {'HiFi1', SoundOffBytes};
+        ErrorOutputAction = {'HiFi1', SoundOffBytes};
     end
     H.SynthAmplitudeFade = (SF/1000)*S.GUI.AmplitudeRamp_ms; % number of samples for amplitude transitions
     R = GetValveTimes(S.GUI.RewardAmount, [1 3]); LeftValveTime = R(1); RightValveTime = R(2); % Update reward amounts
     switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
         case 1
             FrequencyBytes = typecast(uint32(S.GUI.SinWaveFreqLeft*1000), 'uint8'); % Frequency*1000 is sent to the device to encode Frequency
-            LeftActionState = 'Reward';  RightActionState = 'PunishSetup'; CorrectWithdrawalEvent = 'Port1Out';
+            LeftActionState = 'Reward';  RightActionState = 'ErrorSetup'; CorrectWithdrawalEvent = 'Port1Out';
             ValveCode = 1; ValveTime = LeftValveTime;
         case 2
             FrequencyBytes = typecast(uint32(S.GUI.SinWaveFreqRight*1000), 'uint8');
-            LeftActionState = 'PunishSetup'; RightActionState = 'Reward'; CorrectWithdrawalEvent = 'Port3Out';
+            LeftActionState = 'ErrorSetup'; RightActionState = 'Reward'; CorrectWithdrawalEvent = 'Port3Out';
             ValveCode = 4; ValveTime = RightValveTime;
     end
     %FrequencyBytes = FrequencyBytes(end:-1:1);
@@ -159,14 +159,14 @@ for currentTrial = 1:MaxTrials
         'Timer', 0.5,...
         'StateChangeConditions', {'Tup', 'ITI', 'Port1In', 'Drinking', 'Port3In', 'Drinking'},...
         'OutputActions', {});
-    sma = AddState(sma, 'Name', 'PunishSetup', ...
+    sma = AddState(sma, 'Name', 'ErrorSetup', ...
         'Timer', 0,...
-        'StateChangeConditions', {'Tup', 'Punish'},...
+        'StateChangeConditions', {'Tup', 'Error'},...
         'OutputActions', {'HiFi1',['W' 0]}); % Set white noise waveform
-    sma = AddState(sma, 'Name', 'Punish', ...
-        'Timer', S.GUI.PunishTimeoutDuration,...
+    sma = AddState(sma, 'Name', 'Error', ...
+        'Timer', S.GUI.ErrorTimeoutDuration,...
         'StateChangeConditions', {'Tup', 'ITI'},...
-        'OutputActions', PunishOutputAction);
+        'OutputActions', ErrorOutputAction);
     sma = AddState(sma, 'Name', 'EarlyWithdrawalSetup', ...
         'Timer', 0,...
         'StateChangeConditions', {'Tup', 'EarlyWithdrawal'},...
@@ -202,7 +202,7 @@ Outcomes = zeros(1,Data.nTrials);
 for x = 1:Data.nTrials
     if ~isnan(Data.RawEvents.Trial{x}.States.Reward(1))
         Outcomes(x) = 1;
-    elseif ~isnan(Data.RawEvents.Trial{x}.States.Punish(1))
+    elseif ~isnan(Data.RawEvents.Trial{x}.States.Error(1))
         Outcomes(x) = 0;
     else
         Outcomes(x) = 3;

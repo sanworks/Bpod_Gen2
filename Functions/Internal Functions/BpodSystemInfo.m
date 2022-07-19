@@ -54,23 +54,25 @@ obj.GUIHandles.Console = axes('units','normalized', 'position',[0 0 1 1]);
             BG = imread('ConsoleBG3.bmp');
             image(BG); axis off;
 
+AppSerialPort = BpodSystem.HW.AppSerialPortName;
+if isempty(AppSerialPort)
+    AppSerialPort = '-None-';
+end
+            
 YPos = 25; XPos = 30;
-MachineTypes = {'v0.5', 'v0.7-1.0', 'v2.0', 'v2-plus'};
+MachineTypes = {'v0.5', 'v0.7-1.0', 'v2', 'v2-plus'};
 text(XPos, 10,'State Machine', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor, 'FontWeight', 'Bold'); 
 text(XPos, YPos,['Firmware Version: ' num2str(BpodSystem.FirmwareVersion)], 'FontSize', 11, 'FontWeight', 'Bold'); YPos = YPos + 15;
 text(XPos, YPos,['Hardware: ' MachineTypes{BpodSystem.MachineType}], 'FontSize', Med); YPos = YPos + 15;
 text(XPos, YPos,['RefreshRate: ' num2str(BpodSystem.HW.CycleFrequency) 'Hz'], 'FontSize', Med); YPos = YPos + 15;
 text(XPos, YPos,['nModules: ' num2str(length(BpodSystem.Modules.Connected))], 'FontSize', Med); YPos = YPos + 15;
-text(XPos, YPos,['nPorts: ' num2str(BpodSystem.HW.n.Ports)], 'FontSize', Med); YPos = YPos + 15;
-text(XPos, YPos,['nBNCInputs: ' num2str(BpodSystem.HW.n.BNCInputs)], 'FontSize', Med); YPos = YPos + 15;
-text(XPos, YPos,['nBNCOutputs: ' num2str(BpodSystem.HW.n.BNCOutputs)], 'FontSize', Med); YPos = YPos + 15;
-if BpodSystem.MachineType == 4
-    text(XPos, YPos,['nWireI/O: ' num2str(BpodSystem.HW.n.WireInputs+BpodSystem.HW.n.WireOutputs)], 'FontSize', Med); YPos = YPos + 15;
-    text(XPos, YPos,['nFlexI/O: ' num2str(BpodSystem.HW.n.FlexIO)], 'FontSize', Med); YPos = YPos + 25;
-else
-    text(XPos, YPos,['nWireInputs: ' num2str(BpodSystem.HW.n.WireInputs)], 'FontSize', Med); YPos = YPos + 15;
-    text(XPos, YPos,['nWireOutputs: ' num2str(BpodSystem.HW.n.WireOutputs)], 'FontSize', Med); YPos = YPos + 25;
-end
+text(XPos, YPos,['nBehaviorPorts: ' num2str(BpodSystem.HW.n.Ports)], 'FontSize', Med); YPos = YPos + 15;
+text(XPos, YPos,['nBNC I/O: ' num2str(BpodSystem.HW.n.BNCInputs) ' / ' num2str(BpodSystem.HW.n.BNCOutputs)], 'FontSize', Med); YPos = YPos + 15;
+text(XPos, YPos,['nWire I/O: ' num2str(BpodSystem.HW.n.WireInputs) ' / ' num2str(BpodSystem.HW.n.WireOutputs)], 'FontSize', Med); YPos = YPos + 15;
+text(XPos, YPos,['nFlex I/O: ' num2str(BpodSystem.HW.n.FlexIO)], 'FontSize', Med); YPos = YPos + 15;
+text(XPos, YPos,['FSM Serial Port: ' BpodSystem.SerialPort.PortName], 'FontSize', Med); YPos = YPos + 15;
+text(XPos, YPos,['App Serial Port: ' AppSerialPort], 'FontSize', Med); YPos = YPos + 25;
+
 
 for i = 1:length(BpodSystem.Modules.Connected)
     text(XPos, YPos,['Module#' num2str(i)], 'Color', LabelFontColor, 'FontSize', 11, 'FontWeight', 'Bold'); YPos = YPos + 15;

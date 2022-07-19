@@ -81,10 +81,11 @@ function obj = SetupHardware(obj)
                 error('The firmware on the Bpod state machine is newer than your Bpod software for MATLAB. Please update your MATLAB software from the Bpod repository and try again.')
             end
         end
+        AvailableUSBPorts = obj.FindUSBSerialPorts;
         % On state machine r2+ or newer, with firmware v23 or newer, find the analog serial port
         if obj.MachineType > 3 && obj.FirmwareVersion > 22
-            Ports = obj.FindUSBSerialPorts;
-            Ports = Ports(~strcmp(Ports, obj.SerialPort.PortName)); % Eliminate state machine port
+            
+            Ports = AvailableUSBPorts(~strcmp(AvailableUSBPorts, obj.SerialPort.PortName)); % Eliminate state machine port
             nPorts = length(Ports);
             iPort = 0; Found = 0;
             while (Found == 0) && (iPort < nPorts)
@@ -92,7 +93,7 @@ function obj = SetupHardware(obj)
                 ThisPort = Ports{iPort};
                 try
                     TestPort = ArCOMObject_Bpod(ThisPort, 115200);
-                    obj.SerialPort.write(['}' 1], 'uint8'); % the '>' op sends an ID byte on serial port SerialUSB1
+                    obj.SerialPort.write(['}' 1], 'uint8'); % the '}' op sends an ID byte on the analog serial port
                     pause(.1);
                     if TestPort.bytesAvailable > 0
                         Msg = TestPort.read(1, 'uint8');
@@ -108,6 +109,37 @@ function obj = SetupHardware(obj)
             end
             TestPort.delete;
             obj.AnalogSerialPort = ArCOMObject_Bpod(Ports{iPort}, 115200);
+        end
+        AppSerialPortName = [];
+        % On state machine r2 or newer, with firmware v23 or newer, find the external app serial port
+        if obj.MachineType > 2 && obj.FirmwareVersion > 22
+            Ports = AvailableUSBPorts(~strcmp(AvailableUSBPorts, obj.SerialPort.PortName)); % Eliminate state machine port
+            if ~isempty(obj.AnalogSerialPort)
+                Ports = Ports(~strcmp(Ports, obj.AnalogSerialPort.PortName)); % Eliminate analog serial port
+            end
+            nPorts = length(Ports);
+            iPort = 0; Found = 0;
+            while (Found == 0) && (iPort < nPorts)
+                iPort = iPort + 1;
+                ThisPort = Ports{iPort};
+                try
+                    TestPort = ArCOMObject_Bpod(ThisPort, 115200);
+                    obj.SerialPort.write(['{' 1], 'uint8'); % the '{' op sends an ID byte on the accessory serial port
+                    pause(.1);
+                    if TestPort.bytesAvailable > 0
+                        Msg = TestPort.read(1, 'uint8');
+                        if Msg == 222
+                            Found = 1;
+                        end
+                    end
+                catch
+                end
+            end
+            if Found == 0
+                error('Error: Failed to identify the external app serial port. If another app is connected to it, please close the app and restart Bpod');
+            end
+            TestPort.delete;
+            AppSerialPortName = Ports{iPort};
         end
         
         % Request hardware description
@@ -184,7 +216,7 @@ function obj = SetupHardware(obj)
             error('Error: invalid timestamp scheme returned from state machine.');
         end
     end
-    obj.HW.ChannelKey = 'D = digital B/W = BNC/Wire (digital), P = Port (digital in, PWM out), U = UART, X = USB, V = Valve, F = FlexI/O';
+    obj.HW.ChannelKey = 'D = digital B/W = BNC/Wire (digital), P = Port (digital in, PWM out), U = UART, X = USB(SoftCode), Z = USB2(External) V = Valve, F = FlexI/O';
     obj.HW.n.BNCOutputs = sum(obj.HW.Outputs == 'B');
     obj.HW.n.BNCInputs = sum(obj.HW.Inputs == 'B');
     obj.HW.n.WireOutputs = sum(obj.HW.Outputs == 'W');
@@ -202,8 +234,9 @@ function obj = SetupHardware(obj)
     obj.HW.n.DigitalInputs = obj.HW.n.BNCInputs + obj.HW.n.WireInputs + obj.HW.n.Ports;
     obj.HW.n.UartSerialChannels = sum(obj.HW.Outputs == 'U');
     obj.HW.n.USBChannels = sum(obj.HW.Outputs == 'X');
-    obj.HW.n.SerialChannels = obj.HW.n.USBChannels + obj.HW.n.UartSerialChannels;
-    obj.HW.n.SoftCodes = 10;
+    obj.HW.n.USBChannels_External = sum(obj.HW.Outputs == 'Z');
+    obj.HW.n.SerialChannels = obj.HW.n.USBChannels + obj.HW.n.USBChannels_External + obj.HW.n.UartSerialChannels;
+    obj.HW.n.SoftCodes = 15;
     obj.HW.EventTypes = [repmat('S', 1, obj.HW.n.MaxSerialEvents) repmat('F', 1, obj.HW.n.FlexIO*2) repmat('I', 1, obj.HW.n.DigitalInputs*2) repmat('T', 1, obj.HW.n.GlobalTimers*2 ) repmat('+', 1, obj.HW.n.GlobalCounters)  repmat('C', 1, obj.HW.n.Conditions) 'U'];
     obj.HW.EventKey = 'S = serial, F = Flex I/O I = Digital I/O, T = global timer, + = global counter, C = condition, U = state timer';
     obj.HW.FlexIOEventStartposition = find(obj.HW.EventTypes == 'F', 1);
@@ -241,9 +274,9 @@ function obj = SetupHardware(obj)
             end
         end
     end
-    
+    obj.HW.AppSerialPortName = AppSerialPortName;
     obj.HW.Pos = struct; % Positions of different channel types in hardware description vectors
-    obj.HardwareState.Key = 'F = FlexI/O, D = digital B/W = BNC/Wire (digital), P = Port (digital in, PWM out), S = SPI (Valve array), U = UART, X = USB, V = Valve';
+    obj.HardwareState.Key = 'F = FlexI/O, D = digital B/W = BNC/Wire (digital), P = Port (digital in, PWM out), S = SPI (Valve array), U = UART, X = USB, Z = USB_EXT V = Valve';
     obj.HardwareState.InputState = zeros(1,obj.HW.n.Inputs);
     obj.HardwareState.InputType = obj.HW.Inputs;
     obj.HardwareState.OutputState = zeros(1,obj.HW.n.Outputs+3);

@@ -37,6 +37,8 @@ function obj = LoadModules(obj)
         obj.Modules.nSerialEvents = ones(1,nModules)*(floor(obj.HW.n.MaxSerialEvents/obj.HW.n.SerialChannels));
         obj.Modules.EventNames = cell(1,nModules);
         obj.Modules.USBport = USBPairing;
+        obj.Modules.HWVersion_Major = nan(1,nModules);
+        obj.Modules.HWVersion_Minor = nan(1,nModules);
         obj.SerialPort.write('M', 'uint8');
         if obj.SerialPort.Interface == 3 || obj.SerialPort.Interface == 4
             pause(1);
@@ -73,6 +75,10 @@ function obj = LoadModules(obj)
                                         nCharInThisString = obj.SerialPort.read(1, 'uint8');
                                         obj.Modules.EventNames{i}{j} = obj.SerialPort.read(nCharInThisString, 'char');
                                     end
+                                case 'V'
+                                    obj.Modules.HWVersion_Major(i) = obj.SerialPort.read(1, 'uint8');
+                                case 'v'
+                                    obj.Modules.HWVersion_Minor(i) = obj.SerialPort.read(1, 'uint8');
                             end
                             moreInfoFollows = obj.SerialPort.read(1, 'uint8');
                         end
@@ -110,7 +116,12 @@ function obj = LoadModules(obj)
                 end
             end
             obj.HW.n.SoftCodes = obj.HW.n.MaxSerialEvents-sum(obj.Modules.nSerialEvents);
-            obj.SerialPort.write(['%' obj.Modules.nSerialEvents obj.HW.n.SoftCodes], 'uint8');
+            nSoftCodes = obj.HW.n.SoftCodes/(obj.HW.n.USBChannels+obj.HW.n.USBChannels_External);
+            nExternalSoftCodes = obj.HW.n.USBChannels_External*nSoftCodes;
+            if nExternalSoftCodes == 0
+                nExternalSoftCodes = [];
+            end
+            obj.SerialPort.write(['%' obj.Modules.nSerialEvents nSoftCodes nExternalSoftCodes], 'uint8');
             Confirmed = obj.SerialPort.read(1, 'uint8');
             if Confirmed ~= 1
                 error('Error: State machine did not confirm module event reallocation');

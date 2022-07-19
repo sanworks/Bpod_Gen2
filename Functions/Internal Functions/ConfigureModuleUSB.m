@@ -91,6 +91,9 @@ function refreshFreeUSBPorts
 global BpodSystem
 USBPorts = BpodSystem.FindUSBSerialPorts;
 USBPorts = USBPorts(logical(1-strcmp(USBPorts, BpodSystem.SerialPort.PortName)));
+if ~isempty(BpodSystem.HW.AppSerialPortName)
+    USBPorts = USBPorts(logical(1-strcmp(USBPorts, BpodSystem.HW.AppSerialPortName)));
+end
 if ispc
     [Status RawString] = system('chgport'); % Extra step equired to find HARP Sound Card
     if ~strcmp(RawString(1:9), 'No serial')

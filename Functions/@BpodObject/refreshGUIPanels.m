@@ -21,8 +21,9 @@ function obj = refreshGUIPanels(obj)
     if obj.Status.BeingUsed == 0
         ModuleNames = {'<html>&nbsp;State<br>Machine', 'Serial 1', 'Serial 2', 'Serial 3', 'Serial 4', 'Serial 5'};
         FormattedModuleNames = ModuleNames;
+        nTabs = obj.HW.n.SerialChannels-obj.HW.n.USBChannels_External;
         obj.GUIData.DefaultPanel = ones(1,obj.HW.n.SerialChannels);
-        for i = 2:obj.HW.n.SerialChannels
+        for i = 2:nTabs
             if obj.Modules.Connected(i-1)
                 ThisModuleName = obj.Modules.Name{i-1};
                 UCase = (ThisModuleName > 64 & ThisModuleName < 91);
@@ -86,7 +87,7 @@ function obj = refreshGUIPanels(obj)
             end
             set(obj.GUIHandles.OverridePanel(i), 'Visible', 'off');
         end
-        for i = 2:obj.HW.n.SerialChannels
+        for i = 2:nTabs
             set(obj.GUIHandles.PanelButton(i), 'BackgroundColor', [0.37 0.37 0.37]);
         end
         set (obj.GUIHandles.PanelButton(1), 'BackgroundColor', [0.45 0.45 0.45]); % Set first button active
@@ -95,7 +96,7 @@ function obj = refreshGUIPanels(obj)
         axes(obj.GUIHandles.Console);
         uistack(obj.GUIHandles.Console,'bottom');
         if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
-            for i = 1:obj.HW.n.SerialChannels
+            for i = 1:nTabs
                 jButton = findjobj(obj.GUIHandles.PanelButton(i));
                 jButton.setBorderPainted(false);
             end

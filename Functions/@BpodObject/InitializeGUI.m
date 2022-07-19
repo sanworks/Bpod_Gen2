@@ -85,19 +85,20 @@ function obj = InitializeGUI(obj)
 
     PluginPanelWidth = 575;
     PluginPanelOffset = 145;
-    TabWidth = (PluginPanelWidth)/obj.HW.n.SerialChannels;
-    obj.GUIHandles.PanelButton = zeros(1,obj.HW.n.SerialChannels);
+    nTabs = obj.HW.n.UartSerialChannels+1;
+    TabWidth = (PluginPanelWidth)/nTabs;
+    obj.GUIHandles.PanelButton = zeros(1,nTabs);
     ModuleNames = {'<html>&nbsp;State<br>Machine', 'Serial 1', 'Serial 2', 'Serial 3', 'Serial 4', 'Serial 5'};
     FormattedModuleNames = ModuleNames;
     TabPos = PluginPanelOffset;
-    obj.GUIData.DefaultPanel = ones(1,obj.HW.n.SerialChannels);
+    obj.GUIData.DefaultPanel = ones(1,nTabs);
     
     ButtonFont = 'Courier New';
     if ~ispc && ~ismac 
         ButtonFont = 'DejaVu Sans Mono';
     end
     
-    for i = 1:obj.HW.n.UartSerialChannels+1
+    for i = 1:nTabs
         % Set module names
         if i > 1
             if obj.Modules.Connected(i-1)
@@ -124,7 +125,9 @@ function obj = InitializeGUI(obj)
             end
         end
         % Draw tab
-        obj.GUIHandles.PanelButton(i) = uicontrol('Style', 'pushbutton', 'String', FormattedModuleNames{i}, 'Callback', @(h,e)obj.SwitchPanels(i), 'BackgroundColor', [0.37 0.37 0.37], 'Position', [TabPos 272 TabWidth-1 49], 'ForegroundColor', [0.9 0.9 0.9], 'FontSize', Vvsm, 'FontName', ButtonFont);
+        obj.GUIHandles.PanelButton(i) = uicontrol('Style', 'pushbutton', 'String', FormattedModuleNames{i}, 'Callback', @(h,e)obj.SwitchPanels(i),...
+            'BackgroundColor', [0.37 0.37 0.37], 'Position', [TabPos 272 TabWidth-1 49], 'ForegroundColor', [0.9 0.9 0.9], 'FontSize', Vvsm,...
+            'FontName', ButtonFont);
         TabPos = TabPos + TabWidth;
         if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
             jButton = findjobj(obj.GUIHandles.PanelButton(i));
@@ -178,7 +181,7 @@ function obj = InitializeGUI(obj)
     if isempty(strfind(obj.HostOS, 'Linux'))
         % Draw lines between tabs
         TabPos = PluginPanelOffset;
-        for i = 1:obj.HW.n.SerialChannels-1
+        for i = 1:obj.HW.n.UartSerialChannels
             TabPos = TabPos + TabWidth;
             line([TabPos-1 TabPos-1], [82 130], 'Color', [0.45 0.45 0.45], 'LineWidth', 5);
         end

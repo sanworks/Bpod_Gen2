@@ -46,6 +46,9 @@ classdef RotaryEncoderModule < handle
         sendThresholdEvents = 'off'; % Set to 'on' to send threshold crossing events to the Bpod state machine
         moduleOutputStream = 'off'; % Set to 'on' to stream position data directly to another Bpod module
         moduleStreamPrefix = 'M'; % The byte that precedes each position in the module output stream
+        useAdvancedThresholds = 'off'; % If on (HW version 2 or newer) advanced thresholds are used, and thresholds property is ignored.
+                                       % Advanced thresholds are configured with setAdvancedThresholds() and
+                                       % made current with push() from MATLAB or the '*' command from the state machine
     end
     properties (Access = private)
         Timer % MATLAB timer (for updating the UI)
@@ -73,6 +76,8 @@ classdef RotaryEncoderModule < handle
         LastTimeRead = 0; % Last timestamp read from the device
         HardwareVersion = 0; % Major version of the connected hardware
         halfPoint = 512; % Half of total positions per revolution (depends both on encoder and encoding method)
+        thresholdType = 0; % 0 = standard (legacy, default), 1 = advanced, see comment of useAdvancedThresholds property above
+        hardwareTimerInterval = 0.0001; % seconds, currently fixed in firmware
     end
             
     methods
@@ -93,7 +98,7 @@ classdef RotaryEncoderModule < handle
             obj.Port.write('CX', 'uint8'); % C = handshake, X = reset data streams
             response = obj.Port.read(1, 'uint8');
             if response ~= 217
-                error('Could not connect =( ')
+                error('Rotary encoder module returned an incorrect handshake byte.')
             end
             % Check for firmware version 2
             obj.Port.write('IM', 'uint8');
@@ -122,16 +127,22 @@ classdef RotaryEncoderModule < handle
             pos = obj.pos2degrees(obj.Port.read(1, 'int16'));
         end
         function set.thresholds(obj, newThresholds)
-            obj.assertNotUSBStreaming;
-            if sum(abs(newThresholds) > obj.wrapPoint) > 0
-                error(['Error: thresholds cannot exceed the rotary encoder''s current wrap point: ' num2str(obj.wrapPoint) ' degrees.'])
+            if obj.thresholdType == 0
+                obj.assertNotUSBStreaming;
+                if sum(abs(newThresholds) > obj.wrapPoint) > 0
+                    error(['Error: thresholds cannot exceed the rotary encoder''s current wrap point: ' num2str(obj.wrapPoint) ' degrees.'])
+                end
+                if length(newThresholds) > obj.maxThresholds
+                    error(['Error: the current software supports only ' num2str(obj.maxThresholds) ' thresholds.']);
+                end
+                ThresholdsInTics = obj.degrees2pos(newThresholds);
+                obj.Port.write(['T' length(ThresholdsInTics)], 'uint8', ThresholdsInTics, 'int16');
+                obj.ConfirmUSBTransmission('Thresholds');
+            else
+                if ~ischar(newThresholds)
+                    error('Thresholds must be set using the setAdvancedThresholds() method if useAdvancedThresholds is set to ''on''')
+                end
             end
-            if length(newThresholds) > obj.maxThresholds
-                error(['Error: the current software supports only ' num2str(obj.maxThresholds) ' thresholds.']);
-            end
-            ThresholdsInTics = obj.degrees2pos(newThresholds);
-            obj.Port.write(['T' length(ThresholdsInTics)], 'uint8', ThresholdsInTics, 'int16');
-            obj.ConfirmUSBTransmission('Thresholds');
             obj.thresholds = newThresholds;
         end
         function set.moduleOutputStream(obj, stateString)
@@ -151,6 +162,26 @@ classdef RotaryEncoderModule < handle
                 obj.ConfirmUSBTransmission('Module Output Stream Enable/Disable');
                 obj.moduleOutputStream = stateString;
             end
+        end
+        function set.useAdvancedThresholds(obj, stateString)
+                obj.assertNotUSBStreaming;
+                stateString = lower(stateString);
+                if obj.autoSync
+                    switch stateString
+                        case 'off'
+                            obj.thresholdType = 0;
+                            obj.thresholds = [-40 40];
+                        case 'on'
+                            if obj.HardwareVersion == 1
+                                error('Error: Advanced thresholds require rotary encoder module v2 or newer');
+                            end
+                            obj.thresholdType = 1;
+                            obj.thresholds = '<Advanced Thresholds>';
+                        otherwise
+                            error('Error setting useAdvancedThresholds; value must be ''on'' or ''off''');
+                    end
+                end
+                obj.useAdvancedThresholds = stateString;
         end
         function set.moduleStreamPrefix(obj, Prefix)
             if obj.HardwareVersion == 1
@@ -197,6 +228,44 @@ classdef RotaryEncoderModule < handle
             end
             obj.ConfirmUSBTransmission('State Machine Threshold Events (Enable/Disable)');
             obj.sendThresholdEvents = stateString;
+        end
+        function setAdvancedThresholds(obj, thresholds, varargin)
+            % Syntax: setAdvancedThresholds(thresholds, [thresholdTypes], [thresholdTimes]) where [] is an optional argument.
+            %         thresholds = a value in degrees for each threshold, up to 8 thresholds maximum
+            %         thresholdTypes = 0 (Threshold reached when position crossed), 1 (After enable, threshold reached after Time spent within +/- position)
+            %         thresholdTimes = a value in seconds for computing threshold type 1. Ignored if thresholdTypes == 0
+            %         If thresholdType = 1, a non-zero thresholdTime must be specified.
+            %         Thresholds programmed with setAdvancedThresholds() are not current on the module until the next push command ('*' from the state machine)
+            if obj.thresholdType == 0
+                error('useAdvancedThresholds must be set to ''on'' to set advanced thresholds');
+            end
+            nThresholds = length(thresholds);
+            thresholdTypes = zeros(1,nThresholds);
+            thresholdTimes = zeros(1,nThresholds);
+            if nargin > 2
+                thresholdTypes = varargin{1};
+                if length(thresholdTypes) ~= nThresholds
+                    error('Incorrect number of threshold types. Exactly one threshold type for each rotary encoder threshold must be specified.');
+                end
+                if sum(thresholdTypes>1) > 0 || sum(thresholdTypes<0) > 0
+                    error('Error: threshold types must be 0 or 1')
+                end
+            end
+            if nargin > 3
+                thresholdTimes = varargin{2};
+                if length(thresholdTimes) ~= nThresholds
+                    error('Incorrect number of threshold times. Exactly one threshold time for each rotary encoder threshold must be specified.');
+                end
+                if sum(thresholdTimes <= 0 & thresholdTypes == 1) > 0
+                    error('Rotary encoder threshold times must be positive durations, specified in seconds');
+                end
+                thresholdTimes = thresholdTimes/obj.hardwareTimerInterval;
+            end
+            ThresholdsInTics = obj.degrees2pos(thresholds);
+            obj.Port.write(['t' nThresholds thresholdTypes], 'uint8', ThresholdsInTics, 'int16', thresholdTimes, 'uint32');
+        end
+        function push(obj) % Makes newly loaded thresholds current
+            obj.Port.write('*', 'uint8');
         end
         function startLogging(obj)
             if obj.HardwareVersion == 2

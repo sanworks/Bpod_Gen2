@@ -396,10 +396,12 @@ if BpodSystem.EmulatorMode == 0
                 case 1
                     error('Error: Bpod 0.5 cannot send a state machine while a trial is in progress. If you need this functionality, consider switching to Bpod 0.7+')
                 case 2
-                    BpodSystem.SerialPort.write(['C' runASAP use255BackSignal], 'uint8', nBytes, 'uint16');
-                    for i = 1:length(ByteString)
-                        BpodSystem.SerialPort.write(ByteString(i), 'uint8'); % send byte-wise, to avoid HW timer overrun
-                    end
+                    %                     BpodSystem.SerialPort.write(['C' runASAP use255BackSignal], 'uint8', nBytes, 'uint16');
+                    %                     for i = 1:length(ByteString)
+                    %                         disp(num2str(i))
+                    %                         BpodSystem.SerialPort.write(ByteString(i), 'uint8'); % send byte-wise, to avoid HW timer overrun
+                    %                     end
+                    BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
                 case 3
                     BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
                 case 4

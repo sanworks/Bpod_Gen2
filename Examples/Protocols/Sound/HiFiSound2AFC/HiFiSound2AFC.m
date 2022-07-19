@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -60,12 +60,12 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
     S.GUI.RewardAmount = 5; % in ul
     S.GUI.StimulusDelayDuration = 0; % Seconds before stimulus plays on each trial
     S.GUI.TimeForResponse = 5; % Seconds after stimulus sampling for a response
-    S.GUI.PunishTimeoutDuration = 2; % Seconds to wait on errors before next trial can start
-    S.GUI.PunishSound = 1; % if 1, plays a white noise pulse on error. if 0, no sound is played.
-    S.GUIMeta.PunishSound.Style = 'checkbox';
-    S.GUIPanels.Task = {'TrainingLevel', 'RewardAmount', 'PunishSound'}; % GUIPanels organize the parameters into groups.
+    S.GUI.ErrorTimeoutDuration = 2; % Seconds to wait on errors before next trial can start
+    S.GUI.ErrorSound = 1; % if 1, plays a white noise pulse on error. if 0, no sound is played.
+    S.GUIMeta.ErrorSound.Style = 'checkbox';
+    S.GUIPanels.Task = {'TrainingLevel', 'RewardAmount', 'ErrorSound'}; % GUIPanels organize the parameters into groups.
     S.GUIPanels.Sound = {'SinWaveFreqLeft', 'SinWaveFreqRight', 'SoundDuration'};
-    S.GUIPanels.Time = {'StimulusDelayDuration', 'TimeForResponse', 'PunishTimeoutDuration'};
+    S.GUIPanels.Time = {'StimulusDelayDuration', 'TimeForResponse', 'ErrorTimeoutDuration'};
 end
 
 %% Define trials
@@ -86,7 +86,8 @@ SF = 192000; % Use max supported sampling rate
 H.SamplingRate = SF;
 LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration)*.9; % Sampling freq (hz), Sine frequency (hz), duration (s)
 RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration)*.9; % Sampling freq (hz), Sine frequency (hz), duration (s)
-PunishSound = (rand(2,SF*.5)*2) - 1;
+ErrorSound = GenerateWhiteNoise(SF, S.GUI.ErrorTimeoutDuration, 1, 2);
+
 % Generate early withdrawal sound
 W1 = GenerateSineWave(SF, 1000, .5)*.5; W2 = GenerateSineWave(SF, 1200, .5)*.5; EarlyWithdrawalSound = W1+W2;
 P = SF/100;
@@ -97,7 +98,7 @@ H.HeadphoneAmpEnabled = true; H.HeadphoneAmpGain = 15; % Ignored if using HD ver
 H.DigitalAttenuation_dB = -20; % Set a comfortable listening level for most headphones (useful during protocol dev).
 H.load(1, LeftSound);
 H.load(2, RightSound);
-H.load(3, PunishSound);
+H.load(3, ErrorSound);
 H.load(4, EarlyWithdrawalSound);
 Envelope = 1/(SF*0.001):1/(SF*0.001):1; % Define 1ms linear ramp envelope of amplitude coefficients, to apply at sound onset + in reverse at sound offset
 %Envelope = [];
@@ -111,10 +112,10 @@ LastSoundDuration = S.GUI.SoundDuration;
 %% Main trial loop
 for currentTrial = 1:MaxTrials
     S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
-    if S.GUI.PunishSound
-        PunishOutputAction = {'HiFi1', ['P' 2]};
+    if S.GUI.ErrorSound
+        ErrorOutputAction = {'HiFi1', ['P' 2]};
     else
-        PunishOutputAction = {};
+        ErrorOutputAction = {};
     end
     if S.GUI.SinWaveFreqLeft ~= LastLeftFrequency
         LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
@@ -136,11 +137,11 @@ for currentTrial = 1:MaxTrials
     switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
         case 1
             OutputActionArgument = {'HiFi1', ['P' 0], 'BNCState', 1}; 
-            LeftActionState = 'Reward';  RightActionState = 'Punish'; CorrectWithdrawalEvent = 'Port1Out';
+            LeftActionState = 'Reward';  RightActionState = 'Error'; CorrectWithdrawalEvent = 'Port1Out';
             ValveCode = 1; ValveTime = LeftValveTime;
         case 2
             OutputActionArgument = {'HiFi1', ['P' 1], 'BNCState', 1};
-            LeftActionState = 'Punish'; RightActionState = 'Reward'; CorrectWithdrawalEvent = 'Port3Out';
+            LeftActionState = 'Error'; RightActionState = 'Reward'; CorrectWithdrawalEvent = 'Port3Out';
             ValveCode = 4; ValveTime = RightValveTime;
     end
     if S.GUI.TrainingLevel == 1 % Reward both sides (overriding switch/case above)
@@ -181,12 +182,12 @@ for currentTrial = 1:MaxTrials
         'Timer', 0.5,...
         'StateChangeConditions', {'Tup', '>exit', 'Port1In', 'Drinking', 'Port3In', 'Drinking'},...
         'OutputActions', {});
-    sma = AddState(sma, 'Name', 'Punish', ...
-        'Timer', S.GUI.PunishTimeoutDuration,...
+    sma = AddState(sma, 'Name', 'Error', ...
+        'Timer', S.GUI.ErrorTimeoutDuration,...
         'StateChangeConditions', {'Tup', '>exit'},...
-        'OutputActions', PunishOutputAction);
+        'OutputActions', ErrorOutputAction);
     sma = AddState(sma, 'Name', 'EarlyWithdrawal', ...
-        'Timer', S.GUI.PunishTimeoutDuration,...
+        'Timer', S.GUI.ErrorTimeoutDuration,...
         'StateChangeConditions', {'Tup', '>exit'},...
         'OutputActions', {'HiFi1', ['P' 3], 'BNCState', 1});
     SendStateMatrix(sma); % Send the state matrix to the Bpod device
@@ -212,7 +213,7 @@ Outcomes = zeros(1,Data.nTrials);
 for x = 1:Data.nTrials
     if ~isnan(Data.RawEvents.Trial{x}.States.Reward(1))
         Outcomes(x) = 1;
-    elseif ~isnan(Data.RawEvents.Trial{x}.States.Punish(1))
+    elseif ~isnan(Data.RawEvents.Trial{x}.States.Error(1))
         Outcomes(x) = 0;
     else
         Outcomes(x) = 3;

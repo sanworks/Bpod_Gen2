@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -171,7 +171,7 @@ classdef TrialManagerObject < handle
                 end
                 ThisTrialErrorCodes = [];
                 TrialTimeFromMicros = (TrialEndTimestamp - obj.TrialStartTimestamp);
-                TrialTimeFromCycles = (nHWTimerCycles/BpodSystem.HW.CycleFrequency); % Add 1ms to adjust for bias due to placement of millis() in start+end code
+                TrialTimeFromCycles = (nHWTimerCycles/BpodSystem.HW.CycleFrequency);
                 Discrepancy = abs(TrialTimeFromMicros - TrialTimeFromCycles)*1000;
                 if Discrepancy > 1
                     disp([char(10) '***WARNING!***' char(10) 'Bpod missed hardware update deadline(s) on the past trial, by ~' num2str(Discrepancy)...
@@ -193,12 +193,19 @@ classdef TrialManagerObject < handle
                 RawTrialEvents.ErrorCodes = ThisTrialErrorCodes;
                 if obj.LastTrialEndTime > 0
                     LastTrialDeadTime = RawTrialEvents.TrialStartTimestamp - obj.LastTrialEndTime;
-                    if LastTrialDeadTime > 0.00021
+                    if BpodSystem.MachineType > 2
+                        Threshold = 0.00021;
+                        Micros = num2str(200);
+                    else
+                        Threshold = 0.00051;
+                        Micros = num2str(500);
+                    end
+                    if LastTrialDeadTime > Threshold
                         disp(' ');
                         disp('*********************************************************************');
                         disp('*                            WARNING                                *');
                         disp('*********************************************************************');
-                        disp('TrialManager reported an inter-trial dead time of >200 microseconds.');
+                        disp(['TrialManager reported an inter-trial dead time of >' Micros ' microseconds.']);
                         disp('This may indicate that inter-trial code (e.g. plotting, saving data)');
                         disp('took MATLAB more than 1 trial duration to execute. MATLAB must reach');
                         disp('TrialManager.getTrialData() before trial end. Please check lines of');
