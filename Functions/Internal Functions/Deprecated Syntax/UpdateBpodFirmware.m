@@ -108,7 +108,7 @@ classdef UpdateBpodFirmware < handle
                 'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
             for i = 1:nModules
                 ModuleName = obj.ModuleNames{i};
-                if ~isempty(strfind(ModuleName, 'Serial'))
+                if strcmp(ModuleName(1:6), 'Serial')
                     SerNum = ModuleName(end);
                     ModuleName = ['Module' num2str(SerNum)];
                 end
@@ -140,7 +140,7 @@ classdef UpdateBpodFirmware < handle
             obj.LatestModuleFirmware = zeros(1,nModules);
             for i = 1:nModules
                 ModuleName = obj.ModuleNames{i};
-                if ~isempty(strfind(ModuleName, 'Serial'))
+                if strcmp(ModuleName(1:6), 'Serial')
                     obj.LatestModuleFirmware(i) = ModuleFirmwareVersions(i);
                 else
                     obj.LatestModuleFirmware(i) = obj.CurrentFirmware.(ModuleName(1:end-1));
@@ -163,7 +163,7 @@ classdef UpdateBpodFirmware < handle
                 Enable = 'off';
             end
             obj.gui.smButton = uicontrol('Style', 'pushbutton', 'Position', [545 Ypos 170 30], 'String', 'Update', 'FontSize', 14,...
-                'FontWeight', 'bold', 'Enable', Enable, 'Callback', @(h,e)obj.updateFirmware()); Ypos = Ypos - 30;
+                'FontWeight', 'bold', 'Enable', Enable,'Callback', @(h,e)obj.updateFirmware()); Ypos = Ypos - 30;
             for i = 1:nModules
                 thisModuleFirmware = ModuleFirmwareVersions(i);
                 Enable = 'on';
@@ -227,17 +227,6 @@ classdef UpdateBpodFirmware < handle
                         elseif nChannels == 8
                             FirmwareFilename = 'BpodWavePlayer_8ch.hex';
                         end
-                    case 'HiFi'
-                        boardType = 'Teensy3_x';
-                        PauseFor = 1;
-                        H = BpodHiFi(Port);
-                        isHD = H.Info.isHD;
-                        clear H
-                        if isHD
-                            FirmwareFilename = 'BpodHiFiModule_HD.hex';
-                        else
-                            FirmwareFilename = 'BpodHiFiModule_SD.hex';
-                        end 
                     case 'AudioPlayer'
                         boardType = 'Teensy3_x';
                         PauseFor = .1;

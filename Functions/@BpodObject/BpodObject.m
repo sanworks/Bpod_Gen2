@@ -223,6 +223,7 @@ classdef BpodObject < handle
             CF = CurrentFirmwareList; % Located in /Functions/Internal Functions/, returns list of current firmware
                                       % for state machine and modules
             obj.CurrentFirmware = CF;
+            
             % Create timer objects
             obj.Timers = struct;
             obj.Timers.PortRelayTimer = timer('TimerFcn','UpdateSerialTerminals()', 'ExecutionMode', 'fixedRate', 'Period', 0.1);

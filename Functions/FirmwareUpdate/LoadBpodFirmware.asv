@@ -30,20 +30,14 @@ classdef LoadBpodFirmware < handle
     end
     methods
         function obj = LoadBpodFirmware(varargin)
-            % Optional args:
-            % set2Device: A string containing a filter for the firmware list
-            % excludeFSM: 0 to include FSM serial port, 1 to hide it. This only works if the Bpod console is open.
             if ~ispc
                 error(['Error: The Bpod firmware updater is not yet available on OSX or Linux.' char(10)...
                     'Please follow instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a> to update with the Arduino application.'])
             end
             set2Device = [];
-            excludeFSM = 0;
+            excludePorts = [];
             if nargin > 0
                 set2Device = varargin{1};
-            end
-            if nargin > 1
-                excludeFSM = varargin{2};
             end
             % Set up path
             BpodPath = fileparts(which('Bpod'));
@@ -89,14 +83,10 @@ classdef LoadBpodFirmware < handle
                 clear global BpodSystem
             else
                 AnalogPort = [];
-                FSMPort = [];
                 if ~isempty(BpodSystem.AnalogSerialPort)
                     AnalogPort = BpodSystem.AnalogSerialPort.PortName;
                 end
-                if excludeFSM
-                    FSMPort = BpodSystem.SerialPort.PortName;
-                end
-                ExcludedPorts = [{'COM1','COM2'} AnalogPort FSMPort BpodSystem.HW.AppSerialPortName];
+                ExcludedPorts = [{'COM1','COM2'} AnalogPort BpodSystem.HW.AppSerialPortName];
             end
 
             % Load USB serial ports
@@ -242,14 +232,6 @@ classdef LoadBpodFirmware < handle
                 'FontWeight', 'bold', 'BackgroundColor', BGColor);
             uicontrol('Style', 'pushbutton', 'Position', [90 20 100 40], 'String', 'Ok', 'FontSize', 14,...
                 'FontWeight', 'bold', 'BackgroundColor', [0.8 0.8 0.8], 'Callback', @(h,e)obj.closeModal());
-            if OK
-                 global BpodSystem;
-                 if isempty(BpodSystem)
-                    clear global BpodSystem
-                 else
-                     BpodSystem.LoadModules;
-                 end
-            end
         end
         function closeModal(obj)
             delete(obj.gui.ConfirmModal);

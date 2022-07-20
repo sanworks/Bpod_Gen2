@@ -50,21 +50,25 @@ function obj = SetupHardware(obj)
         switch obj.MachineType
             case 1
                SMName = 'r0.5';
+               FirmwareName = 'StateMachine_Bpod05';
             case 2
                SMName = 'r0.7-1.0';
+               FirmwareName = 'StateMachine_Bpod1';
             case 3
-               SMName = 'r2.0';
+               SMName = 'r2';
+               FirmwareName = 'StateMachine_Bpod2';
             case 4
                SMName = 'r2_Plus';
+               FirmwareName = 'StateMachine_Bpod2Plus';
         end
         disp(['Bpod State Machine ' SMName ' connected on port ' obj.SerialPort.PortName])
         if obj.FirmwareVersion ~= obj.CurrentFirmware.StateMachine 
             if obj.FirmwareVersion < obj.CurrentFirmware.StateMachine
                 disp(' ');
                 disp('***************************************************************');
-                disp([char(13) 'NOTICE: Old state machine firmware detected, v' num2str(obj.FirmwareVersion) '. ' char(13)...
-                    'You may now update the state machine firmware to v' num2str(obj.CurrentFirmware.StateMachine) '.' char(13)...
-                    'Click <a href="matlab:UpdateBpodFirmware(''' obj.SerialPort.PortName ''');">here</a> to start the update tool, or run UpdateBpodFirmware().' char(13)...
+                disp([char(13) 'NOTICE: Old state machine firmware detected: v' num2str(obj.FirmwareVersion) '. ' char(13)...
+                    'You may optionally update the state machine firmware to v' num2str(obj.CurrentFirmware.StateMachine) '.' char(13)...
+                    'Click <a href="matlab:LoadBpodFirmware(''' FirmwareName '''); EndBpod;">here</a> to start the update tool, or run LoadBpodFirmware().' char(13)...
                     'If necessary, manual firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
                 disp('***************************************************************');
                 BpodErrorSound;
