@@ -24,12 +24,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % #include "ArCOM.h". See documentation for more Arduino-side tips.
 %
 % Initialization syntax:
-% MyPort = ArCOMObject('COM3', 115200)
-% where 'COM3' is the name of Arduino's serial port on your system, and 115200 is the baud rate.
+% MyPort = ArCOMObject('COM3')
+% where 'COM3' is the name of Arduino's serial port on your system
 % This call both creates and opens the port. It returns an object containing
 % a serial port and properties. If PsychToolbox IOport interface is
 % available, this is used by default. To use the java interface on a system
-% with PsychToolbox, use ArCOM('open', 'COM3', 'java')
+% with PsychToolbox, use ArCOMObject('COM3', 'java')
+%
+% ArCOM can be created with the following optional arguments:
+% MyPort = ArCOMObject('COM3', baudRate, Interface, TCPPort, InputBufferSize, OutputBufferSize)
+% To avoid time-costly arg parsing, all arguments must be provided, up to the highest one needed.
+% baudRate is in bps. This is ignored for microcontrollers with native USB support (e.g. 32-bit Arduino, Teensy 3.X-4.X).
+% Interface can be either 'Java' or 'PsychToolbox'
+% TCPPort can be [], or a port on a remote computer if using the Ethernet interface.
+% InputBufferSize and OutputBufferSize must be in range 0-10M bytes
 %
 % Write: MyPort.write(myData, 'uint8') % where 'uint8' is a
 % data type from the following list: 'uint8', 'uint16', 'uint32', 'int8', 'int16', 'int32', 'char'.
@@ -68,7 +76,62 @@ classdef ArCOMObject_Bpod < handle
         JavaPortType = 0;
     end
     methods
-        function obj = ArCOMObject_Bpod(portString, baudRate, varargin)
+        function obj = ArCOMObject_Bpod(portString, varargin)
+            obj.UsePsychToolbox = 0;
+            obj.Interface = 0; % Java serial interface
+            if verLessThan('matlab', '9.7') % Default to Psychtoolbox IOPort on old MATLAB
+                try
+                    PsychtoolboxVersion;
+                    obj.UsePsychToolbox = 1;
+                    obj.Interface = 1; % PsychToolbox serial interface
+                catch
+                end
+            end
+            baudRate = 192000;
+            if nargin > 1
+                arg = varargin{1};
+                if ~isempty(arg)
+                    baudRate = arg;
+                end
+            end
+            if nargin > 2
+                forceOption = varargin{2};
+                if ~isempty(forceOption)
+                    switch lower(forceOption)
+                        case 'java'
+                            obj.UsePsychToolbox = 0;
+                            obj.Interface = 0;
+                        case 'psychtoolbox'
+                            obj.UsePsychToolbox = 1;
+                            obj.Interface = 1;
+                        otherwise
+                            error('The third argument to ArCOM(''init'' must be either ''java'' or ''psychtoolbox''');
+                    end
+                end
+            end
+            obj.TCPport = [];
+            if nargin > 3
+                obj.TCPport = varargin{3};
+            end
+            if nargin > 4
+                InputBufferSize = varargin{4};
+            else
+                InputBufferSize = 1000000;
+            end
+            if nargin > 5
+                OutputBufferSize = varargin{5};
+            else
+                OutputBufferSize = 1000000;
+            end
+            if InputBufferSize > 10000000 || InputBufferSize < 0
+                error('ArCOM error: InputBufferSize must be in range 0,10000000')
+            end
+            if OutputBufferSize > 10000000 || OutputBufferSize < 0
+                error('ArCOM error: OutputBufferSize must be in range 0,10000000')
+            end
+            obj.InputBufferSize = InputBufferSize;
+            obj.OutputBufferSize = OutputBufferSize;
+
             obj.Port = [];
             obj.InBuffer = BpodDoubleSidedBuffer(obj.InputBufferSize);
             if (exist('OCTAVE_VERSION'))
@@ -86,41 +149,14 @@ classdef ArCOMObject_Bpod < handle
             else
                 obj.UseOctave = 0;
             end
-            try
-                PsychtoolboxVersion;
-                obj.UsePsychToolbox = 1;
-                obj.Interface = 1; % PsychToolbox serial interface
-            catch
-                obj.UsePsychToolbox = 0;
-                obj.Interface = 0; % Java serial interface
-            end
-            if nargin > 1
-                if ischar(baudRate)
-                    baudRate = str2double(baudRate);
-                end
-            else
-                error('Error: Please add a baudRate argument when creating an ArCOM object')
+
+            if ischar(baudRate)
+                baudRate = str2double(baudRate);
             end
             if ~isnan(baudRate) && baudRate >= 1200
                 obj.baudRate = baudRate;
             else
                 error(['Error: ' baudRate ' is an invalid baud rate for ArCOM. Some common baud rates are: 9600, 115200'])
-            end
-            if nargin > 2
-                forceOption = varargin{1};
-                switch lower(forceOption)
-                    case 'java'
-                        obj.UsePsychToolbox = 0;
-                        obj.Interface = 0;
-                    case 'psychtoolbox'
-                        obj.UsePsychToolbox = 1;
-                        obj.Interface = 1;
-                    otherwise
-                        error('The third argument to ArCOM(''init'' must be either ''java'' or ''psychtoolbox''');
-                end
-            end
-            if nargin > 3
-                obj.TCPport = varargin{2};
             end
             obj.validDataTypes = {'char', 'uint8', 'uint16', 'uint32', 'int8', 'int16', 'int32'};
             % If PortString is an IP address, set Interface to 3 or 4 (TCP/IP via Instrument Control or Psych Toolbox)
@@ -449,11 +485,11 @@ classdef ArCOMObject_Bpod < handle
                 end
             end
         end
-        
+
         function flush(obj)
             obj.read(obj.bytesAvailable, 'uint8');
         end
-        
+
         function delete(obj)
             switch obj.Interface
                 case 0
