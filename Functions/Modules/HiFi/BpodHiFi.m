@@ -41,9 +41,9 @@ classdef BpodHiFi < handle
                 end
             end
             if PortType == 0
-                obj.Port = ArCOMObject_Bpod(portString, [], [], [], 64000, 64000);
+                obj.Port = ArCOMObject_Bpod(portString, [], [], [], 1000000, 1000000);
             elseif PortType == 1
-                obj.Port = ArCOMObject_Bpod(portString, [], 'Java', [], 128000, 128000);
+                obj.Port = ArCOMObject_Bpod(portString, [], 'Java', [], 1000000, 1000000);
             end
             obj.Port.write(243, 'uint8');
             Ack = obj.Port.read(1, 'uint8');

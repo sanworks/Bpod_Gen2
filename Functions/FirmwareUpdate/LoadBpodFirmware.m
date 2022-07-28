@@ -225,6 +225,12 @@ classdef LoadBpodFirmware < handle
                 BGColor = [0.4 1 0.4];
                 Msg1 = '*GREAT SUCCESS*';
                 Msg2 = 'Firmware update complete';
+                global BpodSystem;
+                if isempty(BpodSystem)
+                   clear global BpodSystem
+                else
+                    BpodSystem.LoadModules;
+                end
             else
                 BGColor = [1 0.4 0.4];
                 Msg1 = '*FAILED*';
@@ -242,14 +248,7 @@ classdef LoadBpodFirmware < handle
                 'FontWeight', 'bold', 'BackgroundColor', BGColor);
             uicontrol('Style', 'pushbutton', 'Position', [90 20 100 40], 'String', 'Ok', 'FontSize', 14,...
                 'FontWeight', 'bold', 'BackgroundColor', [0.8 0.8 0.8], 'Callback', @(h,e)obj.closeModal());
-            if OK
-                 global BpodSystem;
-                 if isempty(BpodSystem)
-                    clear global BpodSystem
-                 else
-                     BpodSystem.LoadModules;
-                 end
-            end
+           
         end
         function closeModal(obj)
             delete(obj.gui.ConfirmModal);
