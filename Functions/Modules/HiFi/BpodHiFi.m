@@ -337,16 +337,6 @@ classdef BpodHiFi < handle
                 disp('Test FAILED');
             end
         end
-        function scanDuringUSBTransfer(obj, state)
-            if ~(state == 1 || state == 0)
-                error('State machine scan during USB transfer must be equal to 1 (enabled) or 0 (disabled)')
-            end
-            obj.Port.write(['&' state], 'uint8');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error setting state of scan during USB transfer. Confirm code not returned.');
-            end
-        end
         function delete(obj)
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
         end
