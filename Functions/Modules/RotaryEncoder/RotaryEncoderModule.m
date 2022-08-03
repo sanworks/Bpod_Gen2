@@ -361,12 +361,49 @@ classdef RotaryEncoderModule < handle
                 end
             end
         end
-        function NewData = readUSBStream(obj)
+        function NewData = readUSBStream(obj, varargin)
+            % Usage: readUSBStream() returns all new data up to the current moment. readUSBStream(eventCode) reads all new data prior to an event code received by the REM.
+            % To send an event code to the REM from the state machine, use {'RotaryEncoder1', ['#' eventCode]} in output actions.
+            eventCode = [];
+            if nargin > 1
+                eventCode = varargin{1};
+            end
             NewData = obj.getUSBStream;
-            if obj.usbCaptureEnabled == 1
-                obj.usbCapturedData = obj.appendStreamData(obj.usbCapturedData, NewData);
+            obj.usbCapturedData = obj.appendStreamData(obj.usbCapturedData, NewData);
+            if isempty(eventCode)
                 NewData = obj.usbCapturedData;
                 obj.usbCapturedData = [];
+            else
+                [NewData, obj.usbCapturedData] = obj.splitData(obj.usbCapturedData,eventCode);
+            end
+        end
+        function [NewData, usbCapturedData] = splitData(obj, StreamData, eventCode)
+            if sum(StreamData.EventCodes == eventCode) > 0
+                splitEventIndex = find(StreamData.EventCodes == eventCode, 1);
+                splitEventTime = StreamData.EventTimestamps(splitEventIndex);
+                FirstHalfPositionIndexes = StreamData.Times <= splitEventTime;
+                SecondHalfPositionIndexes = logical(1-FirstHalfPositionIndexes);
+                FirstHalfEventIndexes = StreamData.EventTimestamps <= splitEventTime;
+                SecondHalfEventIndexes = logical(1-FirstHalfEventIndexes);
+                NewData = struct;
+                NewData.nPositions = sum(FirstHalfPositionIndexes);
+                NewData.nEvents = sum(FirstHalfEventIndexes);
+                NewData.Positions = StreamData.Positions(FirstHalfPositionIndexes);
+                NewData.Times = StreamData.Times(FirstHalfPositionIndexes);
+                NewData.EventTypes = StreamData.EventTypes(FirstHalfEventIndexes);
+                NewData.EventCodes = StreamData.EventCodes(FirstHalfEventIndexes);
+                NewData.EventTimestamps = StreamData.EventTimestamps(FirstHalfEventIndexes);
+                usbCapturedData = struct;
+                usbCapturedData.nPositions = sum(SecondHalfPositionIndexes);
+                usbCapturedData.nEvents = sum(SecondHalfEventIndexes);
+                usbCapturedData.Positions = StreamData.Positions(SecondHalfPositionIndexes);
+                usbCapturedData.Times = StreamData.Times(SecondHalfPositionIndexes);
+                usbCapturedData.EventTypes = StreamData.EventTypes(SecondHalfEventIndexes);
+                usbCapturedData.EventCodes = StreamData.EventCodes(SecondHalfEventIndexes);
+                usbCapturedData.EventTimestamps = StreamData.EventTimestamps(SecondHalfEventIndexes);
+            else
+                NewData = StreamData;
+                usbCapturedData = [];
             end
         end
         function OutData = appendStreamData(obj, StreamData, NewData)
@@ -638,7 +675,7 @@ classdef RotaryEncoderModule < handle
                             nNewDataPoints = nNewDataPoints + 1;
                             NewData.Positions(nNewDataPoints) = obj.pos2degrees(typecast(Positions(obj.positionBytemask(1:6)), 'int16'));
                             NewTime = double(typecast(Positions(obj.timeBytemask(1:6)), 'uint32'))/1000000;
-                            if obj.LastTimeRead > NewTime;
+                            if obj.LastTimeRead > NewTime
                                 obj.rollOverSum = obj.rollOverSum + 4294.967296;
                             end
                             obj.LastTimeRead = NewTime;

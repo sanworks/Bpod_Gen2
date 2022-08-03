@@ -58,6 +58,7 @@ else
             TE.Info.CircuitRevision = struct;
             TE.Info.CircuitRevision = BpodSystem.HW.CircuitRevision;
         end
+        TE.Info.Modules = BpodSystem.Modules;
     end
     TE.Info.SessionDate = datestr(now, 1);
     TheTime = now;

@@ -190,6 +190,16 @@ function obj = LoadModules(obj)
             BpodErrorSound;
             warndlg('WARNING: Old module firmware detected. See instructions in the MATLAB command window.');
         end
+        % Update central HW revision information
+        SMrevision = obj.HW.CircuitRevision.StateMachine;
+        obj.HW.CircuitRevision = struct;
+        obj.HW.CircuitRevision.StateMachine = SMrevision;
+        for i = 1:nModules 
+            if obj.Modules.Connected(i)
+                thisModuleName = obj.Modules.Name{i};
+                obj.HW.CircuitRevision.(thisModuleName) = obj.Modules.HWVersion_Minor(i);
+            end
+        end
     elseif obj.Status.BeingUsed == 1
          BpodErrorDlg(['Cannot refresh modules.' char(10) 'Stop the session first.'], 0);
     end
