@@ -74,7 +74,7 @@ classdef BpodAnalogIn < handle
                 end
             end
             try
-                obj.Port = ArCOMObject_Ain(portString, 115200);
+                obj.Port = ArCOMObject_Bpod(portString, 115200);
             catch
                 error('Error: unable to connect to Bpod Analog Input module.')
             end
