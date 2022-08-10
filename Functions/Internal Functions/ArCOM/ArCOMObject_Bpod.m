@@ -87,7 +87,7 @@ classdef ArCOMObject_Bpod < handle
                 catch
                 end
             end
-            baudRate = 192000;
+            baudRate = 115200;
             if nargin > 1
                 arg = varargin{1};
                 if ~isempty(arg)

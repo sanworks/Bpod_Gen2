@@ -50,7 +50,7 @@ classdef BpodHiFi < handle
             if Ack ~= 244
                 error('Error: Incorrect handshake byte returned');
             end
-            if ~ispc && ~obj.Port.UsePsychToolbox == 1
+            if ~ispc && ~obj.Port.UsePsychToolbox == 1 && verLessThan('matlab', '9.7')
                 warning('HiFi Module data transfer may be unstable unless PsychToolbox is installed. Please install PsychToolbox for optimal performance.');
             end
             obj.Port.write('I', 'uint8');

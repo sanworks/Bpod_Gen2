@@ -35,7 +35,7 @@ function obj = InitializeGUI(obj)
         Vvsm = 12; Vsm = 14; Sm = 16; Med = 17; Lg = 22;
         FontName = 'Arial';
     else
-        Vvsm = 10; Vsm = 10; Sm = 12; Med = 13; Lg = 20;
+        Vvsm = 10; Vsm = 9; Sm = 12; Med = 13; Lg = 20;
         FontName = 'DejaVu Sans Mono';
     end
 
@@ -193,11 +193,11 @@ function obj = InitializeGUI(obj)
         end
     end
     if ispc
-        InfoDispFontSize = 9; InfoDispBoxHeight = 20; PortDispBoxHeight = 20; InfoDispBoxWidth = 115; Ypos = 268;
+        InfoDispFontSize = 9; InfoDispBoxHeight = 20; PortDispBoxHeight = 20; InfoDispBoxWidth = 122; Ypos = 268; Xpos = 12;
     elseif ismac
-        InfoDispFontSize = 12; InfoDispBoxHeight = 22; PortDispBoxHeight = 28; InfoDispBoxWidth = 115; Ypos = 264;
+        InfoDispFontSize = 12; InfoDispBoxHeight = 22; PortDispBoxHeight = 28; InfoDispBoxWidth = 115; Ypos = 264; Xpos = 12;
     else
-        InfoDispFontSize = 9; InfoDispBoxHeight = 23; PortDispBoxHeight = 23; InfoDispBoxWidth = 120; Ypos = 268;
+        InfoDispFontSize = 9; InfoDispBoxHeight = 23; PortDispBoxHeight = 23; InfoDispBoxWidth = 128; Ypos = 268; Xpos = 10;
     end
     
     if obj.EmulatorMode == 1
@@ -206,11 +206,11 @@ function obj = InitializeGUI(obj)
         PortString = obj.SerialPort.PortName;
     end
 
-    obj.GUIHandles.CurrentStateDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [12 Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.PreviousStateDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [12 Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.LastEventDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [12 Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.TimeDisplay = uicontrol('Style', 'text', 'String', '0', 'Position', [12 Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.USBPortDisplay = uicontrol('Style', 'text', 'String', PortString, 'Position', [12 Ypos InfoDispBoxWidth PortDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize);
+    obj.GUIHandles.CurrentStateDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
+    obj.GUIHandles.PreviousStateDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
+    obj.GUIHandles.LastEventDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
+    obj.GUIHandles.TimeDisplay = uicontrol('Style', 'text', 'String', '0', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
+    obj.GUIHandles.USBPortDisplay = uicontrol('Style', 'text', 'String', PortString, 'Position', [Xpos Ypos InfoDispBoxWidth PortDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize);
     obj.FixPushbuttons;
     text(15, 30, Title, 'FontName', TitleFontName, 'FontSize', Lg, 'Color', TitleColor);
     line([220 780], [30 30], 'Color', LabelFontColor, 'LineWidth', 4);

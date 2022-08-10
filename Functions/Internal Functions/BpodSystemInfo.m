@@ -1,3 +1,22 @@
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
 function BpodSystemInfo
 
 global BpodSystem
@@ -38,7 +57,7 @@ else
     EventOffset = 180;
 end
 if BpodSystem.StateMachineInfo.nEvents > 147
-    XWidth = 1200;
+    XWidth = 1230;
     Xfactor = 5.5;
 elseif BpodSystem.StateMachineInfo.nEvents > 111
     XWidth = 1100;
@@ -59,7 +78,10 @@ if isempty(AppSerialPort)
     AppSerialPort = '-None-';
 end
             
-YPos = 25; XPos = 30;
+YPos = 25; XPos = 15;
+if ~ispc % Unix USB serial port names are longer
+    EventOffset = EventOffset + 20;
+end
 MachineTypes = {'v0.5', 'v0.7-1.0', 'v2', 'v2-plus'};
 text(XPos, 10,'State Machine', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor, 'FontWeight', 'Bold'); 
 text(XPos, YPos,['Firmware Version: ' num2str(BpodSystem.FirmwareVersion)], 'FontSize', 11, 'FontWeight', 'Bold'); YPos = YPos + 15;
