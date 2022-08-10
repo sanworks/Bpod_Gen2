@@ -40,13 +40,10 @@ global BpodSystem
 % - From the Bpod console, pair the HiFi module with its USB serial port.
 % - Connect channel 1 (or ch1+2) of the hifi module to an amplified speaker(s).
 
-%% Resolve HiFi Module USB port
-if (isfield(BpodSystem.ModuleUSB, 'HiFi1'))
-    %% Create an instance of the HiFi module
-    H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1);
-else
-    error('Error: To run this protocol, you must first pair the HiFi module with its USB port. Click the USB config button on the Bpod console.')
-end
+%% Assert HiFi module is present + USB-paired (via USB button on console GUI)
+BpodSystem.assertModule('HiFi', 'USBpaired');
+% Create an instance of the HiFi module
+H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1); % The argument is the name of the HiFi module's USB serial port (e.g. COM3)
 
 %% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
@@ -179,8 +176,8 @@ for currentTrial = 1:MaxTrials
         'Timer', S.GUI.InterTrialInterval,...
         'StateChangeConditions', {'Tup', '>exit'},...
         'OutputActions', {'HiFi1', SoundOffBytes});
-    SendStateMatrix(sma); % Send the state matrix to the Bpod device
-    RawEvents = RunStateMatrix; % Run the trial and return events
+    SendStateMachine(sma); % Send the state matrix to the Bpod device
+    RawEvents = RunStateMachine; % Run the trial and return events
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned (i.e. if not final trial, interrupted by user)
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
         BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)

@@ -45,6 +45,11 @@ else
     error('Error: To run this protocol, you must first pair the AudioPlayer1 module with its USB port. Click the USB config button on the Bpod console.')
 end
 
+%% Assert AudioPlayer module is present + USB-paired (via USB button on console GUI)
+BpodSystem.assertModule('AudioPlayer', 'USBpaired');
+% Create an instance of the audioPlayer module
+A = BpodAudioPlayer(BpodSystem.ModuleUSB.AudioPlayer1);
+
 %% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
 if isempty(fieldnames(S))  % If settings file was an empty struct, populate struct with default settings
@@ -77,9 +82,6 @@ BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .35 .89 .55]);
 SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-TrialTypes);
 TotalRewardDisplay('init'); % Total Reward display (online display of the total amount of liquid reward earned)
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin
-
-%% Create an instance of the audioPlayer module
-A = BpodAudioPlayer(AudioPlayerUSB);
 
 %% Define stimuli and send to analog module
 SF = A.Info.maxSamplingRate; % Use max supported sampling rate
@@ -194,8 +196,8 @@ for currentTrial = 1:MaxTrials
         'Timer', S.GUI.PunishTimeoutDuration,...
         'StateChangeConditions', {'Tup', '>exit'},...
         'OutputActions', {'AudioPlayer1', 4});
-    SendStateMatrix(sma); % Send the state matrix to the Bpod device
-    RawEvents = RunStateMatrix; % Run the trial and return events
+    SendStateMachine(sma); % Send the state matrix to the Bpod device
+    RawEvents = RunStateMachine; % Run the trial and return events
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned (i.e. if not final trial, interrupted by user)
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
         BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)

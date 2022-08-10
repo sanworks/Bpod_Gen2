@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Sound Beach, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -154,8 +154,8 @@ for currentTrial = 1:MaxTrials
         'Timer', S.GUI.PunishTimeoutDuration,...
         'StateChangeConditions', {'Tup', 'exit'},...
         'OutputActions', {'SoftCode', 4});
-    SendStateMatrix(sma); % Send the state matrix to the Bpod device
-    RawEvents = RunStateMatrix; % Run the trial and return events
+    SendStateMachine(sma); % Send the state matrix to the Bpod device
+    RawEvents = RunStateMachine; % Run the trial and return events
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned (i.e. if not final trial, interrupted by user)
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
         BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)

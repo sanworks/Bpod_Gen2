@@ -50,21 +50,15 @@ function Click2AFC
 
 global BpodSystem
 
-%% Initialize HiFi Module
-if (isfield(BpodSystem.ModuleUSB, 'HiFi1')) % Ensure that the HiFi USB serial port is paired with Bpod
-    H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1); % Create an instance of the HiFi module
-else
-    error('Error: To run this protocol, you must first pair the HiFi module with its USB port. Click the USB config button on the Bpod console.')
-end
-
-%% Initialize RotaryEncoder Module
-if (isfield(BpodSystem.ModuleUSB, 'RotaryEncoder1')) % Ensure that the RotaryEncoder USB serial port is paired with Bpod
-    if BpodSystem.Modules.HWVersion_Major(strcmp(BpodSystem.Modules.Name, 'RotaryEncoder1')) < 2
-        error('Error: This protocol requires rotary encoder module v2 or newer');
-    end
-    R = RotaryEncoderModule(BpodSystem.ModuleUSB.RotaryEncoder1); % Create an instance of the RotaryEncoder module
-else
-    error('Error: To run this protocol, you must first pair the RotaryEncoder module with its USB port. Click the USB config button on the Bpod console.')
+%% Assert HiFi + Rotary Encoder modules are present + USB-paired (via USB button on console GUI)
+BpodSystem.assertModule({'HiFi','RotaryEncoder'}, 'USBpaired');
+% Create an instance of the HiFi module
+H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1); % The argument is the name of the HiFi module's USB serial port (e.g. COM3)
+% Create an instance of the RotaryEncoder module
+R = RotaryEncoderModule(BpodSystem.ModuleUSB.RotaryEncoder1); 
+% Ensure Rotary Encoder module is version 2
+if BpodSystem.Modules.HWVersion_Major(strcmp(BpodSystem.Modules.Name, 'RotaryEncoder1')) < 2
+    error('Error: This protocol requires rotary encoder module v2 or newer');
 end
 
 %% Define task parameters
@@ -193,7 +187,7 @@ for currentTrial = 1:MaxTrials
         'Timer', S.GUI.ErrorDelay,...
         'StateChangeConditions', {'Tup', 'exit'},...
         'OutputActions', {'HiFi1', 'X'}); % 'X' cancels any ongoing sound on the HiFi module
-    SendStateMatrix(sma);
+    SendStateMachine(sma);
     RawEvents = RunStateMachine;
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data

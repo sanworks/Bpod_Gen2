@@ -34,13 +34,10 @@ function HiFiSound2AFC_TrialManager
 
 global BpodSystem
 
-%% Resolve HiFi Module USB port
-if (isfield(BpodSystem.ModuleUSB, 'HiFi1'))
-    %% Create an instance of the HiFi module
-    H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1);
-else
-    error('Error: To run this protocol, you must first pair the HiFi module with its USB port. Click the USB config button on the Bpod console.')
-end
+%% Assert HiFi module is present + USB-paired (via USB button on console GUI)
+BpodSystem.assertModule('HiFi', 'USBpaired');
+% Create an instance of the HiFi module
+H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1); % The argument is the name of the HiFi module's USB serial port (e.g. COM3)
 
 %% Create trial manager object
 TrialManager = TrialManagerObject;

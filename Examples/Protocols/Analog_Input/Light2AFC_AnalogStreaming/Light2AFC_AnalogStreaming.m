@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -41,13 +41,10 @@ function Light2AFC_AnalogStreaming
 
 global BpodSystem
 
-%% Resolve Analog Input Module USB port
-if (isfield(BpodSystem.ModuleUSB, 'AnalogIn1'))
-    %% Create an instance of the HiFi module
-    A = BpodAnalogIn(BpodSystem.ModuleUSB.AnalogIn1);
-else
-    error('Error: To run this protocol, you must first pair the HiFi module with its USB port. Click the USB config button on the Bpod console.')
-end
+%% Assert Analog Input module is present + USB-paired (via USB button on console GUI)
+BpodSystem.assertModule('AnalogIn', 'USBpaired');
+% Create an instance of the Analog Input module
+A = BpodAnalogIn(BpodSystem.ModuleUSB.AnalogIn1);
 
 %% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
@@ -151,8 +148,8 @@ for currentTrial = 1:MaxTrials
         'Timer', 0,...
         'StateChangeConditions', {'Tup', '>exit'},...
         'OutputActions', {'AnalogIn1', ['#' 3]}); % Send sync byte 3 to analog input module to indicate trial end
-    SendStateMatrix(sma);
-    RawEvents = RunStateMatrix;
+    SendStateMachine(sma);
+    RawEvents = RunStateMachine;
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
         BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)
