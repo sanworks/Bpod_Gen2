@@ -44,7 +44,6 @@ classdef BpodAnalogIn < handle
     end
     
     properties (Access = private)
-        CurrentFirmwareVersion = 1;
         UIhandles % A struct with UI handles
         UIdata % A struct with internal user interface data
         opMenuByte = 213; % Byte code to access op menu

@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -59,11 +59,6 @@ function USBSerialPorts = FindUSBSerialPorts(obj)
             CandidatePorts{nGoodPorts} = CandidatePort;
         end
         USBSerialPorts = CandidatePorts(1:nGoodPorts);
-        if nKeywords > 1
-            for i = 2:nKeywords
-                USBSerialPorts = '';
-            end
-        end
     else
         [trash, RawSerialPortList] = system('ls /dev/ttyACM*');
         string = strtrim(RawSerialPortList);
@@ -79,10 +74,5 @@ function USBSerialPorts = FindUSBSerialPorts(obj)
             end
         end
         USBSerialPorts = CandidatePorts(1:nGoodPorts);
-        if nKeywords > 1
-            for i = 2:nKeywords
-                USBSerialPorts = '';
-            end
-        end
     end
 end

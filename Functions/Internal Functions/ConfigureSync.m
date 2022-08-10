@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -33,7 +33,12 @@ else
     text(50, 65, 'Channel', 'FontName', FontName, 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
     text(210, 65, 'Signal type', 'FontName', FontName, 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
     BpodSystem.GUIHandles.SyncConfigChannel = uicontrol('Position', [55 35 80 20], 'Style', 'popupmenu', 'Callback', @UpdateSyncConfig, 'FontSize', 12);
-    BpodSystem.GUIHandles.SyncConfigType = uicontrol('Position', [220 35 120 20], 'Style', 'popupmenu', 'String', {'Each_Trial', 'Each_State'}, 'Callback', @UpdateSyncConfig, 'FontSize', 12);
+    if BpodSystem.FirmwareVersion >= 23
+        SyncMenu = {'Each_Trial', 'Each_State', '10Hz_SqWave'};
+    else
+        SyncMenu = {'Each_Trial', 'Each_State'};
+    end
+    BpodSystem.GUIHandles.SyncConfigType = uicontrol('Position', [220 35 120 20], 'Style', 'popupmenu', 'String', SyncMenu, 'Callback', @UpdateSyncConfig, 'FontSize', 12);
     
     % Populate menus
     DigitalChannelStrings = cell(1,BpodSystem.HW.n.Outputs);
