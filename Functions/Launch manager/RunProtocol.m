@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -129,6 +129,7 @@ switch Opstring
                 if nAnalogChannels > 0
                     BpodSystem.Data.Analog = struct;
                     BpodSystem.Data.Analog.FileName = AnalogFilename;
+                    % The following performs the same operation as AddFlexIOAnalogData.m.
                     BpodSystem.Data.Analog.ImportCmd = ['myFile = fopen(SessionData.Analog.FileName, ''r''); ' ...
                                                         'Data = fread(myFile, (SessionData.Analog.nSamples*SessionData.Analog.nChannels)+SessionData.Analog.nSamples, ''uint16''); ' ...
                                                         'fclose(myFile); clear myFile; SessionData.Analog.Samples = []; ' ...

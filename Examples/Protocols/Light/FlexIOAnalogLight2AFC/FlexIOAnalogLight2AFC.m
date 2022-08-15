@@ -17,16 +17,22 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
 function FlexIOAnalogLight2AFC
 % This protocol is a starting point for a visual 2AFC task.
 % After initiating each trial with a center-poke,
 % the subject is rewarded for choosing the port that is lit.
+%
 % Written by Josh Sanders, 5/2015.
-% Updated to demo FlexI/O analog input, 11/2021
-% REQUIRES MANUAL CONFIG: Flex I/O Ch1 = Analog Input, Ch2 = Digital Output
+%
+% Updated to demo FlexI/O analog input, 8/2022. Flex I/O Ch1 is acquired in
+% tandem with the behavior data, and threshold crossing events are logged.
+% In this example, analog threshold events do not drive state transitions.
 %
 % SETUP
 % You will need:
+% - Bpod State Machine 2+ (or a newer model with Flex I/O channels)
+% - An analog signal in range 0-5V patched into Flex I/O channel 1
 % - A Bpod MouseBox (or equivalent) configured with 3 ports.
 % > Connect the left port in the box to Bpod Port#1.
 % > Connect the center port in the box to Bpod Port#2.
@@ -40,16 +46,14 @@ global BpodSystem
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
 if isempty(fieldnames(S))  % If settings file was an empty struct, populate struct with default settings
     S.GUI.RewardAmount = 3; %ul
-    S.GUI.CueDelay = 0.2; % How long the mouse must poke in the center to activate the goal port
-    S.GUI.ResponseTime = 5; % How long until the mouse must make a choice, or forefeit the trial
-    S.GUI.RewardDelay = 0; % How long the mouse must wait in the goal port for reward to be delivered
-    S.GUI.PunishDelay = 3; % How long the mouse must wait in the goal port for reward to be delivered
+    S.GUI.CueDelay = 0.2; % How long the test subject must poke in the center to activate the goal port
+    S.GUI.ResponseTime = 5; % How long until the test subject must make a choice, or forefeit the trial
+    S.GUI.RewardDelay = 0; % How long the test subject must wait in the goal port for reward to be delivered
+    S.GUI.PunishDelay = 3; % How long the test subject must wait in the goal port for reward to be delivered
 end
 
-%% Define trials
-MaxTrials = 1000;
-TrialTypes = ceil(rand(1,1000)*2);
-BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
+% Configure Flex I/O Channels
+BpodSystem.setFlexIO([2 1 1 1]);
 
 %% Setup Analog Thresholds
 BpodSystem.setAnalogThresholds('Threshold1', ones(1,4)*4000); % In range 0-4095
@@ -58,6 +62,11 @@ BpodSystem.setAnalogThresholds('Threshold2', ones(1,4)*95); % In range 0-4095
 BpodSystem.setAnalogThresholds('Polarity2', ones(1,4)); % Polarity 1: Threshold activated when analog is < thresh
 BpodSystem.setAnalogThresholds('Mode', ones(1,4)); % Mode 1: Crossing threshold 1 enables threshold 2, crossing 2 enables 1
 
+%% Define trials
+MaxTrials = 1000;
+TrialTypes = ceil(rand(1,1000)*2);
+BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
+
 %% Initialize plots
 BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 250],'name','Outcome plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .3 .89 .6]);
@@ -65,6 +74,7 @@ SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-TrialTypes);
 BpodNotebook('init');
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin
 BpodSystem.startAnalogViewer; % Initialize analog viewer GUI (optional)
+
 %% Main trial loop
 for currentTrial = 1:MaxTrials
     S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
@@ -81,7 +91,7 @@ for currentTrial = 1:MaxTrials
     sma = AddState(sma, 'Name', 'WaitForPoke1', ...
         'Timer', 0,...
         'StateChangeConditions', {'Port2In', 'CueDelay'},...
-        'OutputActions', {'Flex2DO', 1, 'AnalogThreshEnable', 1}); 
+        'OutputActions', {'AnalogThreshEnable', 1}); 
     sma = AddState(sma, 'Name', 'CueDelay', ...
         'Timer', S.GUI.CueDelay,...
         'StateChangeConditions', {'Port2Out', 'WaitForPoke1', 'Tup', 'WaitForPortOut'},...
@@ -138,9 +148,15 @@ for currentTrial = 1:MaxTrials
     end
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
     if BpodSystem.Status.BeingUsed == 0
+        Cleanup;
         return
     end
 end
+Cleanup;
+
+function Cleanup()
+AddFlexIOAnalogData; % Adds all data in the Flex I/O analog data file (if present) to BpodSystem.Data. The analog file is retained for the user to delete if desired.
+SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
 
 function UpdateSideOutcomePlot(TrialTypes, Data)
 global BpodSystem
