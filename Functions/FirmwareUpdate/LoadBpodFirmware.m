@@ -217,6 +217,9 @@ classdef LoadBpodFirmware < handle
             FileName = [ModuleName '_v' Version];
             progressbar(0.02); pause(.1);
             progressbar(0.6);
+            if strcmp(ModuleName, 'StateMachine_Bpod1') || strcmp(ModuleName, 'StateMachine_Bpod05')
+                disp('*Note* Firmware upload may take up to 3 minutes and the program may appear to be non-responsive.')
+            end
             [OK,msg] = obj.uploadFirmware(PortName, FileName, obj.LoaderApps{ModuleNamePos}, obj.PortType(PortNamePos));
             pause(1);
             progressbar(0.9);
@@ -277,7 +280,7 @@ classdef LoadBpodFirmware < handle
             disp([Filename ' ==> ' TargetPort])
             [status, msg] = system(programPath);
             OK = 0;
-            if ~isempty(strfind(msg, 'Sending reset command')) || ~isempty(strfind(msg, 'Blah blah blah'))
+            if ~isempty(strfind(msg, 'Sending reset command')) || ~isempty(strfind(msg, 'Verify successful'))
                 OK = 1;
             end
             if OK
