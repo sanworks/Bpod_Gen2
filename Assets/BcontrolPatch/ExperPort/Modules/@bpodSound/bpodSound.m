@@ -40,8 +40,8 @@ if nargin==0,
             % Check to see whether the audio player's usual serial port is present
             %%% NOTE %%% This fallback handler does not yet work for the HiFi module
             USBSerialPorts = BpodSystem.FindUSBSerialPorts;
-            CandidateAudioPlayers = USBSerialPorts.Teensy;
-            CandidateHiFiPlayers = USBSerialPorts.COM;
+            CandidateAudioPlayers = USBSerialPorts;
+            CandidateHiFiPlayers = USBSerialPorts;
             load(BpodSystem.Path.ModuleUSBConfig)
             LastPairedAudioPlayerPort = ModuleUSBConfig.USBPorts(strcmp(ModuleUSBConfig.ModuleNames, 'AudioPlayer1'));
             if ~isempty(LastPairedAudioPlayerPort)
