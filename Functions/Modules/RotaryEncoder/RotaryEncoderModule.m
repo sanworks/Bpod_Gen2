@@ -535,7 +535,10 @@ classdef RotaryEncoderModule < handle
                 obj.sweepStartTime = 0;
                 drawnow;
                 obj.Timer = timer('TimerFcn',@(h,e)obj.updatePlot(), 'ExecutionMode', 'fixedRate', 'Period', 0.05);
-                obj.startUSBStream();
+                obj.acquiring = 1;
+                obj.Port.write(['S' 1], 'uint8');
+                obj.LastTimeRead = 0;
+                obj.rollOverSum = 0;
                 start(obj.Timer);
             else
                 error('Error: A rotary encoder streamUI window is already open. Please close it and try again.');
