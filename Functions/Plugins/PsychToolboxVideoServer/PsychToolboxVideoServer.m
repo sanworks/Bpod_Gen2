@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -17,34 +17,76 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% Usage Notes:
+%
+% V = PsychToolboxVideoServer(MonitorID, ViewPortSize, ViewPortOffset, SyncPatchSize, SyncPatchYOffset)
+%
+% MonitorID: Index of the monitor to use (e.g. 1 or 2 in a dual monitor setup)
+%
+% WindowYoffset: If smaller than the monitor, the y offset of the display window. This must be set to 0 if using the whole monitor.
+% 
+% ViewPortSize: A portion of the window [length, width] in pixels can be used to show the video. Window area not in the viewport will be black,
+% and can contain the sync patch. Set ViewPortSize to 0 to use the entire screen.
+%
+% ViewPortOffset: Offset of the view port, [length, width] in pixels
+%
+% SyncPatchSize: Size of the sync patch, [length, width] in pixels. The sync patch is rendered in the lower right corner of the screen. 
+% It alternates from white to black with each subsequent frame to signal frame changes to an optical sensor.
+%
+% SyncPatchYOffset: Offset of the sync patch from the bottom screen edge
+%
+% IMPORTANT: Videos must be B&W (1 layer per frame).
+
 classdef PsychToolboxVideoServer < handle
     properties
         Window % PsychToolbox Window object
+        DetectedFrameRate % Detected frame rate of the target display in Hz
         Videos % Cell array containing videos loaded with obj.loadVideo()
         TextStrings % Cell array containing text strings
-        TimerMode = 0; % Use MATLAB timer object to trigger frame flips (default = code loop)
-        ShowViewportBorder = 1; % Draw gray border around viewport
-        FontName = 'Arial'; % Font to use when displaying text objects. Run listfonts; to see installed font names.
+        TimerMode = 0; % Use MATLAB timer object to trigger frame flips (default = blocking code loop)
+        ShowViewportBorder = 0; % Draw gray border around viewport
+        ViewPortDimensions % [Width, Height]
+        SyncPatchIntensity = 255; % In range 0, 255
+        SyncPatchActiveArea = 0.8; % Fraction of sync patch dimensions set to white when drawing a white patch. 
+                                   % Permanently dark pixels surrounding the sensor helps to hide the sync patch from the test subject
     end
     properties (Access = private)
+        nVideosLoaded = 0;
         WindowDimensions % window dimensions
-        ViewPortDimensions % [Width, Height]
         ViewPortOffset = [0 0]; % Width, Height from Movie Window top-left corner
         MaxVideos = 100;
         SyncPatchSizeX = 30; % Size of sync patch in X dimension, in pixels
         SyncPatchSizeY = 30; % Size of sync patch in Y dimension, in pixels
         SyncPatchYOffset % Sync patch offset from window bottom on Y axis (in pixels)
         SyncPatchDimensions = [0 0 0 0];
+        SyncPatchActiveDimensions = [0 0 0 0];
         BlankScreen; % Texture of blanks screen
         Timer % Timer object that controls playback
+        TimerFPS = 50; % Frames per second
         CurrentFrame = 1; % Current frame
         StimulusIndex = 1; % Current stimulus
         TextStringFontSize
         TextStringStartPos
+        FontName  % Font to use when displaying text objects. Run listfonts; to see installed font names.
+        AllFonts % List of all fonts installed on the system
         StimulusType % Vector of 0 = video, 1 = frame with centred text
     end
     methods
-        function obj = PsychToolboxVideoServer(WindowSize, WindowYoffset, ViewPortSize, ViewPortOffset, SyncPatchSize, SyncPatchYOffset)
+        function obj = PsychToolboxVideoServer(MonitorID, WindowYoffset, ViewPortSize, ViewPortOffset, SyncPatchSize, SyncPatchYOffset)
+            % Destroy any orphaned timers from previous instances
+            T = timerfindall;
+            for i = 1:length(T)
+                thisTimer = T(i);
+                thisTimerTag = get(thisTimer, 'tag');
+                if strcmp(thisTimerTag, 'PTV')
+                    warning('off');
+                    delete(thisTimer);
+                    warning('on');
+                end
+            end
+            obj.AllFonts = listfonts;
+            Screen('Preference','SkipSyncTests', 1);
             obj.Videos = cell(1,obj.MaxVideos);
             obj.TextStrings = cell(1,obj.MaxVideos);
             obj.TextStringStartPos = cell(1,obj.MaxVideos);
@@ -56,29 +98,56 @@ classdef PsychToolboxVideoServer < handle
             obj.SyncPatchSizeY = SyncPatchSize(2);
             obj.SyncPatchYOffset = SyncPatchYOffset;
             SystemVars = get(0); MonitorSize = SystemVars.ScreenSize;
+            if length(MonitorID) ~= 1 
+                error('Error: Monitor ID must be a single integer value')
+            end
+            [obj.Window, MonitorSize] = Screen('OpenWindow', MonitorID, 0);
+            MonitorSize(1:2) = 1;
+            WindowSize = MonitorSize(3:4);
             obj.WindowDimensions = [MonitorSize(3)-WindowSize(1) (MonitorSize(4)-WindowYoffset)-WindowSize(2)... 
-                MonitorSize(3) (MonitorSize(4)-WindowYoffset)];
+            MonitorSize(3) (MonitorSize(4)-WindowYoffset)];
+            obj.DetectedFrameRate = Screen('FrameRate', obj.Window);
+            obj.TimerFPS = obj.DetectedFrameRate;
+            Frame = zeros(WindowSize(2), WindowSize(1));
             yEnd = WindowSize(2);
             xEnd = WindowSize(1);
             patchStartY = yEnd-obj.SyncPatchSizeY - SyncPatchYOffset;
             patchStartX = xEnd-obj.SyncPatchSizeX;
             obj.SyncPatchDimensions = [patchStartY patchStartY+obj.SyncPatchSizeY patchStartX xEnd];
-            Screen('Preference','SkipSyncTests', 0);
-            %Screen('Preference', 'VBLTimestampingMode', -1);
-            obj.Window = Screen('OpenWindow', max(Screen('Screens')), 0, obj.WindowDimensions);
-            Frame = zeros(WindowSize(2), WindowSize(1));
+            obj.SyncPatchActiveDimensions = [patchStartY+(obj.SyncPatchSizeY*(1-obj.SyncPatchActiveArea)) patchStartY+obj.SyncPatchSizeY patchStartX+(obj.SyncPatchSizeX*(1-obj.SyncPatchActiveArea)) xEnd];
+            if obj.ViewPortDimensions == 0
+                obj.ViewPortDimensions = obj.WindowDimensions(3:4);
+            end
             if obj.ShowViewportBorder
                 Frame = obj.addShowViewportBorder(Frame);
             end
+            obj.Timer = timer('TimerFcn','', 'Period', round(1/obj.TimerFPS*1000)/1000, 'ExecutionMode', 'fixedRate', 'Tag', 'PTV');
             obj.BlankScreen = Screen('MakeTexture', obj.Window, Frame);
             Screen('DrawTexture', obj.Window, obj.BlankScreen);
             Screen('Flip', obj.Window);
         end
+        function set.SyncPatchIntensity(obj, Value)
+            if Value > 255 || Value < 0
+                error('Error: Sync Patch Intensity must be an integer in range [0, 255]')
+            end
+            if obj.nVideosLoaded > 0
+                disp(['***Warning*** The sync patch was previously rendered in the video frames loaded to the server.' char(10) 'Existing videos must be re-loaded manually to use the new sync patch parameter.'])
+            end
+            obj.SyncPatchIntensity = Value;
+        end
+        function set.SyncPatchActiveArea(obj, Value)
+            if Value > 1 || Value < 0
+                error('Error: Sync Patch Active Area must be a value in range [0, 1]')
+            end
+            if obj.nVideosLoaded > 0
+                disp(['***Warning*** The sync patch was previously rendered in the video frames loaded to the server.' char(10) 'Existing videos must be re-loaded manually to use the new sync patch parameter.'])
+            end
+            obj.SyncPatchActiveDimensions = [obj.SyncPatchDimensions(1)+(obj.SyncPatchSizeY*(1-Value)) obj.SyncPatchDimensions(1)+obj.SyncPatchSizeY obj.SyncPatchDimensions(3)+(obj.SyncPatchSizeX*(1-Value)) obj.SyncPatchDimensions(4)];
+            obj.SyncPatchActiveArea = Value;
+        end
         function set.ShowViewportBorder(obj, Value)
-            if Value == 1
-                obj.ShowViewportBorder = 1;
-            else
-                obj.ShowViewportBorder = 0;
+            if Value > 1 || Value < 0
+                error('Viewport Border must be 0 (off) or 1 (on)')
             end
             Frame = zeros(obj.WindowDimensions(4)-obj.WindowDimensions(2), obj.WindowDimensions(3)-obj.WindowDimensions(1)); % Use actual window width
             if obj.ShowViewportBorder
@@ -88,21 +157,17 @@ classdef PsychToolboxVideoServer < handle
             Screen('DrawTexture', obj.Window, obj.BlankScreen);
             Screen('Flip', obj.Window);
             disp('Viewport border set. You must now manually re-load any stimuli you had previously loaded with loadMovie(), because the border is hard-coded in the video frames.')
+            obj.ShowViewportBorder = value;
         end
         function loadVideo(obj, VideoIndex, VideoMatrix)
             if ~isempty(obj.Videos{VideoIndex})
                 Screen('Close', obj.Videos{VideoIndex}.Data);
             end
-            if ~isempty(obj.TextStrings{VideoIndex})
-                error(['Error loading video: a text string is already loaded at index ' num2str(VideoIndex) '. Please clear it first.'])
-            end
             obj.Videos{VideoIndex} = struct;
             MatrixSize = size(VideoMatrix);
             VPdim = obj.ViewPortDimensions;
             DimensionError = 0;
-            if (MatrixSize(1) == VPdim(2)) && (MatrixSize(2) == VPdim(1))
-                
-            else
+            if ~(MatrixSize(1) == VPdim(2)) && (MatrixSize(2) == VPdim(1))
                  DimensionError = 1;
             end
             if length(MatrixSize) == 4
@@ -137,11 +202,13 @@ classdef PsychToolboxVideoServer < handle
                     case 1
                         frame = zeros(obj.WindowDimensions(4)-obj.WindowDimensions(2), obj.WindowDimensions(3)-obj.WindowDimensions(1)); % Use actual window width
                         frame(1+obj.ViewPortOffset(2):obj.ViewPortDimensions(2)+obj.ViewPortOffset(2), 1+obj.ViewPortOffset(1):obj.ViewPortDimensions(1)+obj.ViewPortOffset(1)) = VideoMatrix(:,:,i);
-                        frame(obj.SyncPatchDimensions(1):obj.SyncPatchDimensions(2),obj.SyncPatchDimensions(3):obj.SyncPatchDimensions(4)) = SignalOn*255;
+                        frame(obj.SyncPatchDimensions(1):obj.SyncPatchDimensions(2),obj.SyncPatchDimensions(3):obj.SyncPatchDimensions(4)) = 0;
+                        frame(obj.SyncPatchActiveDimensions(1):obj.SyncPatchActiveDimensions(2),obj.SyncPatchActiveDimensions(3):obj.SyncPatchActiveDimensions(4)) = SignalOn*obj.SyncPatchIntensity;
                     case 2
                         frame = zeros(obj.WindowDimensions(4)-obj.WindowDimensions(2), obj.WindowDimensions(3)-obj.WindowDimensions(1), 3); % Use actual window width
                         frame(1+obj.ViewPortOffset(2):obj.ViewPortDimensions(2)+obj.ViewPortOffset(2), 1+obj.ViewPortOffset(1):obj.ViewPortDimensions(1)+obj.ViewPortOffset(1), :) = VideoMatrix(:,:,:,i);
-                        frame(obj.SyncPatchDimensions(1):obj.SyncPatchDimensions(2),obj.SyncPatchDimensions(3):obj.SyncPatchDimensions(4),:) = SignalOn*255;
+                        frame(obj.SyncPatchDimensions(1):obj.SyncPatchDimensions(2),obj.SyncPatchDimensions(3):obj.SyncPatchDimensions(4),:) = 0;
+                        frame(obj.SyncPatchActiveDimensions(1):obj.SyncPatchActiveDimensions(2),obj.SyncPatchActiveDimensions(3):obj.SyncPatchActiveDimensions(4),:) = SignalOn*obj.SyncPatchIntensity;
                 end
                 if obj.ShowViewportBorder
                     frame = obj.addShowViewportBorder(frame);
@@ -160,28 +227,43 @@ classdef PsychToolboxVideoServer < handle
             end
             obj.Videos{VideoIndex}.Data(i+1) = Screen('MakeTexture', obj.Window, frame);
             obj.StimulusType(VideoIndex) = 0;
+            obj.nVideosLoaded = obj.nVideosLoaded + 1;
         end
         function loadText(obj, TextIndex, TextString, varargin)
-            if ~isempty(obj.Videos{TextIndex})
-                error(['Error loading text: a video is already loaded at index ' num2str(TextIndex) '. Please clear it first.'])
-            end
             obj.TextStrings{TextIndex} = cell(1,1);
             obj.TextStrings{TextIndex}{1} = TextString;
-            obj.TextStringStartPos{TextIndex} = [150 150];
+            obj.TextStrings{TextIndex}{2} = '';
             if nargin > 3
-                obj.TextStrings{TextIndex}{2} = varargin{1};
+                if ~isempty(varargin{1})
+                    obj.TextStrings{TextIndex}{2} = varargin{1};
+                end
             end
+            obj.TextStringFontSize(TextIndex) = 50;
             if nargin > 4
-                obj.TextStringFontSize(TextIndex) = varargin{2};
+                if ~isempty(varargin{2})
+                    obj.TextStringFontSize(TextIndex) = varargin{2};
+                end
             end
+            obj.TextStringStartPos{TextIndex} = obj.ViewPortDimensions/2;
             if nargin > 5
-                obj.TextStringStartPos{TextIndex} = varargin{3};
+                if ~isempty(varargin{3})
+                    obj.TextStringStartPos{TextIndex} = varargin{3};
+                end
+            end
+            obj.FontName{TextIndex} = 'Arial';
+            if nargin > 6
+                if ~isempty(varargin{4})
+                    candidateFont = varargin{4};
+                    if sum(strcmp(candidateFont, obj.AllFonts)) == 0
+                        error(['Error: ''' candidateFont ''' is not a font installed on the system.' char(10) 'Run ''listfonts'' at the MATLAB command line for a list of valid font names.'])
+                    end
+                    obj.FontName{TextIndex} = candidateFont;
+                end
             end
             obj.StimulusType(TextIndex) = 1;
         end
         function play(obj, StimulusIndex)
             if StimulusIndex == 0
-                Screen('AsyncFlipEnd', obj.Window);
                 Screen('DrawTexture', obj.Window, obj.BlankScreen);
                 Screen('Flip', obj.Window);
             else
@@ -190,23 +272,16 @@ classdef PsychToolboxVideoServer < handle
                         if obj.Videos{StimulusIndex}.nFrames == 1
                             if ~isempty(obj.Timer)
                                 stop(obj.Timer);
-                                delete(obj.Timer);
-                                obj.Timer = [];
                             end
-                            Screen('AsyncFlipEnd', obj.Window);
                             Screen('DrawTexture', obj.Window, obj.Videos{StimulusIndex}.Data(1));
                             Screen('Flip', obj.Window);
                         else
                             obj.CurrentFrame = 1;
                             obj.StimulusIndex = StimulusIndex;
                             if obj.TimerMode == 1
-                                if isempty(obj.Timer)
-                                    obj.Timer = timer('TimerFcn',@(x,y)obj.playNextFrame(), 'Period', 0.02,  ...
-                                        'ExecutionMode', 'fixedRate');
-                                    start(obj.Timer);
-                                end
+                                set(obj.Timer, 'TimerFcn', @(x,y)obj.playNextFrame());
+                                start(obj.Timer);
                             else
-                                Screen('AsyncFlipEnd', obj.Window);
                                 for iFrame = 1:obj.Videos{StimulusIndex}.nFrames
                                     Screen('DrawTexture', obj.Window, obj.Videos{obj.StimulusIndex}.Data(iFrame));
                                     [VBLts, SonsetTime, FlipTimestamp, Missed, BeamPos] = Screen('Flip', obj.Window);
@@ -216,32 +291,34 @@ classdef PsychToolboxVideoServer < handle
                     case 1 % Display text
                         if ~isempty(obj.Timer)
                             stop(obj.Timer);
-                            delete(obj.Timer);
-                            obj.Timer = [];
                         end
                         Strings = obj.TextStrings{StimulusIndex};
-                        nStrings = length(Strings);
-                        Screen('TextFont',obj.Window, obj.FontName);
-                        Screen('TextSize',obj.Window, obj.TextStringFontSize(StimulusIndex));
+                        nStrings = sum(~cellfun('isempty', Strings));
+                        FontSize = obj.TextStringFontSize(StimulusIndex);
+                        Screen('TextFont',obj.Window, obj.FontName{StimulusIndex});
+                        Screen('TextSize',obj.Window, FontSize);
                         Screen('TextStyle', obj.Window, 1);
-                        Y = obj.TextStringStartPos{StimulusIndex};
-                        X = 220-(50*(nStrings-1));
-                        Screen('AsyncFlipEnd', obj.Window);
+                        StartPos = obj.TextStringStartPos{StimulusIndex};
+                        Y = StartPos(1);
+                        X = StartPos(2);
                         Screen('DrawTexture', obj.Window, obj.BlankScreen);
                         for i = 1:nStrings
-                            Screen('DrawText', obj.Window, Strings{i}, Y(i), X, [255, 255, 255, 255]); X=X+50;
+                            textSize = Screen('TextBounds', obj.Window, Strings{i});
+                            ysize = textSize(3);
+                            xsize = textSize(4);
+                            xoffsetAmt = xsize;
+                            if i == 1 && nStrings > 1
+                                xoffsetAmt = xsize*1.5;
+                            end
+                            Screen('DrawText', obj.Window, Strings{i}, Y-(ysize/2), X-xoffsetAmt, [255, 255, 255, 255]); X=X+(xsize*1.5);
                         end
-                        Screen('AsyncFlipBegin',obj.Window);
+                        Screen('Flip', obj.Window);
                 end
             end
         end
         function stop(obj)
-            if ~isempty(obj.Timer)
-                stop(obj.Timer);
-                delete(obj.Timer);
-                obj.Timer = [];
-            end
-            Screen('AsyncFlipEnd', obj.Window);
+            stop(obj.Timer);
+            set(obj.Timer, 'TimerFcn', '');
             Screen('DrawTexture', obj.Window, obj.BlankScreen);
             Screen('Flip', obj.Window);
         end
@@ -252,6 +329,11 @@ classdef PsychToolboxVideoServer < handle
             frame(1+obj.ViewPortOffset(2), 1+obj.ViewPortOffset(1):obj.ViewPortDimensions(1)+obj.ViewPortOffset(1),:) = 64; % Top
         end
         function delete(obj)
+            if ~isempty(obj.Timer)
+                stop(obj.Timer);
+                delete(obj.Timer);
+                obj.Timer = [];
+            end
             for i = 1:obj.MaxVideos
                 if ~isempty(obj.Videos{i})
                     Screen('Close', obj.Videos{i}.Data);
@@ -261,14 +343,12 @@ classdef PsychToolboxVideoServer < handle
         end
         function playNextFrame(obj, e)
             thisFrame = obj.CurrentFrame;
-            Screen('AsyncFlipEnd', obj.Window);
             Screen('DrawTexture', obj.Window, obj.Videos{obj.StimulusIndex}.Data(thisFrame));
-            Screen('AsyncFlipBegin', obj.Window);
+            Screen('Flip', obj.Window);
             nextFrame = thisFrame+1;
             if nextFrame > obj.Videos{obj.StimulusIndex}.nFrames
                 stop(obj.Timer);
-                delete(obj.Timer);
-                obj.Timer = [];
+                set(obj.Timer, 'TimerFcn', '');
             end
             obj.CurrentFrame = nextFrame;
         end
