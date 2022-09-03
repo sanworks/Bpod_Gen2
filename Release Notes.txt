@@ -18,6 +18,7 @@
 -Audio: Added GenerateSineChord, a convenience function for making audio chords for use with HiFi module and PsychToolboxAudio class
 -Audio: Added GenerateSineSweep, a convenience function for making pure tone sweeps for use with HiFi module + PsychToolboxAudio 
 -Audio: Added SoundCalibration_Manual(), a function to generate audio calibration curves manually using a hand-held dB meter
+-Video: Updated PsychToolboxVideoServer to use a secondary display. Fixed text display to be centered, taking screen size into account.
 -Python integration: Added TCPCom.py, a Python class for Python applications to exchange bytes with Bpod's TCPCom class
 -Python integration: Added FindAnaconda(), a convenience function to discover the path to the user's default anaconda installation (Windows PC only)
 -Python integration: Added LaunchAnacondaApp(), a function to launch an Anaconda environment and run a .py file from the MATLAB command line
@@ -30,6 +31,7 @@
 -ArCOM: Added function to flush input buffer
 -ArCOM: Added double sided buffer to process incoming data. Uses 2x memory but is much more efficient if events are high frequency
 -HiFi Module: Fixed bug where amplitude of synthesized sounds at amp = 1 was actually 1/2 full scale (requires latest firmware)
+-HiFi Module: Fixed bug where after a power cycle, sounds could be played after loading but before push(). This would play whatever was on the SD card.
 -HiFi Module: Added function to disable UART serial port scanning during USB data transfer
 -Rotary Encoder Module: Added support for hardware v2
 -Rotary Encoder Module: Added option to readUSBStream() to specify an event code marking the end of the data read on this call.
