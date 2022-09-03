@@ -18,4 +18,4 @@ Firmware.ValveDriver = 1;
 Firmware.RotaryEncoder = 6;
 Firmware.EchoModule = 1;
 Firmware.AmbientModule = 2;
-Firmware.HiFi = 3;
+Firmware.HiFi = 4;
