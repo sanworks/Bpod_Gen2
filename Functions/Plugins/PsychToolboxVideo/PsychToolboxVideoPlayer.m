@@ -24,8 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
 % MonitorID: Index of the monitor to use (e.g. 1 or 2 in a dual monitor setup)
 %
-% WindowYoffset: If smaller than the monitor, the y offset of the display window. This must be set to 0 if using the whole monitor.
-% 
 % ViewPortSize: A portion of the window [length, width] in pixels can be used to show the video. Window area not in the viewport will be black,
 % and can contain the sync patch. Set ViewPortSize to 0 to use the entire screen.
 %
@@ -38,7 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
 % IMPORTANT: Videos must be B&W (1 layer per frame).
 
-classdef PsychToolboxVideoServer < handle
+classdef PsychToolboxVideoPlayer < handle
     properties
         Window % PsychToolbox Window object
         DetectedFrameRate % Detected frame rate of the target display in Hz
@@ -73,7 +71,7 @@ classdef PsychToolboxVideoServer < handle
         StimulusType % Vector of 0 = video, 1 = frame with centred text
     end
     methods
-        function obj = PsychToolboxVideoServer(MonitorID, WindowYoffset, ViewPortSize, ViewPortOffset, SyncPatchSize, SyncPatchYOffset)
+        function obj = PsychToolboxVideoPlayer(MonitorID, ViewPortSize, ViewPortOffset, SyncPatchSize, SyncPatchYOffset)
             % Destroy any orphaned timers from previous instances
             T = timerfindall;
             for i = 1:length(T)
@@ -104,8 +102,8 @@ classdef PsychToolboxVideoServer < handle
             [obj.Window, MonitorSize] = Screen('OpenWindow', MonitorID, 0);
             MonitorSize(1:2) = 1;
             WindowSize = MonitorSize(3:4);
-            obj.WindowDimensions = [MonitorSize(3)-WindowSize(1) (MonitorSize(4)-WindowYoffset)-WindowSize(2)... 
-            MonitorSize(3) (MonitorSize(4)-WindowYoffset)];
+            obj.WindowDimensions = [MonitorSize(3)-WindowSize(1) MonitorSize(4)-WindowSize(2)... 
+            MonitorSize(3) MonitorSize(4)];
             obj.DetectedFrameRate = Screen('FrameRate', obj.Window);
             obj.TimerFPS = obj.DetectedFrameRate;
             Frame = zeros(WindowSize(2), WindowSize(1));

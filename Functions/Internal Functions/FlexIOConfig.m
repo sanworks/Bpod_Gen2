@@ -32,13 +32,13 @@ BG = imread('InputChannelConfig2.bmp');
 image(BG); axis off;
 ChannelTypeStrings = {'Digital In', 'Digital Out', 'Analog In', 'Analog Out'};
 BpodSystem.GUIHandles.FlexConfig1 = uicontrol('Style', 'popupmenu', 'String', ChannelTypeStrings, 'Position', [35 120 100 15],... 
-    'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', [0.5 0.5 0.5], 'FontSize', 12, 'Value', BpodSystem.HW.FlexIOChannelTypes(1)+1);
+    'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', [0.5 0.5 0.5], 'FontSize', 12, 'Value', BpodSystem.HW.FlexIO_ChannelTypes(1)+1);
 BpodSystem.GUIHandles.FlexConfig2 = uicontrol('Style', 'popupmenu', 'String', ChannelTypeStrings, 'Position', [145 120 100 15],... 
-    'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', [0.5 0.5 0.5], 'FontSize', 12, 'Value', BpodSystem.HW.FlexIOChannelTypes(2)+1);
+    'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', [0.5 0.5 0.5], 'FontSize', 12, 'Value', BpodSystem.HW.FlexIO_ChannelTypes(2)+1);
 BpodSystem.GUIHandles.FlexConfig3 = uicontrol('Style', 'popupmenu', 'String', ChannelTypeStrings, 'Position', [255 120 100 15],... 
-    'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', [0.5 0.5 0.5], 'FontSize', 12, 'Value', BpodSystem.HW.FlexIOChannelTypes(3)+1);
+    'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', [0.5 0.5 0.5], 'FontSize', 12, 'Value', BpodSystem.HW.FlexIO_ChannelTypes(3)+1);
 BpodSystem.GUIHandles.FlexConfig4 = uicontrol('Style', 'popupmenu', 'String', ChannelTypeStrings, 'Position', [365 120 100 15],... 
-    'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', [0.5 0.5 0.5], 'FontSize', 12, 'Value', BpodSystem.HW.FlexIOChannelTypes(4)+1);
+    'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', [0.5 0.5 0.5], 'FontSize', 12, 'Value', BpodSystem.HW.FlexIO_ChannelTypes(4)+1);
 
 text(130, 25, 'Flex I/O Config', 'FontName', FontName, 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
 

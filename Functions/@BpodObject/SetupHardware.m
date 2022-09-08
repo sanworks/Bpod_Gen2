@@ -152,7 +152,7 @@ function obj = SetupHardware(obj)
         obj.StateMachineInfo.MaxStates = obj.SerialPort.read(1, 'uint16');
         obj.HW.CyclePeriod = double(obj.SerialPort.read(1, 'uint16'));
         obj.HW.CycleFrequency = 1000000/double(obj.HW.CyclePeriod);
-        obj.HW.FlexIOSamplingRate = 1000;
+        obj.HW.FlexIO_SamplingRate = 1000;
         obj.HW.ValveType = 'SPI';
         obj.HW.n.MaxSerialEvents = double(obj.SerialPort.read(1, 'uint8'));
         if obj.FirmwareVersion > 22
@@ -199,7 +199,9 @@ function obj = SetupHardware(obj)
                 end
             end
             obj.SerialPort.write('q', 'uint8');
-            obj.HW.FlexIOChannelTypes = obj.SerialPort.read(nFlexIOChannels, 'uint8'); % Channel types are: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC
+            obj.HW.FlexIO_ChannelTypes = obj.SerialPort.read(nFlexIOChannels, 'uint8'); % Channel types are: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC
+            obj.SerialPort.write('.', 'uint8');
+            obj.HW.FlexIO_nSamplesPerMeasurement = obj.SerialPort.read(1, 'uint8'); % Can be set to >1 for oversampling (up to 4x)
             obj.AnalogThresholdConfig = struct;
             obj.AnalogThresholdConfig.Threshold1 = ones(1,nFlexIOChannels)*4095;
             obj.AnalogThresholdConfig.Threshold2 = ones(1,nFlexIOChannels)*4095;

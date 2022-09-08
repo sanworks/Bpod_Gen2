@@ -87,11 +87,11 @@ function obj = SetupStateMachine(obj)
                     obj.HW.Pos.Event_FlexIO = Pos;
                 end
                 nChannels = nChannels + 1; nFlexIO = nFlexIO + 1;
-                if obj.HW.FlexIOChannelTypes(nFlexIO) == 0
+                if obj.HW.FlexIO_ChannelTypes(nFlexIO) == 0
                     InputChannelNames{nChannels} = ['Flex' num2str(nFlexIO)];
                     EventNames{Pos} = [InputChannelNames{nChannels} 'High']; Pos = Pos + 1;
                     EventNames{Pos} = [InputChannelNames{nChannels} 'Low']; Pos = Pos + 1;
-                elseif obj.HW.FlexIOChannelTypes(nFlexIO) == 2
+                elseif obj.HW.FlexIO_ChannelTypes(nFlexIO) == 2
                     InputChannelNames{nChannels} = ['Flex' num2str(nFlexIO)];
                     EventNames{Pos} = [InputChannelNames{nChannels} 'Trig1']; Pos = Pos + 1;
                     EventNames{Pos} = [InputChannelNames{nChannels} 'Trig2']; Pos = Pos + 1;
@@ -186,9 +186,9 @@ function obj = SetupStateMachine(obj)
                     obj.HW.Pos.Output_FlexIO = Pos;
                 end
                 nFlexIO = nFlexIO + 1;
-                if obj.HW.FlexIOChannelTypes(nFlexIO) == 1
+                if obj.HW.FlexIO_ChannelTypes(nFlexIO) == 1
                     OutputChannelNames{Pos} = ['Flex' num2str(nFlexIO) 'DO'];
-                elseif obj.HW.FlexIOChannelTypes(nFlexIO) == 3
+                elseif obj.HW.FlexIO_ChannelTypes(nFlexIO) == 3
                     OutputChannelNames{Pos} = ['Flex' num2str(nFlexIO) 'AO'];
                 else
                     OutputChannelNames{Pos} = '---';

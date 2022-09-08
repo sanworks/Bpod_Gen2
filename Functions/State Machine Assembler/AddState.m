@@ -225,7 +225,7 @@ for x = 1:2:length(OutputActions)
                     if (TargetEventCode >= BpodSystem.HW.Pos.Output_FlexIO) && (TargetEventCode < BpodSystem.HW.Pos.Output_BNC)
                     % If FlexIO channel is analog output, convert volts to bits
                         TargetFlexIOChannel = TargetEventCode - (BpodSystem.HW.Pos.Output_FlexIO-1);
-                        if BpodSystem.HW.FlexIOChannelTypes(TargetFlexIOChannel) == 3
+                        if BpodSystem.HW.FlexIO_ChannelTypes(TargetFlexIOChannel) == 3
                             MaxFlexIOVoltage = 5;
                             if (Value > MaxFlexIOVoltage) || (Value < 0)
                                 error('Error: Flex I/O channel voltages must be in range [0, 5]');

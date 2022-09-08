@@ -96,7 +96,7 @@ if nargin > 10
     if BpodSystem.MachineType == 4
         if (OutputChannelIndex >= BpodSystem.HW.Pos.Output_FlexIO) && (OutputChannelIndex < BpodSystem.HW.Pos.Output_BNC)
             TargetFlexIOChannel = OutputChannelIndex - (BpodSystem.HW.Pos.Output_FlexIO-1);
-            if BpodSystem.HW.FlexIOChannelTypes(TargetFlexIOChannel) == 3
+            if BpodSystem.HW.FlexIO_ChannelTypes(TargetFlexIOChannel) == 3
                 if (OnMessage > MaxFlexIOVoltage) || (OnMessage < 0)
                     error('Error: Flex I/O channel voltages must be in range [0, 5]');
                 end
@@ -110,7 +110,7 @@ if nargin > 12
     if BpodSystem.MachineType == 4
         if (OutputChannelIndex >= BpodSystem.HW.Pos.Output_FlexIO) && (OutputChannelIndex < BpodSystem.HW.Pos.Output_BNC)
             TargetFlexIOChannel = OutputChannelIndex - (BpodSystem.HW.Pos.Output_FlexIO-1);
-            if BpodSystem.HW.FlexIOChannelTypes(TargetFlexIOChannel) == 3
+            if BpodSystem.HW.FlexIO_ChannelTypes(TargetFlexIOChannel) == 3
                 if (OffMessage > MaxFlexIOVoltage) || (OffMessage < 0)
                     error('Error: Flex I/O channel voltages must be in range [0, 5]');
                 end

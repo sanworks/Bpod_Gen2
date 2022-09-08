@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function obj = analogViewer(obj, op, newData)
 switch op
     case 'init'
-        if sum(obj.HW.FlexIOChannelTypes == 2) == 0 % If no FlexIO channels are configured as analog input
+        if sum(obj.HW.FlexIO_ChannelTypes == 2) == 0 % If no FlexIO channels are configured as analog input
             BpodErrorDlg(['No FlexI/O channels are' char(10) 'configured as analog inputs.']);
         end
         if isfield(obj.GUIHandles, 'OscopeFig_Builtin')
@@ -41,7 +41,7 @@ switch op
         obj.GUIHandles.OSC.TimeDivPos = 3;
         obj.GUIHandles.OSC.VoltDivValues = [0.02 0.05 0.1 0.2 0.5 1 2 5];
         obj.GUIHandles.OSC.TimeDivValues = [0.05 0.1 0.2 0.5 1];
-        obj.GUIHandles.OSC.nDisplaySamples = obj.HW.FlexIOSamplingRate*obj.GUIHandles.OSC.TimeDivValues(obj.GUIHandles.OSC.TimeDivPos)*obj.GUIHandles.OSC.nXDivisions;
+        obj.GUIHandles.OSC.nDisplaySamples = obj.HW.FlexIO_SamplingRate*obj.GUIHandles.OSC.TimeDivValues(obj.GUIHandles.OSC.TimeDivPos)*obj.GUIHandles.OSC.nXDivisions;
         obj.GUIHandles.OSC.SweepPos = 1;
         obj.GUIHandles.OSC.DCmode = 0;
         obj.GUIHandles.OSC.DCOffset = zeros(1,obj.HW.n.FlexIO);
@@ -146,10 +146,10 @@ switch op
         currentVoltDivValue = obj.GUIHandles.OSC.VoltDivValues(obj.GUIHandles.OSC.VoltDivPos);
         MaxVolts = currentVoltDivValue*(obj.GUIHandles.OSC.nYDivisions);
         HalfMax = MaxVolts/2;
-        nAnalogInputs = sum(obj.HW.FlexIOChannelTypes == 2);
+        nAnalogInputs = sum(obj.HW.FlexIO_ChannelTypes == 2);
         ResetFlag = 0;
         for ch = 1:obj.HW.n.FlexIO
-            if obj.HW.FlexIOChannelTypes(ch) == 2
+            if obj.HW.FlexIO_ChannelTypes(ch) == 2
                 dataCh = dataCh + 1;
                 NSThisCh = newData(dataCh,:);
                 nNewSamples = length(NSThisCh);
@@ -208,7 +208,7 @@ switch op
         if (NewPos > 0) && (NewPos <= length(obj.GUIHandles.OSC.TimeDivValues))
             obj.GUIHandles.OSC.TimeDivPos = obj.GUIHandles.OSC.TimeDivPos + newData;
             newTimeDivValue = obj.GUIHandles.OSC.TimeDivValues(obj.GUIHandles.OSC.TimeDivPos);
-            nSamplesPerSweep = obj.HW.FlexIOSamplingRate*newTimeDivValue*obj.GUIHandles.OSC.nXDivisions;
+            nSamplesPerSweep = obj.HW.FlexIO_SamplingRate*newTimeDivValue*obj.GUIHandles.OSC.nXDivisions;
             Interval = obj.GUIHandles.OSC.nXDivisions/(nSamplesPerSweep-1);
             obj.GUIHandles.OSCData.Xdata = 0:Interval:obj.GUIHandles.OSC.nXDivisions;
             obj.GUIHandles.OSC.SweepPos = 1;

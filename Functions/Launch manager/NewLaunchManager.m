@@ -694,7 +694,7 @@ end
 % On Bpod r2+, if FlexIO channels are configured as analog,
 % setup binary data file
 if BpodSystem.MachineType > 3
-    nAnalogChannels = sum(BpodSystem.HW.FlexIOChannelTypes == 2);
+    nAnalogChannels = sum(BpodSystem.HW.FlexIO_ChannelTypes == 2);
     if nAnalogChannels > 0
         AnalogFilename = [BpodSystem.Path.CurrentDataFile(1:end-4) '_ANLG.dat'];
         if BpodSystem.Status.RecordAnalog == 1
@@ -726,8 +726,8 @@ if BpodSystem.MachineType > 3
                                                         'SessionData.Analog.TrialNumber = Data(1:SessionData.Analog.nChannels+1:end)''; SessionData.Analog.TrialData = cell(1,SessionData.nTrials); '... 
                                                         'for i = 1:SessionData.nTrials; SessionData.Analog.TrialData{i} = SessionData.Analog.Samples(:,SessionData.Analog.TrialNumber == i); end; clear Data; clear i;'];        
         BpodSystem.Data.Analog.nChannels = nAnalogChannels;
-        BpodSystem.Data.Analog.channelNumbers = find(BpodSystem.HW.FlexIOChannelTypes == 2);
-        BpodSystem.Data.Analog.SamplingRate = BpodSystem.HW.FlexIOSamplingRate;
+        BpodSystem.Data.Analog.channelNumbers = find(BpodSystem.HW.FlexIO_ChannelTypes == 2);
+        BpodSystem.Data.Analog.SamplingRate = BpodSystem.HW.FlexIO_SamplingRate;
         BpodSystem.Data.Analog.nSamples = 0;
     end
 end
