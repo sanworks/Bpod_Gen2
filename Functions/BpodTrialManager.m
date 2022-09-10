@@ -57,7 +57,7 @@ classdef BpodTrialManager < handle
         function obj = BpodTrialManager %Constructor
             global BpodSystem
             if isempty(BpodSystem)
-                error('You must run Bpod() before creating an instance of TrialManagerObject.')
+                error('You must run Bpod() before creating an instance of BpodTrialManager.')
             end
             if BpodSystem.EmulatorMode == 1
                 error('Error: The Bpod emulator does not currently support running state machines with TrialManager.')
@@ -229,7 +229,7 @@ classdef BpodTrialManager < handle
                 if ischar(triggerStates)
                     triggerStates = {triggerStates};
                 elseif ~iscell(triggerStates)
-                    error('Error running TrialManagerObject.getCurrentEvents() - triggerStates argument must be a cell array of strings')
+                    error('Error running BpodTrialManager.getCurrentEvents() - triggerStates argument must be a cell array of strings')
                 end
                 obj.NextTrialTriggerStates = find(ismember(BpodSystem.StateMatrix.StateNames, triggerStates));
                 if length(obj.NextTrialTriggerStates) == length(triggerStates)
@@ -252,10 +252,10 @@ classdef BpodTrialManager < handle
                         obj.Timer = [];
                     end
                 else
-                    error('Error running TrialManagerObject.getCurrentEvents() - triggerStates argument contains at least 1 invalid state name.')
+                    error('Error running BpodTrialManager.getCurrentEvents() - triggerStates argument contains at least 1 invalid state name.')
                 end
             else
-                error('Error running TrialManagerObject.getCurrentEvents() - triggerStates argument must be a cell array of strings')
+                error('Error running BpodTrialManager.getCurrentEvents() - triggerStates argument must be a cell array of strings')
             end
         end
         function delete(obj)
