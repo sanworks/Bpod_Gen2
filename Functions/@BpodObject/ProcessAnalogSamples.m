@@ -19,7 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function ProcessAnalogSamples(obj, e)
     if obj.AnalogSerialPort.bytesAvailable() > 0
-        %tic
         nChannels = sum(obj.HW.FlexIO_ChannelTypes == 2);
         nBytesAvailable = obj.AnalogSerialPort.bytesAvailable;
         nSamplesToRead = floor(nBytesAvailable/((2*(nChannels+1))));
@@ -36,6 +35,5 @@ function ProcessAnalogSamples(obj, e)
                 obj.analogViewer('update', newData);
             end
         end
-        %toc
     end
 end

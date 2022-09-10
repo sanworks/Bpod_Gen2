@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -67,7 +67,13 @@ classdef BpodObject < handle
         IsOnline % 1 if connection to Internet is available, 0 if not
     end
     methods
-        function obj = BpodObject %Constructor            
+        function obj = BpodObject %Constructor 
+            % Check path for duplicate Bpod installations
+            MatlabPath = path;
+            nInstallations = length([strfind(MatlabPath, 'Bpod_Gen2;') strfind(MatlabPath, 'Bpod_Gen2-develop;')]);
+            if nInstallations > 1
+                error(['Duplicate Bpod_Gen2 folders found in the MATLAB path. ' char(10) 'Please remove duplicates of Bpod_Gen2 and any duplicate subfolders before running Bpod.'])
+            end
             % Add Bpod code to MATLAB path
             BpodPath = fileparts(which('Bpod'));
             addpath(genpath(fullfile(BpodPath, 'Assets')));

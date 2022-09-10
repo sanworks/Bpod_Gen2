@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -47,17 +47,13 @@ if nargin > 0
     if strcmp(varargin{1}, 'EMU')
         EmulatorDialog;
     else
-        %try
-            if nargin > 1
-                ForceJava = varargin{2};
-                BpodSystem.Connect2BpodSM(varargin{1}, ForceJava);
-            else
-                BpodSystem.Connect2BpodSM(varargin{1});
-            end
-            BpodSetup;
-        %catch
-        %    EmulatorDialog;
-        %end
+        if nargin > 1
+            ForceJava = varargin{2};
+            BpodSystem.Connect2BpodSM(varargin{1}, ForceJava);
+        else
+            BpodSystem.Connect2BpodSM(varargin{1});
+        end
+        BpodSetup;
     end
 else
     try

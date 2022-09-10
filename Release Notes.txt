@@ -9,6 +9,8 @@
 -Added a new sync channel scheme with FW v23: a 10Hz square wave runs for the duration of the trial, with logic flips on trial start/end.
 -Added assertModule() method of BpodSystem. Throws an error if the named module is not connected. An optional flag will also error if not USB paired.
 -Added AddFlexIOAnalogData(), an optional function run after the session to combine the Flex I/O analog data file with the main behavior data structure.
+-Added an error on startup if duplicate versions of Bpod_Gen2 exist in the MATLAB path
+-Updated BpodErrorSound to avoid use of AudioRead
 -Updated firmware binaries
 -Updated example protocols to use latest syntax
 -Limited console GUI refreshes when USB data is backlogged in buffer. Improves handling of high frequency events.
@@ -18,7 +20,7 @@
 -Audio: Added GenerateSineChord, a convenience function for making audio chords for use with HiFi module and PsychToolboxAudio class
 -Audio: Added GenerateSineSweep, a convenience function for making pure tone sweeps for use with HiFi module + PsychToolboxAudio 
 -Audio: Added SoundCalibration_Manual(), a function to generate audio calibration curves manually using a hand-held dB meter
--Video: Updated PsychToolboxVideoServer to use a secondary display. Fixed text display to be centered, taking screen size into account.
+-Video: Added PsychToolboxVideoPlayer, a new class to play video on a secondary display. Depricated PsychToolboxVideoServer.
 -Python integration: Added TCPCom.py, a Python class for Python applications to exchange bytes with Bpod's TCPCom class
 -Python integration: Added FindAnaconda(), a convenience function to discover the path to the user's default anaconda installation (Windows PC only)
 -Python integration: Added LaunchAnacondaApp(), a function to launch an Anaconda environment and run a .py file from the MATLAB command line

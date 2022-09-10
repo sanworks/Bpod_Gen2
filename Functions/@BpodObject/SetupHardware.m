@@ -32,7 +32,7 @@ function obj = SetupHardware(obj)
         obj.HW.n.Outputs = 25;
         obj.HW.Outputs = 'UUUXBBWWWPPPPPPPPVVVVVVVVGGG';
         close(obj.GUIHandles.LaunchEmuFig);
-        disp('Connection aborted. Bpod started in Emulator mode: State Machine v0.7.')
+        disp('Connection aborted. Bpod started in Emulator mode: State Machine v1.0')
         obj.FirmwareVersion = obj.CurrentFirmware.StateMachine;
         obj.MachineType = 2;
         nModules = sum(obj.HW.Outputs=='U');
@@ -42,6 +42,7 @@ function obj = SetupHardware(obj)
         obj.Modules.EventNames = cell(1,nModules);
         obj.Modules.RelayActive = zeros(1,nModules);
         obj.Modules.USBport = cell(1,nModules);
+        AppSerialPortName = [];
     else
         % Get firmware version
         obj.SerialPort.write('F', 'uint8');
@@ -258,7 +259,7 @@ function obj = SetupHardware(obj)
     if obj.FirmwareVersion > 22 
         if obj.EmulatorMode == 1
             obj.HW.CircuitRevision.StateMachine = 0;
-             obj.HW.minorFirmwareVersion = 1;
+             obj.HW.minorFirmwareVersion = obj.CurrentFirmware.StateMachine_Minor;
         else
             obj.SerialPort.write('v', 'uint8');
             SM_Revision = obj.SerialPort.read(1, 'uint8');
