@@ -53,7 +53,7 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
 end
 
 % Configure Flex I/O Channels
-BpodSystem.setFlexIO([2 1 1 1]);
+BpodSystem.setFlexIO_ChannelTypes([2 1 1 1]);
 
 %% Setup Analog Thresholds
 BpodSystem.setAnalogThresholds('Threshold1', ones(1,4)*4000); % In range 0-4095

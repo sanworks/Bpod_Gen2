@@ -357,7 +357,7 @@ classdef BpodObject < handle
             end
         end
         function obj = SetStatusLED(obj, status)
-            error('Capitalization error. setStatusLED needs a lowercase ''s''') % For users on the develop branch
+            error('Error: incorrect syntax. U')
         end
         function StartModuleRelay(obj, Module)
             if ischar(Module)
@@ -392,7 +392,7 @@ classdef BpodObject < handle
             end
             obj.Modules.RelayActive(1:end) = 0;
         end
-        function setFlexIO_ChannelTypes(obj, channelTypes)
+        function setFlexIO(obj, channelTypes)
             % ChannelTypes: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC
             if length(channelTypes) ~= obj.HW.n.FlexIO
                 error(['Error using setFlexIO: the channelTypes vector must specify one type for each of the ' num2str(obj.HW.n.FlexIO) ' FlexIO channels.']);
