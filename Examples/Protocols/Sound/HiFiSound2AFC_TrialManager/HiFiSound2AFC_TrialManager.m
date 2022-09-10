@@ -40,7 +40,7 @@ BpodSystem.assertModule('HiFi', 'USBpaired');
 H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1); % The argument is the name of the HiFi module's USB serial port (e.g. COM3)
 
 %% Create trial manager object
-TrialManager = TrialManagerObject;
+TrialManager = BpodTrialManager;
 
 %% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S

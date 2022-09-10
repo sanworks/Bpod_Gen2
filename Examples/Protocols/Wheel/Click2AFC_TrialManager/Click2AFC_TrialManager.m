@@ -63,7 +63,7 @@ if BpodSystem.Modules.HWVersion_Major(strcmp(BpodSystem.Modules.Name, 'RotaryEnc
 end
 
 %% Create trial manager object
-TrialManager = TrialManagerObject;
+TrialManager = BpodTrialManager;
 
 %% Define task parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S

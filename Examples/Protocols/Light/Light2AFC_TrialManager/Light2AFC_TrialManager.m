@@ -40,7 +40,7 @@ function Light2AFC_TrialManager
 
 global BpodSystem
 %% Create trial manager object
-TrialManager = TrialManagerObject;
+TrialManager = BpodTrialManager;
 
 %% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
