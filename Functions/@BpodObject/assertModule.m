@@ -21,33 +21,32 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % Returns an error if any modules in ModuleNames are not registered with
 % the state machine. Note: the 'Refresh' button on the console GUI
 % registers newly connected modules.
-% Optional argument 'USBParied' will return an error if all modules in
-% ModuleNames are not paired with their respective USB serial ports (see 'USB' button on the console GUI)
+% Optional argument 'USBParied' is an array of 1s and 0s indicating which module(s) must be
+% paired with their respective USB serial ports (see 'USB' button on the console GUI)
 %
 % Example Usage: 
 % BpodSystem.AssertModule('ValveDriver'); % Does not have to be USB paired
-% BpodSystem.AssertModule({'HiFi', RotaryEncoder}, 'USBPaired');
+% BpodSystem.AssertModule({'HiFi', 'ValveDriver'}, [1 0]); % HiFi must be USB paired, but ValveDriver does not
 
 function obj = assertModule(obj, ModuleNames, varargin)
-    USBParied = 0;
-    if nargin > 2
-        optArg = varargin{1};
-        if ischar(optArg)
-            if strcmp(lower(optArg), 'usbpaired')
-                USBParied = 1;
-            end
-        end
-    end
     if ischar(ModuleNames)
         ModuleNames = {ModuleNames};
     end
     nModules = length(ModuleNames);
+    USBParied = zeros(1,nModules);
+    if nargin > 2
+        optArg = varargin{1};
+        if length(optArg) ~= nModules
+            error('Error using assertModule: if a USB pairing vector is supplied, there must be one value per module')
+        end
+        USBParied = optArg;
+    end
     for i = 1:nModules
         ThisModule = [ModuleNames{i} '1'];
         if sum(strcmp(obj.Modules.Name, ThisModule)) == 0
             error(['Bpod ' ModuleNames{i} ' module not found.' char(10) 'Connect the module to a state machine ''Module'' port and click the ''refresh'' icon on the Bpod console.'])
         end
-        if USBParied
+        if USBParied(i)
             if ~isfield(obj.ModuleUSB, ThisModule)
                 error(['Error: To run this protocol, you must first pair the ' ModuleNames{i} ' module with its USB port.' char(10) 'Click the USB config button on the Bpod console.'])
             end

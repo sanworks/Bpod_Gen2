@@ -35,7 +35,7 @@ function HiFiSound2AFC_TrialManager
 global BpodSystem
 
 %% Assert HiFi module is present + USB-paired (via USB button on console GUI)
-BpodSystem.assertModule('HiFi', 'USBpaired');
+BpodSystem.assertModule('HiFi', 1); % The second argument (1) indicates that AnalogIn must be paired with its USB serial port
 % Create an instance of the HiFi module
 H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1); % The argument is the name of the HiFi module's USB serial port (e.g. COM3)
 

@@ -42,7 +42,7 @@ function Light2AFC_AnalogStreaming
 global BpodSystem
 
 %% Assert Analog Input module is present + USB-paired (via USB button on console GUI)
-BpodSystem.assertModule('AnalogIn', 'USBpaired');
+BpodSystem.assertModule('AnalogIn', 1); % The second argument (1) indicates that AnalogIn must be paired with its USB serial port
 % Create an instance of the Analog Input module
 A = BpodAnalogIn(BpodSystem.ModuleUSB.AnalogIn1);
 

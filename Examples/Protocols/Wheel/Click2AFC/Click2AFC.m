@@ -51,7 +51,7 @@ function Click2AFC
 global BpodSystem
 
 %% Assert HiFi + Rotary Encoder modules are present + USB-paired (via USB button on console GUI)
-BpodSystem.assertModule({'HiFi','RotaryEncoder'}, 'USBpaired');
+BpodSystem.assertModule({'HiFi','RotaryEncoder'}, [1 1]); % The second argument [1 1] indicates that both HiFi and RotaryEncoder must be paired with their respective USB serial ports
 % Create an instance of the HiFi module
 H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1); % The argument is the name of the HiFi module's USB serial port (e.g. COM3)
 % Create an instance of the RotaryEncoder module
