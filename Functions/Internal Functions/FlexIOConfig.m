@@ -50,5 +50,5 @@ BpodFlexConfig(1) = get(BpodSystem.GUIHandles.FlexConfig1, 'Value')-1;
 BpodFlexConfig(2) = get(BpodSystem.GUIHandles.FlexConfig2, 'Value')-1;
 BpodFlexConfig(3) = get(BpodSystem.GUIHandles.FlexConfig3, 'Value')-1;
 BpodFlexConfig(4) = get(BpodSystem.GUIHandles.FlexConfig4, 'Value')-1;
-BpodSystem.setFlexIO(BpodFlexConfig);
+BpodSystem.setFlexIO_ChannelTypes(BpodFlexConfig);
 save(BpodSystem.Path.FlexConfig, 'BpodFlexConfig');
