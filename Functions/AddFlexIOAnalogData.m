@@ -19,13 +19,40 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 % This function is intended to be run after a behavior session is complete.
-% It reads the Flex I/O analog data file and combines it into BpodSystem.Data
+% It reads the current Flex I/O analog data file and combines it into BpodSystem.Data
 
-function AddFlexIOAnalogData
+function AddFlexIOAnalogData(varargin)
+%
+% Optional arguments must be provided in order, up to the argument required. 
+% Arg 1: Data format. Default = 'Volts'. Use 'Bits' for a smaller data file. 
+% In 'Bits' mode, samples are 12-bit values (0-4095), spanning the 0-5V range
+%
+% Arg 2: Include trial-aligned data. This includes a cell array with cells containing
+% a copy of the analog data captured on each trial. This makes your data file larger. 
+% Values: 1 to include, 0 if not.
+%
+% Example usage:
+% AddFlexIOAnalogData('Bits', 1) imports data in bits, and adds a trial-aligned copy of the data.
+
 global BpodSystem
+% Default params
+VoltageRangeMax = 5; % Hard-coded
+TargetDataFormat = 0; % 0 = Volts, 1 = bits (0-4095 encoding voltage in range 0-5V)
+IncludeTrialAlignedData = 0; % If set to 
+% Check for overrides
+if nargin > 0
+    TargetDataString = varargin{1};
+    if strcmpi(TargetDataString, 'bits')
+        TargetDataFormat = 1;
+    end
+end
+if nargin > 1
+    IncludeTrialAlignedData = varargin{1};
+end
 if isfield(BpodSystem.Data, 'Analog')
     if BpodSystem.MachineType > 3
         stop(BpodSystem.Timers.AnalogTimer); % Stop acquisition + data logging
+        disp('Importing Flex I/O analog data to primary behavior data file. Please wait...')
         pause(.5);
         AnalogMeta = BpodSystem.Data.Analog;
         myFile = fopen(AnalogMeta.FileName, 'r');
@@ -33,19 +60,34 @@ if isfield(BpodSystem.Data, 'Analog')
             warning(['AddFlexIOAnalogData was called but could not open the analog data file: ' AnalogMeta.FileName ' No data was added to the primary data file.'])
         else
             Data = fread(myFile, (AnalogMeta.nSamples*AnalogMeta.nChannels)+AnalogMeta.nSamples, 'uint16');
-            fclose(myFile);
-            clear myFile; 
-            BpodSystem.Data.Analog.Samples = []; 
-            for i = 1:BpodSystem.Data.Analog.nChannels
-                BpodSystem.Data.Analog.Samples(i,:) = Data(i+1:AnalogMeta.nChannels+1:end)'; 
+            if TargetDataFormat == 0
+                FormattedData = (double(Data)/4095)*VoltageRangeMax; % Convert to volts
+                BpodSystem.Data.Analog.info.Samples = 'Analog measurements captured. Rows are separate analog input channels. Units = Volts';
+            else
+                FormattedData = Data;
+                BpodSystem.Data.Analog.info.Samples = 'Analog measurements captured. Rows are separate analog input channels. Units = Bits (0-4095) encoding volts (0-5V)';
             end
-            BpodSystem.Data.Analog.Timestamps = BpodSystem.Data.TrialStartTimestamp:(1/AnalogMeta.SamplingRate):BpodSystem.Data.TrialStartTimestamp+((1/AnalogMeta.SamplingRate)*(AnalogMeta.nSamples-1)); 
-            BpodSystem.Data.Analog.TrialNumber = Data(1:AnalogMeta.nChannels+1:end)'; 
-            BpodSystem.Data.Analog.TrialData = cell(1,BpodSystem.Data.nTrials); 
-            for i = 1:BpodSystem.Data.nTrials
-                BpodSystem.Data.Analog.TrialData{i} = BpodSystem.Data.Analog.Samples(:,BpodSystem.Data.Analog.TrialNumber == i); 
+            fclose(myFile);
+            clear myFile;
+            BpodSystem.Data.Analog.Samples = [];
+            for i = 1:BpodSystem.Data.Analog.nChannels
+                BpodSystem.Data.Analog.Samples(i,:) = FormattedData(i+1:AnalogMeta.nChannels+1:end)';
+            end
+            oneTrialCompleted = isfield(BpodSystem.Data, 'TrialStartTimestamp');
+            if oneTrialCompleted
+                BpodSystem.Data.Analog.Timestamps = BpodSystem.Data.TrialStartTimestamp:(1/AnalogMeta.SamplingRate):BpodSystem.Data.TrialStartTimestamp+((1/AnalogMeta.SamplingRate)*(AnalogMeta.nSamples-1));
+                BpodSystem.Data.Analog.TrialNumber = Data(1:AnalogMeta.nChannels+1:end)';
+                if IncludeTrialAlignedData
+                    BpodSystem.Data.Analog.TrialData = cell(1,BpodSystem.Data.nTrials);
+                    for i = 1:BpodSystem.Data.nTrials
+                        BpodSystem.Data.Analog.TrialData{i} = BpodSystem.Data.Analog.Samples(:,BpodSystem.Data.Analog.TrialNumber == i);
+                    end
+                end
+            else
+                warning('Flex I/O analog data NOT saved; the state machine must reach the exit state to complete at least 1 trial before data can be properly aligned.')
             end
         end
+        disp('Data import complete.')
     end
 else
     warning('AddFlexIOAnalogData was called but could not find analog data to add. No data was added to the primary data file.')

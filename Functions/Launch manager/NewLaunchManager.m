@@ -119,7 +119,7 @@ else
     BpodSystem.Status.CurrentProtocolName = SelectedProtocolName;
     DataPath = fullfile(BpodSystem.Path.DataFolder,BpodSystem.GUIData.DummySubjectString);
     ProtocolName = BpodSystem.Status.CurrentProtocolName;
-    
+
     %Make standard folders for this protocol.  This will fail silently if the folders exist
     warning off % Suppress warning that directory already exists
     mkdir(DataPath, ProtocolName);
@@ -170,7 +170,7 @@ else
             ProtocolSettings = struct;
             save(DefaultSettingsPath, 'ProtocolSettings')
         end
-        
+
         loadSubjects(ProtocolName);
         loadSettings(ProtocolName, BpodSystem.GUIData.DummySubjectString);
         UpdateDataFile(ProtocolName, BpodSystem.GUIData.DummySubjectString);
@@ -477,7 +477,7 @@ if exist(Testpath) == 0
     set(BpodSystem.GUIHandles.SettingsSelector, 'Value', length(SettingsNameList));
     close(NameInputFig);
     BpodSystem.Path.Settings = SettingsPath;
-    
+
     % Load struct into workspace and bring user to edit settings file
     BpodSystem.Path.Settings = SettingsPath;
     evalin('base', ['load(''' SettingsPath ''')'])
@@ -717,18 +717,22 @@ BpodSystem.Data = struct;
 if BpodSystem.MachineType > 3
     if nAnalogChannels > 0
         BpodSystem.Data.Analog = struct;
+        BpodSystem.Data.Analog.info = struct;
         BpodSystem.Data.Analog.FileName = AnalogFilename;
-        BpodSystem.Data.Analog.ImportCmd = ['myFile = fopen(SessionData.Analog.FileName, ''r''); ' ...
-                                                        'Data = fread(myFile, (SessionData.Analog.nSamples*SessionData.Analog.nChannels)+SessionData.Analog.nSamples, ''uint16''); ' ...
-                                                        'fclose(myFile); clear myFile; SessionData.Analog.Samples = []; ' ...
-                                                        'for i = 1:SessionData.Analog.nChannels; SessionData.Analog.Samples(i,:) = Data(i+1:SessionData.Analog.nChannels+1:end)''; end; ' ...
-                                                        'SessionData.Analog.Timestamps = SessionData.TrialStartTimestamp:(1/SessionData.Analog.SamplingRate):SessionData.TrialStartTimestamp+((1/SessionData.Analog.SamplingRate)*(SessionData.Analog.nSamples-1)); ' ...
-                                                        'SessionData.Analog.TrialNumber = Data(1:SessionData.Analog.nChannels+1:end)''; SessionData.Analog.TrialData = cell(1,SessionData.nTrials); '... 
-                                                        'for i = 1:SessionData.nTrials; SessionData.Analog.TrialData{i} = SessionData.Analog.Samples(:,SessionData.Analog.TrialNumber == i); end; clear Data; clear i;'];        
         BpodSystem.Data.Analog.nChannels = nAnalogChannels;
         BpodSystem.Data.Analog.channelNumbers = find(BpodSystem.HW.FlexIO_ChannelTypes == 2);
         BpodSystem.Data.Analog.SamplingRate = BpodSystem.HW.FlexIO_SamplingRate;
         BpodSystem.Data.Analog.nSamples = 0;
+        % Add human-readable info about data fields to 'info struct
+        BpodSystem.Data.Analog.info.FileName = 'Complete path and filename of the binary file to which the raw data was logged';
+        BpodSystem.Data.Analog.info.nChannels = 'The number of Flex I/O channels configured as analog input';
+        BpodSystem.Data.Analog.info.channelNumbers = 'The indexes of Flex I/O channels configured as analog input';
+        BpodSystem.Data.Analog.info.SamplingRate = 'The sampling rate of the analog data. Units = Hz';
+        BpodSystem.Data.Analog.info.nSamples = 'The total number of analog samples captured during the behavior session';
+        BpodSystem.Data.Analog.info.Samples = 'Analog measurements captured. Rows are separate analog input channels. Units = Volts';
+        BpodSystem.Data.Analog.info.Timestamps = 'Time of each sample (computed from sample index and sampling rate)';
+        BpodSystem.Data.Analog.info.TrialNumber = 'Experimental trial during which each analog sample was captured';
+        BpodSystem.Data.Analog.info.TrialData = 'A cell array of Samples. Each cell contains samples captured during a single trial.';
     end
 end
 ProtocolFolderPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName);

@@ -29,8 +29,8 @@ classdef BpodObject < handle
         Status % Struct with system status variables
         Path % Struct with paths to Bpod root folder and specific sub-folders
         Data % Struct storing all data collected in the current session. SaveBpodSessionData saves this to the current data file.
+        FlexIOConfig % Struct containing configuration of Flex I/O channels on FSM 2+. Changes to this field are automatically synced to the device.
         AnalogDataFile % On Bpod FSM 2+ or newer, a memory-mapped MAT file containing analog data (see matfile() MATLAB docs)
-        AnalogThresholdConfig % Struct containing configuration of analog thresholds for Flex I/O channels on FSM 2+, set with obj.setAnalogThreshold()
         StateMatrix % Struct of matrices describing current (running) state machine
         StateMatrixSent % StateMatrix sent to the state machine, for the next trial. At run, this replaces StateMatrix.
         LastStateMatrix % Last state matrix completed. This is updated each time a trial run completes.
@@ -60,14 +60,14 @@ classdef BpodObject < handle
         LiveTimestamps % Set to 1 if a timestamp is sent with each event, 0 if sent after the trial is complete
     end
     properties (Access = private)
-        CurrentFirmware % Struct of current firmware versions for state machine + curated modules 
+        CurrentFirmware % Struct of current firmware versions for state machine + curated modules
         SplashData % Splash screen frames
         LastHardwareState % Last known state of I/O lines and serial codes
         CycleMonitoring % 0 = off, 1 = on. Measures min and max actual hardware timer callback execution time
         IsOnline % 1 if connection to Internet is available, 0 if not
     end
     methods
-        function obj = BpodObject %Constructor 
+        function obj = BpodObject %Constructor
             % Check path for duplicate Bpod installations
             MatlabPath = path;
             nInstallations = length([strfind(MatlabPath, 'Bpod_Gen2;') strfind(MatlabPath, 'Bpod_Gen2-develop;')]);
@@ -86,15 +86,15 @@ classdef BpodObject < handle
             else
                 rand('twister', sum(100*fliplr(clock))); % For older versions of MATLAB
             end
-            
+
             % Check for Internet Connection
             obj.IsOnline = obj.check4Internet();
-            
+
             % Validate software version
             if obj.IsOnline
                 obj.ValidateSoftwareVersion();
             end
-            
+
             % Initialize fields
             obj.LiveTimestamps = 0;
             obj.SplashData.BG = SplashBGData;
@@ -135,7 +135,7 @@ classdef BpodObject < handle
             obj.Path.FlexConfig = fullfile(obj.Path.SettingsDir, 'FlexConfig.mat');
             obj.Path.SyncConfig = fullfile(obj.Path.SettingsDir, 'SyncConfig.mat');
             obj.Path.ModuleUSBConfig = fullfile(obj.Path.SettingsDir, 'ModuleUSBConfig.mat');
-            
+
             % Initialize state machine info, to be populated in SetupStateMachine()
             obj.StateMachineInfo = struct;
             obj.StateMachineInfo.nEvents = 0; % Number of events the state machine can respond to
@@ -144,7 +144,7 @@ classdef BpodObject < handle
             obj.StateMachineInfo.nOutputChannels = 0; % Number of output channels
             obj.StateMachineInfo.OutputChannelNames = 0; % Cell array of strings with output channel names
             obj.StateMachineInfo.MaxStates = 0; % Maximum number of states the attached Bpod can store
-            
+
             % Ensure that settings, data, protocol and calibration folders exist
             if ~exist(obj.Path.LocalDir)
                 mkdir(obj.Path.LocalDir);
@@ -181,7 +181,7 @@ classdef BpodObject < handle
                     end
                 end
             end
-            
+
             obj.HostOS = system_dependent('getos');
             CalFolder = fullfile(obj.Path.LocalDir,'Calibration Files');
             if ~exist(CalFolder)
@@ -219,24 +219,24 @@ classdef BpodObject < handle
             end
             load(obj.Path.SyncConfig);
             obj.SyncConfig = BpodSyncConfig;
-            
+
             % Create module USB port config file (if not present)
             if ~exist(obj.Path.ModuleUSBConfig)
                 copyfile(fullfile(obj.Path.BpodRoot, 'Examples', 'Example Settings Files', 'ModuleUSBConfig.mat'), obj.Path.ModuleUSBConfig);
             end
-            
+
             % Load list of current firmware versions
             CF = CurrentFirmwareList; % Located in /Functions/Internal Functions/, returns list of current firmware
-                                      % for state machine and modules
+            % for state machine and modules
             obj.CurrentFirmware = CF;
-            
+
             % Create timer objects
             obj.Timers = struct;
             obj.Timers.PortRelayTimer = timer('TimerFcn','UpdateSerialTerminals()', 'ExecutionMode', 'fixedRate', 'Period', 0.1);
             obj.Timers.AnalogTimer = timer('TimerFcn',@(h,e)obj.ProcessAnalogSamples(), 'ExecutionMode', 'fixedRate', 'Period', 0.1);
             obj.BpodSplashScreen(1);
         end
-        
+
         function obj = resetSessionClock(obj)
             if obj.EmulatorMode == 0
                 obj.SerialPort.write('*', 'uint8'); % Reset session clock
@@ -246,7 +246,7 @@ classdef BpodObject < handle
                 end
             end
         end
-        
+
         function obj = setupFolders(obj)
             if ispc
                 FigHeight = 130; Label1Ypos = 28; Label2Ypos = 68;
@@ -374,7 +374,7 @@ classdef BpodObject < handle
                 end
             end
         end
-        function StopModuleRelay(obj, varargin) 
+        function StopModuleRelay(obj, varargin)
             for i = 1:length(obj.Modules.RelayActive)
                 obj.SerialPort.write(['J' i 0], 'uint8');
             end
@@ -392,89 +392,143 @@ classdef BpodObject < handle
             end
             obj.Modules.RelayActive(1:end) = 0;
         end
-        function setFlexIO_ChannelTypes(obj, channelTypes)
-            % ChannelTypes: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC
-            if length(channelTypes) ~= obj.HW.n.FlexIO
+        function set.FlexIOConfig(obj, config)
+            % Verify config
+            if ~isstruct(config)
+                error('Error setting FlexIOConfig: the configuration must be a struct.')
+            end
+            % Check for expected fields
+            expectedFields = {'about','channelTypes', 'analogSamplingRate', 'nReadsPerSample','threshold1','threshold2','polarity1','polarity2','thresholdMode'}';
+            providedFields = fields(config);
+            if length(providedFields) > length(expectedFields)
+                error(['Error setting FlexIOConfig: ''' providedFields{end} ''' is not a FlexIO Config property'])
+            elseif length(providedFields) < length(expectedFields)
+                error(['Error setting FlexIOConfig: incorrect number of fields provided'])
+            end
+            fieldMatch = strcmp(expectedFields, providedFields);
+            mismatch = find(fieldMatch == 0, 1);
+            if ~isempty(mismatch)
+                error(['Error setting FlexIOConfig: expected field ' expectedFields(mismatch) ' was not provided.'])
+            end
+            ConfigMessage = []; % Byte message to configure FlexIO channels
+            nAcks = 0; % Number of acknowledgement bytes to read
+            % Set channel types
+            % ChannelTypes: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC 4 = Disabled (Tri-State / High Z)
+            if length(config.channelTypes) ~= obj.HW.n.FlexIO
                 error(['Error using setFlexIO: the channelTypes vector must specify one type for each of the ' num2str(obj.HW.n.FlexIO) ' FlexIO channels.']);
             end
-            if (sum(channelTypes > 3) > 0) || (sum(channelTypes < 0) > 0)
-                error('Error using setFlexIO: invalid channel type specified. Valid channel types are: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC');
+            if (sum(config.channelTypes > 4) > 0) || (sum(config.channelTypes < 0) > 0)
+                error('Error using setFlexIO: invalid channel type specified. Valid channel types are: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC, 4 = Disabled');
             end
-            if obj.Status.InStateMatrix
-                error('Error: FlexIO channels cannot be reconfigured while the state machine is running.');
-            end
-            obj.SerialPort.write(['Q' channelTypes], 'uint8');
-            OK = obj.SerialPort.read(1, 'uint8');
-            if OK ~= 1
-                error('Error configuring FlexIO channels: confirm code not returned');
-            end
-            % Reconfigure events and outputs
-            obj.HW.FlexIO_ChannelTypes = channelTypes;
-            InputChannelNames = cell(1,obj.HW.n.FlexIO);
-            OutputChannelNames = cell(1,obj.HW.n.FlexIO);
-            FlexEventPos = obj.HW.Pos.Event_FlexIO;
-            FlexInputPos = obj.HW.Pos.Input_FlexIO;
-            FlexOutputPos = obj.HW.Pos.Output_FlexIO;
-            for i = 1:obj.HW.n.FlexIO
-                switch channelTypes(i)
-                    case 0
-                        InputChannelNames{i} = ['Flex' num2str(i)];
-                        OutputChannelNames{i} = '---';
-                        obj.StateMachineInfo.EventNames{FlexEventPos} = [InputChannelNames{i} 'High'];
-                        obj.StateMachineInfo.EventNames{FlexEventPos+1} = [InputChannelNames{i} 'Low'];
-                        FlexEventPos = FlexEventPos + 2;
-                    case 1
-                        InputChannelNames{i} = '---';
-                        OutputChannelNames{i} = ['Flex' num2str(i) 'DO'];
-                        obj.StateMachineInfo.EventNames{FlexEventPos} = '---';
-                        obj.StateMachineInfo.EventNames{FlexEventPos+1} = '---';
-                        FlexEventPos = FlexEventPos + 2;
-                    case 2
-                        InputChannelNames{i} = ['Flex' num2str(i)];
-                        OutputChannelNames{i} = '---';
-                        obj.StateMachineInfo.EventNames{FlexEventPos} = [InputChannelNames{i} 'Trig1'];
-                        obj.StateMachineInfo.EventNames{FlexEventPos+1} = [InputChannelNames{i} 'Trig2'];
-                        FlexEventPos = FlexEventPos + 2;
-                    case 3
-                        InputChannelNames{i} = '---';
-                        OutputChannelNames{i} = ['Flex' num2str(i) 'AO'];
-                        obj.StateMachineInfo.EventNames{FlexEventPos} = '---';
-                        obj.StateMachineInfo.EventNames{FlexEventPos+1} = '---';
-                        FlexEventPos = FlexEventPos + 2;
-                end
-            end
-            obj.StateMachineInfo.InputChannelNames(FlexInputPos:FlexInputPos+obj.HW.n.FlexIO-1) = InputChannelNames;
-            obj.StateMachineInfo.OutputChannelNames(FlexOutputPos:FlexOutputPos+obj.HW.n.FlexIO-1) = OutputChannelNames;
-            if isfield (obj.Data, 'Analog')
-                obj.Data.Analog.nChannels = sum(channelTypes == 2);
-            end
-        end
-        function setFlexIO_AnalogInputSF(obj, SF)
+            ConfigMessage = uint8([ConfigMessage 'Q' config.channelTypes]);
+            nAcks = nAcks + 1;
+
             % Set FlexIO analog input sampling rate (Hz). Permitted range = [1, 1000]
-            nCyclesPerSample = obj.HW.CycleFrequency/SF; % Number of state machine cycles per analog sample
-            if nCyclesPerSample < 10 || nCyclesPerSample > obj.HW.CycleFrequency
+            nCyclesPerSample = obj.HW.CycleFrequency/config.analogSamplingRate; % Number of state machine cycles per analog sample
+            if nCyclesPerSample < 10 || nCyclesPerSample > (obj.HW.CycleFrequency/10)
                 error('Error configuring FlexIO analog input sampling rate: Rate must be in range [1, 1000]');
             end
-            obj.SerialPort.write('^', 'uint8', nCyclesPerSample, 'uint32');
-            OK = obj.SerialPort.read(1, 'uint8');
-            if OK ~= 1
-                error('Error configuring FlexIO analog input sampling rate: confirm code not returned');
+            ConfigMessage = uint8([ConfigMessage '^' typecast(uint32(nCyclesPerSample), 'uint8')]);
+            nAcks = nAcks + 1;
+
+            % Set FlexIO ADC reads per sample
+            if config.nReadsPerSample > 4 || config.nReadsPerSample < 1
+                error('FlexIO readsPerSample must be in range [1, 4]')
             end
-            obj.HW.FlexIO_SamplingRate = SF;
-        end
-        function setFlexIO_nSamplesPerMeasurement(obj, nSamples) % For oversampling
-            if nSamples > 4 || nSamples < 1
-                error('FlexIO nSamplesPerMeasurement must be in range [1, 4]')
+            ConfigMessage = uint8([ConfigMessage 'o' config.nReadsPerSample]);
+            nAcks = nAcks + 1;
+
+            % Set analog thresholds
+            if sum(config.threshold1 > 5) > 0 || sum(config.threshold1 < 0) > 0
+                error('FlexIO threshold1 must be in range [0, 5] Volts')
             end
+            if sum(config.threshold2 > 5) > 0 || sum(config.threshold2 < 0) > 0
+                error('FlexIO threshold2 must be in range [0, 5] Volts')
+            end
+            ThresholdBits1 = (config.threshold1/5)*4095;
+            ThresholdBits2 = (config.threshold1/5)*4095;
+            ConfigMessage = uint8([ConfigMessage 't' typecast(uint16([ThresholdBits1 ThresholdBits2]), 'uint8')]);
+            nAcks = nAcks + 1;
+
+            % Set analog threshold polarity
+            if sum(config.polarity1 < 0) > 0 || sum(config.polarity1 > 1) > 0
+                error('FlexIO polarity1 must be in range [0, 1]')
+            end
+            if sum(config.polarity2 < 0) > 0 || sum(config.polarity2 > 1) > 0
+                error('FlexIO polarity2 must be in range [0, 1]')
+            end
+            ConfigMessage = uint8([ConfigMessage 'p' config.polarity1 config.polarity2]);
+            nAcks = nAcks + 1;
+
+            % Set analog threshold mode
+            % Set FlexIO ADC reads per sample
+            if sum(config.thresholdMode < 0) > 0 || sum(config.thresholdMode > 1) > 0
+                error('FlexIO thresholdMode must be in range [0, 1]')
+            end
+            ConfigMessage = uint8([ConfigMessage 'm' config.thresholdMode]);
+            nAcks = nAcks + 1;
+
+            % Send FlexIO Config to device and receive ACK
             if obj.Status.InStateMatrix
                 error('Error: FlexIO channels cannot be reconfigured while the state machine is running.');
             end
-            obj.SerialPort.write(['o' nSamples]);
-            OK = obj.SerialPort.read(1, 'uint8');
-            if OK ~= 1
-                error('Error configuring FlexIO nSamplesPerMeasurement: confirm code not returned');
+            obj.SerialPort.write(ConfigMessage, 'uint8');
+            OK = obj.SerialPort.read(nAcks, 'uint8');
+            if sum(OK) ~= length(OK) || isempty(OK)
+                error('Error configuring FlexIO channels: confirm code not returned');
             end
-            obj.HW.FlexIO_nSamplesPerMeasurement = nSamples;
+
+            % Reconfigure events and outputs
+            if sum(obj.HW.FlexIO_ChannelTypes == config.channelTypes) < obj.HW.n.FlexIO
+                obj.HW.FlexIO_ChannelTypes = config.channelTypes;
+                obj.HW.FlexIO_SamplingRate = config.analogSamplingRate;
+                InputChannelNames = cell(1,obj.HW.n.FlexIO);
+                OutputChannelNames = cell(1,obj.HW.n.FlexIO);
+                FlexEventPos = obj.HW.Pos.Event_FlexIO;
+                FlexInputPos = obj.HW.Pos.Input_FlexIO;
+                FlexOutputPos = obj.HW.Pos.Output_FlexIO;
+                for i = 1:obj.HW.n.FlexIO
+                    switch config.channelTypes(i)
+                        case 0
+                            InputChannelNames{i} = ['Flex' num2str(i)];
+                            OutputChannelNames{i} = '---';
+                            obj.StateMachineInfo.EventNames{FlexEventPos} = [InputChannelNames{i} 'High'];
+                            obj.StateMachineInfo.EventNames{FlexEventPos+1} = [InputChannelNames{i} 'Low'];
+                            FlexEventPos = FlexEventPos + 2;
+                        case 1
+                            InputChannelNames{i} = '---';
+                            OutputChannelNames{i} = ['Flex' num2str(i) 'DO'];
+                            obj.StateMachineInfo.EventNames{FlexEventPos} = '---';
+                            obj.StateMachineInfo.EventNames{FlexEventPos+1} = '---';
+                            FlexEventPos = FlexEventPos + 2;
+                        case 2
+                            InputChannelNames{i} = ['Flex' num2str(i)];
+                            OutputChannelNames{i} = '---';
+                            obj.StateMachineInfo.EventNames{FlexEventPos} = [InputChannelNames{i} 'Trig1'];
+                            obj.StateMachineInfo.EventNames{FlexEventPos+1} = [InputChannelNames{i} 'Trig2'];
+                            FlexEventPos = FlexEventPos + 2;
+                        case 3
+                            InputChannelNames{i} = '---';
+                            OutputChannelNames{i} = ['Flex' num2str(i) 'AO'];
+                            obj.StateMachineInfo.EventNames{FlexEventPos} = '---';
+                            obj.StateMachineInfo.EventNames{FlexEventPos+1} = '---';
+                            FlexEventPos = FlexEventPos + 2;
+                        case 4
+                            InputChannelNames{i} = '---';
+                            OutputChannelNames{i} = '---';
+                            obj.StateMachineInfo.EventNames{FlexEventPos} = '---';
+                            obj.StateMachineInfo.EventNames{FlexEventPos+1} = '---';
+                            FlexEventPos = FlexEventPos + 2;
+                    end
+                end
+                obj.StateMachineInfo.InputChannelNames(FlexInputPos:FlexInputPos+obj.HW.n.FlexIO-1) = InputChannelNames;
+                obj.StateMachineInfo.OutputChannelNames(FlexOutputPos:FlexOutputPos+obj.HW.n.FlexIO-1) = OutputChannelNames;
+            end
+            if isfield (obj.Data, 'Analog')
+                obj.Data.Analog.nChannels = sum(config.channelTypes == 2);
+                obj.Data.Analog.channelNumbers = find(config.channelTypes == 2);
+            end
+            obj.FlexIOConfig = config;
         end
         function PhoneHomeOpt_In_Out(obj)
             obj.GUIHandles.BpodPhoneHomeFig = figure('Position', [550 180 400 350],...
@@ -502,7 +556,7 @@ classdef BpodObject < handle
                 'FontSize', 12,'Backgroundcolor',[0.29 0.29 0.43],'Foregroundcolor',[0.9 0.9 0.9], 'FontName', 'Courier New');
         end
         function OnlineStatus = check4Internet(obj)
-           if ispc
+            if ispc
                 [a,reply]=system('ping -n 1 -w 1000 www.google.com'); % Check for connection
                 ConnectConfirmString = 'Received = 1';
             elseif ismac
@@ -517,23 +571,23 @@ classdef BpodObject < handle
                 OnlineStatus = 1;
             end
         end
-        
+
         function startAnalogViewer(obj)
             obj.analogViewer('init', []);
         end
-        
+
         function delete(obj) % Destructor
             obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
             if obj.MachineType > 3 && obj.FirmwareVersion > 22
                 obj.AnalogSerialPort = [];
-            end 
+            end
         end
     end
-    methods (Access = private)    
-       function phoneHomeRegister(obj, state)
-           if ~isfield(obj.SystemSettings, 'PhoneHomeRigID')
-              obj.SystemSettings.PhoneHomeRigID = char(floor(rand(1,16)*25)+65);
-           end
+    methods (Access = private)
+        function phoneHomeRegister(obj, state)
+            if ~isfield(obj.SystemSettings, 'PhoneHomeRigID')
+                obj.SystemSettings.PhoneHomeRigID = char(floor(rand(1,16)*25)+65);
+            end
             switch state
                 case 0
                     obj.SystemSettings.PhoneHome = 0;
@@ -544,7 +598,7 @@ classdef BpodObject < handle
             end
             obj.SaveSettings;
             close(obj.GUIHandles.BpodPhoneHomeFig);
-       end
+        end
         function SwitchPanels(obj, panel)
             obj.GUIData.CurrentPanel = 0;
             OffPanels = 1:obj.HW.n.UartSerialChannels+1;
@@ -567,7 +621,7 @@ classdef BpodObject < handle
             if obj.EmulatorMode == 0
                 % Set module byte stream relay to current module
                 obj.StopModuleRelay;
-                if panel > 1 
+                if panel > 1
                     if obj.Status.BeingUsed == 0 && obj.GUIData.DefaultPanel(panel) == 1
                         obj.SerialPort.write(['J' panel-2 1], 'uint8');
                         obj.Modules.RelayActive(panel-1) = 1;
@@ -578,7 +632,7 @@ classdef BpodObject < handle
             end
             obj.FixPushbuttons;
         end
-        
+
         function FixPushbuttons(obj)
             % Remove all the nasty borders around pushbuttons on platforms besides win7
             if isempty(strfind(obj.HostOS, 'Windows 7'))
@@ -588,7 +642,7 @@ classdef BpodObject < handle
                 warning on
             end
         end
-        
+
         function BpodSplashScreen(obj, Stage)
             if Stage == 1
                 ha = axes('units','normalized', 'position',[0 0 1 1]);
@@ -601,7 +655,7 @@ classdef BpodObject < handle
             EndPos = 44;
             StepSize = 5;
             if ~verLessThan('matlab', '9')
-            	StepSize = 10;
+                StepSize = 10;
             end
             switch Stage
                 case 1

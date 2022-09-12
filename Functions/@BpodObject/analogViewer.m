@@ -41,7 +41,7 @@ switch op
         obj.GUIHandles.OSC.TimeDivPos = 3;
         obj.GUIHandles.OSC.VoltDivValues = [0.02 0.05 0.1 0.2 0.5 1 2 5];
         obj.GUIHandles.OSC.TimeDivValues = [0.05 0.1 0.2 0.5 1];
-        obj.GUIHandles.OSC.nDisplaySamples = obj.HW.FlexIO_SamplingRate*obj.GUIHandles.OSC.TimeDivValues(obj.GUIHandles.OSC.TimeDivPos)*obj.GUIHandles.OSC.nXDivisions;
+        obj.GUIHandles.OSC.nDisplaySamples = obj.FlexIOConfig.analogSamplingRate*obj.GUIHandles.OSC.TimeDivValues(obj.GUIHandles.OSC.TimeDivPos)*obj.GUIHandles.OSC.nXDivisions;
         obj.GUIHandles.OSC.SweepPos = 1;
         obj.GUIHandles.OSC.DCmode = 0;
         obj.GUIHandles.OSC.DCOffset = zeros(1,obj.HW.n.FlexIO);
@@ -208,7 +208,7 @@ switch op
         if (NewPos > 0) && (NewPos <= length(obj.GUIHandles.OSC.TimeDivValues))
             obj.GUIHandles.OSC.TimeDivPos = obj.GUIHandles.OSC.TimeDivPos + newData;
             newTimeDivValue = obj.GUIHandles.OSC.TimeDivValues(obj.GUIHandles.OSC.TimeDivPos);
-            nSamplesPerSweep = obj.HW.FlexIO_SamplingRate*newTimeDivValue*obj.GUIHandles.OSC.nXDivisions;
+            nSamplesPerSweep = obj.FlexIOConfig.analogSamplingRate*newTimeDivValue*obj.GUIHandles.OSC.nXDivisions;
             Interval = obj.GUIHandles.OSC.nXDivisions/(nSamplesPerSweep-1);
             obj.GUIHandles.OSCData.Xdata = 0:Interval:obj.GUIHandles.OSC.nXDivisions;
             obj.GUIHandles.OSC.SweepPos = 1;

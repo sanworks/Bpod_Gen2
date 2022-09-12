@@ -23,16 +23,15 @@ function FlexIOAnalogLight2AFC
 % After initiating each trial with a center-poke,
 % the subject is rewarded for choosing the port that is lit.
 %
-% Written by Josh Sanders, 5/2015.
+% Written by Josh Sanders, 9/2022.
 %
-% Updated to demo FlexI/O analog input, 8/2022. Flex I/O Ch1 is acquired in
+% Updated to demo FlexI/O analog input, 9/2022. Flex I/O Ch1 is acquired in
 % tandem with the behavior data, and threshold crossing events are logged.
 % In this example, analog threshold events do not drive state transitions.
 %
 % SETUP
 % You will need:
 % - Bpod State Machine 2+ (or a newer model with Flex I/O channels)
-% - An analog signal in range 0-5V patched into Flex I/O channel 1
 % - A Bpod MouseBox (or equivalent) configured with 3 ports.
 % > Connect the left port in the box to Bpod Port#1.
 % > Connect the center port in the box to Bpod Port#2.
@@ -41,6 +40,11 @@ function FlexIOAnalogLight2AFC
 %   calibration curves with several points surrounding 3ul.
 
 global BpodSystem
+
+%% Verify state machine model
+if BpodSystem.MachineType < 4
+    error('The FlexIOAnalogLight2AFC protocol requires a state machine with Flex I/O channels (e.g. State Machine 2+).')
+end
 
 %% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
@@ -53,14 +57,12 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
 end
 
 % Configure Flex I/O Channels
-BpodSystem.setFlexIO_ChannelTypes([2 1 1 1]);
-
-%% Setup Analog Thresholds
-BpodSystem.setAnalogThresholds('Threshold1', ones(1,4)*4000); % In range 0-4095
-BpodSystem.setAnalogThresholds('Polarity1', zeros(1,4)); % Polarity 0: Threshold activated when analog is > thresh
-BpodSystem.setAnalogThresholds('Threshold2', ones(1,4)*95); % In range 0-4095
-BpodSystem.setAnalogThresholds('Polarity2', ones(1,4)); % Polarity 1: Threshold activated when analog is < thresh
-BpodSystem.setAnalogThresholds('Mode', ones(1,4)); % Mode 1: Crossing threshold 1 enables threshold 2, crossing 2 enables 1
+BpodSystem.FlexIOConfig.channelTypes = [2 1 2 1];
+BpodSystem.FlexIOConfig.threshold1 = ones(1,4)*4; % In range 0-5
+BpodSystem.FlexIOConfig.polarity1 = zeros(1,4); % Polarity 0: Threshold activated when analog is > thresh
+BpodSystem.FlexIOConfig.threshold2 = ones(1,4)*1; % In range 0-5
+BpodSystem.FlexIOConfig.polarity2 = ones(1,4); % Polarity 1: Threshold activated when analog is < thresh
+BpodSystem.FlexIOConfig.thresholdMode = ones(1,4); % Mode 1: Crossing threshold 1 enables threshold 2, crossing 2 enables 1
 
 %% Define trials
 MaxTrials = 1000;
@@ -87,7 +89,6 @@ for currentTrial = 1:MaxTrials
             LeftPokeAction = 'Punish'; RightPokeAction = 'RightRewardDelay'; StimulusOutput = {'PWM3', 255};
     end
     sma = NewStateMatrix(); % Assemble state matrix
-    %sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', 1000, 'OnsetDelay', 0, 'Channel', 'Flex2DO', 'OnLevel', 1, 'OffLevel', 0); 
     sma = AddState(sma, 'Name', 'WaitForPoke1', ...
         'Timer', 0,...
         'StateChangeConditions', {'Port2In', 'CueDelay'},...
@@ -155,7 +156,9 @@ end
 Cleanup;
 
 function Cleanup()
-AddFlexIOAnalogData; % Adds all data in the Flex I/O analog data file (if present) to BpodSystem.Data. The analog file is retained for the user to delete if desired.
+AddFlexIOAnalogData('Volts', 1); % Adds all data in the Flex I/O analog data file (if present) to BpodSystem.Data. The analog file is retained for the user to delete if desired.
+                                 % Arguments are optional. 'Volts' saves volts. use 'Bits' for a smaller data file with sample measurements in bits.
+                                 % The second argument may be set to '1' to add a trial-aligned copy of the analog data: a cell array with one cell of data per trial.
 SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
 
 function UpdateSideOutcomePlot(TrialTypes, Data)

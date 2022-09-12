@@ -30,7 +30,7 @@ uistack(ha,'bottom');
 
 BG = imread('InputChannelConfig2.bmp');
 image(BG); axis off;
-ChannelTypeStrings = {'Digital In', 'Digital Out', 'Analog In', 'Analog Out'};
+ChannelTypeStrings = {'Digital In', 'Digital Out', 'Analog In', 'Analog Out', 'Disabled'};
 BpodSystem.GUIHandles.FlexConfig1 = uicontrol('Style', 'popupmenu', 'String', ChannelTypeStrings, 'Position', [35 120 100 15],... 
     'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', [0.5 0.5 0.5], 'FontSize', 12, 'Value', BpodSystem.HW.FlexIO_ChannelTypes(1)+1);
 BpodSystem.GUIHandles.FlexConfig2 = uicontrol('Style', 'popupmenu', 'String', ChannelTypeStrings, 'Position', [145 120 100 15],... 
@@ -50,5 +50,6 @@ BpodFlexConfig(1) = get(BpodSystem.GUIHandles.FlexConfig1, 'Value')-1;
 BpodFlexConfig(2) = get(BpodSystem.GUIHandles.FlexConfig2, 'Value')-1;
 BpodFlexConfig(3) = get(BpodSystem.GUIHandles.FlexConfig3, 'Value')-1;
 BpodFlexConfig(4) = get(BpodSystem.GUIHandles.FlexConfig4, 'Value')-1;
-BpodSystem.setFlexIO_ChannelTypes(BpodFlexConfig);
-save(BpodSystem.Path.FlexConfig, 'BpodFlexConfig');
+BpodSystem.FlexIOConfig.channelTypes = BpodFlexConfig;
+FlexIOConfig = BpodSystem.FlexIOConfig;
+save(BpodSystem.Path.FlexConfig, 'FlexIOConfig');

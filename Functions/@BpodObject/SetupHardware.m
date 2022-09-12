@@ -153,7 +153,6 @@ function obj = SetupHardware(obj)
         obj.StateMachineInfo.MaxStates = obj.SerialPort.read(1, 'uint16');
         obj.HW.CyclePeriod = double(obj.SerialPort.read(1, 'uint16'));
         obj.HW.CycleFrequency = 1000000/double(obj.HW.CyclePeriod);
-        obj.HW.FlexIO_SamplingRate = 1000;
         obj.HW.ValveType = 'SPI';
         obj.HW.n.MaxSerialEvents = double(obj.SerialPort.read(1, 'uint8'));
         if obj.FirmwareVersion > 22
@@ -188,28 +187,6 @@ function obj = SetupHardware(obj)
         if Confirmed ~= 1
             error('Could not enable ports');
         end
-        % Set flexIO config
-        if obj.MachineType == 4
-            nFlexIOChannels = sum(obj.HW.Outputs == 'F');
-            if exist(obj.Path.FlexConfig)
-                load(obj.Path.FlexConfig)
-                obj.SerialPort.write(['Q' BpodFlexConfig], 'uint8');
-                OK = obj.SerialPort.read(1, 'uint8');
-                if OK ~= 1
-                    error('Error configuring FlexIO channels: confirm code not returned');
-                end
-            end
-            obj.SerialPort.write('q', 'uint8');
-            obj.HW.FlexIO_ChannelTypes = obj.SerialPort.read(nFlexIOChannels, 'uint8'); % Channel types are: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC
-            obj.SerialPort.write('.', 'uint8');
-            obj.HW.FlexIO_nSamplesPerMeasurement = obj.SerialPort.read(1, 'uint8'); % Can be set to >1 for oversampling (up to 4x)
-            obj.AnalogThresholdConfig = struct;
-            obj.AnalogThresholdConfig.Threshold1 = ones(1,nFlexIOChannels)*4095;
-            obj.AnalogThresholdConfig.Threshold2 = ones(1,nFlexIOChannels)*4095;
-            obj.AnalogThresholdConfig.Polarity1 = zeros(1,nFlexIOChannels);
-            obj.AnalogThresholdConfig.Polarity2 = zeros(1,nFlexIOChannels);
-            obj.AnalogThresholdConfig.Mode = zeros(1,nFlexIOChannels);
-        end
         % Set up Sync config
         obj.SerialPort.write(['K' obj.SyncConfig.Channel obj.SyncConfig.SignalType], 'uint8');
         Confirmed = obj.SerialPort.read(1, 'uint8');
@@ -230,6 +207,7 @@ function obj = SetupHardware(obj)
     obj.HW.n.WireInputs = sum(obj.HW.Inputs == 'W');
     obj.HW.n.Ports = sum(obj.HW.Outputs == 'P');
     obj.HW.n.FlexIO = sum(obj.HW.Outputs == 'F');
+    obj.HW.FlexIO_ChannelTypes = ones(1, obj.HW.n.FlexIO);
     nIOvalves = sum(obj.HW.Outputs == 'V');
     if nIOvalves > 0
         obj.HW.ValveType = 'IO';
@@ -299,6 +277,34 @@ function obj = SetupHardware(obj)
     obj.LoadModules;
     obj.SetupStateMachine;
     obj.BpodSplashScreen(3);
+    
+    % Set flexIO config
+    if obj.MachineType == 4
+        nFlexIOChannels = sum(obj.HW.Outputs == 'F');
+        if exist(obj.Path.FlexConfig)
+            load(obj.Path.FlexConfig)  
+        else
+            % Load defaults
+            FlexIOConfig = struct;
+            FlexIOConfig.about = struct;
+            FlexIOConfig.channelTypes = ones(1,nFlexIOChannels)*4; % ChannelTypes: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC, 4 = Disabled (Tri-State / High Z)
+            FlexIOConfig.analogSamplingRate = 1000; % Hz
+            FlexIOConfig.nReadsPerSample = 3; % ADC measurements per sample (averaged)
+            FlexIOConfig.threshold1 = ones(1,nFlexIOChannels)*5;
+            FlexIOConfig.threshold2 = ones(1,nFlexIOChannels)*5;
+            FlexIOConfig.polarity1 = zeros(1,nFlexIOChannels);
+            FlexIOConfig.polarity2 = zeros(1,nFlexIOChannels);
+            FlexIOConfig.thresholdMode = zeros(1,nFlexIOChannels);
+            % Add human-readable info about units, etc
+            FlexIOConfig.about.channelTypes = 'Values: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC 4 = OFF (Tri-State / High Z)';
+            FlexIOConfig.about.analogSamplingRate = 'Sampling rate for channels configured as ADC. Units = Hz';
+            FlexIOConfig.about.nReadsPerSample = 'Number of ADC reads per sample.';
+            FlexIOConfig.about.threshold = 'Event thresholds for channels configured as ADC. Two thresholds exist per channel. Units = Volts';
+            FlexIOConfig.about.polarity = 'Threshold polarity for channels configured as ADC. 0 = rising (low -> high, 1 = falling (high -> low)';
+            FlexIOConfig.about.thresholdMode = '0 = thresholds manually re-enabled, 1 = thresholds re-enable each other';
+        end
+        obj.FlexIOConfig = FlexIOConfig;
+    end
     obj.BpodSplashScreen(4);
     if isfield(obj.SystemSettings, 'BonsaiAutoConnect')
         if obj.SystemSettings.BonsaiAutoConnect == 1
