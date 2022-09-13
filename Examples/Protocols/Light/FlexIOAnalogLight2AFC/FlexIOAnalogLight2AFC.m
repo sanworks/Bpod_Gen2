@@ -57,7 +57,7 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
 end
 
 % Configure Flex I/O Channels
-BpodSystem.FlexIOConfig.channelTypes = [2 1 2 1];
+BpodSystem.FlexIOConfig.channelTypes = [2 1 4 4];
 BpodSystem.FlexIOConfig.threshold1 = ones(1,4)*4; % In range 0-5
 BpodSystem.FlexIOConfig.polarity1 = zeros(1,4); % Polarity 0: Threshold activated when analog is > thresh
 BpodSystem.FlexIOConfig.threshold2 = ones(1,4)*1; % In range 0-5
@@ -156,8 +156,10 @@ end
 Cleanup;
 
 function Cleanup()
-AddFlexIOAnalogData('Volts', 1); % Adds all data in the Flex I/O analog data file (if present) to BpodSystem.Data. The analog file is retained for the user to delete if desired.
-                                 % Arguments are optional. 'Volts' saves volts. use 'Bits' for a smaller data file with sample measurements in bits.
+global BpodSystem
+BpodSystem.Data = AddFlexIOAnalogData(BpodSystem.Data, 'Volts', 1); % Adds all data in the Flex I/O analog data file (if present) to BpodSystem.Data. 
+                                 % The analog binary data file is retained for the user to delete if desired.
+                                 % Arguments 2 and 3 are optional. 'Volts' saves volts. use 'Bits' for a smaller data file with sample measurements in bits.
                                  % The second argument may be set to '1' to add a trial-aligned copy of the analog data: a cell array with one cell of data per trial.
 SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
 
