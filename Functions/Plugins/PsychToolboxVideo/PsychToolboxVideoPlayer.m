@@ -20,21 +20,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 % Usage Notes:
 %
-% V = PsychToolboxVideoServer(MonitorID, ViewPortSize, ViewPortOffset, SyncPatchSize, SyncPatchYOffset)
+% V = PsychToolboxVideoPlayer(MonitorID, ViewPortSize, ViewPortOffset, SyncPatchSize, SyncPatchYOffset)
 %
 % MonitorID: Index of the monitor to use (e.g. 1 or 2 in a dual monitor setup)
 %
-% ViewPortSize: A portion of the window [length, width] in pixels can be used to show the video. Window area not in the viewport will be black,
+% ViewPortSize: A portion of the window [x, y] in pixels can be used to show the video. Window area not in the viewport will be black,
 % and can contain the sync patch. Set ViewPortSize to 0 to use the entire screen.
 %
-% ViewPortOffset: Offset of the view port, [length, width] in pixels
+% ViewPortOffset: Offset of the view port, [x, y] in pixels
 %
-% SyncPatchSize: Size of the sync patch, [length, width] in pixels. The sync patch is rendered in the lower right corner of the screen. 
+% SyncPatchSize: Size of the sync patch, [x, y] in pixels. The sync patch is rendered in the lower right corner of the screen. 
 % It alternates from white to black with each subsequent frame to signal frame changes to an optical sensor.
 %
 % SyncPatchYOffset: Offset of the sync patch from the bottom screen edge
-%
-% IMPORTANT: Videos must be B&W (1 layer per frame).
+
 
 classdef PsychToolboxVideoPlayer < handle
     properties
@@ -44,15 +43,15 @@ classdef PsychToolboxVideoPlayer < handle
         TextStrings % Cell array containing text strings
         TimerMode = 0; % Use MATLAB timer object to trigger frame flips (default = blocking code loop)
         ShowViewportBorder = 0; % Draw gray border around viewport
-        ViewPortDimensions % [Width, Height]
-        SyncPatchIntensity = 255; % In range 0, 255
+        ViewPortDimensions % [y, x]
+        SyncPatchIntensity = 128; % In range 0, 255
         SyncPatchActiveArea = 0.8; % Fraction of sync patch dimensions set to white when drawing a white patch. 
                                    % Permanently dark pixels surrounding the sensor helps to hide the sync patch from the test subject
     end
     properties (Access = private)
         nVideosLoaded = 0;
         WindowDimensions % window dimensions
-        ViewPortOffset = [0 0]; % Width, Height from Movie Window top-left corner
+        ViewPortOffset = [0 0]; % x, y from top-left corner of the screen
         MaxVideos = 100;
         SyncPatchSizeX = 30; % Size of sync patch in X dimension, in pixels
         SyncPatchSizeY = 30; % Size of sync patch in Y dimension, in pixels
@@ -95,7 +94,6 @@ classdef PsychToolboxVideoPlayer < handle
             obj.SyncPatchSizeX = SyncPatchSize(1);
             obj.SyncPatchSizeY = SyncPatchSize(2);
             obj.SyncPatchYOffset = SyncPatchYOffset;
-            SystemVars = get(0); MonitorSize = SystemVars.ScreenSize;
             if length(MonitorID) ~= 1 
                 error('Error: Monitor ID must be a single integer value')
             end
@@ -112,7 +110,7 @@ classdef PsychToolboxVideoPlayer < handle
             patchStartY = yEnd-obj.SyncPatchSizeY - SyncPatchYOffset;
             patchStartX = xEnd-obj.SyncPatchSizeX;
             obj.SyncPatchDimensions = [patchStartY patchStartY+obj.SyncPatchSizeY patchStartX xEnd];
-            obj.SyncPatchActiveDimensions = [patchStartY+(obj.SyncPatchSizeY*(1-obj.SyncPatchActiveArea)) patchStartY+obj.SyncPatchSizeY patchStartX+(obj.SyncPatchSizeX*(1-obj.SyncPatchActiveArea)) xEnd];
+            obj.SyncPatchActiveDimensions = round([patchStartY+(obj.SyncPatchSizeY*(1-obj.SyncPatchActiveArea)) patchStartY+obj.SyncPatchSizeY patchStartX+(obj.SyncPatchSizeX*(1-obj.SyncPatchActiveArea)) xEnd]);
             if obj.ViewPortDimensions == 0
                 obj.ViewPortDimensions = obj.WindowDimensions(3:4);
             end
@@ -154,8 +152,8 @@ classdef PsychToolboxVideoPlayer < handle
             obj.BlankScreen = Screen('MakeTexture', obj.Window, Frame);
             Screen('DrawTexture', obj.Window, obj.BlankScreen);
             Screen('Flip', obj.Window);
-            disp('Viewport border set. You must now manually re-load any stimuli you had previously loaded with loadMovie(), because the border is hard-coded in the video frames.')
-            obj.ShowViewportBorder = value;
+            disp('Viewport border set. You must now manually re-load any stimuli you had previously loaded with loadVideo(), because the border is rendered into the video frames.')
+            obj.ShowViewportBorder = Value;
         end
         function loadVideo(obj, VideoIndex, VideoMatrix)
             if ~isempty(obj.Videos{VideoIndex})
@@ -187,10 +185,10 @@ classdef PsychToolboxVideoPlayer < handle
                 MatrixType = 1; % Single B&W Frame
                 nFrames = 1;
             else
-                error('Error: Movie data must be a stack of 2-D images.')
+                error('Error: Video data must be a stack of 2-D images.')
             end
             if DimensionError
-                error(['Error loading movie: The movie dimensions must match the viewport dimensions: ' num2str(VPdim(1)) ' X ' num2str(VPdim(2))]);
+                error(['Error loading video: The video dimensions must match the viewport dimensions: ' num2str(VPdim(1)) ' X ' num2str(VPdim(2))]);
             end
             obj.Videos{VideoIndex}.nFrames = nFrames+1; % +1 to account for blank frame at the end
             obj.Videos{VideoIndex}.Data = zeros(1,nFrames);
@@ -266,7 +264,7 @@ classdef PsychToolboxVideoPlayer < handle
                 Screen('Flip', obj.Window);
             else
                 switch obj.StimulusType(StimulusIndex)
-                    case 0 % Play movie
+                    case 0 % Play video
                         if obj.Videos{StimulusIndex}.nFrames == 1
                             if ~isempty(obj.Timer)
                                 stop(obj.Timer);

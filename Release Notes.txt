@@ -39,7 +39,8 @@
 -Rotary Encoder Module: Added option to readUSBStream() to specify an event code marking the end of the data read on this call.
 -Rotary Encoder Module: Added an optional MATLAB user callback function to run each time new USB position data is discovered (at 100Hz max)
 -Analog Input Module: Updated BpodAnalogIn() class to use ArCOMObject_Bpod. The _Ain version of ArCOM is now depricated.
-
+-Bpod Emulator: Fixed bug in global timer trigger and cancel. Previously timers above 2 were not triggered and canceled correctly.
+-Bpod Emulator: Fixed bug that caused the hardware info GUI to crash on launch.
 
 ---v1.64---
 -Initial release of HiFi Module: MATLAB class, Python class, BControl patch, firmware binaries and example protocols

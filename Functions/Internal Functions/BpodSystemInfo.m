@@ -92,7 +92,11 @@ text(XPos, YPos,['nBehaviorPorts: ' num2str(BpodSystem.HW.n.Ports)], 'FontSize',
 text(XPos, YPos,['nBNC I/O: ' num2str(BpodSystem.HW.n.BNCInputs) ' / ' num2str(BpodSystem.HW.n.BNCOutputs)], 'FontSize', Med); YPos = YPos + 15;
 text(XPos, YPos,['nWire I/O: ' num2str(BpodSystem.HW.n.WireInputs) ' / ' num2str(BpodSystem.HW.n.WireOutputs)], 'FontSize', Med); YPos = YPos + 15;
 text(XPos, YPos,['nFlex I/O: ' num2str(BpodSystem.HW.n.FlexIO)], 'FontSize', Med); YPos = YPos + 15;
-text(XPos, YPos,['FSM Serial Port: ' BpodSystem.SerialPort.PortName], 'FontSize', Med); YPos = YPos + 15;
+if BpodSystem.EmulatorMode == 1
+    text(XPos, YPos,'FSM Serial Port: -None-', 'FontSize', Med); YPos = YPos + 15;
+else
+    text(XPos, YPos,['FSM Serial Port: ' BpodSystem.SerialPort.PortName], 'FontSize', Med); YPos = YPos + 15;
+end
 text(XPos, YPos,['App Serial Port: ' AppSerialPort], 'FontSize', Med); YPos = YPos + 25;
 
 

@@ -192,22 +192,32 @@ while BpodSystem.Status.InStateMatrix
                             BpodSystem.Emulator.CurrentState = NewState;
                             BpodSystem.Emulator.StateStartTime = BpodSystem.Emulator.CurrentTime;
                             % Set global timer end-time
-                            ThisGlobalTimer = BpodSystem.StateMatrix.OutputMatrix(NewState,BpodSystem.HW.Pos.GlobalTimerTrig);
-                            if ThisGlobalTimer ~= 0
-                                if BpodSystem.StateMatrix.GlobalTimers.OnsetDelay(ThisGlobalTimer) == 0
-                                    BpodSystem.Emulator.GlobalTimerEnd(ThisGlobalTimer) = BpodSystem.Emulator.CurrentTime + BpodSystem.StateMatrix.GlobalTimers.Duration(ThisGlobalTimer);
-                                    BpodSystem.Emulator.GlobalTimersActive(ThisGlobalTimer) = 1;
-                                    BpodSystem.Emulator.GlobalTimersTriggered(ThisGlobalTimer) = 0;
-                                else
-                                    BpodSystem.Emulator.GlobalTimerStart(ThisGlobalTimer) = BpodSystem.Emulator.CurrentTime + BpodSystem.StateMatrix.GlobalTimers.OnsetDelay(ThisGlobalTimer);
-                                    BpodSystem.Emulator.GlobalTimerEnd(ThisGlobalTimer) = BpodSystem.Emulator.GlobalTimerStart(ThisGlobalTimer) + BpodSystem.StateMatrix.GlobalTimers.Duration(ThisGlobalTimer);
-                                    BpodSystem.Emulator.GlobalTimersTriggered(ThisGlobalTimer) = 1;
+                            GlobalTimerTrigByte = BpodSystem.StateMatrix.OutputMatrix(NewState,BpodSystem.HW.Pos.GlobalTimerTrig);
+                            if GlobalTimerTrigByte ~= 0
+                                timersToTrigger = dec2bin(GlobalTimerTrigByte) == '1';
+                                AllGlobalTimers = find(timersToTrigger(end:-1:1));
+                                for z = 1:length(AllGlobalTimers)
+                                    ThisGlobalTimer = AllGlobalTimers(z);
+                                    if BpodSystem.StateMatrix.GlobalTimers.OnsetDelay(ThisGlobalTimer) == 0
+                                        BpodSystem.Emulator.GlobalTimerEnd(ThisGlobalTimer) = BpodSystem.Emulator.CurrentTime + BpodSystem.StateMatrix.GlobalTimers.Duration(ThisGlobalTimer);
+                                        BpodSystem.Emulator.GlobalTimersActive(ThisGlobalTimer) = 1;
+                                        BpodSystem.Emulator.GlobalTimersTriggered(ThisGlobalTimer) = 0;
+                                    else
+                                        BpodSystem.Emulator.GlobalTimerStart(ThisGlobalTimer) = BpodSystem.Emulator.CurrentTime + BpodSystem.StateMatrix.GlobalTimers.OnsetDelay(ThisGlobalTimer);
+                                        BpodSystem.Emulator.GlobalTimerEnd(ThisGlobalTimer) = BpodSystem.Emulator.GlobalTimerStart(ThisGlobalTimer) + BpodSystem.StateMatrix.GlobalTimers.Duration(ThisGlobalTimer);
+                                        BpodSystem.Emulator.GlobalTimersTriggered(ThisGlobalTimer) = 1;
+                                    end
                                 end
                             end
                             % Cancel global timers
-                            ThisGlobalTimer = BpodSystem.StateMatrix.OutputMatrix(NewState,BpodSystem.HW.Pos.GlobalTimerCancel);
-                            if ThisGlobalTimer ~= 0
-                                BpodSystem.Emulator.GlobalTimersActive(ThisGlobalTimer) = 0;
+                            GlobalTimerCancelByte = BpodSystem.StateMatrix.OutputMatrix(NewState,BpodSystem.HW.Pos.GlobalTimerCancel);
+                            if GlobalTimerCancelByte ~= 0
+                                timersToCancel = dec2bin(GlobalTimerCancelByte) == '1';
+                                AllGlobalTimers = find(timersToCancel(end:-1:1));
+                                for z = 1:length(AllGlobalTimers)
+                                    ThisGlobalTimer = AllGlobalTimers(z);
+                                    BpodSystem.Emulator.GlobalTimersActive(ThisGlobalTimer) = 0;
+                                end
                             end
                             % Reset global counter counts
                             ThisGlobalCounter = BpodSystem.StateMatrix.OutputMatrix(NewState,BpodSystem.HW.Pos.GlobalCounterReset);
