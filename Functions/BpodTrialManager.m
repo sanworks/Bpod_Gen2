@@ -143,6 +143,28 @@ classdef BpodTrialManager < handle
             obj.StateNames = BpodSystem.StateMatrix.StateNames;
             obj.nTotalStates = BpodSystem.StateMatrix.nStatesInManifest;
             start(obj.Timer);
+            if obj.LastTrialEndTime > 0
+                LastTrialDeadTime = obj.TrialStartTimestamp - obj.LastTrialEndTime;
+                if BpodSystem.MachineType > 2
+                    Threshold = 0.00021;
+                    Micros = num2str(200);
+                else
+                    Threshold = 0.00051;
+                    Micros = num2str(500);
+                end
+                if LastTrialDeadTime > Threshold
+                    disp(' ');
+                    disp('*********************************************************************');
+                    disp('*                            WARNING                                *');
+                    disp('*********************************************************************');
+                    disp(['TrialManager reported an inter-trial dead time of >' Micros ' microseconds.']);
+                    disp('This may indicate that inter-trial code (e.g. plotting, saving data)');
+                    disp('took MATLAB more than 1 trial duration to execute. MATLAB must reach');
+                    disp('TrialManager.getTrialData() before trial end. Please check lines of');
+                    disp('your protocol main loop (e.g. with tic/toc) and optimize accordingly.');
+                    disp('*********************************************************************');
+                end
+            end
         end
         function RawTrialEvents = getTrialData(obj)
             global BpodSystem
@@ -191,28 +213,6 @@ classdef BpodTrialManager < handle
                 RawTrialEvents.TrialEndTimestamp = obj.Round2Cycles(TrialEndTimestamp);
                 RawTrialEvents.StateTimestamps(end+1) = RawTrialEvents.EventTimestamps(end);
                 RawTrialEvents.ErrorCodes = ThisTrialErrorCodes;
-                if obj.LastTrialEndTime > 0
-                    LastTrialDeadTime = RawTrialEvents.TrialStartTimestamp - obj.LastTrialEndTime;
-                    if BpodSystem.MachineType > 2
-                        Threshold = 0.00021;
-                        Micros = num2str(200);
-                    else
-                        Threshold = 0.00051;
-                        Micros = num2str(500);
-                    end
-                    if LastTrialDeadTime > Threshold
-                        disp(' ');
-                        disp('*********************************************************************');
-                        disp('*                            WARNING                                *');
-                        disp('*********************************************************************');
-                        disp(['TrialManager reported an inter-trial dead time of >' Micros ' microseconds.']);
-                        disp('This may indicate that inter-trial code (e.g. plotting, saving data)');
-                        disp('took MATLAB more than 1 trial duration to execute. MATLAB must reach');
-                        disp('TrialManager.getTrialData() before trial end. Please check lines of');
-                        disp('your protocol main loop (e.g. with tic/toc) and optimize accordingly.');
-                        disp('*********************************************************************');
-                    end
-                end
                 obj.LastTrialEndTime = RawTrialEvents.TrialEndTimestamp;
             else
                 stop(obj.Timer);
