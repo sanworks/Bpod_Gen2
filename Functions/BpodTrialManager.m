@@ -83,6 +83,13 @@ classdef BpodTrialManager < handle
             end
             obj.PrepareNextTrialFlag = 0;
             obj.TrialEndFlag = 0;
+            if BpodSystem.Status.SessionStartFlag == 1 % On first run of session
+                BpodSystem.Status.SessionStartFlag = 0;
+                if BpodSystem.MachineType == 4
+                    BpodSystem.AnalogSerialPort.flush;
+                    start(BpodSystem.Timers.AnalogTimer);
+                end
+            end
             if smaSent
                 if BpodSystem.Status.SM2runASAP == 0
                     BpodSystem.SerialPort.write('R', 'uint8');

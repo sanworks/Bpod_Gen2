@@ -29,6 +29,7 @@
 -Examples: /Protocols/Wheel/ now contains an auditory Poisson click 2AFC task using HiFi module for clicks and the rotary encoder for choice responses
 -TrialManager: Fixed unhandled error if using FSM firmware v22 and a state machine description with implicit serial messages on trial 1
 -TrialManager: Now supports implicit multi-byte serial messages, e.g. {'MyModule', ['P' 2 3]} instead of LoadSerialMessages (req. firmware v23)
+-TrialManager: Fixed dead-time warning bug (previously the warning was delayed until the end of the trial)
 -ArCOM: Added support for MATLAB's new serialport() class (r2019b and newer). This is now used by default when available.
 -ArCOM: Added function to flush input buffer
 -ArCOM: Added double sided buffer to process incoming data. Uses 2x memory but is much more efficient if events are high frequency
