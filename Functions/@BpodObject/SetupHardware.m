@@ -187,6 +187,22 @@ function obj = SetupHardware(obj)
         if Confirmed ~= 1
             error('Could not enable ports');
         end
+        % Sanity check sync config
+        syncIsValid = 1;
+        if obj.SyncConfig.Channel > obj.HW.n.Outputs
+            syncIsValid = 0;
+        else
+            SyncChannelType = obj.HW.Outputs(obj.SyncConfig.Channel);
+            if ~(SyncChannelType == 'B' || SyncChannelType == 'W' || SyncChannelType == 'P')
+                syncIsValid = 0;
+            end
+        end
+        if ~syncIsValid
+            warning('Sync is configured for an invalid channel type. Resetting to ''None''')
+            obj.SyncConfig.Channel = 255;
+            obj.SyncConfig.SignalType = 0;
+            copyfile(fullfile(obj.Path.BpodRoot, 'Examples', 'Example Settings Files', 'ModuleUSBConfig.mat'), obj.Path.ModuleUSBConfig);
+        end
         % Set up Sync config
         obj.SerialPort.write(['K' obj.SyncConfig.Channel obj.SyncConfig.SignalType], 'uint8');
         Confirmed = obj.SerialPort.read(1, 'uint8');

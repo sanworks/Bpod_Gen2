@@ -98,8 +98,8 @@ classdef BpodTrialManager < handle
                 BpodSystem.Status.InStateMatrix = 1;
             else
                 BpodSystem.Status.BeingUsed = 1;
+                SendStateMachine(StateMatrix, 'RunASAP'); 
                 BpodSystem.Status.InStateMatrix = 1;
-                SendStateMachine(StateMatrix, 'RunASAP');
             end
             BpodSystem.Status.SM2runASAP = 0;
             SMA_Confirmed = BpodSystem.SerialPort.read(1, 'uint8');
@@ -153,11 +153,11 @@ classdef BpodTrialManager < handle
             if obj.LastTrialEndTime > 0
                 LastTrialDeadTime = obj.TrialStartTimestamp - obj.LastTrialEndTime;
                 if BpodSystem.MachineType > 2
-                    Threshold = 0.00021;
-                    Micros = num2str(200);
-                else
                     Threshold = 0.00051;
                     Micros = num2str(500);
+                else
+                    Threshold = 0.00075;
+                    Micros = num2str(750);
                 end
                 if LastTrialDeadTime > Threshold
                     disp(' ');

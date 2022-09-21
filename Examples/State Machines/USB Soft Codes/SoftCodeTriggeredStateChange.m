@@ -1,8 +1,8 @@
 % Example state matrix: Switches states when soft code 5 arrives.
 %
 % To send a soft code, you'll need access to the command line - so
-% you can't use RunStateMachine(). Instead, create a TrialManagerObject:
-% T = TrialManagerObject;
+% you can't use RunStateMachine(). Instead, use BpodTrialManager:
+% T = BpodTrialManager;
 % Then, Run the state machine with:
 % T.startTrial(sma);
 % While the trial is running, send soft code 5 with:

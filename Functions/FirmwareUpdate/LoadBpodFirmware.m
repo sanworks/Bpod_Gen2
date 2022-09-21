@@ -85,7 +85,7 @@ classdef LoadBpodFirmware < handle
             % Identify state machine accessory ports (to exclude from list)
             global BpodSystem
             ExcludedPorts = [];
-            if isempty(BpodSystem)
+            if isempty(BpodSystem) || ~isvalid(BpodSystem)
                 clear global BpodSystem
             else
                 AnalogPort = [];
