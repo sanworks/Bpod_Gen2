@@ -19,6 +19,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 function obj = analogViewer(obj, op, newData)
+if verLessThan('MATLAB', '8.4') % Earlier versions of MATLAB did not support unicode on buttons
+    UpButtonChar = '<HTML>&#9650;';
+    DownButtonChar = '<HTML>&#9660;';
+    RecButtonChar = '<HTML>&bull;';
+    ZeroButtonChar = '<HTML>&#8767;';
+    RestoreDCChar = '=';
+    StopButtonChar = '<HTML>&#9632;';
+else
+    UpButtonChar = char(9650);
+    DownButtonChar = char(9660);
+    RecButtonChar = char(9210);
+    ZeroButtonChar = char(8767);
+    RestoreDCChar = char(9107);
+    StopButtonChar = char(9632);
+end
 switch op
     case 'init'
         if sum(obj.HW.FlexIO_ChannelTypes == 2) == 0 % If no FlexIO channels are configured as analog input
@@ -72,30 +87,30 @@ switch op
             'box', 'off', 'tickdir', 'out', 'Color', [0.1 0.1 0.1]);
         set(gca, 'xlim', [0 obj.GUIHandles.OSC.nXDivisions], 'ylim', [-0.4 obj.GUIHandles.OSC.nYDivisions], 'ytick', [], 'xtick', []);
         
-        obj.GUIHandles.VoltScaleUpButton = uicontrol('Style', 'pushbutton', 'String', char(9650), 'Position', [661 69 50 50],...
-                'Callback',@(h,e)obj.analogViewer('stepVoltsPerDiv', 1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
-                'FontWeight', 'bold', 'TooltipString', 'Increase Volts/div');
-        obj.GUIHandles.VoltScaleDnButton = uicontrol('Style', 'pushbutton', 'String', char(9660), 'Position', [661 9 50 50],...
-                'Callback',@(h,e)obj.analogViewer('stepVoltsPerDiv', -1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
-                'FontWeight', 'bold', 'TooltipString', 'Decrease Volts/div');
+        obj.GUIHandles.VoltScaleUpButton = uicontrol('Style', 'pushbutton', 'String', UpButtonChar, 'Position', [661 69 50 50],...
+            'Callback',@(h,e)obj.analogViewer('stepVoltsPerDiv', 1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
+            'FontWeight', 'bold', 'TooltipString', 'Increase Volts/div');
+        obj.GUIHandles.VoltScaleDnButton = uicontrol('Style', 'pushbutton', 'String', DownButtonChar, 'Position', [661 9 50 50],...
+            'Callback',@(h,e)obj.analogViewer('stepVoltsPerDiv', -1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
+            'FontWeight', 'bold', 'TooltipString', 'Decrease Volts/div');
         annotation('textbox',[.91 .1 .1 .2],'String','V/Div','EdgeColor','none', 'FontSize', 14, 'FontWeight', 'Bold');
         
-        obj.GUIHandles.TimeScaleUpButton = uicontrol('Style', 'pushbutton', 'String', char(9650), 'Position', [661 224 50 50],...
-                'Callback',@(h,e)obj.analogViewer('stepTimePerDiv', 1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
-                'FontWeight', 'bold', 'TooltipString', 'Increase time/div');
-        obj.GUIHandles.TimeScaleDnButton = uicontrol('Style', 'pushbutton', 'String', char(9660), 'Position', [661 164 50 50],...
-                'Callback',@(h,e)obj.analogViewer('stepTimePerDiv', -1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
-                'FontWeight', 'bold', 'TooltipString', 'Decrease time/div');
+        obj.GUIHandles.TimeScaleUpButton = uicontrol('Style', 'pushbutton', 'String', UpButtonChar, 'Position', [661 224 50 50],...
+            'Callback',@(h,e)obj.analogViewer('stepTimePerDiv', 1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
+            'FontWeight', 'bold', 'TooltipString', 'Increase time/div');
+        obj.GUIHandles.TimeScaleDnButton = uicontrol('Style', 'pushbutton', 'String', DownButtonChar, 'Position', [661 164 50 50],...
+            'Callback',@(h,e)obj.analogViewer('stepTimePerDiv', -1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
+            'FontWeight', 'bold', 'TooltipString', 'Decrease time/div');
         annotation('textbox',[.91 .41 .1 .2],'String','s/Div','EdgeColor','none', 'FontSize', 14, 'FontWeight', 'Bold');
         
-        obj.GUIHandles.RecordButton = uicontrol('Style', 'pushbutton', 'String', char(9210), 'Position', [661 415 50 50],...
-                'Callback',@(h,e)obj.analogViewer('logStartStop', 0), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
-                'FontWeight', 'bold', 'ForegroundColor', [.7 0 0], 'TooltipString', 'Record to data file');
+        obj.GUIHandles.RecordButton = uicontrol('Style', 'pushbutton', 'String', RecButtonChar, 'Position', [661 415 50 50],...
+            'Callback',@(h,e)obj.analogViewer('logStartStop', 0), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', TitleFontSize,...
+            'FontWeight', 'bold', 'ForegroundColor', [.7 0 0], 'TooltipString', 'Record to data file');
         annotation('textbox',[.915 .79 .1 .2],'String','Rec','EdgeColor','none', 'FontSize', 14, 'FontWeight', 'Bold');
         
-        obj.GUIHandles.ZeroButton = uicontrol('Style', 'pushbutton', 'String', char(8767), 'Position', [661 322 50 50],...
-                'Callback',@(h,e)obj.analogViewer('setDC', 0), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', 30,...
-                'FontWeight', 'bold', 'ForegroundColor', [0 0 0], 'TooltipString', 'Subtract DC (in viewer only)');
+        obj.GUIHandles.ZeroButton = uicontrol('Style', 'pushbutton', 'String', ZeroButtonChar, 'Position', [661 322 50 50],...
+            'Callback',@(h,e)obj.analogViewer('setDC', 0), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', 30,...
+            'FontWeight', 'bold', 'ForegroundColor', [0 0 0], 'TooltipString', 'Subtract DC (in viewer only)');
         annotation('textbox',[.922 .6 .1 .2],'String',['DC'],'EdgeColor','none', 'FontSize', 14, 'FontWeight', 'Bold');
         
         if obj.Status.BeingUsed
@@ -133,7 +148,7 @@ switch op
         obj.GUIHandles.OSC.nUpdates = 0;
         if obj.Status.RecordAnalog
             set(obj.GUIHandles.OSC.RecStatText, 'String', 'Recording');
-            set(obj.GUIHandles.RecordButton, 'String', char(9632), 'ForegroundColor', [0 0 0]);
+            set(obj.GUIHandles.RecordButton, 'String', StopButtonChar, 'ForegroundColor', [0 0 0]);
         end
         obj.Status.AnalogViewer = 1;
         drawnow;
@@ -196,11 +211,11 @@ switch op
                 voltString = ['mV/div: ' num2str(NewVoltsDiv*1000) '.0'];
             end
             set(obj.GUIHandles.OSC.VDivText, 'String', voltString);
-%             for i = 1:obj.HW.n.FlexIO
-%                 if obj.SMeventsEnabled(i)
-%                     obj.updateThresholdLine(i);
-%                 end
-%             end
+            %             for i = 1:obj.HW.n.FlexIO
+            %                 if obj.SMeventsEnabled(i)
+            %                     obj.updateThresholdLine(i);
+            %                 end
+            %             end
         end
         
     case 'stepTimePerDiv'
@@ -232,11 +247,11 @@ switch op
             case 0
                 obj.Status.RecordAnalog = 1;
                 set(obj.GUIHandles.OSC.RecStatText, 'String', 'Recording');
-                set(obj.GUIHandles.RecordButton, 'String', char(9632), 'ForegroundColor', [0 0 0]);
+                set(obj.GUIHandles.RecordButton, 'String', StopButtonChar, 'ForegroundColor', [0 0 0]);
             case 1
                 obj.Status.RecordAnalog = 0;
                 set(obj.GUIHandles.OSC.RecStatText, 'String', '');
-                set(obj.GUIHandles.RecordButton, 'String', char(9210), 'ForegroundColor', [.7 0 0]);
+                set(obj.GUIHandles.RecordButton, 'String', RecButtonChar, 'ForegroundColor', [.7 0 0]);
         end
         
     case 'setDC'
@@ -247,9 +262,9 @@ switch op
                 obj.GUIHandles.OSC.sampleSum(ch) = 0;
                 obj.GUIHandles.OSC.nSamplesSummed(ch) = 0;
             end
-            set(obj.GUIHandles.ZeroButton, 'String', char(9107), 'TooltipString', 'Restore DC (in viewer only)');
+            set(obj.GUIHandles.ZeroButton, 'String', RestoreDCChar, 'TooltipString', 'Restore DC (in viewer only)');
         else
-            set(obj.GUIHandles.ZeroButton, 'String', char(8767), 'TooltipString', 'Subtract DC (in viewer only)');
+            set(obj.GUIHandles.ZeroButton, 'String', ZeroButtonChar, 'TooltipString', 'Subtract DC (in viewer only)');
         end
         obj.GUIHandles.OSC.SweepPos = 1;
     case 'end'
