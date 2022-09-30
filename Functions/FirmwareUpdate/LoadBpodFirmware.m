@@ -27,14 +27,15 @@ classdef LoadBpodFirmware < handle
         PortType
         FirmwareVersions
         LoaderApps
+        tycmd
     end
     methods
         function obj = LoadBpodFirmware(varargin)
             % Optional args:
             % set2Device: A string containing a filter for the firmware list
             % excludeFSM: 0 to include FSM serial port, 1 to hide it. This only works if the Bpod console is open.
-            if ~ispc
-                error(['Error: The Bpod firmware updater is not yet available on OSX or Linux.' char(10)...
+            if ismac
+                error(['Error: The Bpod firmware updater is not yet available on OSX.' char(10)...
                     'Please follow instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a> to update with the Arduino application.'])
             end
             set2Device = [];
@@ -81,10 +82,18 @@ classdef LoadBpodFirmware < handle
             end
 
             % Get list of USB serial ports
+            if exist('serialportlist','file')
+                USBSerialPorts = sort(serialportlist('available'));
+            elseif exist('seriallist','file')
+                USBSerialPorts = sort(seriallist('available'));
+            else
+                USBSerialPorts = [];
+            end
+            obj.PortType(1:length(USBSerialPorts)) = 1;
             
             % Identify state machine accessory ports (to exclude from list)
             global BpodSystem
-            ExcludedPorts = [];
+            ExcludedPorts = {};
             if isempty(BpodSystem) || ~isvalid(BpodSystem)
                 clear global BpodSystem
             else
@@ -96,67 +105,33 @@ classdef LoadBpodFirmware < handle
                 if excludeFSM
                     FSMPort = BpodSystem.SerialPort.PortName;
                 end
-                ExcludedPorts = [{'COM1','COM2'} AnalogPort FSMPort BpodSystem.HW.AppSerialPortName];
+                ExcludedPorts = [{'COM1','COM2'} AnalogPort ...
+                    FSMPort BpodSystem.HW.AppSerialPortName];
             end
-
-            % Load USB serial ports
-            USBSerialPorts = cell(0,1);
-            [Status,RawString] = system('powershell.exe "[System.IO.Ports.SerialPort]::getportnames()"');
-            nPortsAdded = 0;
-            if ~isempty(RawString)
-                PortLocations = strsplit(RawString,char(10));
-                PortLocations = PortLocations(1:end-1);
-                nPorts = length(PortLocations);
-                for p = 1:nPorts
-                    CandidatePort = PortLocations{p};
-                    if sum(strcmp(ExcludedPorts, CandidatePort)) == 0
-                        novelPort = 1;
-                        if sum(strcmp(CandidatePort, USBSerialPorts)) > 0
-                            novelPort = 0;
-                        end
-                        if novelPort == 1
-                            nPortsAdded = nPortsAdded + 1;
-                            USBSerialPorts{nPortsAdded} = CandidatePort;
-                        end
-                    end
-                end
+            USBSerialPorts = setdiff(USBSerialPorts, ExcludedPorts);
+            
+            % Define path for tycmd executable
+            dirSelf = fileparts(which('LoadBpodFirmware'));
+            if ispc
+                obj.tycmd = fullfile(dirSelf,'tycmd');
+            elseif ismac
+                obj.tycmd = fullfile(dirSelf,'tycmd_osx');
+            elseif isunix
+                obj.tycmd = fullfile(dirSelf,'tycmd_linux');
             end
-            obj.PortType(1:length(USBSerialPorts)) = 1;
-
-            % Load Teensy RawHID boards
-            RawHIDs = cell(0);
-            programPath = fullfile(fileparts(which('UpdateBpodFirmware')), ['tycmd list']);
-            [~, Tstring] = system(programPath);
-            if ~isempty(Tstring)
-                HardReturns = find(Tstring == 10);
-                Pos = 1;
-                Found = 0;
-                if ~isempty(HardReturns)
-                    for i = 1:length(HardReturns)-1
-                        Segment = Tstring(Pos:HardReturns(i));
-                        if strfind(Segment, 'Teensyduino RawHID')
-                            Found = Found + 1;
-                            RawHIDs{Found} = Segment(strfind(Segment, 'add ') + 4:strfind(Segment, '-Teensy')-1);
-                        end
-                        Pos = Pos + length(Segment);
-                    end
-                    Segment = Tstring(Pos:end);
-                    if strfind(Segment, 'Teensyduino RawHID')
-                        Found = Found + 1;
-                        RawHIDs{Found} = ['SER#' Segment(strfind(Segment, 'add ') + 4:strfind(Segment, '-Teensy')-1)];
-                    end
-                end
-            end
-            if ~isempty(RawHIDs)
-                obj.PortType = [obj.PortType ones(1,length(RawHIDs))*2];
-            end
-            if isempty(USBSerialPorts) && isempty(RawHIDs)
+            
+            % Get Teensy RawHID boards & combine with list of USB serial ports
+            [~, Tstring] = system([obj.tycmd ' list']);
+            RawHIDs = regexp(Tstring,'\d*(?=-Teensy.*RawHID\)$)','match','lineanchors');
+            RawHIDs = strcat('SER#',RawHIDs);
+            obj.PortType = [obj.PortType ones(1,length(RawHIDs))*2];
+            AllPorts = [USBSerialPorts RawHIDs];
+            if isempty(AllPorts)
                 error('Error: No USB serial devices were detected.');
             end
-            AllPorts = [USBSerialPorts RawHIDs];
 
             % Set up GUI
-            obj.gui.Fig  = figure('name','Bpod Firmware Loading Tool', 'position',[100,100,755,200],...
+            obj.gui.Fig  = figure('name','Bpod Firmware Loading Tool', 'position',[100,100,855,200],...
                 'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off',...
                 'Color',[0.1 0.1 0.1]);
             uicontrol('Style', 'text', 'Position', [20 150 120 30], 'String', 'Firmware', 'FontSize', 18,...
@@ -169,9 +144,9 @@ classdef LoadBpodFirmware < handle
                 'FontWeight', 'bold', 'BackgroundColor', [0.1 0.1 0.1], 'ForegroundColor', [0.1 1 0.1]);
             uicontrol('Style', 'text', 'Position', [465 150 80 30], 'String', 'Port', 'FontSize', 18,...
                 'FontWeight', 'bold', 'BackgroundColor', [0.1 0.1 0.1], 'ForegroundColor', [0.1 1 0.1]);
-            obj.gui.Ports = uicontrol('Style', 'popup', 'Position', [480 80 100 30], 'String', AllPorts, 'FontSize', 12,...
+            obj.gui.Ports = uicontrol('Style', 'popup', 'Position', [480 80 200 30], 'String', AllPorts, 'FontSize', 12,...
                 'FontWeight', 'bold', 'BackgroundColor', [0.1 0.1 0.1], 'ForegroundColor', [0.1 1 0.1]);
-            obj.gui.smButton = uicontrol('Style', 'pushbutton', 'Position', [630 75 100 50], 'String', 'Load', 'FontSize', 14,...
+            obj.gui.smButton = uicontrol('Style', 'pushbutton', 'Position', [730 75 100 50], 'String', 'Load', 'FontSize', 14,...
                 'FontWeight', 'bold', 'Enable', 'on','Callback', @(h,e)obj.updateFirmware(), 'BackgroundColor', [0.1 0.1 0.1], 'ForegroundColor', [0.1 1 0.1]);
             % Filter list if a filter arg was provided
             if ~isempty(set2Device)
@@ -267,22 +242,23 @@ classdef LoadBpodFirmware < handle
                     programPath = fullfile(thisFolder, ['bossac -i -d -U true -e -w -v -b ' firmwarePath ' -R']);
                 case 'tycmd'
                     firmwarePath = fullfile(thisFolder, [Filename '.hex']);
-                    [status, msg] = system('taskkill /F /IM teensy.exe');
+                    if ispc
+                        [~,~] = system('taskkill /F /IM teensy.exe');
+                    elseif isunix
+                        [~,~] = system('killall teensy');
+                    end
                     pause(.1);
                     switch portType
                         case 1
-                            programPath = fullfile(thisFolder, ['tycmd upload ' firmwarePath ' --board "@' TargetPort '"']);
+                            programPath = [obj.tycmd ' upload ' firmwarePath ' --board "@' TargetPort '"'];
                         case 2
-                            programPath = fullfile(thisFolder, ['tycmd upload ' firmwarePath ' --board "' TargetPort(5:end) '"']);
+                            programPath = [obj.tycmd ' upload ' firmwarePath ' --board "' TargetPort(5:end) '"'];
                     end
             end
             disp('------Uploading new firmware------')
             disp([Filename ' ==> ' TargetPort])
-            [status, msg] = system(programPath);
-            OK = 0;
-            if ~isempty(strfind(msg, 'Sending reset command')) || ~isempty(strfind(msg, 'Verify successful'))
-                OK = 1;
-            end
+            [~, msg] = system(programPath);
+            OK = contains(msg, 'Sending reset command') || contains(msg, 'Verify successful');
             if OK
                 disp('----------UPDATE COMPLETE---------')
             else
