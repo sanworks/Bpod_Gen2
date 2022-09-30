@@ -46,11 +46,25 @@ classdef LoadBpodFirmware < handle
             if nargin > 1
                 excludeFSM = varargin{2};
             end
+            
             % Set up path
             BpodPath = fileparts(which('Bpod'));
             addpath(genpath(fullfile(BpodPath, 'Functions')));
             FirmwarePath = fullfile(BpodPath, 'Functions', 'FirmwareUpdate');
+            
+            % Define path for tycmd executable
+            dirSelf = fileparts(which('LoadBpodFirmware'));
+            if ispc
+                obj.tycmd = fullfile(dirSelf,'tycmd');
+            elseif ismac
+                obj.tycmd = fullfile(dirSelf,'tycmd_osx');
+            elseif isunix
+                obj.tycmd = fullfile(dirSelf,'tycmd_linux');
+            end
+            
             % Parse firmware filenames to populate menus
+%             tmp = ls(FirmwarePath);
+%             tmp = regexp(tmp,'(?<name>\w+)_v(?<version>\d+)\.(?<extension>(?:bin)|(?:hex))','names');
             AllFiles = dir(FirmwarePath);
             nFirmwareFound = 0;
             FirmwareNames = cell(0,1);
@@ -110,21 +124,13 @@ classdef LoadBpodFirmware < handle
             end
             USBSerialPorts = setdiff(USBSerialPorts, ExcludedPorts);
             
-            % Define path for tycmd executable
-            dirSelf = fileparts(which('LoadBpodFirmware'));
-            if ispc
-                obj.tycmd = fullfile(dirSelf,'tycmd');
-            elseif ismac
-                obj.tycmd = fullfile(dirSelf,'tycmd_osx');
-            elseif isunix
-                obj.tycmd = fullfile(dirSelf,'tycmd_linux');
-            end
-            
-            % Get Teensy RawHID boards & combine with list of USB serial ports
+            % Get Teensy RawHID boards
             [~, Tstring] = system([obj.tycmd ' list']);
             RawHIDs = regexp(Tstring,'\d*(?=-Teensy.*RawHID\)$)','match','lineanchors');
             RawHIDs = strcat('SER#',RawHIDs);
             obj.PortType = [obj.PortType ones(1,length(RawHIDs))*2];
+            
+            % Combine lists of USB serial ports & RawHID devices
             AllPorts = [USBSerialPorts RawHIDs];
             if isempty(AllPorts)
                 error('Error: No USB serial devices were detected.');
@@ -237,15 +243,22 @@ classdef LoadBpodFirmware < handle
             switch loaderApp
                 case 'bossac'
                     firmwarePath = fullfile(thisFolder, [Filename '.bin']);
-                    system(['@mode ' TargetPort ':1200,N,8,1']);
-                    system('PING -n 3 127.0.0.1>NUL');
-                    programPath = fullfile(thisFolder, ['bossac -i -d -U true -e -w -v -b ' firmwarePath ' -R']);
+                    if ispc
+                        system(['@mode ' TargetPort ':1200,N,8,1']);
+                        system('PING -n 3 127.0.0.1>NUL');
+                        programPath = fullfile(thisFolder, ['bossac -i -d -U true -e -w -v -b ' firmwarePath ' -R']);
+                    elseif isunix
+                        if system('command -v bossac &> /dev/null')
+                            error('Cannot find bossac. Please install bossa-cli using your system''s package management system.')
+                        end
+                        programPath = ['bossac -i -d -U true -e -w -v -b ' firmwarePath ' -R'];
+                    end
                 case 'tycmd'
                     firmwarePath = fullfile(thisFolder, [Filename '.hex']);
                     if ispc
-                        [~,~] = system('taskkill /F /IM teensy.exe');
+                        system('taskkill /F /IM teensy.exe');
                     elseif isunix
-                        [~,~] = system('killall teensy');
+                        system('killall teensy');
                     end
                     pause(.1);
                     switch portType
