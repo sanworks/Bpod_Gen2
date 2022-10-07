@@ -699,6 +699,9 @@ if BpodSystem.MachineType > 3
         AnalogFilename = [BpodSystem.Path.CurrentDataFile(1:end-4) '_ANLG.dat'];
         if BpodSystem.Status.RecordAnalog == 1
             BpodSystem.AnalogDataFile = fopen(AnalogFilename,'w');
+            if BpodSystem.AnalogDataFile == -1
+                error(['Error: Could not open the analog data file: ' AnalogFilename])
+            end
         end
         BpodSystem.Status.nAnalogSamples = 0;
     end

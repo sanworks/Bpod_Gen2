@@ -41,13 +41,13 @@ if BpodSystem.MachineType > 3
     TargetDataFormat = 0; % 0 = Volts, 1 = bits (0-4095 encoding voltage in range 0-5V)
     IncludeTrialAlignedData = 0; % If set to
     % Check for overrides
-    if nargin > 0
+    if nargin > 1
         TargetDataString = varargin{1};
         if strcmpi(TargetDataString, 'bits')
             TargetDataFormat = 1;
         end
     end
-    if nargin > 1
+    if nargin > 2
         IncludeTrialAlignedData = varargin{1};
     end
     if ~isempty(BpodSystem)

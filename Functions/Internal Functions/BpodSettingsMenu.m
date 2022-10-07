@@ -84,7 +84,7 @@ BpodPortConfig;
 function ConfigureFlex(trash, othertrash)
 global BpodSystem
 close(BpodSystem.GUIHandles.SettingsMenuFig)
-FlexIOConfig;
+FlexIOConfigGUI;
 
 function ConfigureBpodSync(trash, othertrash)
 global BpodSystem

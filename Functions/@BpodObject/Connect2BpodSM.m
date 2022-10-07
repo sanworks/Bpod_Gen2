@@ -18,6 +18,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function obj = Connect2BpodSM(obj, portString, varargin)
+    if ~ispc && ~ismac
+        % Warn user if Linux udev rules file is not in place
+        if ~exist('/etc/udev/rules.d/00-teensy.rules')
+            warning(['Linux udev rules file not found. Bpod devices newer than state machine r1 may not function.' char(10) 'Follow instructions <a href="matlab:web(''https://www.pjrc.com/teensy/00-teensy.rules'',''-browser'')">here</a>'])
+        end
+    end
     AutoMode = strcmp(portString, 'AUTO');
     SkipDiscovery = 0;
     if AutoMode

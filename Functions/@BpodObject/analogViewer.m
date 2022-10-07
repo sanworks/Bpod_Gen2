@@ -44,6 +44,9 @@ switch op
                 figure(obj.GUIHandles.OscopeFig_Builtin);
                 obj.GUIHandles.OSC.SweepPos = 1;
                 obj.GUIHandles.OSC.nUpdates = 0;
+                for ch = 1:obj.HW.n.FlexIO
+                    set(obj.GUIHandles.OSC.OscopeDataLine(ch), 'Ydata', nan(1,obj.GUIHandles.OSC.nDisplaySamples*2));
+                end
                 return
             end
         end

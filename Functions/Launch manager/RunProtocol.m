@@ -97,7 +97,7 @@ switch Opstring
             
             % On Bpod r2+, if FlexIO channels are configured as analog,
             % setup memory-mapped data file
-            nAnalogChannels = sum(BpodSystem.HW.FlexIOChannelTypes == 2);
+            nAnalogChannels = sum(BpodSystem.HW.FlexIO_ChannelTypes == 2);
             if nAnalogChannels > 0
 %                 AnalogFilename = [subjectName '_' protocolName '_' DateInfo '_ANLG.mat'];
 %                 BpodSystem.AnalogData = matfile(AnalogFilename,'Writable',true);
@@ -108,6 +108,9 @@ switch Opstring
                 AnalogFilename = [subjectName '_' protocolName '_' DateInfo '_ANLG.dat'];
                 if BpodSystem.Status.RecordAnalog == 1
                     BpodSystem.AnalogDataFile = fopen(AnalogFilename,'w');
+                    if BpodSystem.AnalogDataFile == -1
+                        error(['Error: Could not open the analog data file: ' AnalogFilename])
+                    end
                 end
                 BpodSystem.Status.nAnalogSamples = 0;
             end
