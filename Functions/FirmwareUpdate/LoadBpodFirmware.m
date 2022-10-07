@@ -253,7 +253,7 @@ classdef LoadBpodFirmware < handle
                         if system('command -v bossac &> /dev/null')
                             error('Cannot find bossac. Please install bossa-cli using your system''s package management system.')
                         end
-                        programPath = ['bossac -i -d -U true -e -w -v -b ' firmwarePath ' -R'];
+                        programPath = ['bossac -i -d -U=true -e -w -v -b ' firmwarePath ' -R'];
                     end
                 case 'tycmd'
                     firmwarePath = fullfile(thisFolder, [Filename '.hex']);
