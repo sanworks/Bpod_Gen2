@@ -47,24 +47,19 @@ classdef LoadBpodFirmware < handle
                 excludeFSM = varargin{2};
             end
             
-            % Set up path
-            BpodPath = fileparts(which('Bpod'));
-            addpath(genpath(fullfile(BpodPath, 'Functions')));
-            FirmwarePath = fullfile(BpodPath, 'Functions', 'FirmwareUpdate');
+            % Location of firmware binaries
+            FirmwarePath = fileparts(mfilename('fullpath'));
             
             % Define path for tycmd executable
-            dirSelf = fileparts(which('LoadBpodFirmware'));
             if ispc
-                obj.tycmd = fullfile(dirSelf,'tycmd');
+                obj.tycmd = fullfile(FirmwarePath,'tycmd');
             elseif ismac
-                obj.tycmd = fullfile(dirSelf,'tycmd_osx');
+                obj.tycmd = fullfile(FirmwarePath,'tycmd_osx');
             elseif isunix
-                obj.tycmd = fullfile(dirSelf,'tycmd_linux');
+                obj.tycmd = fullfile(FirmwarePath,'tycmd_linux');
             end
             
             % Parse firmware filenames to populate menus
-%             tmp = ls(FirmwarePath);
-%             tmp = regexp(tmp,'(?<name>\w+)_v(?<version>\d+)\.(?<extension>(?:bin)|(?:hex))','names');
             AllFiles = dir(FirmwarePath);
             nFirmwareFound = 0;
             FirmwareNames = cell(0,1);
@@ -99,7 +94,7 @@ classdef LoadBpodFirmware < handle
             if exist('serialportlist','file')
                 USBSerialPorts = sort(serialportlist('available'));
             elseif exist('seriallist','file')
-                USBSerialPorts = sort(seriallist('available'));
+                USBSerialPorts = sort(seriallist('available')); %#ok<SERLL> 
             else
                 USBSerialPorts = [];
             end
