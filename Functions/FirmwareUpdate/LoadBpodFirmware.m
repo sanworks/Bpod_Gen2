@@ -59,6 +59,12 @@ classdef LoadBpodFirmware < handle
                 case 'GLNXA64'
                     obj.tycmd = fullfile(FirmwarePath,'tycmd_linux64');
             end
+
+            % Check for udev rules on linux
+            if ~ismac && isunix && ~exist('/etc/udev/rules.d/00-teensy.rules','file')
+                error(['Error: Cannot find teensy udev rules.' char(10) ...
+                    'Please follow instructions <a href="matlab:web(''https://www.pjrc.com/teensy/td_download.html'',''-browser'')">here</a> to install them.'])
+            end
             
             % Parse firmware filenames to populate menus
             AllFiles = dir(FirmwarePath);
