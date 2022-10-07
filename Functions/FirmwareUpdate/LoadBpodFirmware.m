@@ -34,9 +34,9 @@ classdef LoadBpodFirmware < handle
             % Optional args:
             % set2Device: A string containing a filter for the firmware list
             % excludeFSM: 0 to include FSM serial port, 1 to hide it. This only works if the Bpod console is open.
-            if ismac
-                error(['Error: The Bpod firmware updater is not yet available on OSX.' char(10)...
-                    'Please follow instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a> to update with the Arduino application.'])
+            if ~ismember(computer,{'PCWIN64', 'GLNXA64'})
+                error(['Error: The Bpod firmware updater is not yet available on %s.' char(10)...
+                    'Please follow instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a> to update with the Arduino application.'],computer)
             end
             set2Device = [];
             excludeFSM = 0;
@@ -51,12 +51,13 @@ classdef LoadBpodFirmware < handle
             FirmwarePath = fileparts(mfilename('fullpath'));
             
             % Define path for tycmd executable
-            if ispc
-                obj.tycmd = fullfile(FirmwarePath,'tycmd');
-            elseif ismac
-                obj.tycmd = fullfile(FirmwarePath,'tycmd_osx');
-            elseif isunix
-                obj.tycmd = fullfile(FirmwarePath,'tycmd_linux');
+            switch computer
+                case 'PCWIN64'
+                    obj.tycmd = fullfile(FirmwarePath,'tycmd');
+                case 'MAXI64'
+                    obj.tycmd = fullfile(FirmwarePath,'tycmd_osx');
+                case 'GLNXA64'
+                    obj.tycmd = fullfile(FirmwarePath,'tycmd_linux64');
             end
             
             % Parse firmware filenames to populate menus
