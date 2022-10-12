@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the 
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -59,7 +59,7 @@ classdef LoadBpodFirmware < handle
                 case 'GLNXA64'
                     obj.tycmd = fullfile(FirmwarePath,'tycmd_linux64');
             end
-
+            
             % Check for udev rules on linux
             if ~ismac && isunix && ~exist('/etc/udev/rules.d/00-teensy.rules','file')
                 error(['Error: Cannot find teensy udev rules.' char(10) ...
@@ -80,9 +80,9 @@ classdef LoadBpodFirmware < handle
                     ThisFirmwareName = FileName(1:DivPos-1);
                     ThisFirmwareVersion = FileName(DivPos+2:end);
                     if sum(strcmp(ThisFirmwareName,FirmwareNames)) > 0
-                         obj.FirmwareVersions{nFirmwareFound} = [obj.FirmwareVersions(nFirmwareFound) {ThisFirmwareVersion}];
-                         [~, Inds] = sort(str2double(obj.FirmwareVersions{nFirmwareFound}),'descend');
-                         obj.FirmwareVersions{nFirmwareFound} = obj.FirmwareVersions{nFirmwareFound}(Inds);
+                        obj.FirmwareVersions{nFirmwareFound} = [obj.FirmwareVersions(nFirmwareFound) {ThisFirmwareVersion}];
+                        [~, Inds] = sort(str2double(obj.FirmwareVersions{nFirmwareFound}),'descend');
+                        obj.FirmwareVersions{nFirmwareFound} = obj.FirmwareVersions{nFirmwareFound}(Inds);
                     else
                         nFirmwareFound = nFirmwareFound + 1;
                         FirmwareNames{nFirmwareFound} = ThisFirmwareName;
@@ -92,18 +92,71 @@ classdef LoadBpodFirmware < handle
                                 obj.LoaderApps{nFirmwareFound} = 'bossac';
                             case 'hex'
                                 obj.LoaderApps{nFirmwareFound} = 'tycmd';
-                        end                     
+                        end
                     end
                 end
             end
-
+            
             % Get list of USB serial ports
             if exist('serialportlist','file')
                 USBSerialPorts = sort(serialportlist('available'));
             elseif exist('seriallist','file')
-                USBSerialPorts = sort(seriallist('available')); %#ok<SERLL> 
-            else
-                USBSerialPorts = [];
+                USBSerialPorts = sort(seriallist('available'));
+            else % MATLAB pre r2017a. Fall back to system call
+                if ispc
+                    USBSerialPorts = cell(0,1);
+                    [Status,RawString] = system('powershell.exe "[System.IO.Ports.SerialPort]::getportnames()"');
+                    nPortsAdded = 0;
+                    if ~isempty(RawString)
+                        PortLocations = strsplit(RawString,char(10));
+                        PortLocations = PortLocations(1:end-1);
+                        nPorts = length(PortLocations);
+                        for p = 1:nPorts
+                            CandidatePort = PortLocations{p};
+                            novelPort = 1;
+                            if sum(strcmp(CandidatePort, USBSerialPorts)) > 0
+                                novelPort = 0;
+                            end
+                            if novelPort == 1
+                                nPortsAdded = nPortsAdded + 1;
+                                USBSerialPorts{nPortsAdded} = CandidatePort;
+                            end
+                        end
+                    end
+                elseif ismac % Contributed by Thiago Gouvea JUN_9_2016
+                    [trash, RawSerialPortList] = system('ls /dev/cu.usbmodem*');
+                    string = strtrim(RawSerialPortList);
+                    PortStringPositions = strfind(string, '/dev/cu.usbmodem');
+                    StringEnds = find(string == 9);
+                    nPorts = length(PortStringPositions);
+                    CandidatePorts = cell(1,nPorts);
+                    nGoodPorts = 0;
+                    for x = 1:nPorts
+                        if x < nPorts && nPorts > 1
+                            CandidatePort = string(PortStringPositions(x):StringEnds(x)-1);
+                        elseif x == nPorts
+                            CandidatePort = string(PortStringPositions(x):end);
+                        end
+                        nGoodPorts = nGoodPorts + 1;
+                        CandidatePorts{nGoodPorts} = CandidatePort;
+                    end
+                    USBSerialPorts = CandidatePorts(1:nGoodPorts);
+                else
+                    [trash, RawSerialPortList] = system('ls /dev/ttyACM*');
+                    string = strtrim(RawSerialPortList);
+                    PortStringPositions = strfind(string, '/dev/ttyACM');
+                    nPorts = length(PortStringPositions);
+                    CandidatePorts = cell(1,nPorts);
+                    nGoodPorts = 0;
+                    for x = 1:nPorts
+                        if PortStringPositions(x)+11 <= length(string)
+                            CandidatePort = strtrim(string(PortStringPositions(x):PortStringPositions(x)+11));
+                            nGoodPorts = nGoodPorts + 1;
+                            CandidatePorts{nGoodPorts} = CandidatePort;
+                        end
+                    end
+                    USBSerialPorts = CandidatePorts(1:nGoodPorts);
+                end
             end
             obj.PortType(1:length(USBSerialPorts)) = 1;
             
@@ -137,25 +190,34 @@ classdef LoadBpodFirmware < handle
             if isempty(AllPorts)
                 error('Error: No USB serial devices were detected.');
             end
-
+            labelOffset = 0;
+            if ispc
+                labelOffset = -10;
+            end
             % Set up GUI
+            BpodPath = which('Bpod');
+            BGPath = fullfile(BpodPath(1:end-6), 'Assets', 'Bitmap', 'FirmwareBG.bmp');
+            BG = imread(BGPath);
             obj.gui.Fig  = figure('name','Bpod Firmware Loading Tool', 'position',[100,100,855,200],...
                 'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off',...
-                'Color',[0.1 0.1 0.1]);
-            uicontrol('Style', 'text', 'Position', [20 150 140 30], 'String', 'Firmware', 'FontSize', 18,...
-                'FontWeight', 'bold', 'BackgroundColor', [0.1 0.1 0.1], 'ForegroundColor', [0.1 1 0.1]);
+                'Color',[0.1 0.1 0.1],'CloseRequestFcn',@(h,e)obj.clearObject());
+            BGAxes = axes('units','normalized', 'position',[0 0 1 1]);
+            uistack(BGAxes,'bottom');
+            image(BG); axis off;
+            uicontrol('Style', 'text', 'Position', [18+labelOffset 150 140 30], 'String', 'Firmware', 'FontSize', 18,...
+                'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
             obj.gui.Devices = uicontrol('Style', 'popup', 'Position', [25 80 280 30], 'String', FirmwareNames, 'FontSize', 12,...
-                'FontWeight', 'bold','Callback', @(h,e)obj.updateVersions(), 'BackgroundColor', [0.1 0.1 0.1], 'ForegroundColor', [0.1 1 0.1]);
-            uicontrol('Style', 'text', 'Position', [335 150 120 30], 'String', 'Version', 'FontSize', 18,...
-                'FontWeight', 'bold', 'BackgroundColor', [0.1 0.1 0.1], 'ForegroundColor', [0.1 1 0.1]);
+                'FontWeight', 'bold','Callback', @(h,e)obj.updateVersions(), 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
+            uicontrol('Style', 'text', 'Position', [335+labelOffset 150 120 30], 'String', 'Version', 'FontSize', 18,...
+                'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
             obj.gui.Versions = uicontrol('Style', 'popup', 'Position', [345 80 100 30], 'String', obj.FirmwareVersions{1}, 'FontSize', 12,...
-                'FontWeight', 'bold', 'BackgroundColor', [0.1 0.1 0.1], 'ForegroundColor', [0.1 1 0.1]);
+                'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
             uicontrol('Style', 'text', 'Position', [465 150 80 30], 'String', 'Port', 'FontSize', 18,...
-                'FontWeight', 'bold', 'BackgroundColor', [0.1 0.1 0.1], 'ForegroundColor', [0.1 1 0.1]);
+                'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
             obj.gui.Ports = uicontrol('Style', 'popup', 'Position', [480 80 200 30], 'String', AllPorts, 'FontSize', 12,...
-                'FontWeight', 'bold', 'BackgroundColor', [0.1 0.1 0.1], 'ForegroundColor', [0.1 1 0.1]);
+                'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
             obj.gui.smButton = uicontrol('Style', 'pushbutton', 'Position', [730 75 100 50], 'String', 'Load', 'FontSize', 14,...
-                'FontWeight', 'bold', 'Enable', 'on','Callback', @(h,e)obj.updateFirmware(), 'BackgroundColor', [0.1 0.1 0.1], 'ForegroundColor', [0.1 1 0.1]);
+                'FontWeight', 'bold', 'Enable', 'on','Callback', @(h,e)obj.updateFirmware(), 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
             % Filter list if a filter arg was provided
             if ~isempty(set2Device)
                 Pos = strfind(FirmwareNames,set2Device);
@@ -180,7 +242,7 @@ classdef LoadBpodFirmware < handle
             set(obj.gui.Versions, 'Value', 1);
             set(obj.gui.Versions, 'String', obj.FirmwareVersions{firmwareIndex});
         end
-
+        
         function updateFirmware(obj, varargin)
             ModuleNamePos = get(obj.gui.Devices, 'Value');
             ModuleNameList = get(obj.gui.Devices, 'String');
@@ -208,12 +270,12 @@ classdef LoadBpodFirmware < handle
             progressbar(0.9);
             progressbar(1);
             if OK
-                BGColor = [0.4 1 0.4];
+                BGColor = [0.1 0.9 0.1];
                 Msg1 = '*GREAT SUCCESS*';
                 Msg2 = 'Firmware update complete';
                 global BpodSystem;
                 if isempty(BpodSystem)
-                   clear global BpodSystem
+                    clear global BpodSystem
                 else
                     BpodSystem.LoadModules;
                 end
@@ -228,17 +290,36 @@ classdef LoadBpodFirmware < handle
                 'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off',...
                 'Color',BGColor);
             
-            uicontrol('Style', 'text', 'Position', [25 140 220 30], 'String', Msg1, 'FontSize', 14,...
+            obj.gui.Msg1 = uicontrol('Style', 'text', 'Position', [25 140 220 30], 'String', Msg1, 'FontSize', 14,...
                 'FontWeight', 'bold', 'BackgroundColor', BGColor);
-            uicontrol('Style', 'text', 'Position', [15 90 250 30], 'String', Msg2, 'FontSize', 14,...
+            obj.gui.Msg2 = uicontrol('Style', 'text', 'Position', [15 90 250 30], 'String', Msg2, 'FontSize', 14,...
                 'FontWeight', 'bold', 'BackgroundColor', BGColor);
             uicontrol('Style', 'pushbutton', 'Position', [90 20 100 40], 'String', 'Ok', 'FontSize', 14,...
-                'FontWeight', 'bold', 'BackgroundColor', [0.8 0.8 0.8], 'Callback', @(h,e)obj.closeModal());
-           
+                'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1], 'Callback', @(h,e)obj.closeModal());
+            if OK
+                BGColor(2) = 0.1;
+                try
+                    for i = 1:100
+                        BGColor(2) = BGColor(2) + (0.8/100);
+                        set(obj.gui.ConfirmModal, 'Color', BGColor);
+                        set(obj.gui.Msg1, 'BackgroundColor', BGColor);
+                        set(obj.gui.Msg2, 'BackgroundColor', BGColor);
+                        pause(.003);
+                        drawnow;
+                    end
+                catch
+                end
+                BGColor = [0.1 0.9 0.1];
+                set(obj.gui.ConfirmModal, 'Color', BGColor);
+                set(obj.gui.Msg1, 'BackgroundColor', BGColor);
+                set(obj.gui.Msg2, 'BackgroundColor', BGColor);
+            end
+            
         end
         function closeModal(obj)
             delete(obj.gui.ConfirmModal);
             delete(obj.gui.Fig);
+            evalin('base', 'clear ans');
         end
         function [OK,msg] = uploadFirmware(obj, TargetPort, Filename, loaderApp, portType)
             thisFolder = fileparts(which('LoadBpodFirmware'));
@@ -258,9 +339,9 @@ classdef LoadBpodFirmware < handle
                 case 'tycmd'
                     firmwarePath = fullfile(thisFolder, [Filename '.hex']);
                     if ispc
-                        system('taskkill /F /IM teensy.exe');
+                        [x, y] = system('taskkill /F /IM teensy.exe');
                     elseif isunix
-                        system('killall teensy');
+                        [x, y] = system('killall teensy');
                     end
                     pause(.1);
                     switch portType
@@ -273,13 +354,20 @@ classdef LoadBpodFirmware < handle
             disp('------Uploading new firmware------')
             disp([Filename ' ==> ' TargetPort])
             [~, msg] = system(programPath);
-            OK = contains(msg, 'Sending reset command') || contains(msg, 'Verify successful');
+            OK = 0;
+            if ~isempty(strfind(msg, 'Sending reset command')) || ~isempty(strfind(msg, 'Verify successful'))
+                OK = 1;
+            end
             if OK
                 disp('----------UPDATE COMPLETE---------')
             else
                 disp('----------FAILED TO LOAD----------')
             end
             disp(' ');
+        end
+        function clearObject(obj)
+            delete(obj.gui.Fig);
+            evalin('base', 'clear ans');
         end
     end
 end
