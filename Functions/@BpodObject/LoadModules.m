@@ -19,6 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function obj = LoadModules(obj)
     defaultBaudRate = 1312500;
+    if obj.MachineType < 2
+        defaultBaudRate = 115200;
+    end
     if obj.EmulatorMode == 0 && obj.Status.BeingUsed == 0
         nModules = sum(obj.HW.Outputs=='U');
         if isfield(obj.Modules, 'USBport')
