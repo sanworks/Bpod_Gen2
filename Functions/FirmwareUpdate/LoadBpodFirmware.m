@@ -80,7 +80,7 @@ classdef LoadBpodFirmware < handle
                     ThisFirmwareName = FileName(1:DivPos-1);
                     ThisFirmwareVersion = FileName(DivPos+2:end);
                     if sum(strcmp(ThisFirmwareName,FirmwareNames)) > 0
-                        obj.FirmwareVersions{nFirmwareFound} = [obj.FirmwareVersions(nFirmwareFound) {ThisFirmwareVersion}];
+                        obj.FirmwareVersions{nFirmwareFound} = [obj.FirmwareVersions{nFirmwareFound} {ThisFirmwareVersion}];
                         [~, Inds] = sort(str2double(obj.FirmwareVersions{nFirmwareFound}),'descend');
                         obj.FirmwareVersions{nFirmwareFound} = obj.FirmwareVersions{nFirmwareFound}(Inds);
                     else
