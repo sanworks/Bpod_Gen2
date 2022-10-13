@@ -78,7 +78,7 @@ disp('A backup copy of your current Bpod_Gen2 folder will be made in: ');
 disp(BackupDir);
 disp('Then, the latest software from Github will replace your current Bpod_Gen2 folder.');
 disp(' ');
-disp('If you are using Git to keep the repository current, please')
+disp('If you are using Git to keep Bpod software current, please')
 disp('do NOT use the updater - use the Git pull command instead.')
 disp(' ');
 disp('*IMPORTANT* This update tool is a BETA release.')
