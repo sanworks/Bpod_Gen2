@@ -271,6 +271,10 @@ classdef LoadBpodFirmware < handle
             progressbar(1);
             if OK
                 BGColor = [0.1 0.9 0.1];
+                FontSize = 14;
+                if isunix
+                    FontSize = 12;
+                end
                 Msg1 = '*GREAT SUCCESS*';
                 Msg2 = 'Firmware update complete';
                 global BpodSystem;
@@ -290,9 +294,9 @@ classdef LoadBpodFirmware < handle
                 'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off',...
                 'Color',BGColor);
             
-            obj.gui.Msg1 = uicontrol('Style', 'text', 'Position', [25 140 220 30], 'String', Msg1, 'FontSize', 14,...
+            obj.gui.Msg1 = uicontrol('Style', 'text', 'Position', [25 140 220 30], 'String', Msg1, 'FontSize', FontSize,...
                 'FontWeight', 'bold', 'BackgroundColor', BGColor);
-            obj.gui.Msg2 = uicontrol('Style', 'text', 'Position', [15 90 250 30], 'String', Msg2, 'FontSize', 14,...
+            obj.gui.Msg2 = uicontrol('Style', 'text', 'Position', [15 90 250 30], 'String', Msg2, 'FontSize', FontSize,...
                 'FontWeight', 'bold', 'BackgroundColor', BGColor);
             uicontrol('Style', 'pushbutton', 'Position', [90 20 100 40], 'String', 'Ok', 'FontSize', 14,...
                 'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1], 'Callback', @(h,e)obj.closeModal());
@@ -304,7 +308,7 @@ classdef LoadBpodFirmware < handle
                         set(obj.gui.ConfirmModal, 'Color', BGColor);
                         set(obj.gui.Msg1, 'BackgroundColor', BGColor);
                         set(obj.gui.Msg2, 'BackgroundColor', BGColor);
-                        pause(.003);
+                        pause(.005);
                         drawnow;
                     end
                 catch
@@ -337,6 +341,15 @@ classdef LoadBpodFirmware < handle
                         programPath = ['bossac -i -d -U=true -e -w -v -b ' firmwarePath ' -R'];
                     end
                 case 'tycmd'
+                    if ~ispc && ~ismac
+                        try % Try to give the uploader execute permissions
+                            [OK, Msg] = system(['chmod a+x ' fullfile(thisFolder, 'tycmd_linux64')]);
+                            if ~isempty(Msg)
+                                warning(Msg)
+                            end
+                        catch
+                        end
+                    end
                     firmwarePath = fullfile(thisFolder, [Filename '.hex']);
                     if ispc
                         [x, y] = system('taskkill /F /IM teensy.exe');
