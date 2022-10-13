@@ -72,6 +72,7 @@ switch Opstring
             if ~exist(DataPath)
                 error(['Error starting protocol: Test subject "' subjectName '" must be added first, from the launch manager.'])
             end
+
             %Make standard folders for this protocol.  This will fail silently if the folders exist
             mkdir(DataPath, protocolName);
             mkdir(fullfile(DataPath,protocolName,'Session Data'))
@@ -95,16 +96,9 @@ switch Opstring
                 error(['Error: Settings file: ' settingsName '.mat does not exist for test subject: ' subjectName ' in protocol: ' protocolName '.'])
             end
             
-            % On Bpod r2+, if FlexIO channels are configured as analog,
-            % setup memory-mapped data file
+            % On Bpod r2+, if FlexIO channels are configured as analog, setup data file
             nAnalogChannels = sum(BpodSystem.HW.FlexIO_ChannelTypes == 2);
             if nAnalogChannels > 0
-%                 AnalogFilename = [subjectName '_' protocolName '_' DateInfo '_ANLG.mat'];
-%                 BpodSystem.AnalogData = matfile(AnalogFilename,'Writable',true);
-%                 BpodSystem.AnalogData.AnalogData = uint16(zeros(nAnalogChannels,0));
-%                 BpodSystem.AnalogData.TrialNumber = uint16(0);
-%                 BpodSystem.Status.nAnalogSamples = 0;
-%                 BpodSystem.AnalogData.SamplingRate = BpodSystem.HW.FlexIOSamplingRate;
                 AnalogFilename = [subjectName '_' protocolName '_' DateInfo '_ANLG.dat'];
                 if BpodSystem.Status.RecordAnalog == 1
                     BpodSystem.AnalogDataFile = fopen(AnalogFilename,'w');
@@ -161,6 +155,11 @@ switch Opstring
             BpodSystem.Status.BeingUsed = 1;
             BpodSystem.Status.SessionStartFlag = 1;
             BpodSystem.ProtocolStartTime = now*100000;
+            set(BpodSystem.GUIHandles.CurrentStateDisplay, 'String', '---');
+            set(BpodSystem.GUIHandles.PreviousStateDisplay, 'String', '---');
+            set(BpodSystem.GUIHandles.LastEventDisplay, 'String', '---');
+            set(BpodSystem.GUIHandles.TimeDisplay, 'String', '0:00:00');
+            
             figure(BpodSystem.GUIHandles.MainFig);
             run(ProtocolRunFile);
         end

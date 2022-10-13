@@ -206,11 +206,13 @@ function obj = InitializeGUI(obj)
         PortString = obj.SerialPort.PortName;
     end
 
-    obj.GUIHandles.CurrentStateDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.PreviousStateDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.LastEventDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.TimeDisplay = uicontrol('Style', 'text', 'String', '0', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.USBPortDisplay = uicontrol('Style', 'text', 'String', PortString, 'Position', [Xpos Ypos InfoDispBoxWidth PortDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize);
+    obj.GUIHandles.CurrentStateDisplay = uicontrol('Style', 'text', 'String', '---', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
+    obj.GUIHandles.PreviousStateDisplay = uicontrol('Style', 'text', 'String', '---', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
+    obj.GUIHandles.LastEventDisplay = uicontrol('Style', 'text', 'String', '---', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
+    obj.GUIHandles.TimeDisplay = uicontrol('Style', 'text', 'String', '0:00:00', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight],...
+        'FontWeight', 'bold', 'FontSize', InfoDispFontSize, 'TooltipString', 'Time in session, updated on each trial start'); Ypos = Ypos - 51;
+    obj.GUIHandles.USBPortDisplay = uicontrol('Style', 'text', 'String', PortString, 'Position', [Xpos Ypos InfoDispBoxWidth PortDispBoxHeight],...
+        'FontWeight', 'bold', 'FontSize', InfoDispFontSize, 'TooltipString', 'The Bpod State Machine''s primary USB serial port');
     obj.FixPushbuttons;
     text(15, 30, Title, 'FontName', TitleFontName, 'FontSize', Lg, 'Color', TitleColor);
     line([220 780], [30 30], 'Color', LabelFontColor, 'LineWidth', 4);
@@ -218,7 +220,7 @@ function obj = InitializeGUI(obj)
     text(10, 102,'Current State', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 153,'Previous State', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 204,'Last Event', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
-    text(10, 255,'Trial-Start', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
+    text(10, 255,'Session Time', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 306,'Port', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(23, 65,'Live Info', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
     line([10 130], [79 79], 'Color', LabelFontColor, 'LineWidth', 2);

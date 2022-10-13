@@ -179,6 +179,6 @@ BpodSystem.GUIHandles.AnalogViewerButton = uicontrol('Parent', BpodSystem.GUIHan
 
 text(445, 225,'Analog', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([390 550], [210 210], 'Color', [.8 .8 .8], 'LineWidth', 2);
-text(xPos(1)+15, 90,' Bpod Finite', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
+text(xPos(1)+15, 92,' Bpod Finite', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
 text(xPos(2)+15, 70,'State Machine', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
-text(xPos(3)+15, 50, '     v2+', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
+text(xPos(3)+15, 48, '     v2+', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);

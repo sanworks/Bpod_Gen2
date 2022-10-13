@@ -769,6 +769,13 @@ BpodSystem.resetSessionClock();
 close(BpodSystem.GUIHandles.LaunchManagerFig);
 disp(' ');
 disp(['Starting ' ProtocolName]);
+set(BpodSystem.GUIHandles.CurrentStateDisplay, 'String', '---');
+set(BpodSystem.GUIHandles.PreviousStateDisplay, 'String', '---');
+set(BpodSystem.GUIHandles.LastEventDisplay, 'String', '---');
+set(BpodSystem.GUIHandles.TimeDisplay, 'String', '0:00:00');
+if sum(BpodSystem.InputsEnabled(BpodSystem.HW.Inputs == 'P')) == 0
+    warning('All Bpod behavior ports are currently disabled. If your protocol requires behavior ports, enable them from the settings menu.')
+end
 run(ProtocolPath);
 
 function OutputString = Spaces2Underscores(InputString)

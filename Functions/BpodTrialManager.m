@@ -118,7 +118,7 @@ classdef BpodTrialManager < handle
             BpodSystem.Status.NewStateMachineSent = 0;
             BpodSystem.Status.LastStateCode = 0;
             BpodSystem.Status.CurrentStateCode = 1;
-            BpodSystem.Status.LastStateName = 'None';
+            BpodSystem.Status.LastStateName = '---';
             BpodSystem.Status.CurrentStateName = BpodSystem.StateMatrix.StateNames{1};
             BpodSystem.HardwareState.OutputOverride(1:end) = 0;
             BpodSystem.RefreshGUI;
