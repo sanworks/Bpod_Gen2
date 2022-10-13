@@ -175,7 +175,7 @@ end
 if ~ispc && ~ismac
     xPos = [378 375 380];
 end
-BpodSystem.GUIHandles.AnalogViewerButton = uicontrol('Parent', BpodSystem.GUIHandles.OverridePanel(1),'Style', 'pushbutton', 'String', '', 'Position', [390 120 160 80], 'Callback', ['BpodSystem.analogViewer(''init'', []);'], 'CData', BpodSystem.GUIData.AnalogViewerButton, 'TooltipString', 'Launch Analog Viewer');
+BpodSystem.GUIHandles.AnalogViewerButton = uicontrol('Parent', BpodSystem.GUIHandles.OverridePanel(1),'Style', 'pushbutton', 'String', '', 'Position', [390 120 160 80], 'Callback', ['BpodSystem.startAnalogViewer();'], 'CData', BpodSystem.GUIData.AnalogViewerButton, 'TooltipString', 'Launch Analog Viewer');
 
 text(445, 225,'Analog', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
 line([390 550], [210 210], 'Color', [.8 .8 .8], 'LineWidth', 2);

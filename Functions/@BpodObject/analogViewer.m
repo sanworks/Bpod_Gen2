@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -155,6 +155,7 @@ switch op
         end
         obj.Status.AnalogViewer = 1;
         drawnow;
+        set(obj.GUIHandles.OscopeFig_Builtin, 'HandleVisibility', 'callback');
     case 'update'
         dataCh = 0;
         if obj.GUIHandles.OSC.nUpdates == 0

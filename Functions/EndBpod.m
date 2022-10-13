@@ -29,6 +29,7 @@ if ~isempty(BpodSystem)
             catch
             end
         end
+        clear FigureList i
         if isfield(BpodSystem.GUIHandles, 'LiquidCalibrator')
             LiquidCalFigList = {'MainFig', 'ValueEntryFig', 'RunMeasurementsFig', 'TestSpecificAmtFig', 'RecommendedMeasureFig'};
             CalUIHandles = BpodSystem.GUIHandles.LiquidCalibrator;
