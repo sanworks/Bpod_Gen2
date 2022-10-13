@@ -21,8 +21,8 @@ function NewLaunchManager
 
 global BpodSystem
 DrawFig = 1;
-if isfield(BpodSystem.GUIHandles, 'LaunchManagerFig')
-    if isvalid(BpodSystem.GUIHandles.LaunchManagerFig)
+if isfield(BpodSystem.GUIHandles, 'LaunchManagerFig') && ~verLessThan('MATLAB', '8.4')
+    if isgraphics(BpodSystem.GUIHandles.LaunchManagerFig)
         clf(BpodSystem.GUIHandles.LaunchManagerFig);
         figure(BpodSystem.GUIHandles.LaunchManagerFig);
         DrawFig = 0;

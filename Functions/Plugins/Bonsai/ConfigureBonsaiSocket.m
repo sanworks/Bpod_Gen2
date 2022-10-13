@@ -19,8 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function ConfigureBonsaiSocket
 global BpodSystem
-if isfield(BpodSystem.GUIHandles, 'ConfigureBonsaiFig')
-    if isvalid(BpodSystem.GUIHandles.ConfigureBonsaiFig)
+if isfield(BpodSystem.GUIHandles, 'ConfigureBonsaiFig') && ~verLessThan('MATLAB', '8.4')
+    if isgraphics(BpodSystem.GUIHandles.ConfigureBonsaiFig)
         figure(BpodSystem.GUIHandles.ConfigureBonsaiFig);
         return;
     end

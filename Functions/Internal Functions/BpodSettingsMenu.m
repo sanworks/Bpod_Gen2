@@ -21,8 +21,8 @@ function BpodSettingsMenu
 
 global BpodSystem
 
-if isfield(BpodSystem.GUIHandles, 'SettingsMenuFig')
-    if isvalid(BpodSystem.GUIHandles.SettingsMenuFig)
+if isfield(BpodSystem.GUIHandles, 'SettingsMenuFig') && ~verLessThan('MATLAB', '8.4')
+    if isgraphics(BpodSystem.GUIHandles.SettingsMenuFig)
         figure(BpodSystem.GUIHandles.SettingsMenuFig);
         return
     end

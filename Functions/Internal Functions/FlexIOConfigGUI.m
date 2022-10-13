@@ -19,8 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function FlexIOConfigGUI
 global BpodSystem
-if isfield(BpodSystem.GUIHandles, 'FlexConfigFig')
-    if isvalid(BpodSystem.GUIHandles.FlexConfigFig)
+if isfield(BpodSystem.GUIHandles, 'FlexConfigFig') && ~verLessThan('MATLAB', '8.4') 
+    if isgraphics(BpodSystem.GUIHandles.FlexConfigFig)
         figure(BpodSystem.GUIHandles.FlexConfigFig);
         return;
     end

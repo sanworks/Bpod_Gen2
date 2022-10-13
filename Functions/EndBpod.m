@@ -19,22 +19,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 global BpodSystem
 if ~isempty(BpodSystem)
-    % Close any open GUI figures
-    FigureList = {'LiveDispFig', 'SystemInfoFig', 'ModuleUSBFig', 'SettingsMenuFig', 'LaunchManagerFig', 'SyncConfigFig', 'PortConfigFig',...
-                  'FolderConfigFig','FlexConfigFig','ConfigureBonsaiFig'};
-    for i = 1:length(FigureList)
-        try
-            eval(['close(BpodSystem.GUIHandles.' FigureList{i} ')'])
-        catch
-        end
-    end
-    if isfield(BpodSystem.GUIHandles, 'LiquidCalibrator')
-        LiquidCalFigList = {'MainFig', 'ValueEntryFig', 'RunMeasurementsFig', 'TestSpecificAmtFig', 'RecommendedMeasureFig'};
-        CalUIHandles = BpodSystem.GUIHandles.LiquidCalibrator;
-        for i = 1:length(LiquidCalFigList)
+    if  ~verLessThan('MATLAB', '8.4') % In MATLAB earlier than 8.4, figures are sequential integers and figure ID of handle is not guaranteed
+        % Close any open GUI figures
+        FigureList = {'LiveDispFig', 'SystemInfoFig', 'ModuleUSBFig', 'SettingsMenuFig', 'LaunchManagerFig', 'SyncConfigFig', 'PortConfigFig',...
+                      'FolderConfigFig','FlexConfigFig','ConfigureBonsaiFig'};
+        for i = 1:length(FigureList)
             try
-                eval(['close(CalUIHandles.' LiquidCalFigList{i} ')'])
+                eval(['close(BpodSystem.GUIHandles.' FigureList{i} ')'])
             catch
+            end
+        end
+        if isfield(BpodSystem.GUIHandles, 'LiquidCalibrator')
+            LiquidCalFigList = {'MainFig', 'ValueEntryFig', 'RunMeasurementsFig', 'TestSpecificAmtFig', 'RecommendedMeasureFig'};
+            CalUIHandles = BpodSystem.GUIHandles.LiquidCalibrator;
+            for i = 1:length(LiquidCalFigList)
+                try
+                    eval(['close(CalUIHandles.' LiquidCalFigList{i} ')'])
+                catch
+                end
             end
         end
     end

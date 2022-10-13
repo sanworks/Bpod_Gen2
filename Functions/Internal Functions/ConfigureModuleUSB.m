@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function ConfigureModuleUSB(junk, morejunk)
 global BpodSystem
 
-if isfield(BpodSystem.GUIHandles, 'ModuleUSBFig')
-    if isvalid(BpodSystem.GUIHandles.ModuleUSBFig)
+if isfield(BpodSystem.GUIHandles, 'ModuleUSBFig') && ~verLessThan('MATLAB', '8.4')
+    if isgraphics(BpodSystem.GUIHandles.ModuleUSBFig)
         figure(BpodSystem.GUIHandles.ModuleUSBFig);
         return
     end

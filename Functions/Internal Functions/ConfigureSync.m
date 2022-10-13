@@ -19,8 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function ConfigureSync(junk, morejunk)
 global BpodSystem
-if isfield(BpodSystem.GUIHandles, 'SyncConfigFig')
-    if isvalid(BpodSystem.GUIHandles.SyncConfigFig)
+if isfield(BpodSystem.GUIHandles, 'SyncConfigFig') && ~verLessThan('MATLAB', '8.4')
+    if isgraphics(BpodSystem.GUIHandles.SyncConfigFig)
         figure(BpodSystem.GUIHandles.SyncConfigFig);
         return;
     end

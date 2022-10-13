@@ -248,8 +248,8 @@ classdef BpodObject < handle
         end
 
         function obj = setupFolders(obj)
-            if isfield(obj.GUIHandles, 'FolderConfigFig')
-                if isvalid(obj.GUIHandles.FolderConfigFig)
+            if isfield(obj.GUIHandles, 'FolderConfigFig') && ~verLessThan('MATLAB', '8.4')
+                if isgraphics(obj.GUIHandles.FolderConfigFig)
                     figure(obj.GUIHandles.FolderConfigFig);
                     return
                 end

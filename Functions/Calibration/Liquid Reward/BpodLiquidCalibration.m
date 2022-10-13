@@ -23,8 +23,8 @@ if isempty(isprop(BpodSystem, 'BpodPath'))
     error('You must run Bpod before using this function.');
 end
 if isfield(BpodSystem.GUIHandles, 'LiquidCalibrator')
-    if isfield(BpodSystem.GUIHandles.LiquidCalibrator, 'MainFig')
-        if isvalid(BpodSystem.GUIHandles.LiquidCalibrator.MainFig)
+    if isfield(BpodSystem.GUIHandles.LiquidCalibrator, 'MainFig') && ~verLessThan('MATLAB', '8.4')
+        if isgraphics(BpodSystem.GUIHandles.LiquidCalibrator.MainFig)
             figure(BpodSystem.GUIHandles.LiquidCalibrator.MainFig);
             return;
         end

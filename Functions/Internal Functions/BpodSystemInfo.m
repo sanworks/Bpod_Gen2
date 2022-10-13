@@ -21,8 +21,8 @@ function BpodSystemInfo
 
 global BpodSystem
 
-if isfield(BpodSystem.GUIHandles, 'SystemInfoFig')
-    if isvalid(BpodSystem.GUIHandles.SystemInfoFig)
+if isfield(BpodSystem.GUIHandles, 'SystemInfoFig') && ~verLessThan('MATLAB', '8.4')
+    if isgraphics(BpodSystem.GUIHandles.SystemInfoFig)
         figure(BpodSystem.GUIHandles.SystemInfoFig);
         return
     end

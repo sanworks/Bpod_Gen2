@@ -19,8 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function BpodPortConfig
 global BpodSystem
-if isfield(BpodSystem.GUIHandles, 'PortConfigFig')
-    if isvalid(BpodSystem.GUIHandles.PortConfigFig)
+if isfield(BpodSystem.GUIHandles, 'PortConfigFig') && ~verLessThan('MATLAB', '8.4')
+    if isgraphics(BpodSystem.GUIHandles.PortConfigFig)
         figure(BpodSystem.GUIHandles.PortConfigFig);
         return;
     end
