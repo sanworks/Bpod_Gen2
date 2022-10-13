@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -19,6 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function FlexIOConfigGUI
 global BpodSystem
+if isfield(BpodSystem.GUIHandles, 'FlexConfigFig')
+    if isvalid(BpodSystem.GUIHandles.FlexConfigFig)
+        figure(BpodSystem.GUIHandles.FlexConfigFig);
+        return;
+    end
+end
 if BpodSystem.MachineType < 4 
     error('Error: Flex I/O configuration requires State Machine r2+ or newer.');
 end

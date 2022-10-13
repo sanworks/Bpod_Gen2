@@ -14,6 +14,8 @@
 -Updated firmware binaries
 -Updated example protocols to use latest syntax
 -Limited console GUI refreshes when USB data is backlogged in buffer. Improves handling of high frequency events.
+-Updated EndBpod to automatically close any Bpod GUI windows
+-Updated all Bpod GUI windows to prevent the user from opening duplicates
 -LoadBpodFirmware: Added pre-configuration to replace UpdateBpodFirmware for routine updates. 
 -LoadBpodFirmware: Added support for multiple firmware versions for each device (e.g. to roll back a firmware update)
 -LoadBpodFirmware: Added support Teensy RawHID devices (i.e. on first load)

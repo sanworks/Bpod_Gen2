@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -19,9 +19,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 global BpodSystem
 if ~isempty(BpodSystem)
-    try
-        close(BpodSystem.GUIHandles.LiveDispFig)
-    catch
+    % Close any open GUI figures
+    FigureList = {'LiveDispFig', 'SystemInfoFig', 'ModuleUSBFig', 'SettingsMenuFig', 'LaunchManagerFig', 'SyncConfigFig', 'PortConfigFig',...
+                  'FolderConfigFig','FlexConfigFig','ConfigureBonsaiFig'};
+    for i = 1:length(FigureList)
+        try
+            eval(['close(BpodSystem.GUIHandles.' FigureList{i} ')'])
+        catch
+        end
+    end
+    if isfield(BpodSystem.GUIHandles, 'LiquidCalibrator')
+        LiquidCalFigList = {'MainFig', 'ValueEntryFig', 'RunMeasurementsFig', 'TestSpecificAmtFig', 'RecommendedMeasureFig'};
+        CalUIHandles = BpodSystem.GUIHandles.LiquidCalibrator;
+        for i = 1:length(LiquidCalFigList)
+            try
+                eval(['close(CalUIHandles.' LiquidCalFigList{i} ')'])
+            catch
+            end
+        end
     end
     if BpodSystem.Status.BeingUsed == 0
         if BpodSystem.EmulatorMode == 0

@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -20,6 +20,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function BpodSettingsMenu
 
 global BpodSystem
+
+if isfield(BpodSystem.GUIHandles, 'SettingsMenuFig')
+    if isvalid(BpodSystem.GUIHandles.SettingsMenuFig)
+        figure(BpodSystem.GUIHandles.SettingsMenuFig);
+        return
+    end
+end
+
+
 if ispc
     MenuWindowHeight = 126;
 elseif ismac

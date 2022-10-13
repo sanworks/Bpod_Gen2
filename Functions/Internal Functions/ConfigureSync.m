@@ -19,11 +19,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function ConfigureSync(junk, morejunk)
 global BpodSystem
+if isfield(BpodSystem.GUIHandles, 'SyncConfigFig')
+    if isvalid(BpodSystem.GUIHandles.SyncConfigFig)
+        figure(BpodSystem.GUIHandles.SyncConfigFig);
+        return;
+    end
+end
 if BpodSystem.MachineType == 1 % Bpod 0.5
     BpodErrorDlg(['Bpod 0.5 has a fixed sync' char(10) 'port. Config not required.'], 0);
 else
     FontName = 'Courier New';
-    BpodSystem.GUIHandles.PortConfigFig = figure('Position',[600 400 400 150],'name','Sync config.','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+    BpodSystem.GUIHandles.SyncConfigFig = figure('Position',[600 400 400 150],'name','Sync config.','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
     ha = axes('units','normalized', 'position',[0 0 1 1]);
     uistack(ha,'bottom');
     BG = imread('InputChannelConfig2.bmp');

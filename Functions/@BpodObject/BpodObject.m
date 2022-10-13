@@ -248,6 +248,12 @@ classdef BpodObject < handle
         end
 
         function obj = setupFolders(obj)
+            if isfield(obj.GUIHandles, 'FolderConfigFig')
+                if isvalid(obj.GUIHandles.FolderConfigFig)
+                    figure(obj.GUIHandles.FolderConfigFig);
+                    return
+                end
+            end
             if ispc
                 FigHeight = 130; Label1Ypos = 28; Label2Ypos = 68;
             else

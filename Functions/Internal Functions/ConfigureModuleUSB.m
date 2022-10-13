@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -19,6 +19,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function ConfigureModuleUSB(junk, morejunk)
 global BpodSystem
+
+if isfield(BpodSystem.GUIHandles, 'ModuleUSBFig')
+    if isvalid(BpodSystem.GUIHandles.ModuleUSBFig)
+        figure(BpodSystem.GUIHandles.ModuleUSBFig);
+        return
+    end
+end
+
 FontName = 'Courier New';
 if ~ismac && ~ispc
     FontName = 'DejaVu Sans Mono';

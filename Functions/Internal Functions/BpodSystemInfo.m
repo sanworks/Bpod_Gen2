@@ -21,6 +21,13 @@ function BpodSystemInfo
 
 global BpodSystem
 
+if isfield(BpodSystem.GUIHandles, 'SystemInfoFig')
+    if isvalid(BpodSystem.GUIHandles.SystemInfoFig)
+        figure(BpodSystem.GUIHandles.SystemInfoFig);
+        return
+    end
+end
+
 FontName = 'Arial';
 if ispc
     Med = 12; Sm = 10;
