@@ -32,6 +32,9 @@ function obj = assertModule(obj, ModuleNames, varargin)
     if ischar(ModuleNames)
         ModuleNames = {ModuleNames};
     end
+    if obj.EmulatorMode == 1
+        error([ModuleNames{1} ' module not found.' char(10) 'Only the state machine''s onboard channels are currently supported by the emulator.'])
+    end
     nModules = length(ModuleNames);
     USBParied = zeros(1,nModules);
     if nargin > 2

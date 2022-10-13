@@ -59,7 +59,8 @@ else
     try
         BpodSystem.Connect2BpodSM('AUTO');
         BpodSetup;
-    catch
+    catch ME
+        BpodSystem.GUIData.LaunchError = ME;
         if isfield(BpodSystem.GUIData, 'OldFirmwareFlag')
             close(BpodSystem.GUIHandles.SplashFig);
             delete(BpodSystem)
@@ -95,8 +96,12 @@ BpodSystem.GUIHandles.CloseBpodButton = uicontrol('Style', 'pushbutton', 'String
 
 function CloseBpodHWNotFound(hObject,event)
 global BpodSystem
-lasterr
 close(BpodSystem.GUIHandles.LaunchEmuFig);
 close(BpodSystem.GUIHandles.SplashFig);
+disp('Error: Bpod State Machine not found.')
+if isfield(BpodSystem.GUIData, 'LaunchError')
+    rethrow(BpodSystem.GUIData.LaunchError)
+else
+    lasterr
+end
 delete(BpodSystem)
-disp('Error: Bpod device not found.')

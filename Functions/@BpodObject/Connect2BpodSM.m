@@ -104,11 +104,11 @@ function obj = Connect2BpodSM(obj, portString, varargin)
             if AutoMode
                 AutoModeMessage = ['Try calling Bpod with a serial port argument, i.e. Bpod(''' Ports{1} ''')'];
             end
-            error([char(10) 'Error: Could not find Bpod device.' char(10)...
+            error([char(10) 'Error: Could not find Bpod State Machine.' char(10)...
                 'Tried USB serial port(s): ' PortsTried char(10)...
                 AutoModeMessage]);
         else
-            error(['Error: Could not find Bpod device.'])
+            error('Error: Could not find Bpod State Machine.')
         end
     end
     if obj.SerialPort.UsePsychToolbox == 0 && verLessThan('matlab', '9.7')
