@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -26,7 +26,7 @@ function sma_out = AddState(sma, namestr, StateName, timerstr, StateTimer, condi
 %  'Name', 'Deliver_Stimulus', ...
 %  'Timer', .001,...
 %  'StateChangeConditions', {'Port2Out', 'WaitForResponse', 'Tup', 'ITI'},...
-%  'OutputActions', {'LEDState', 1, 'WireState', 3, 'SerialCode', 3});
+%  'OutputActions', {'LEDState', 1, 'WireState', 3});
 
 global BpodSystem
 % Sanity check state name
@@ -104,7 +104,7 @@ for x = 1:2:length(StateChangeConditions)
                 EventSuffix = lower(CandidateEventName(length(CandidateEventName)-3:length(CandidateEventName)));
                 switch EventSuffix
                     case '_end'
-                        if CandidateEventCode < nInputColumns+(BpodSystem.HW.n.GlobalTimers*2)+1;
+                        if CandidateEventCode < nInputColumns+(BpodSystem.HW.n.GlobalTimers*2)+1
                             % This is a transition for a global timer end. Add to global timer end matrix.
                             StartPos = length(CandidateEventName) - 5; EndPos = StartPos+1;
                             TimerNumString = CandidateEventName(StartPos:EndPos);
@@ -115,7 +115,7 @@ for x = 1:2:length(StateChangeConditions)
                             if ~isnan(GlobalTimerNumber)
                                 sma.GlobalTimerEndMatrix(CurrentState, GlobalTimerNumber) = TargetStateNumber;
                             else
-                                EventSpellingErrorMessage(ThisStateName);
+                                EventNotFoundMessage(StateChangeConditions{x},StateName);
                             end
                         else
                             % This is a transition for a global counter. Add to global counter matrix.
@@ -123,7 +123,7 @@ for x = 1:2:length(StateChangeConditions)
                             if ~isnan(GlobalCounterNumber)
                                 sma.GlobalCounterMatrix(CurrentState, GlobalCounterNumber) = TargetStateNumber;
                             else
-                                EventSpellingErrorMessage(ThisStateName);
+                                EventNotFoundMessage(StateChangeConditions{x},StateName);
                             end
                         end
                     case 'tart'
@@ -138,7 +138,7 @@ for x = 1:2:length(StateChangeConditions)
                         if ~isnan(GlobalTimerNumber)
                             sma.GlobalTimerStartMatrix(CurrentState, GlobalTimerNumber) = TargetStateNumber;
                         else
-                            EventSpellingErrorMessage(ThisStateName);
+                            EventNotFoundMessage(StateChangeConditions{x},StateName);
                         end
                     otherwise
                         % This is a transition for a condition. Add to condition matrix
@@ -151,7 +151,7 @@ for x = 1:2:length(StateChangeConditions)
                         if ~isnan(ConditionNumber)
                             sma.ConditionMatrix(CurrentState, ConditionNumber) = TargetStateNumber;
                         else
-                            EventSpellingErrorMessage(ThisStateName);
+                            EventNotFoundMessage(StateChangeConditions{x},StateName);
                         end
                 end
             else % Tup
@@ -161,7 +161,7 @@ for x = 1:2:length(StateChangeConditions)
             sma.InputMatrix(CurrentState,CandidateEventCode) = TargetStateNumber;
         end
     else
-        EventSpellingErrorMessage(ThisStateName);
+        EventNotFoundMessage(StateChangeConditions{x}, StateName);
     end
 end
 
@@ -266,7 +266,8 @@ for x = 1:2:length(OutputActions)
             end
             sma.OutputMatrix(CurrentState,TargetEventCode) = Value;
         else
-            error(['Check spelling of your output actions for state: ' StateName '.']);
+            error(['Unknown output action found: ''' OutputActions{x} ''' in state: ''' StateName '''.' char(10)... 
+                'A list of registered output action names is given <a href="matlab:BpodSystemInfo;">here</a>.']);
         end
     end
 end
@@ -279,8 +280,9 @@ sma_out = sma;
 
 %%%%%%%%%%%%%% End Main Code. Functions below. %%%%%%%%%%%%%%
 
-function EventSpellingErrorMessage(ThisStateName)
-error(['Check spelling of your state transition events for state: ' ThisStateName '. Valid events (% is an index): Port%In Port%Out BNC%High BNC%Low Wire%High Wire%Low SoftCode% GlobalTimer%End Tup'])
+function EventNotFoundMessage(ThisEventName, ThisStateName)
+error(['Unknown event found: ''' ThisEventName ''' in state: ''' ThisStateName '''.' char(10)... 
+                'A list of registered event names is given <a href="matlab:BpodSystemInfo;">here</a>.']);
 
 function [IsOp, opCode] = findOpName(ThisStateName)
 IsOp = false; opCode = 0;
