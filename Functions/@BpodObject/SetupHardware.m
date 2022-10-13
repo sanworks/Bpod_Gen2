@@ -188,20 +188,22 @@ function obj = SetupHardware(obj)
             error('Could not enable ports');
         end
         % Sanity check sync config
-        syncIsValid = 1;
-        if obj.SyncConfig.Channel > obj.HW.n.Outputs
-            syncIsValid = 0;
-        else
-            SyncChannelType = obj.HW.Outputs(obj.SyncConfig.Channel);
-            if ~(SyncChannelType == 'B' || SyncChannelType == 'W' || SyncChannelType == 'P')
+        if obj.SyncConfig.Channel < 255
+            syncIsValid = 1;
+            if obj.SyncConfig.Channel+1 > obj.HW.n.Outputs
                 syncIsValid = 0;
+            else
+                SyncChannelType = obj.HW.Outputs(obj.SyncConfig.Channel+1);
+                if ~(SyncChannelType == 'B' || SyncChannelType == 'W' || SyncChannelType == 'P')
+                    syncIsValid = 0;
+                end
             end
-        end
-        if ~syncIsValid
-            warning('Sync is configured for an invalid channel type. Resetting to ''None''')
-            obj.SyncConfig.Channel = 255;
-            obj.SyncConfig.SignalType = 0;
-            copyfile(fullfile(obj.Path.BpodRoot, 'Examples', 'Example Settings Files', 'ModuleUSBConfig.mat'), obj.Path.ModuleUSBConfig);
+            if ~syncIsValid
+                warning('Sync is configured for an invalid channel type. Resetting to ''None''')
+                obj.SyncConfig.Channel = 255;
+                obj.SyncConfig.SignalType = 0;
+                copyfile(fullfile(obj.Path.BpodRoot, 'Examples', 'Example Settings Files', 'SyncConfig.mat'), obj.Path.SyncConfig);
+            end
         end
         % Set up Sync config
         obj.SerialPort.write(['K' obj.SyncConfig.Channel obj.SyncConfig.SignalType], 'uint8');
