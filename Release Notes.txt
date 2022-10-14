@@ -10,12 +10,15 @@
 -Added assertModule() method of BpodSystem. Throws an error if the named module is not connected. An optional flag will also error if not USB paired.
 -Added AddFlexIOAnalogData(), an optional function run after the session to combine the Flex I/O analog data file with the main behavior data structure.
 -Added an error on startup if duplicate versions of Bpod_Gen2 exist in the MATLAB path
+-Fixed issue where multiple copies of UI windows could be launched
+-Fixed issue where UI windows could be left open on closing the console
+-Fixed issue where final status of previous session would continue to display in Bpod console on starting a new session
 -Updated BpodErrorSound to avoid use of AudioRead
 -Updated firmware binaries
 -Updated example protocols to use latest syntax
+-Improved error messages for AddState() and Bpod()
 -Limited console GUI refreshes when USB data is backlogged in buffer. Improves handling of high frequency events.
 -Updated EndBpod to automatically close any Bpod GUI windows
--Updated all Bpod GUI windows to prevent the user from opening duplicates
 -LoadBpodFirmware: Added pre-configuration to replace UpdateBpodFirmware for routine updates. 
 -LoadBpodFirmware: Added support for multiple firmware versions for each device (e.g. to roll back a firmware update)
 -LoadBpodFirmware: Added support Teensy RawHID devices (i.e. on first load)
