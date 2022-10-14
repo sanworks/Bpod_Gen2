@@ -17,7 +17,7 @@ classdef BpodHiFi < handle
         maxWaves = 20;
         maxSamplesPerWaveform = 0;
         maxEnvelopeSamples = 2000;
-        MaxAmplitudeBits = 32767;
+        MaxAmplitudeBits = 65535;
         MaxSynthFrequency = 80000;
         MaxAmplitudeFadeSamples = 1920000;
         validSynthWaveforms = {'WhiteNoise', 'Sine'};
@@ -32,14 +32,25 @@ classdef BpodHiFi < handle
         MaxDataTransferAttempts = 5;
     end
     methods
-        function obj = BpodHiFi(portString)
-            obj.Port = ArCOMObject_Bpod(portString, 115200);
+        function obj = BpodHiFi(portString, varargin)
+            PortType = 0; 
+            if nargin > 1
+                PortString = varargin{1};
+                if strcmp(PortString, 'Java')
+                    PortType = 1;
+                end
+            end
+            if PortType == 0
+                obj.Port = ArCOMObject_Bpod(portString, [], [], [], 1000000, 1000000);
+            elseif PortType == 1
+                obj.Port = ArCOMObject_Bpod(portString, [], 'Java', [], 1000000, 1000000);
+            end
             obj.Port.write(243, 'uint8');
             Ack = obj.Port.read(1, 'uint8');
             if Ack ~= 244
                 error('Error: Incorrect handshake byte returned');
             end
-            if ~ispc && ~obj.Port.UsePsychToolbox == 1
+            if ~ispc && ~obj.Port.UsePsychToolbox == 1 && verLessThan('matlab', '9.7')
                 warning('HiFi Module data transfer may be unstable unless PsychToolbox is installed. Please install PsychToolbox for optimal performance.');
             end
             obj.Port.write('I', 'uint8');
@@ -313,16 +324,27 @@ classdef BpodHiFi < handle
         end
         function result = testPSRAM(obj)
             obj.Port.write('T', 'uint8');
-            memSize = obj.Port.read(1, 'uint8');
-            disp(['Testing PSRAM. ' num2str(memSize) ' MB detected. This may take up to 20 seconds.']);
-            while obj.Port.bytesAvailable == 0
+            
+            disp(['Testing PSRAM. This may take up to 20 seconds.']);
+            while obj.Port.bytesAvailable < 2
                 pause(.1);
             end
+            memSize = obj.Port.read(1, 'uint8');
             result = obj.Port.read(1, 'uint8');
             if result
-                disp('Test PASSED');
+                disp(['Test PASSED. ' num2str(memSize) ' MB detected.']);
             else
                 disp('Test FAILED');
+            end
+        end
+        function scanDuringUSBTransfer(obj, state)
+            if ~(state == 1 || state == 0)
+                error('State machine scan during USB transfer must be equal to 1 (enabled) or 0 (disabled)')
+            end
+            obj.Port.write(['&' state], 'uint8');
+            Confirmed = obj.Port.read(1, 'uint8');
+            if Confirmed ~= 1
+                error('Error setting state of scan during USB transfer. Confirm code not returned.');
             end
         end
         function delete(obj)

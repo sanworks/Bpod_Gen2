@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -34,16 +34,13 @@ function HiFiSound2AFC_TrialManager
 
 global BpodSystem
 
-%% Resolve HiFi Module USB port
-if (isfield(BpodSystem.ModuleUSB, 'HiFi1'))
-    %% Create an instance of the HiFi module
-    H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1);
-else
-    error('Error: To run this protocol, you must first pair the HiFi module with its USB port. Click the USB config button on the Bpod console.')
-end
+%% Assert HiFi module is present + USB-paired (via USB button on console GUI)
+BpodSystem.assertModule('HiFi', 1); % The second argument (1) indicates that AnalogIn must be paired with its USB serial port
+% Create an instance of the HiFi module
+H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1); % The argument is the name of the HiFi module's USB serial port (e.g. COM3)
 
 %% Create trial manager object
-TrialManager = TrialManagerObject;
+TrialManager = BpodTrialManager;
 
 %% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
@@ -55,11 +52,11 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
     S.GUI.CueDelay = 0; % How long the mouse must poke in the center to activate the sound
     S.GUI.ResponseTime = 5; % How long until the mouse must make a choice, or forefeit the trial
     S.GUI.RewardDelay = 0; % How long the mouse must wait in the goal port for reward to be delivered
-    S.GUI.PunishSound = 1; % if 1, plays a white noise pulse on error. if 0, no sound is played.
-    S.GUI.PunishDelay = 3; %% How long the mouse must wait to start the next trial if it makes the wrong choice (s)
-    S.GUIPanels.Task = {'RewardAmount', 'PunishSound'}; % GUIPanels organize the parameters into groups.
+    S.GUI.ErrorSound = 1; % if 1, plays a white noise pulse on error. if 0, no sound is played.
+    S.GUI.ErrorDelay = 3; %% How long the mouse must wait to start the next trial if it makes the wrong choice (s)
+    S.GUIPanels.Task = {'RewardAmount', 'ErrorSound'}; % GUIPanels organize the parameters into groups.
     S.GUIPanels.Sound = {'SinWaveFreqLeft', 'SinWaveFreqRight', 'SoundDuration'};
-    S.GUIPanels.Time = {'CueDelay', 'RewardDelay', 'ResponseTime', 'PunishDelay'};
+    S.GUIPanels.Time = {'CueDelay', 'RewardDelay', 'ResponseTime', 'ErrorDelay'};
 end
 
 %% Define trial types
@@ -85,7 +82,8 @@ SF = 192000; % Use max supported sampling rate
 H.SamplingRate = SF;
 LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration)*.9; % Sampling freq (hz), Sine frequency (hz), duration (s)
 RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration)*.9; % Sampling freq (hz), Sine frequency (hz), duration (s)
-PunishSound = (rand(2,SF*S.GUI.PunishDelay)*2) - 1;
+ErrorSound = GenerateWhiteNoise(SF, S.GUI.ErrorDelay, 1, 2);
+
 % Generate early withdrawal sound
 W1 = GenerateSineWave(SF, 1000, .5)*.5; W2 = GenerateSineWave(SF, 1200, .5)*.5; EarlyWithdrawalSound = W1+W2;
 P = SF/100;
@@ -95,18 +93,18 @@ EarlyWithdrawalSound = EarlyWithdrawalSound.*GateVector; % Gate waveform to crea
 % Program sound server
 % A.BpodEvents = 'On';
 % A.TriggerMode = 'Master';
-H.HeadphoneAmpEnabled = true; H.HeadphoneAmpGain = 20; % Ignored if using HD version of the HiFi module
-H.DigitalAttenuation_dB = -25; % Set a comfortable listening level for most headphones (useful during protocol dev).
-
+H.HeadphoneAmpEnabled = true; H.HeadphoneAmpGain = 30; % Ignored if using HD version of the HiFi module
+H.DigitalAttenuation_dB = -10; % Set a comfortable listening level for most headphones (useful during protocol dev).
+H.VerboseMode = 1;
 H.load(1, LeftSound);
-H.load(2, RightSound);
-H.load(3, PunishSound);
+H.load(2, [RightSound; RightSound]);
+H.load(3, ErrorSound);
 H.load(4, EarlyWithdrawalSound);
 H.push;
 Envelope = 1/(SF*0.001):1/(SF*0.001):1; % Define 1ms linear ramp envelope of amplitude coefficients, to apply at sound onset + in reverse at sound offset
 %Envelope = [];
-H.AMenvelope = Envelope;
-LoadSerialMessages('HiFi1', {['P' 0],['P' 1],['P' 2],['P' 3],['X'], ['*']});
+%H.AMenvelope = Envelope;
+%LoadSerialMessages('HiFi1', {['P' 0],['P' 1],['P' 2],['P' 3],['X'], ['*']});
 
 %% Prepare and start first trial
 sma = PrepareStateMachine(S, TrialTypes, 1, []); % Prepare state machine for trial 1 with empty "current events" variable
@@ -116,7 +114,7 @@ TrialManager.startTrial(sma); % Sends & starts running first trial's state machi
 %% Main trial loop
 for currentTrial = 1:MaxTrials
     S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
-    currentTrialEvents = TrialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimeOutState', 'Punish', 'EarlyWithdrawal'}); 
+    currentTrialEvents = TrialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimeOutState', 'Error', 'EarlyWithdrawal'}); 
                                        % Hangs here until Bpod enters one of the listed trigger states, 
                                        % then returns current trial's states visited + events captured to this point
     if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session 
@@ -127,6 +125,7 @@ for currentTrial = 1:MaxTrials
     % Update sounds
     LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
     RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
+    pause(rand*0.75);
     H.load(1, LeftSound);
     H.load(2, RightSound);
     RawEvents = TrialManager.getTrialData; % Hangs here until trial is over, then retrieves full trial's raw data
@@ -154,9 +153,9 @@ S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
 R = GetValveTimes(S.GUI.RewardAmount, [1 3]); LeftValveTime = R(1); RightValveTime = R(2); % Update reward amounts
 switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
     case 1
-        LeftPokeAction = 'LeftRewardDelay'; RightPokeAction = 'Punish'; StimulusOutput = {'HiFi1', 1, 'BNC1', 1};
+        LeftPokeAction = 'LeftRewardDelay'; RightPokeAction = 'Error'; StimulusOutput = {'HiFi1', ['P' 0], 'BNC1', 1};
     case 2
-        LeftPokeAction = 'Punish'; RightPokeAction = 'RightRewardDelay'; StimulusOutput = {'HiFi1', 2, 'BNC1', 1};
+        LeftPokeAction = 'Error'; RightPokeAction = 'RightRewardDelay'; StimulusOutput = {'HiFi1', ['P' 1], 'BNC1', 1};
 end
 sma = NewStateMachine(); % Assemble state machine description
 sma = SetCondition(sma, 1, 'Port1', 0); % Condition 1: Port 1 low (is out)
@@ -164,7 +163,7 @@ sma = SetCondition(sma, 2, 'Port3', 0); % Condition 2: Port 3 low (is out)
 sma = AddState(sma, 'Name', 'WaitForPoke', ...
     'Timer', 0,...
     'StateChangeConditions', {'Port2In', 'CueDelay'},...
-    'OutputActions', {'HiFi1', 6, 'LED', 2}); % Serial message #6 = 'Push' command, to make any newly loaded sounds current
+    'OutputActions', {'HiFi1', '*', 'LED', 2}); % Serial message #6 = 'Push' command, to make any newly loaded sounds current
 sma = AddState(sma, 'Name', 'CueDelay', ...
     'Timer', S.GUI.CueDelay,...
     'StateChangeConditions', {'Port2Out', 'EarlyWithdrawal', 'Tup', 'DeliverStimulus'},...
@@ -201,14 +200,14 @@ sma = AddState(sma, 'Name', 'DrinkingGrace', ...
     'Timer', 0.5,...
     'StateChangeConditions', {'Tup', 'TimeOutState', 'Port1In', 'Drinking', 'Port3In', 'Drinking'},...
     'OutputActions', {});
-sma = AddState(sma, 'Name', 'Punish', ...
-    'Timer', S.GUI.PunishDelay,...
+sma = AddState(sma, 'Name', 'Error', ...
+    'Timer', S.GUI.ErrorDelay,...
     'StateChangeConditions', {'Tup', '>exit'},...
-    'OutputActions', {'HiFi1', 3});
+    'OutputActions', {'HiFi1', ['P' 2]});
 sma = AddState(sma, 'Name', 'EarlyWithdrawal', ...
-    'Timer', S.GUI.PunishDelay,...
+    'Timer', S.GUI.ErrorDelay,...
     'StateChangeConditions', {'Tup', '>exit'},...
-    'OutputActions', {'HiFi1', 4});
+    'OutputActions', {'HiFi1', ['P' 3]});
 sma = AddState(sma, 'Name', 'CorrectEarlyWithdrawal', ...
     'Timer', 0,...
     'StateChangeConditions', {'Tup', 'TimeOutState'},...
@@ -224,7 +223,7 @@ Outcomes = zeros(1,Data.nTrials);
 for x = 1:Data.nTrials
     if ~isnan(Data.RawEvents.Trial{x}.States.Drinking(1))
         Outcomes(x) = 1;
-    elseif ~isnan(Data.RawEvents.Trial{x}.States.Punish(1))
+    elseif ~isnan(Data.RawEvents.Trial{x}.States.Error(1))
         Outcomes(x) = 0;
     elseif ~isnan(Data.RawEvents.Trial{x}.States.CorrectEarlyWithdrawal(1))
         Outcomes(x) = 2;
@@ -246,7 +245,7 @@ state_colors = struct( ...
     'RightReward',[0,0,1],...
     'Drinking',[1,0,0],...
     'DrinkingGrace',[1,0.3,0],...
-    'Punish',[1,0,0],...
+    'Error',[1,0,0],...
     'CorrectEarlyWithdrawal',0.75*[0,1,1],...
     'EarlyWithdrawal',0.75*[0,1,0],...
     'TimeOutState',[1,0,0]);

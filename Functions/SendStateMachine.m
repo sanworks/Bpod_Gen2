@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -157,13 +157,13 @@ for i = 1:nStates
 end
 InputMatrix = uint8(InputMatrix);
 
-OutputMatrixRaw = sma.OutputMatrix(:, 1:BpodSystem.HW.Pos.GlobalTimerTrig-1); % All except for virtual triggers
+OutputMatrixRaw = sma.OutputMatrix(:, 1:BpodSystem.HW.Pos.GlobalTimerTrig-1); % All physical channels. Virtual outputs are handled separately
 
 DifferenceMatrix = (OutputMatrixRaw ~= 0)';
 nDifferences = sum(DifferenceMatrix, 1);
 msgLength = sum(nDifferences>0)*2 + nStates;
 OutputMatrix = zeros(1,msgLength); Pos = 1;
-for i = 1:nStates    
+for i = 1:nStates
     OutputMatrix(Pos) = nDifferences(i); Pos = Pos + 1;
     if nDifferences(i) > 0
         ThisState = DifferenceMatrix(:,i)';
@@ -175,7 +175,11 @@ for i = 1:nStates
         Pos = Pos + nDifferences(i)*2;
     end
 end
-OutputMatrix = uint8(OutputMatrix);
+if BpodSystem.MachineType == 4
+    OutputMatrix = typecast(uint16(OutputMatrix), 'uint8');
+else
+    OutputMatrix = uint8(OutputMatrix);
+end
 
 DifferenceMatrix = (sma.GlobalTimerStartMatrix(:,1:nGlobalTimersUsed) ~= DefaultExtensionMatrix_GT)';
 nDifferences = sum(DifferenceMatrix, 1);
@@ -252,16 +256,23 @@ StateTimerMatrix = uint8(sma.StateTimerMatrix-1);
 ConditionChannels = uint8(sma.ConditionChannels(1:nConditionsUsed)-1);
 ConditionValues = uint8(sma.ConditionValues(1:nConditionsUsed));
 GlobalTimerChannels = uint8(sma.GlobalTimers.OutputChannel(1:nGlobalTimersUsed)-1);
+UARTChannels = GlobalTimerChannels < BpodSystem.HW.Pos.Input_USB-1;
 GlobalTimerOnMessages = sma.GlobalTimers.OnMessage(1:nGlobalTimersUsed);
-GlobalTimerOnMessages(GlobalTimerOnMessages==0) = 255;
-GlobalTimerOnMessages = uint8(GlobalTimerOnMessages);
+GlobalTimerOnMessages(GlobalTimerOnMessages==0 & UARTChannels) = 255;
 GlobalTimerOffMessages = sma.GlobalTimers.OffMessage(1:nGlobalTimersUsed);
-GlobalTimerOffMessages(GlobalTimerOffMessages==0) = 255;
-GlobalTimerOffMessages = uint8(GlobalTimerOffMessages);
+GlobalTimerOffMessages(GlobalTimerOffMessages==0 & UARTChannels) = 255;
 GlobalTimerLoopMode = uint8(sma.GlobalTimers.LoopMode(1:nGlobalTimersUsed));
 SendGlobalTimerEvents = uint8(sma.GlobalTimers.SendEvents(1:nGlobalTimersUsed));
 GlobalCounterAttachedEvents = uint8(sma.GlobalCounterEvents(1:nGlobalCountersUsed)-1);
 GlobalCounterThresholds = uint32(sma.GlobalCounterThresholds(1:nGlobalCountersUsed));
+
+if BpodSystem.MachineType == 4 % Global timer on/off messages are 16-bit on state machine 2+
+    GlobalTimerOnMessages = typecast(uint16(GlobalTimerOnMessages), 'uint8');
+    GlobalTimerOffMessages = typecast(uint16(GlobalTimerOffMessages), 'uint8');
+else
+    GlobalTimerOnMessages = uint8(GlobalTimerOnMessages);
+    GlobalTimerOffMessages = uint8(GlobalTimerOffMessages);
+end
 
 %% Extract and format virtual outputs (global timer trig + cancel, global counter reset)
 maxGlobalTimers = BpodSystem.HW.n.GlobalTimers;
@@ -282,7 +293,50 @@ else
     GTbytes = 1;
 end
 
-GlobalCounterResets = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalCounterReset))';
+if BpodSystem.FirmwareVersion < 23
+    GlobalCounterResets = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalCounterReset))';
+else
+    GCResets = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalCounterReset))';
+    GCoverrides = find(GCResets ~= 0);
+    nOverrides = length(GCoverrides);
+    OutMatrix = [];
+    if nOverrides > 0 
+        OutMatrix = [GCoverrides-1; GCResets(GCoverrides)];
+    end
+    if nOverrides == 1
+        GlobalCounterResets = [nOverrides OutMatrix'];
+    else 
+        GlobalCounterResets = [nOverrides OutMatrix(1:end)];
+    end
+end
+
+AnalogThreshEnable = [];
+AnalogThreshDisable = [];
+if BpodSystem.MachineType == 4
+    ATEnable = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.AnalogThreshEnable))'; % Bits indicate thresholds to enable (zeros are not disabled)
+    AToverrides = find(ATEnable ~= 0);
+    nOverrides = length(AToverrides);
+    OutMatrix = [];
+    if nOverrides > 0 
+        OutMatrix = [AToverrides-1; ATEnable(AToverrides)];
+    end
+    if length(OutMatrix) == 2
+        OutMatrix = OutMatrix';
+    end
+    AnalogThreshEnable = [nOverrides OutMatrix(1:end)]; 
+    
+    ATDisable = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.AnalogThreshDisable))'; % Bits indicate thresholds to disable (zeros are not enabled)
+    AToverrides = find(ATDisable ~= 0);
+    nOverrides = length(AToverrides);
+    OutMatrix = [];
+    if nOverrides > 0 
+        OutMatrix = [AToverrides-1; ATDisable(AToverrides)];
+    end
+    if length(OutMatrix) == 2
+        OutMatrix = OutMatrix';
+    end
+    AnalogThreshDisable = [nOverrides OutMatrix(1:end)];
+end
 
 %% Format timers (doubles in seconds) into 32 bit int vectors
 StateTimers = uint32(sma.StateTimers*BpodSystem.HW.CycleFrequency);
@@ -298,17 +352,24 @@ EightBitMatrix = [nStates nGlobalTimersUsed nGlobalCountersUsed nConditionsUsed.
     StateTimerMatrix InputMatrix OutputMatrix GlobalTimerStartMatrix GlobalTimerEndMatrix...
     GlobalCounterMatrix ConditionMatrix GlobalTimerChannels GlobalTimerOnMessages...
     GlobalTimerOffMessages GlobalTimerLoopMode SendGlobalTimerEvents...
-    GlobalCounterAttachedEvents ConditionChannels ConditionValues GlobalCounterResets];
+    GlobalCounterAttachedEvents ConditionChannels ConditionValues GlobalCounterResets AnalogThreshEnable AnalogThreshDisable];
 GlobalTimerMatrix = [GlobalTimerTrigs GlobalTimerCancels GlobalTimerOnset_Trigger];
 ThirtyTwoBitMatrix = [StateTimers GlobalTimers GlobalTimerDelays GlobalTimerLoopIntervals GlobalCounterThresholds];
-nBytes = uint16(length(EightBitMatrix) + GTbytes*length(GlobalTimerMatrix) + 4*length(ThirtyTwoBitMatrix)); % Number of bytes in state matrix (excluding nStates byte)
+%nBytes = uint16(length(EightBitMatrix) + GTbytes*length(GlobalTimerMatrix) + 4*length(ThirtyTwoBitMatrix)); % Number of bytes in state matrix (excluding nStates byte)
 
 %% Create serial message vector (if using implicit serial messages)
 SerialMessageVector = []; nModulesLoaded = 0;
+containsAdditionalOps = [];
+finalAdditionalOps = [];
+if BpodSystem.FirmwareVersion > 22 % Additional ops can be packaged with state machine description (e.g. programming serial message library)
+    containsAdditionalOps = uint8(1);
+    finalAdditionalOps = uint8(0);
+end
+% This section can be optimized for speed (currently should take ~0.5ms per module for most tasks)
 if sma.SerialMessageMode == 1
     for i = 1:BpodSystem.HW.n.UartSerialChannels
         if sma.nSerialMessages(i) > 0
-            SerialMessageVector = [SerialMessageVector 'L' i-1 sma.nSerialMessages(i)];
+            SerialMessageVector = [SerialMessageVector containsAdditionalOps 'L' i-1 sma.nSerialMessages(i)];
             for j = 1:sma.nSerialMessages(i)
                 ThisMessage = sma.SerialMessages{i,j};
                 SerialMessageVector = [SerialMessageVector j length(ThisMessage) ThisMessage];
@@ -321,9 +382,16 @@ end
 
 if BpodSystem.EmulatorMode == 0
     %% Send state matrix to Bpod device
-    ByteString = [EightBitMatrix typecast(GlobalTimerMatrix, 'uint8') typecast(ThirtyTwoBitMatrix, 'uint8')];
+    
+    
+    if BpodSystem.FirmwareVersion > 22 % Package ops with byte string
+        ByteString = [EightBitMatrix typecast(GlobalTimerMatrix, 'uint8') typecast(ThirtyTwoBitMatrix, 'uint8') SerialMessageVector finalAdditionalOps];
+    else
+        ByteString = [EightBitMatrix typecast(GlobalTimerMatrix, 'uint8') typecast(ThirtyTwoBitMatrix, 'uint8')];
+    end
+    nBytes = uint16(length(ByteString));
     if BpodSystem.Status.InStateMatrix == 1 % If loading during a trial
-        if sma.SerialMessageMode == 0
+        if sma.SerialMessageMode == 0 || BpodSystem.FirmwareVersion > 22
             switch BpodSystem.MachineType
                 case 1
                     error('Error: Bpod 0.5 cannot send a state machine while a trial is in progress. If you need this functionality, consider switching to Bpod 0.7+')
@@ -338,22 +406,24 @@ if BpodSystem.EmulatorMode == 0
                     BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
             end
         else
-            error(['Error: TrialManager does not support state machine descriptions that' char(10)...
+            error(['Error: On state machine firmware v22 and older, TrialManager does not support state machine descriptions that' char(10)...
                 'use implicit serial messages (e.g. {''MyModule1'', [''A'' 1 2]}.' char(10)...
-                'Use LoadSerialMessages() to program them explicitly, or rewrite your protocol without using TrialManager.'])
+                'Use LoadSerialMessages() to program them explicitly, rewrite your protocol without using TrialManager, or upgrade to firmware v23+.'])
         end
     else
         BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
-        if sma.SerialMessageMode == 1 % If SerialMessage Library was updated due to implicit programming
-            % in state machine syntax, current firmware returns an acknowledgement byte which must be read here
-            % to avoid conflicts with subsequent commands. A future firmware update will read this byte after 
-            % the next trial starts, to avoid the speed penalty of a read during dead-time (see comment below)
-            BpodSystem.SerialPort.write(SerialMessageVector, 'uint8');
-            Ack = BpodSystem.SerialPort.read(nModulesLoaded, 'uint8');
+        if BpodSystem.FirmwareVersion < 23
+            if sma.SerialMessageMode == 1 % If SerialMessage Library was updated due to implicit programming
+                % in state machine syntax, current firmware returns an acknowledgement byte which must be read here
+                % to avoid conflicts with subsequent commands. A future firmware update will read this byte after
+                % the next trial starts, to avoid the speed penalty of a read during dead-time (see comment below)
+                BpodSystem.SerialPort.write(SerialMessageVector, 'uint8');
+                Ack = BpodSystem.SerialPort.read(nModulesLoaded, 'uint8');
+            end
         end
     end
     
-    %% Confirm send. Note: To reduce dead time when SerialMessageMode = 0, transmission is confirmed from 
+    %% Confirm send. Note: To reduce dead time when SerialMessageMode = 0, transmission is confirmed from
     %  state machine after next call to RunStateMachine()
     BpodSystem.Status.NewStateMachineSent = 1; % On next run, a byte is returned confirming that the state machine was received.
     BpodSystem.Status.SM2runASAP = runASAP;

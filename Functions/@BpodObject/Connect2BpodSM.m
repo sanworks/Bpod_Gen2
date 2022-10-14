@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -18,15 +18,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function obj = Connect2BpodSM(obj, portString, varargin)
+    if ~ispc && ~ismac
+        % Warn user if Linux udev rules file is not in place
+        if ~exist('/etc/udev/rules.d/00-teensy.rules')
+            warning(['Linux udev rules file not found. Bpod devices newer than state machine r1 may not function.' char(10) 'Follow instructions <a href="matlab:web(''https://www.pjrc.com/teensy/00-teensy.rules'',''-browser'')">here</a>'])
+        end
+    end
     AutoMode = strcmp(portString, 'AUTO');
     SkipDiscovery = 0;
     if AutoMode
         Ports = obj.FindUSBSerialPorts;
-        if ~isempty(strfind(obj.HostOS, 'Windows 10')) || ~isempty(strfind(obj.HostOS, 'Windows 8'))
-            Ports = [Ports.Arduino Ports.Teensy Ports.COM];
-        else
-            Ports = [Ports.Arduino Ports.Teensy];
-        end
     else
         Ports = {portString}; SkipDiscovery = 1;
     end
@@ -103,14 +104,14 @@ function obj = Connect2BpodSM(obj, portString, varargin)
             if AutoMode
                 AutoModeMessage = ['Try calling Bpod with a serial port argument, i.e. Bpod(''' Ports{1} ''')'];
             end
-            error([char(10) 'Error: Could not find Bpod device.' char(10)...
+            error([char(10) 'Error: Could not find Bpod State Machine.' char(10)...
                 'Tried USB serial port(s): ' PortsTried char(10)...
                 AutoModeMessage]);
         else
-            error(['Error: Could not find Bpod device.'])
+            error('Error: Could not find Bpod State Machine.')
         end
     end
-    if obj.SerialPort.UsePsychToolbox == 0
+    if obj.SerialPort.UsePsychToolbox == 0 && verLessThan('matlab', '9.7')
         disp('###########################################################################')
         disp('# NOTICE: Bpod is running without Psychtoolbox installed.                 #')
         disp('# PsychToolbox integration greatly improves USB transfer speed + latency. #')

@@ -1,3 +1,3 @@
 function Ver = BpodSoftwareVersion
 
-Ver = 1.64;
+Ver = 1.70;

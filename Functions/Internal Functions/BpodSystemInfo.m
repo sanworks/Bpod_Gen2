@@ -1,6 +1,32 @@
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
 function BpodSystemInfo
 
 global BpodSystem
+
+if isfield(BpodSystem.GUIHandles, 'SystemInfoFig') && ~verLessThan('MATLAB', '8.4')
+    if isgraphics(BpodSystem.GUIHandles.SystemInfoFig)
+        figure(BpodSystem.GUIHandles.SystemInfoFig);
+        return
+    end
+end
 
 FontName = 'Arial';
 if ispc
@@ -12,7 +38,15 @@ else
 end
 LabelFontColor = [0.9 0.9 0.9];
 ContentFontColor = [0 0 0];
-if BpodSystem.MachineType == 3
+if BpodSystem.MachineType == 4
+    if BpodSystem.StateMachineInfo.nEvents > 148
+        Xstep = 110;
+    else
+        Xstep = 120;
+    end
+    OutputActionOffset = 0;
+    EventOffset = 130;
+elseif BpodSystem.MachineType == 3
     if BpodSystem.StateMachineInfo.nEvents > 148
         Xstep = 110;
     else
@@ -29,7 +63,10 @@ else
     end
     EventOffset = 180;
 end
-if BpodSystem.StateMachineInfo.nEvents > 111
+if BpodSystem.StateMachineInfo.nEvents > 147
+    XWidth = 1230;
+    Xfactor = 5.5;
+elseif BpodSystem.StateMachineInfo.nEvents > 111
     XWidth = 1100;
     Xfactor = 5.5;
 else
@@ -43,18 +80,32 @@ obj.GUIHandles.Console = axes('units','normalized', 'position',[0 0 1 1]);
             BG = imread('ConsoleBG3.bmp');
             image(BG); axis off;
 
-YPos = 25; XPos = 30;
-MachineTypes = {'v0.5', 'v0.7-1.0', 'v2.0', 'v2.0+'};
+AppSerialPort = BpodSystem.HW.AppSerialPortName;
+if isempty(AppSerialPort)
+    AppSerialPort = '-None-';
+end
+            
+YPos = 25; XPos = 15;
+if ~ispc % Unix USB serial port names are longer
+    EventOffset = EventOffset + 20;
+end
+MachineTypes = {'v0.5', 'v0.7-1.0', 'v2', 'v2-plus'};
 text(XPos, 10,'State Machine', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor, 'FontWeight', 'Bold'); 
 text(XPos, YPos,['Firmware Version: ' num2str(BpodSystem.FirmwareVersion)], 'FontSize', 11, 'FontWeight', 'Bold'); YPos = YPos + 15;
 text(XPos, YPos,['Hardware: ' MachineTypes{BpodSystem.MachineType}], 'FontSize', Med); YPos = YPos + 15;
 text(XPos, YPos,['RefreshRate: ' num2str(BpodSystem.HW.CycleFrequency) 'Hz'], 'FontSize', Med); YPos = YPos + 15;
 text(XPos, YPos,['nModules: ' num2str(length(BpodSystem.Modules.Connected))], 'FontSize', Med); YPos = YPos + 15;
-text(XPos, YPos,['nPorts: ' num2str(BpodSystem.HW.n.Ports)], 'FontSize', Med); YPos = YPos + 15;
-text(XPos, YPos,['nBNCInputs: ' num2str(BpodSystem.HW.n.BNCInputs)], 'FontSize', Med); YPos = YPos + 15;
-text(XPos, YPos,['nBNCOutputs: ' num2str(BpodSystem.HW.n.BNCOutputs)], 'FontSize', Med); YPos = YPos + 15;
-text(XPos, YPos,['nWireInputs: ' num2str(BpodSystem.HW.n.WireInputs)], 'FontSize', Med); YPos = YPos + 15;
-text(XPos, YPos,['nWireOutputs: ' num2str(BpodSystem.HW.n.WireOutputs)], 'FontSize', Med); YPos = YPos + 25;
+text(XPos, YPos,['nBehaviorPorts: ' num2str(BpodSystem.HW.n.Ports)], 'FontSize', Med); YPos = YPos + 15;
+text(XPos, YPos,['nBNC I/O: ' num2str(BpodSystem.HW.n.BNCInputs) ' / ' num2str(BpodSystem.HW.n.BNCOutputs)], 'FontSize', Med); YPos = YPos + 15;
+text(XPos, YPos,['nWire I/O: ' num2str(BpodSystem.HW.n.WireInputs) ' / ' num2str(BpodSystem.HW.n.WireOutputs)], 'FontSize', Med); YPos = YPos + 15;
+text(XPos, YPos,['nFlex I/O: ' num2str(BpodSystem.HW.n.FlexIO)], 'FontSize', Med); YPos = YPos + 15;
+if BpodSystem.EmulatorMode == 1
+    text(XPos, YPos,'FSM Serial Port: -None-', 'FontSize', Med); YPos = YPos + 15;
+else
+    text(XPos, YPos,['FSM Serial Port: ' BpodSystem.SerialPort.PortName], 'FontSize', Med); YPos = YPos + 15;
+end
+text(XPos, YPos,['App Serial Port: ' AppSerialPort], 'FontSize', Med); YPos = YPos + 25;
+
 
 for i = 1:length(BpodSystem.Modules.Connected)
     text(XPos, YPos,['Module#' num2str(i)], 'Color', LabelFontColor, 'FontSize', 11, 'FontWeight', 'Bold'); YPos = YPos + 15;

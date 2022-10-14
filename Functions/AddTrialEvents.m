@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -32,16 +32,33 @@ else
     TrialNum = 1;
     TE.Info = struct;
     if BpodSystem.EmulatorMode == 1
-        TE.Info.StateMachineVersion = 'Bpod 0.7-0.9 EMULATOR';
+        TE.Info.StateMachineVersion = 'Bpod 0.7-1.0 EMULATOR';
     else
         switch BpodSystem.MachineType
             case 1
-                TE.Info.StateMachineVersion = 'Bpod 0.5';
+                TE.Info.StateMachineVersion = 'Bpod r0.5';
             case 2
-                TE.Info.StateMachineVersion = 'Bpod 0.7-0.9';
+                TE.Info.StateMachineVersion = 'Bpod r0.7-1.0';
             case 3
-                TE.Info.StateMachineVersion = 'Bpod 2.0';
+                TE.Info.StateMachineVersion = 'Bpod r2';
+            case 4
+                TE.Info.StateMachineVersion = 'Bpod r2+';
         end
+        TE.Info.Firmware = struct;
+        TE.Info.Firmware.StateMachine = BpodSystem.FirmwareVersion;
+        if BpodSystem.FirmwareVersion > 22
+            TE.Info.Firmware.StateMachine_Minor = BpodSystem.HW.minorFirmwareVersion;
+        end
+        for i = 1:BpodSystem.Modules.nModules
+            if BpodSystem.Modules.Connected(i)
+                TE.Info.Firmware.(BpodSystem.Modules.Name{i}) = BpodSystem.Modules.FirmwareVersion(i);
+            end
+        end
+        if BpodSystem.FirmwareVersion > 22
+            TE.Info.CircuitRevision = struct;
+            TE.Info.CircuitRevision = BpodSystem.HW.CircuitRevision;
+        end
+        TE.Info.Modules = BpodSystem.Modules;
     end
     TE.Info.SessionDate = datestr(now, 1);
     TheTime = now;

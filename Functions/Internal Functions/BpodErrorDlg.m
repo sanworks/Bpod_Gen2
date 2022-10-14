@@ -50,7 +50,7 @@ else
 end
 Xpos = 45;
 for i = 1:nSegments
-    Ypos = 190-(length(messageLines{i})*6.5);
+    Ypos = 190-(length(messageLines{i})*4);
     text(Ypos, Xpos, messageLines{i}, 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 0 0]);
     Xpos = Xpos + 18;
 end

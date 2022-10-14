@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -77,6 +77,9 @@ disp(['This will update your Bpod software from v' num2str(Ver) ' to v' num2str(
 disp('A backup copy of your current Bpod_Gen2 folder will be made in: ');
 disp(BackupDir);
 disp('Then, the latest software from Github will replace your current Bpod_Gen2 folder.');
+disp(' ');
+disp('If you are using Git to keep Bpod software current, please')
+disp('do NOT use the updater - use the Git pull command instead.')
 disp(' ');
 disp('*IMPORTANT* This update tool is a BETA release.')
 disp('Please manually back up your Bpod_Gen2 folder and data')

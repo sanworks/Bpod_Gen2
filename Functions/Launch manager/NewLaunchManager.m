@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the 
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -20,8 +20,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function NewLaunchManager
 
 global BpodSystem
+DrawFig = 1;
+if isfield(BpodSystem.GUIHandles, 'LaunchManagerFig') && ~verLessThan('MATLAB', '8.4')
+    if isgraphics(BpodSystem.GUIHandles.LaunchManagerFig)
+        clf(BpodSystem.GUIHandles.LaunchManagerFig);
+        figure(BpodSystem.GUIHandles.LaunchManagerFig);
+        DrawFig = 0;
+    end
+end
+
 %% Build UI
-BpodSystem.GUIHandles.LaunchManagerFig = figure('Position',[80 50 750 600],'name','Launch Manager','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+if (DrawFig)
+    BpodSystem.GUIHandles.LaunchManagerFig = figure('Position',[80 50 750 600],'name','Launch Manager','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+end
 ha = axes('units','normalized', 'position',[0 0 1 1]);
 uistack(ha,'bottom');
 BG = imread('LaunchManagerBG2.bmp');
@@ -30,7 +41,7 @@ if ispc
     lmYpos = 150; SelectorFontSize = 11; PathFontSize = 10;
 elseif ismac
     lmYpos = 160; SelectorFontSize = 14; PathFontSize = 14;
-else 
+else
     lmYpos = 130; SelectorFontSize = 11; PathFontSize = 10;
 end
 FontName = 'Courier New';
@@ -304,7 +315,7 @@ set(BpodSystem.GUIHandles.SettingsSelector,'Value',1);
 
 function UpdateDataFile(ProtocolName, SubjectName)
 global BpodSystem
-DateInfo = datestr(now, 30); 
+DateInfo = datestr(now, 30);
 DateInfo(DateInfo == 'T') = '_';
 LocalDir = BpodSystem.Path.DataFolder(max(find(BpodSystem.Path.DataFolder(1:end-1) == filesep)+1):end);
 set(BpodSystem.GUIHandles.DataFilePathDisplay, 'String', [filesep fullfile(LocalDir, SubjectName, ProtocolName, 'Session Data') filesep],'interpreter','none');
@@ -405,7 +416,7 @@ else
     NewName = [];
 end
 try
-close(NameInputFig);
+    close(NameInputFig);
 catch
 end
 if ~isempty(NewName)
@@ -477,7 +488,7 @@ if exist(Testpath) == 0
     set(BpodSystem.GUIHandles.SettingsSelector, 'Value', length(SettingsNameList));
     close(NameInputFig);
     BpodSystem.Path.Settings = SettingsPath;
-    
+
     % Load struct into workspace and bring user to edit settings file
     BpodSystem.Path.Settings = SettingsPath;
     evalin('base', ['load(''' SettingsPath ''')'])
@@ -488,7 +499,7 @@ if exist(Testpath) == 0
     disp('Modify "ProtocolSettings" as desired, then run the following command to save:')
     disp('SaveProtocolSettings(ProtocolSettings);')
     disp('----------------------------')
-commandwindow
+    commandwindow
 else
     close(NameInputFig);
     BpodErrorSound;
@@ -690,6 +701,23 @@ DataFolder = fullfile(BpodSystem.Path.DataFolder,SubjectName,ProtocolName,'Sessi
 if ~exist(DataFolder)
     mkdir(DataFolder);
 end
+
+% On Bpod r2+, if FlexIO channels are configured as analog,
+% setup binary data file
+if BpodSystem.MachineType > 3
+    nAnalogChannels = sum(BpodSystem.HW.FlexIO_ChannelTypes == 2);
+    if nAnalogChannels > 0
+        AnalogFilename = [BpodSystem.Path.CurrentDataFile(1:end-4) '_ANLG.dat'];
+        if BpodSystem.Status.RecordAnalog == 1
+            BpodSystem.AnalogDataFile = fopen(AnalogFilename,'w');
+            if BpodSystem.AnalogDataFile == -1
+                error(['Error: Could not open the analog data file: ' AnalogFilename])
+            end
+        end
+        BpodSystem.Status.nAnalogSamples = 0;
+    end
+end
+
 BpodSystem.Status.Live = 1;
 BpodSystem.GUIData.ProtocolName = ProtocolName;
 BpodSystem.GUIData.SubjectName = SubjectName;
@@ -700,6 +728,27 @@ F = fieldnames(SettingStruct);
 FieldName = F{1};
 BpodSystem.ProtocolSettings = eval(['SettingStruct.' FieldName]);
 BpodSystem.Data = struct;
+if BpodSystem.MachineType > 3
+    if nAnalogChannels > 0
+        BpodSystem.Data.Analog = struct;
+        BpodSystem.Data.Analog.info = struct;
+        BpodSystem.Data.Analog.FileName = AnalogFilename;
+        BpodSystem.Data.Analog.nChannels = nAnalogChannels;
+        BpodSystem.Data.Analog.channelNumbers = find(BpodSystem.HW.FlexIO_ChannelTypes == 2);
+        BpodSystem.Data.Analog.SamplingRate = BpodSystem.HW.FlexIO_SamplingRate;
+        BpodSystem.Data.Analog.nSamples = 0;
+        % Add human-readable info about data fields to 'info struct
+        BpodSystem.Data.Analog.info.FileName = 'Complete path and filename of the binary file to which the raw data was logged';
+        BpodSystem.Data.Analog.info.nChannels = 'The number of Flex I/O channels configured as analog input';
+        BpodSystem.Data.Analog.info.channelNumbers = 'The indexes of Flex I/O channels configured as analog input';
+        BpodSystem.Data.Analog.info.SamplingRate = 'The sampling rate of the analog data. Units = Hz';
+        BpodSystem.Data.Analog.info.nSamples = 'The total number of analog samples captured during the behavior session';
+        BpodSystem.Data.Analog.info.Samples = 'Analog measurements captured. Rows are separate analog input channels. Units = Volts';
+        BpodSystem.Data.Analog.info.Timestamps = 'Time of each sample (computed from sample index and sampling rate)';
+        BpodSystem.Data.Analog.info.TrialNumber = 'Experimental trial during which each analog sample was captured';
+        BpodSystem.Data.Analog.info.TrialData = 'A cell array of Samples. Each cell contains samples captured during a single trial.';
+    end
+end
 ProtocolFolderPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName);
 ProtocolPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName,[ProtocolName '.m']);
 addpath(ProtocolFolderPath);
@@ -708,12 +757,25 @@ IsOnline = BpodSystem.check4Internet();
 if (IsOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
     BpodSystem.BpodPhoneHome(1);
 end
+
+if BpodSystem.Status.AnalogViewer
+    set(BpodSystem.GUIHandles.RecordButton, 'Enable', 'off')
+end
+
 BpodSystem.Status.BeingUsed = 1;
+BpodSystem.Status.SessionStartFlag = 1;
 BpodSystem.ProtocolStartTime = now*100000;
 BpodSystem.resetSessionClock();
 close(BpodSystem.GUIHandles.LaunchManagerFig);
 disp(' ');
 disp(['Starting ' ProtocolName]);
+set(BpodSystem.GUIHandles.CurrentStateDisplay, 'String', '---');
+set(BpodSystem.GUIHandles.PreviousStateDisplay, 'String', '---');
+set(BpodSystem.GUIHandles.LastEventDisplay, 'String', '---');
+set(BpodSystem.GUIHandles.TimeDisplay, 'String', '0:00:00');
+if sum(BpodSystem.InputsEnabled(BpodSystem.HW.Inputs == 'P')) == 0
+    warning('All Bpod behavior ports are currently disabled. If your protocol requires behavior ports, enable them from the settings menu.')
+end
 run(ProtocolPath);
 
 function OutputString = Spaces2Underscores(InputString)

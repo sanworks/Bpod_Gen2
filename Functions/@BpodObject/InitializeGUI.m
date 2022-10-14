@@ -35,7 +35,7 @@ function obj = InitializeGUI(obj)
         Vvsm = 12; Vsm = 14; Sm = 16; Med = 17; Lg = 22;
         FontName = 'Arial';
     else
-        Vvsm = 10; Vsm = 10; Sm = 12; Med = 13; Lg = 20;
+        Vvsm = 10; Vsm = 9; Sm = 12; Med = 13; Lg = 20;
         FontName = 'DejaVu Sans Mono';
     end
 
@@ -63,6 +63,7 @@ function obj = InitializeGUI(obj)
     obj.GUIData.SystemInfoButton = imread('SystemInfoButton.bmp');
     obj.GUIData.DocButton = imread('DocButton.bmp');
     obj.GUIData.AddProtocolButton = imread('AddProtocolIcon.bmp');
+    obj.GUIData.AnalogViewerButton = imread('AlgViewer.bmp');
     obj.GUIHandles.SettingsButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [778 275 29 29], 'Callback', 'BpodSettingsMenu', 'CData', obj.GUIData.SettingsButton, 'TooltipString', 'Settings and calibration');
     obj.GUIHandles.RefreshButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [733 275 29 29], 'Callback', @(h,e)obj.LoadModules(), 'CData', obj.GUIData.RefreshButton, 'TooltipString', 'Refresh modules');
     obj.GUIHandles.SystemInfoButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [778 227 29 29], 'Callback', 'BpodSystemInfo', 'CData', obj.GUIData.SystemInfoButton, 'TooltipString', 'View system info');
@@ -84,19 +85,20 @@ function obj = InitializeGUI(obj)
 
     PluginPanelWidth = 575;
     PluginPanelOffset = 145;
-    TabWidth = (PluginPanelWidth)/obj.HW.n.SerialChannels;
-    obj.GUIHandles.PanelButton = zeros(1,obj.HW.n.SerialChannels);
+    nTabs = obj.HW.n.UartSerialChannels+1;
+    TabWidth = (PluginPanelWidth)/nTabs;
+    obj.GUIHandles.PanelButton = zeros(1,nTabs);
     ModuleNames = {'<html>&nbsp;State<br>Machine', 'Serial 1', 'Serial 2', 'Serial 3', 'Serial 4', 'Serial 5'};
     FormattedModuleNames = ModuleNames;
     TabPos = PluginPanelOffset;
-    obj.GUIData.DefaultPanel = ones(1,obj.HW.n.SerialChannels);
+    obj.GUIData.DefaultPanel = ones(1,nTabs);
     
     ButtonFont = 'Courier New';
     if ~ispc && ~ismac 
         ButtonFont = 'DejaVu Sans Mono';
     end
     
-    for i = 1:obj.HW.n.SerialChannels
+    for i = 1:nTabs
         % Set module names
         if i > 1
             if obj.Modules.Connected(i-1)
@@ -123,7 +125,9 @@ function obj = InitializeGUI(obj)
             end
         end
         % Draw tab
-        obj.GUIHandles.PanelButton(i) = uicontrol('Style', 'pushbutton', 'String', FormattedModuleNames{i}, 'Callback', @(h,e)obj.SwitchPanels(i), 'BackgroundColor', [0.37 0.37 0.37], 'Position', [TabPos 272 TabWidth-1 49], 'ForegroundColor', [0.9 0.9 0.9], 'FontSize', Vvsm, 'FontName', ButtonFont);
+        obj.GUIHandles.PanelButton(i) = uicontrol('Style', 'pushbutton', 'String', FormattedModuleNames{i}, 'Callback', @(h,e)obj.SwitchPanels(i),...
+            'BackgroundColor', [0.37 0.37 0.37], 'Position', [TabPos 272 TabWidth-1 49], 'ForegroundColor', [0.9 0.9 0.9], 'FontSize', Vvsm,...
+            'FontName', ButtonFont);
         TabPos = TabPos + TabWidth;
         if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
             jButton = findjobj(obj.GUIHandles.PanelButton(i));
@@ -177,23 +181,23 @@ function obj = InitializeGUI(obj)
     if isempty(strfind(obj.HostOS, 'Linux'))
         % Draw lines between tabs
         TabPos = PluginPanelOffset;
-        for i = 1:obj.HW.n.SerialChannels-1
+        for i = 1:obj.HW.n.UartSerialChannels
             TabPos = TabPos + TabWidth;
             line([TabPos-1 TabPos-1], [82 130], 'Color', [0.45 0.45 0.45], 'LineWidth', 5);
         end
         if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
-            for i = 1:obj.HW.n.SerialChannels
+            for i = 1:obj.HW.n.UartSerialChannels+1
                 jButton = findjobj(obj.GUIHandles.PanelButton(i));
                 jButton.setBorderPainted(false);
             end
         end
     end
     if ispc
-        InfoDispFontSize = 9; InfoDispBoxHeight = 20; PortDispBoxHeight = 20; InfoDispBoxWidth = 115; Ypos = 268;
+        InfoDispFontSize = 9; InfoDispBoxHeight = 20; PortDispBoxHeight = 20; InfoDispBoxWidth = 122; Ypos = 268; Xpos = 12;
     elseif ismac
-        InfoDispFontSize = 12; InfoDispBoxHeight = 22; PortDispBoxHeight = 28; InfoDispBoxWidth = 115; Ypos = 264;
+        InfoDispFontSize = 12; InfoDispBoxHeight = 22; PortDispBoxHeight = 28; InfoDispBoxWidth = 115; Ypos = 264; Xpos = 12;
     else
-        InfoDispFontSize = 9; InfoDispBoxHeight = 23; PortDispBoxHeight = 23; InfoDispBoxWidth = 120; Ypos = 268;
+        InfoDispFontSize = 9; InfoDispBoxHeight = 23; PortDispBoxHeight = 23; InfoDispBoxWidth = 128; Ypos = 268; Xpos = 10;
     end
     
     if obj.EmulatorMode == 1
@@ -202,11 +206,13 @@ function obj = InitializeGUI(obj)
         PortString = obj.SerialPort.PortName;
     end
 
-    obj.GUIHandles.CurrentStateDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [12 Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.PreviousStateDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [12 Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.LastEventDisplay = uicontrol('Style', 'text', 'String', 'None', 'Position', [12 Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.TimeDisplay = uicontrol('Style', 'text', 'String', '0', 'Position', [12 Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
-    obj.GUIHandles.USBPortDisplay = uicontrol('Style', 'text', 'String', PortString, 'Position', [12 Ypos InfoDispBoxWidth PortDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize);
+    obj.GUIHandles.CurrentStateDisplay = uicontrol('Style', 'text', 'String', '---', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
+    obj.GUIHandles.PreviousStateDisplay = uicontrol('Style', 'text', 'String', '---', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
+    obj.GUIHandles.LastEventDisplay = uicontrol('Style', 'text', 'String', '---', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight], 'FontWeight', 'bold', 'FontSize', InfoDispFontSize); Ypos = Ypos - 51;
+    obj.GUIHandles.TimeDisplay = uicontrol('Style', 'text', 'String', '0:00:00', 'Position', [Xpos Ypos InfoDispBoxWidth InfoDispBoxHeight],...
+        'FontWeight', 'bold', 'FontSize', InfoDispFontSize, 'TooltipString', 'Time in session, updated on each trial start'); Ypos = Ypos - 51;
+    obj.GUIHandles.USBPortDisplay = uicontrol('Style', 'text', 'String', PortString, 'Position', [Xpos Ypos InfoDispBoxWidth PortDispBoxHeight],...
+        'FontWeight', 'bold', 'FontSize', InfoDispFontSize, 'TooltipString', 'The Bpod State Machine''s primary USB serial port');
     obj.FixPushbuttons;
     text(15, 30, Title, 'FontName', TitleFontName, 'FontSize', Lg, 'Color', TitleColor);
     line([220 780], [30 30], 'Color', LabelFontColor, 'LineWidth', 4);
@@ -214,7 +220,7 @@ function obj = InitializeGUI(obj)
     text(10, 102,'Current State', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 153,'Previous State', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 204,'Last Event', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
-    text(10, 255,'Trial-Start', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
+    text(10, 255,'Session Time', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(10, 306,'Port', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(23, 65,'Live Info', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
     line([10 130], [79 79], 'Color', LabelFontColor, 'LineWidth', 2);

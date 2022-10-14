@@ -175,6 +175,10 @@ end
 if ~ispc && ~ismac
     xPos = [378 375 380];
 end
-text(xPos(1)+15, 190,' Bpod Finite', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
-text(xPos(2)+15, 130,'State Machine', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
-text(xPos(3)+15, 70, '     v2+', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
+BpodSystem.GUIHandles.AnalogViewerButton = uicontrol('Parent', BpodSystem.GUIHandles.OverridePanel(1),'Style', 'pushbutton', 'String', '', 'Position', [390 120 160 80], 'Callback', ['BpodSystem.startAnalogViewer();'], 'CData', BpodSystem.GUIData.AnalogViewerButton, 'TooltipString', 'Launch Analog Viewer');
+
+text(445, 225,'Analog', 'FontName', FontName, 'FontSize', medFontSize, 'Color', [.8 .8 .8]);
+line([390 550], [210 210], 'Color', [.8 .8 .8], 'LineWidth', 2);
+text(xPos(1)+15, 92,' Bpod Finite', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
+text(xPos(2)+15, 70,'State Machine', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
+text(xPos(3)+15, 48, '     v2+', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);

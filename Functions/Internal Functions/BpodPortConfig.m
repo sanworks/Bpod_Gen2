@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -19,6 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function BpodPortConfig
 global BpodSystem
+if isfield(BpodSystem.GUIHandles, 'PortConfigFig') && ~verLessThan('MATLAB', '8.4')
+    if isgraphics(BpodSystem.GUIHandles.PortConfigFig)
+        figure(BpodSystem.GUIHandles.PortConfigFig);
+        return;
+    end
+end
 if BpodSystem.MachineType == 1 % Bpod 0.5
     BpodSystem.GUIHandles.PortConfigFig = figure('Position',[600 400 400 250],'name','Port config.','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
     yPos = 142;

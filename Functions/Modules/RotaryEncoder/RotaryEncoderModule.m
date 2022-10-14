@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -44,11 +44,18 @@ classdef RotaryEncoderModule < handle
         wrapPoint = 180; % Point at which position wraps around, in degrees. Set to 0 to inactivate wrapping.
         wrapMode = 'bipolar'; % 'bipolar' (position wraps to negative value) or 'unipolar' (wraps to 0) 
         sendThresholdEvents = 'off'; % Set to 'on' to send threshold crossing events to the Bpod state machine
-        moduleOutputStream = 'off'; % Set to 'on' to stream position data directly to another Bpod module
-        moduleStreamPrefix = 'M'; % The byte that precedes each position in the module output stream
+        moduleOutputStream = 'off'; % Set to 'on' to stream position data directly to another Bpod module (HW version 1 only)
+        moduleStreamPrefix = 'M'; % The byte that precedes each position in the module output stream (HW version 1 only)
+        userCallbackFcn = ''; % The name of a user-created callback function run when new data is available. The most recent encoder position is the input arg. 
+                              % Can be used to map wheel position to a stimulus (albeit with a ~100Hz refresh rate, and NOT with the FSM's timing precision)
+        useAdvancedThresholds = 'off'; % If on (HW version 2 or newer) advanced thresholds are used, and thresholds property is ignored.
+                                       % Advanced thresholds are configured with setAdvancedThresholds() and
+                                       % made current with push() from MATLAB or the '*' command from the state machine
     end
     properties (Access = private)
-        Timer % MATLAB timer (for updating the UI)
+        Timer % MATLAB timer (for reading data from the serial buffer during USB streaming)
+        timerInterval = 0.1; % Interval between serial buffer reads. This also determines the frequency of the user callback (used to control a stimulus).
+        userCallbackFcnSet = 0; % 1 if obj.userCallbackFcn is set, 0 if not
         acquiring = 0; % 0 if idle, 1 if streaming data to serial buffer
         uiStreaming = 0; % 1 if streaming data to UI
         gui = struct; % Handles for GUI elements
@@ -71,6 +78,10 @@ classdef RotaryEncoderModule < handle
         usbCapturedData = []; % Stores streaming data if usbCaptureEnabled = 1
         rollOverSum = 0; % If 32-bit micros() clock has rolled over since stream or log reset, this gets incremented by 2^32
         LastTimeRead = 0; % Last timestamp read from the device
+        HardwareVersion = 0; % Major version of the connected hardware
+        halfPoint = 512; % Half of total positions per revolution (depends both on encoder and encoding method)
+        thresholdType = 0; % 0 = standard (legacy, default), 1 = advanced, see comment of useAdvancedThresholds property above
+        hardwareTimerInterval = 0.0001; % seconds, currently fixed in firmware
     end
             
     methods
@@ -91,7 +102,15 @@ classdef RotaryEncoderModule < handle
             obj.Port.write('CX', 'uint8'); % C = handshake, X = reset data streams
             response = obj.Port.read(1, 'uint8');
             if response ~= 217
-                error('Could not connect =( ')
+                error('Rotary encoder module returned an incorrect handshake byte.')
+            end
+            % Check for firmware version 2
+            obj.Port.write('IM', 'uint8');
+            reply = obj.Port.read(1, 'uint8');
+            obj.HardwareVersion = 1;
+            if reply == 0
+                obj.HardwareVersion = 2;
+                obj.halfPoint = 2048;
             end
             obj.resetParams();
             obj.displayPositions = nan(1,obj.nDisplaySamples); % UI y data
@@ -102,7 +121,7 @@ classdef RotaryEncoderModule < handle
             obj.NewDataTemplate.Times = zeros(1,1000);
             obj.NewDataTemplate.nEvents = 0;
             obj.NewDataTemplate.EventTypes = uint8(zeros(1,1000));
-            obj.NewDataTemplate.EventCodes = uint8(zeros(1,1000));
+            obj.NewDataTemplate.EventCodes = uint16(zeros(1,1000));
             obj.NewDataTemplate.EventTimestamps = zeros(1,1000);
         end
         
@@ -111,42 +130,92 @@ classdef RotaryEncoderModule < handle
             obj.Port.write('Q', 'uint8');
             pos = obj.pos2degrees(obj.Port.read(1, 'int16'));
         end
+        function set.userCallbackFcn(obj, newFcn)
+            if obj.acquiring == 1
+                error('The Rotary Encoder Module''s user callback function cannot be set while streaming is active.')
+            end
+            if ~ischar(newFcn)
+                error('The Rotary Encoder Module''s user callback function must be a character array.')
+            end
+            if isempty(which(newFcn))
+                error(['Error setting Rotary Encoder Module user callback function: ' newFcn ' is not a function in the MATLAB path.'])
+            end
+            if isempty(newFcn)
+                obj.userCallbackFcnSet = 0;
+                obj.timerInterval = 0.1;
+            else
+                obj.userCallbackFcnSet = 1;
+                obj.timerInterval = 0.01; % Callback can run at up to 100Hz. Exact timing depends on other processing, and is not guaranteed
+                obj.usbCaptureEnabled = 1;        
+            end
+            obj.userCallbackFcn = newFcn;
+        end
         function set.thresholds(obj, newThresholds)
-            obj.assertNotUSBStreaming;
-            if sum(abs(newThresholds) > obj.wrapPoint) > 0
-                error(['Error: thresholds cannot exceed the rotary encoder''s current wrap point: ' num2str(obj.wrapPoint) ' degrees.'])
+            if obj.thresholdType == 0
+                obj.assertNotUSBStreaming;
+                if sum(abs(newThresholds) > obj.wrapPoint) > 0
+                    error(['Error: thresholds cannot exceed the rotary encoder''s current wrap point: ' num2str(obj.wrapPoint) ' degrees.'])
+                end
+                if length(newThresholds) > obj.maxThresholds
+                    error(['Error: the current software supports only ' num2str(obj.maxThresholds) ' thresholds.']);
+                end
+                ThresholdsInTics = obj.degrees2pos(newThresholds);
+                obj.Port.write(['T' length(ThresholdsInTics)], 'uint8', ThresholdsInTics, 'int16');
+                obj.ConfirmUSBTransmission('Thresholds');
+            else
+                if ~ischar(newThresholds)
+                    error('Thresholds must be set using the setAdvancedThresholds() method if useAdvancedThresholds is set to ''on''')
+                end
             end
-            if length(newThresholds) > obj.maxThresholds
-                error(['Error: the current software supports only ' num2str(obj.maxThresholds) ' thresholds.']);
-            end
-            ThresholdsInTics = obj.degrees2pos(newThresholds);
-            obj.Port.write(['T' length(ThresholdsInTics)], 'uint8', ThresholdsInTics, 'int16');
-            obj.ConfirmUSBTransmission('Thresholds');
             obj.thresholds = newThresholds;
         end
         function set.moduleOutputStream(obj, stateString)
-            obj.assertNotUSBStreaming;
-            stateString = lower(stateString);
-            if obj.autoSync
-                switch stateString
-                    case 'off'
-                        obj.Port.write(['O' 0], 'uint8');
-                    case 'on'
-                        obj.Port.write(['O' 1], 'uint8');
-                    otherwise
-                        error('Error setting moduleOutputStream; value must be ''on'' or ''off''');
+            if obj.HardwareVersion == 1
+                obj.assertNotUSBStreaming;
+                stateString = lower(stateString);
+                if obj.autoSync
+                    switch stateString
+                        case 'off'
+                            obj.Port.write(['O' 0], 'uint8');
+                        case 'on'
+                            obj.Port.write(['O' 1], 'uint8');
+                        otherwise
+                            error('Error setting moduleOutputStream; value must be ''on'' or ''off''');
+                    end
                 end
+                obj.ConfirmUSBTransmission('Module Output Stream Enable/Disable');
+                obj.moduleOutputStream = stateString;
             end
-            obj.ConfirmUSBTransmission('Module Output Stream Enable/Disable');
-            obj.moduleOutputStream = stateString;
+        end
+        function set.useAdvancedThresholds(obj, stateString)
+                obj.assertNotUSBStreaming;
+                stateString = lower(stateString);
+                if obj.autoSync
+                    switch stateString
+                        case 'off'
+                            obj.thresholdType = 0;
+                            obj.thresholds = [-40 40];
+                        case 'on'
+                            if obj.HardwareVersion == 1
+                                error('Error: Advanced thresholds require rotary encoder module v2 or newer');
+                            end
+                            obj.thresholdType = 1;
+                            obj.thresholds = '<Advanced Thresholds>';
+                        otherwise
+                            error('Error setting useAdvancedThresholds; value must be ''on'' or ''off''');
+                    end
+                end
+                obj.useAdvancedThresholds = stateString;
         end
         function set.moduleStreamPrefix(obj, Prefix)
-            obj.assertNotUSBStreaming;
-            if (length(Prefix) > 1) || (~ischar(Prefix))
-                error('Error setting output stream prefix; Prefix must be a single character.')
+            if obj.HardwareVersion == 1
+                obj.assertNotUSBStreaming;
+                if (length(Prefix) > 1) || (~ischar(Prefix))
+                    error('Error setting output stream prefix; Prefix must be a single character.')
+                end
+                obj.Port.write(['I' Prefix], 'uint8');
+                obj.ConfirmUSBTransmission('Module Output Stream Prefix');
             end
-            obj.Port.write(['I' Prefix], 'uint8');
-            obj.ConfirmUSBTransmission('Module Output Stream Prefix');
         end
         function set.wrapPoint(obj, newWrapPoint)
             obj.assertNotUSBStreaming;
@@ -184,15 +253,62 @@ classdef RotaryEncoderModule < handle
             obj.ConfirmUSBTransmission('State Machine Threshold Events (Enable/Disable)');
             obj.sendThresholdEvents = stateString;
         end
+        function setAdvancedThresholds(obj, thresholds, varargin)
+            % Syntax: setAdvancedThresholds(thresholds, [thresholdTypes], [thresholdTimes]) where [] is an optional argument.
+            %         thresholds = a value in degrees for each threshold, up to 8 thresholds maximum
+            %         thresholdTypes = 0 (Threshold reached when position crossed), 1 (After enable, threshold reached after Time spent within +/- position)
+            %         thresholdTimes = a value in seconds for computing threshold type 1. Ignored if thresholdTypes == 0
+            %         If thresholdType = 1, a non-zero thresholdTime must be specified.
+            %         Thresholds programmed with setAdvancedThresholds() are not current on the module until the next push command ('*' from the state machine)
+            if obj.thresholdType == 0
+                error('useAdvancedThresholds must be set to ''on'' to set advanced thresholds');
+            end
+            nThresholds = length(thresholds);
+            thresholdTypes = zeros(1,nThresholds);
+            thresholdTimes = zeros(1,nThresholds);
+            if nargin > 2
+                thresholdTypes = varargin{1};
+                if length(thresholdTypes) ~= nThresholds
+                    error('Incorrect number of threshold types. Exactly one threshold type for each rotary encoder threshold must be specified.');
+                end
+                if sum(thresholdTypes>1) > 0 || sum(thresholdTypes<0) > 0
+                    error('Error: threshold types must be 0 or 1')
+                end
+            end
+            if nargin > 3
+                thresholdTimes = varargin{2};
+                if length(thresholdTimes) ~= nThresholds
+                    error('Incorrect number of threshold times. Exactly one threshold time for each rotary encoder threshold must be specified.');
+                end
+                if sum(thresholdTimes <= 0 & thresholdTypes == 1) > 0
+                    error('Rotary encoder threshold times must be positive durations, specified in seconds');
+                end
+                thresholdTimes = thresholdTimes/obj.hardwareTimerInterval;
+            end
+            ThresholdsInTics = obj.degrees2pos(thresholds);
+            obj.Port.write(['t' nThresholds thresholdTypes], 'uint8', ThresholdsInTics, 'int16', thresholdTimes, 'uint32');
+        end
+        function push(obj) % Makes newly loaded thresholds current
+            obj.Port.write('*', 'uint8');
+        end
         function startLogging(obj)
+            if obj.HardwareVersion == 2
+                error('Error: microSD logging is not available on Rotary Encoder Module v2');
+            end
             obj.Port.write('L', 'uint8');
             obj.isLogging = 1;
         end
         function stopLogging(obj)
-                obj.Port.write('F', 'uint8');
-                obj.isLogging = 0;
+            if obj.HardwareVersion == 2
+                error('Error: microSD logging is not available on Rotary Encoder Module v2');
+            end
+            obj.Port.write('F', 'uint8');
+            obj.isLogging = 0;
         end
         function Data = getLoggedData(obj)
+            if obj.HardwareVersion == 2
+                error('Error: microSD logging is not available on Rotary Encoder Module v2');
+            end
             if obj.uiStreaming == 1
                 stop(obj.Timer);
                 obj.stopUSBStream;
@@ -257,24 +373,60 @@ classdef RotaryEncoderModule < handle
                         switch lower(op)
                             case 'usetimer'
                                 obj.usbCaptureEnabled = 1;
-                                obj.Timer = timer('TimerFcn',@(h,e)obj.captureUSBStream(), 'ExecutionMode', 'fixedRate', 'Period', 0.1, 'Tag', ['RE_' obj.Port.PortName]);
-                                start(obj.Timer);
                             otherwise
                                 error(['Error starting rotary encoder USB stream: Invalid argument ' op '. Valid arguments are: ''UseTimer'''])
-                        end
-                                
+                        end     
                     end
+                    obj.Timer = timer('TimerFcn',@(h,e)obj.captureUSBStream(), 'ExecutionMode', 'fixedRate', 'Period', obj.timerInterval, 'Tag', ['RE_' obj.Port.PortName]);
+                    start(obj.Timer);
                 else
                     error('Error: The Rotary Encoder Module is logging to microSD. Turn off logging with stopLogging() to enable USB streaming.')
                 end
             end
         end
-        function NewData = readUSBStream(obj)
+        function NewData = readUSBStream(obj, varargin)
+            % Usage: readUSBStream() returns all new data up to the current moment. readUSBStream(eventCode) reads all new data prior to an event code received by the REM.
+            % To send an event code to the REM from the state machine, use {'RotaryEncoder1', ['#' eventCode]} in output actions.
+            eventCode = [];
+            if nargin > 1
+                eventCode = varargin{1};
+            end
             NewData = obj.getUSBStream;
-            if obj.usbCaptureEnabled == 1
-                obj.usbCapturedData = obj.appendStreamData(obj.usbCapturedData, NewData);
+            obj.usbCapturedData = obj.appendStreamData(obj.usbCapturedData, NewData);
+            if isempty(eventCode)
                 NewData = obj.usbCapturedData;
                 obj.usbCapturedData = [];
+            else
+                [NewData, obj.usbCapturedData] = obj.splitData(obj.usbCapturedData,eventCode);
+            end
+        end
+        function [NewData, usbCapturedData] = splitData(obj, StreamData, eventCode)
+            if sum(StreamData.EventCodes == eventCode) > 0
+                splitEventIndex = find(StreamData.EventCodes == eventCode, 1);
+                splitEventTime = StreamData.EventTimestamps(splitEventIndex);
+                FirstHalfPositionIndexes = StreamData.Times <= splitEventTime;
+                SecondHalfPositionIndexes = logical(1-FirstHalfPositionIndexes);
+                FirstHalfEventIndexes = StreamData.EventTimestamps <= splitEventTime;
+                SecondHalfEventIndexes = logical(1-FirstHalfEventIndexes);
+                NewData = struct;
+                NewData.nPositions = sum(FirstHalfPositionIndexes);
+                NewData.nEvents = sum(FirstHalfEventIndexes);
+                NewData.Positions = StreamData.Positions(FirstHalfPositionIndexes);
+                NewData.Times = StreamData.Times(FirstHalfPositionIndexes);
+                NewData.EventTypes = StreamData.EventTypes(FirstHalfEventIndexes);
+                NewData.EventCodes = StreamData.EventCodes(FirstHalfEventIndexes);
+                NewData.EventTimestamps = StreamData.EventTimestamps(FirstHalfEventIndexes);
+                usbCapturedData = struct;
+                usbCapturedData.nPositions = sum(SecondHalfPositionIndexes);
+                usbCapturedData.nEvents = sum(SecondHalfEventIndexes);
+                usbCapturedData.Positions = StreamData.Positions(SecondHalfPositionIndexes);
+                usbCapturedData.Times = StreamData.Times(SecondHalfPositionIndexes);
+                usbCapturedData.EventTypes = StreamData.EventTypes(SecondHalfEventIndexes);
+                usbCapturedData.EventCodes = StreamData.EventCodes(SecondHalfEventIndexes);
+                usbCapturedData.EventTimestamps = StreamData.EventTimestamps(SecondHalfEventIndexes);
+            else
+                NewData = StreamData;
+                usbCapturedData = [];
             end
         end
         function OutData = appendStreamData(obj, StreamData, NewData)
@@ -293,11 +445,11 @@ classdef RotaryEncoderModule < handle
         end
         function stopUSBStream(obj)
             if obj.usbCaptureEnabled == 1
-                obj.usbCaptureEnabled = 0;
-                obj.usbCapturedData = [];
                 stop(obj.Timer);
                 delete(obj.Timer);
                 obj.Timer = [];
+                obj.usbCaptureEnabled = 0;
+                obj.usbCapturedData = [];
             end
             if obj.acquiring
                 obj.Port.write(['S' 0], 'uint8');
@@ -374,13 +526,19 @@ classdef RotaryEncoderModule < handle
                     'FontWeight', 'bold', 'BackgroundColor', BGColor); Ypos = Ypos - 30;
                 obj.gui.OutputStreamCheckbox = uicontrol('Style', 'checkbox', 'Position', [610 Ypos 30 30], 'FontSize', 12,...
                     'BackgroundColor', BGColor, 'Callback',@(h,e)obj.UIsetParams(), 'Value', strcmp(obj.moduleOutputStream, 'on'));
+                if obj.HardwareVersion == 2
+                    set(obj.gui.OutputStreamCheckbox, 'enable', 'off');
+                end
                 uicontrol('Style', 'text', 'Position', [630 Ypos-5 60 30], 'String', 'Enable', 'FontSize', 12,...
                     'BackgroundColor', BGColor); Ypos = Ypos - 45;
                 obj.displayPos = 1;
                 obj.sweepStartTime = 0;
                 drawnow;
                 obj.Timer = timer('TimerFcn',@(h,e)obj.updatePlot(), 'ExecutionMode', 'fixedRate', 'Period', 0.05);
-                obj.startUSBStream();
+                obj.acquiring = 1;
+                obj.Port.write(['S' 1], 'uint8');
+                obj.LastTimeRead = 0;
+                obj.rollOverSum = 0;
                 start(obj.Timer);
             else
                 error('Error: A rotary encoder streamUI window is already open. Please close it and try again.');
@@ -401,7 +559,9 @@ classdef RotaryEncoderModule < handle
         end
         function delete(obj)
             obj.stopUSBStream;
-            obj.stopLogging;
+            if obj.HardwareVersion == 1
+                obj.stopLogging;
+            end
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
         end
     end
@@ -526,7 +686,6 @@ classdef RotaryEncoderModule < handle
             nNewEvents = 0;
             nBytesAvailable = obj.Port.bytesAvailable;
             if (nBytesAvailable > 6)
-                
                 msgSize = 7*floor(nBytesAvailable/7); % Only read complete messages
                 Msg = obj.Port.read(msgSize, 'uint8');
                 MsgInd = 1;
@@ -541,7 +700,7 @@ classdef RotaryEncoderModule < handle
                             nNewDataPoints = nNewDataPoints + 1;
                             NewData.Positions(nNewDataPoints) = obj.pos2degrees(typecast(Positions(obj.positionBytemask(1:6)), 'int16'));
                             NewTime = double(typecast(Positions(obj.timeBytemask(1:6)), 'uint32'))/1000000;
-                            if obj.LastTimeRead > NewTime;
+                            if obj.LastTimeRead > NewTime
                                 obj.rollOverSum = obj.rollOverSum + 4294.967296;
                             end
                             obj.LastTimeRead = NewTime;
@@ -555,7 +714,7 @@ classdef RotaryEncoderModule < handle
                             NewData.EventTypes(nNewEvents) = EventData(1);
                             NewData.EventCodes(nNewEvents) = EventData(2);
                             NewTime = double(typecast(EventData(3:end), 'uint32'))/1000000;
-                            if obj.LastTimeRead > NewTime;
+                            if obj.LastTimeRead > NewTime
                                 obj.rollOverSum = obj.rollOverSum + 4294.967296;
                             end
                             obj.LastTimeRead = NewTime;
@@ -578,6 +737,13 @@ classdef RotaryEncoderModule < handle
                     NewData.EventCodes = [];
                     NewData.EventTimestamps = [];
                 end
+                if obj.userCallbackFcnSet
+                    latestPosition = NewData.Positions(end);
+                    eval([obj.userCallbackFcn '(latestPosition)'])
+                    NewData.EventTypes(end+1) = 255;
+                    NewData.EventCodes(end+1) = latestPosition;
+                    NewData.EventTimestamps(end+1) = NewData.Times(end);
+                end
             else
                 NewData.Positions = [];
                 NewData.Times = [];
@@ -587,10 +753,10 @@ classdef RotaryEncoderModule < handle
             end
         end
         function degrees = pos2degrees(obj, pos)
-            degrees = round(((double(pos)/512)*180)*10)/10;
+            degrees = round(((double(pos)/obj.halfPoint)*180)*10)/10;
         end
         function pos = degrees2pos(obj, degrees)
-            pos = int16((degrees./180).*512);
+            pos = int16((degrees./180).*obj.halfPoint);
         end
         function ConfirmUSBTransmission(obj,ParamName)
             Confirm = obj.Port.read(1, 'uint8');

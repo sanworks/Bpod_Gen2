@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the 
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -23,10 +23,12 @@ TimeScaleFactor = (BpodSystem.HW.CyclePeriod/1000);
 if isempty(BpodSystem.StateMatrixSent)
     error('Error: A state matrix must be sent prior to calling "RunStateMatrix".')
 end
-if BpodSystem.BonsaiSocket.Connected == 1
-    BonsaiBytesAvailable = BpodSocketServer('bytesAvailable');
+usingBonsai = 0;
+if ~isempty(BpodSystem.BonsaiSocket)
+    usingBonsai = 1;
+    BonsaiBytesAvailable = BpodSystem.BonsaiSocket.bytesAvailable;
     if BonsaiBytesAvailable > 0
-        BpodSocketServer('read', BonsaiBytesAvailable);
+        BpodSystem.BonsaiSocket.read(BonsaiBytesAvailable, 'uint8');
     end
 end
 if sum(BpodSystem.Modules.RelayActive) > 0
@@ -34,13 +36,18 @@ if sum(BpodSystem.Modules.RelayActive) > 0
 end
 RawTrialEvents = struct;
 if BpodSystem.EmulatorMode == 0
-    if BpodSystem.SerialPort.bytesAvailable > 0
-        trash = BpodSystem.SerialPort.read(BpodSystem.SerialPort.bytesAvailable, 'uint8');
+    if BpodSystem.Status.SessionStartFlag == 1 % On first run of session
+        BpodSystem.Status.SessionStartFlag = 0;
+        if BpodSystem.MachineType == 4
+            BpodSystem.AnalogSerialPort.flush;
+            start(BpodSystem.Timers.AnalogTimer);
+        end
     end
+    BpodSystem.SerialPort.flush;
     BpodSystem.SerialPort.write('R', 'uint8'); % Send the code to run the loaded matrix (character "R" for Run)
     if BpodSystem.Status.NewStateMachineSent % Read confirmation byte = successful state machine transmission
         SMA_Confirmed = BpodSystem.SerialPort.read(1, 'uint8');
-        if isempty(SMA_Confirmed) 
+        if isempty(SMA_Confirmed)
             error('Error: The last state machine sent was not acknowledged by the Bpod device.');
         elseif SMA_Confirmed ~= 1
             error('Error: The last state machine sent was not acknowledged by the Bpod device.');
@@ -48,12 +55,11 @@ if BpodSystem.EmulatorMode == 0
         BpodSystem.Status.NewStateMachineSent = 0;
     end
     TrialStartTimestampBytes = BpodSystem.SerialPort.read(8, 'uint8');
-    TrialTimestamp64 = typecast(TrialStartTimestampBytes, 'uint64');
     TrialStartTimestamp = double(typecast(TrialStartTimestampBytes, 'uint64'))/1000000; % Start-time of the trial in microseconds (compensated for 32-bit clock rollover)
 end
 BpodSystem.StateMatrix = BpodSystem.StateMatrixSent;
 EventNames = BpodSystem.StateMachineInfo.EventNames;
-MaxEvents = 10000;
+MaxEvents = 100000;
 nEvents = 0; nStates = 1;
 Events = zeros(1,MaxEvents); States = zeros(1,MaxEvents);
 LiveEventTimestamps = zeros(1,MaxEvents);
@@ -63,7 +69,7 @@ States(nStates) = 1;
 StateNames = BpodSystem.StateMatrix.StateNames;
 BpodSystem.Status.LastStateCode = 0;
 BpodSystem.Status.CurrentStateCode = 1;
-BpodSystem.Status.LastStateName = 'None';
+BpodSystem.Status.LastStateName = '---';
 BpodSystem.Status.CurrentStateName = StateNames{1};
 BpodSystem.HardwareState.OutputOverride(1:end) = 0;
 InputMatrix = BpodSystem.StateMatrix.InputMatrix;
@@ -79,8 +85,6 @@ ConditionOffset = GlobalCounterOffset+BpodSystem.HW.n.GlobalCounters;
 JumpOffset = ConditionOffset+BpodSystem.HW.n.Conditions;
 
 nTotalStates = BpodSystem.StateMatrix.nStatesInManifest;
-BpodSystem.RefreshGUI; % Reads BpodSystem.HardwareState and BpodSystem.LastEvent to commander GUI.
-
 % Update time display
 TimeElapsed = ceil((now*100000) - BpodSystem.ProtocolStartTime);
 set(BpodSystem.GUIHandles.TimeDisplay, 'String', Secs2HMS(TimeElapsed));
@@ -95,22 +99,28 @@ SetBpodHardwareMirror2CurrentState(1);
 BpodSystem.RefreshGUI;
 BpodSystem.Status.InStateMatrix = 1;
 while BpodSystem.Status.InStateMatrix
+    if usingBonsai
+        if BpodSystem.BonsaiSocket.bytesAvailable() > 15
+            OscMsg = BpodSystem.BonsaiSocket.read(16, 'uint8');
+            BonsaiByte = OscMsg(end);
+            if BpodSystem.EmulatorMode == 0
+                SendBpodSoftCode(BonsaiByte);
+            else
+                BpodSystem.VirtualManualOverrideBytes = ['~' BonsaiByte];
+                BpodSystem.ManualOverrideFlag = 1;
+            end
+        end
+    end
     if BpodSystem.EmulatorMode == 0
-        if BpodSystem.SerialPort.bytesAvailable > 0
+        SerialPortBytesAvailable = BpodSystem.SerialPort.bytesAvailable;
+        if SerialPortBytesAvailable > 0
             NewMessage = 1;
             opCodeBytes = BpodSystem.SerialPort.read(2, 'uint8');
         else
             NewMessage = 0;
         end
     else
-        if BpodSystem.BonsaiSocket.Connected == 1
-            if BpodSocketServer('bytesAvailable') > 0
-                Byte = ReadOscByte;
-                OverrideMessage = ['~' Byte];
-                BpodSystem.VirtualManualOverrideBytes = OverrideMessage;
-                BpodSystem.ManualOverrideFlag = 1;
-            end
-        end
+        SerialPortBytesAvailable = 0;
         if BpodSystem.ManualOverrideFlag == 1
             ManualOverrideEvent = VirtualManualOverride(BpodSystem.VirtualManualOverrideBytes);
             BpodSystem.ManualOverrideFlag = 0;
@@ -125,9 +135,12 @@ while BpodSystem.Status.InStateMatrix
             case 1 % Receive and handle events
                 nCurrentEvents = double(opCodeBytes(2));
                 if BpodSystem.EmulatorMode == 0
-                    TempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents, 'uint8');
                     if BpodSystem.LiveTimestamps == 1
-                        ThisTimestamp = double(BpodSystem.SerialPort.read(1, 'uint32'))*TimeScaleFactor;
+                        TempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents+4, 'uint8');
+                        ThisTimestamp = double(typecast(TempCurrentEvents(end-3:end), 'uint32'))*TimeScaleFactor;
+                        TempCurrentEvents = TempCurrentEvents(1:end-4);
+                    else
+                        TempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents, 'uint8');
                     end
                 else
                     TempCurrentEvents = VirtualCurrentEvents;
@@ -158,7 +171,7 @@ while BpodSystem.Status.InStateMatrix
                         TransitionEventFound = 1;
                     end
                     i = i + 1;
-                end 
+                end
                 SetBpodHardwareMirror2ReflectEvent(CurrentEvent);
                 if TransitionEventFound
                     if BpodSystem.StateMatrix.meta.use255BackSignal == 1
@@ -179,22 +192,32 @@ while BpodSystem.Status.InStateMatrix
                             BpodSystem.Emulator.CurrentState = NewState;
                             BpodSystem.Emulator.StateStartTime = BpodSystem.Emulator.CurrentTime;
                             % Set global timer end-time
-                            ThisGlobalTimer = BpodSystem.StateMatrix.OutputMatrix(NewState,BpodSystem.HW.Pos.GlobalTimerTrig);
-                            if ThisGlobalTimer ~= 0
-                                if BpodSystem.StateMatrix.GlobalTimers.OnsetDelay(ThisGlobalTimer) == 0
-                                    BpodSystem.Emulator.GlobalTimerEnd(ThisGlobalTimer) = BpodSystem.Emulator.CurrentTime + BpodSystem.StateMatrix.GlobalTimers.Duration(ThisGlobalTimer);
-                                    BpodSystem.Emulator.GlobalTimersActive(ThisGlobalTimer) = 1;
-                                    BpodSystem.Emulator.GlobalTimersTriggered(ThisGlobalTimer) = 0;
-                                else 
-                                    BpodSystem.Emulator.GlobalTimerStart(ThisGlobalTimer) = BpodSystem.Emulator.CurrentTime + BpodSystem.StateMatrix.GlobalTimers.OnsetDelay(ThisGlobalTimer);
-                                    BpodSystem.Emulator.GlobalTimerEnd(ThisGlobalTimer) = BpodSystem.Emulator.GlobalTimerStart(ThisGlobalTimer) + BpodSystem.StateMatrix.GlobalTimers.Duration(ThisGlobalTimer);
-                                    BpodSystem.Emulator.GlobalTimersTriggered(ThisGlobalTimer) = 1;
+                            GlobalTimerTrigByte = BpodSystem.StateMatrix.OutputMatrix(NewState,BpodSystem.HW.Pos.GlobalTimerTrig);
+                            if GlobalTimerTrigByte ~= 0
+                                timersToTrigger = dec2bin(GlobalTimerTrigByte) == '1';
+                                AllGlobalTimers = find(timersToTrigger(end:-1:1));
+                                for z = 1:length(AllGlobalTimers)
+                                    ThisGlobalTimer = AllGlobalTimers(z);
+                                    if BpodSystem.StateMatrix.GlobalTimers.OnsetDelay(ThisGlobalTimer) == 0
+                                        BpodSystem.Emulator.GlobalTimerEnd(ThisGlobalTimer) = BpodSystem.Emulator.CurrentTime + BpodSystem.StateMatrix.GlobalTimers.Duration(ThisGlobalTimer);
+                                        BpodSystem.Emulator.GlobalTimersActive(ThisGlobalTimer) = 1;
+                                        BpodSystem.Emulator.GlobalTimersTriggered(ThisGlobalTimer) = 0;
+                                    else
+                                        BpodSystem.Emulator.GlobalTimerStart(ThisGlobalTimer) = BpodSystem.Emulator.CurrentTime + BpodSystem.StateMatrix.GlobalTimers.OnsetDelay(ThisGlobalTimer);
+                                        BpodSystem.Emulator.GlobalTimerEnd(ThisGlobalTimer) = BpodSystem.Emulator.GlobalTimerStart(ThisGlobalTimer) + BpodSystem.StateMatrix.GlobalTimers.Duration(ThisGlobalTimer);
+                                        BpodSystem.Emulator.GlobalTimersTriggered(ThisGlobalTimer) = 1;
+                                    end
                                 end
                             end
                             % Cancel global timers
-                            ThisGlobalTimer = BpodSystem.StateMatrix.OutputMatrix(NewState,BpodSystem.HW.Pos.GlobalTimerCancel);
-                            if ThisGlobalTimer ~= 0
-                                BpodSystem.Emulator.GlobalTimersActive(ThisGlobalTimer) = 0;
+                            GlobalTimerCancelByte = BpodSystem.StateMatrix.OutputMatrix(NewState,BpodSystem.HW.Pos.GlobalTimerCancel);
+                            if GlobalTimerCancelByte ~= 0
+                                timersToCancel = dec2bin(GlobalTimerCancelByte) == '1';
+                                AllGlobalTimers = find(timersToCancel(end:-1:1));
+                                for z = 1:length(AllGlobalTimers)
+                                    ThisGlobalTimer = AllGlobalTimers(z);
+                                    BpodSystem.Emulator.GlobalTimersActive(ThisGlobalTimer) = 0;
+                                end
                             end
                             % Reset global counter counts
                             ThisGlobalCounter = BpodSystem.StateMatrix.OutputMatrix(NewState,BpodSystem.HW.Pos.GlobalCounterReset);
@@ -215,15 +238,16 @@ while BpodSystem.Status.InStateMatrix
                     end
                 end
                 if BpodSystem.Status.InStateMatrix == 1
-                    BpodSystem.RefreshGUI;
                     Events(nEvents+1:(nEvents+nCurrentEvents)) = CurrentEvent(1:nCurrentEvents);
                     if BpodSystem.LiveTimestamps == 1
                         LiveEventTimestamps(nEvents+1:(nEvents+nCurrentEvents)) = ThisTimestamp;
                     end
                     BpodSystem.Status.LastEvent = CurrentEvent(1);
+                    if SerialPortBytesAvailable < 250
+                        BpodSystem.RefreshGUI;
+                    end
                     CurrentEvent(1:nCurrentEvents) = 0;
-                    set(BpodSystem.GUIHandles.LastEventDisplay, 'string', EventNames{BpodSystem.Status.LastEvent});
-                    nEvents = nEvents + uint16(nCurrentEvents);
+                    nEvents = nEvents + uint32(nCurrentEvents);
                 end
             case 2 % Soft-code
                 SoftCode = opCodeBytes(2);
@@ -232,15 +256,6 @@ while BpodSystem.Status.InStateMatrix
                 disp('Error: Invalid op code received')
         end
     else
-        if BpodSystem.EmulatorMode == 0
-            if BpodSystem.BonsaiSocket.Connected == 1
-                if BpodSocketServer('bytesAvailable') > 0
-                    Byte = ReadOscByte;
-                    OverrideMessage = ['~' Byte];
-                    BpodSystem.SerialPort.write(OverrideMessage, 'uint8');
-                end
-            end
-        end
         drawnow;
     end
 end
@@ -258,7 +273,7 @@ if BpodSystem.Status.BeingUsed == 1
         Discrepancy = abs(TrialTimeFromMicros - TrialTimeFromCycles)*1000;
         if Discrepancy > 1
             disp([char(10) '***WARNING!***' char(10) 'Bpod missed hardware update deadline(s) on the past trial, by ~' num2str(Discrepancy)...
-                            'ms!' char(10) 'An error code (1) has been added to your trial data.' char(10) '**************'])
+                'ms!' char(10) 'An error code (1) has been added to your trial data.' char(10) '**************'])
             ThisTrialErrorCodes(1) = 1;
         end
     end
@@ -266,7 +281,7 @@ if BpodSystem.Status.BeingUsed == 1
         TimeStamps = LiveEventTimestamps(1:nEvents);
     end
     % Accept Timestamps
-    if BpodSystem.EmulatorMode == 0 
+    if BpodSystem.EmulatorMode == 0
         if BpodSystem.LiveTimestamps == 0
             nTimeStamps = double(BpodSystem.SerialPort.read(1, 'uint16'));
             TimeStamps = double(BpodSystem.SerialPort.read(nTimeStamps, 'uint32'))*TimeScaleFactor;
@@ -317,7 +332,7 @@ for i = 1:nEvents
     if thisEvent ~= 255
         switch BpodSystem.HW.EventTypes(thisEvent)
             case 'I'
-                p = ((thisEvent-BpodSystem.HW.IOEventStartposition)/2)+BpodSystem.HW.n.SerialChannels+1;
+                p = ((thisEvent-BpodSystem.HW.IOEventStartposition)/2)+BpodSystem.HW.n.SerialChannels+BpodSystem.HW.n.FlexIO+1;
                 thisChannel = floor(p);
                 isOdd = rem(p,1);
                 if isOdd == 0
@@ -327,7 +342,7 @@ for i = 1:nEvents
                 end
             case 'T'
                 timerEvent = thisEvent-BpodSystem.HW.GlobalTimerStartposition+1;
-                if timerEvent <= BpodSystem.HW.n.GlobalTimers 
+                if timerEvent <= BpodSystem.HW.n.GlobalTimers
                     timerNumber = timerEvent;
                     EventType = 1; % On
                 else
@@ -348,18 +363,18 @@ for i = 1:nEvents
 end
 
 function TimeString = Secs2HMS(Seconds)
-H = floor(Seconds/3600); 
+H = floor(Seconds/3600);
 Seconds = Seconds-(H*3600);
-M = floor(Seconds/60); 
+M = floor(Seconds/60);
 S = Seconds - (M*60);
 if M < 10
     MPad = '0';
-else 
+else
     MPad = '';
 end
 if S < 10
     SPad = '0';
-else 
+else
     SPad = '';
 end
 TimeString = [num2str(H) ':' MPad num2str(M) ':' SPad num2str(S)];
@@ -389,6 +404,13 @@ if OpCode == 'V'
 elseif OpCode == 'S'
     HandleSoftCode(uint8(OverrideMessage(2)));
     ManualOverrideEvent = [];
+elseif OpCode == '~'
+    Code = OverrideMessage(2);
+    if Code <= BpodSystem.HW.n.SoftCodes && Code ~= 0
+        ManualOverrideEvent = BpodSystem.HW.Pos.Event_USB-1 + Code;
+    else
+        error(['Error: cannot send soft code ' num2str(Code) '; Soft codes must be in range: [1 ' num2str(BpodSystem.HW.n.SoftCodes) '].'])
+    end
 else
     ManualOverrideEvent = [];
 end

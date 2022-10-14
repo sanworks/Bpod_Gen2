@@ -44,7 +44,6 @@ classdef BpodAnalogIn < handle
     end
     
     properties (Access = private)
-        CurrentFirmwareVersion = 1;
         UIhandles % A struct with UI handles
         UIdata % A struct with internal user interface data
         opMenuByte = 213; % Byte code to access op menu
@@ -74,7 +73,7 @@ classdef BpodAnalogIn < handle
                 end
             end
             try
-                obj.Port = ArCOMObject_Ain(portString, 115200);
+                obj.Port = ArCOMObject_Bpod(portString, 115200);
             catch
                 error('Error: unable to connect to Bpod Analog Input module.')
             end

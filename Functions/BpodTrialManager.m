@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-classdef TrialManagerObject < handle
+classdef BpodTrialManager < handle
     properties
         Timer % MATLAB timer object to check for new events from the state machine
     end
@@ -47,16 +47,17 @@ classdef TrialManagerObject < handle
         States
         StateNames
         LiveEventTimestamps
-        MaxEvents = 10000; % Maximum number of events possible in 1 trial (for preallocation)
+        MaxEvents = 100000; % Maximum number of events possible in 1 trial (for preallocation)
         TimeScaleFactor
         TrialStartTimestamp
         LastTrialEndTime
+        usingBonsai
     end
     methods
-        function obj = TrialManagerObject %Constructor
+        function obj = BpodTrialManager %Constructor
             global BpodSystem
             if isempty(BpodSystem)
-                error('You must run Bpod() before creating an instance of TrialManagerObject.')
+                error('You must run Bpod() before creating an instance of BpodTrialManager.')
             end
             if BpodSystem.EmulatorMode == 1
                 error('Error: The Bpod emulator does not currently support running state machines with TrialManager.')
@@ -64,6 +65,14 @@ classdef TrialManagerObject < handle
             obj.TimeScaleFactor = (BpodSystem.HW.CyclePeriod/1000);
             obj.LastTrialEndTime = 0;
             obj.Timer = timer('TimerFcn',@(h,e)obj.processLiveEvents(), 'ExecutionMode', 'fixedRate', 'Period', 0.01);
+            obj.usingBonsai = 0;
+            if ~isempty(BpodSystem.BonsaiSocket)
+                obj.usingBonsai = 1;
+                BonsaiBytesAvailable = BpodSystem.BonsaiSocket.bytesAvailable;
+                if BonsaiBytesAvailable > 0
+                    BpodSystem.BonsaiSocket.read(BonsaiBytesAvailable, 'uint8');
+                end
+            end
         end
         function startTrial(obj, varargin)
             global BpodSystem
@@ -74,24 +83,33 @@ classdef TrialManagerObject < handle
             end
             obj.PrepareNextTrialFlag = 0;
             obj.TrialEndFlag = 0;
-            if BpodSystem.BonsaiSocket.Connected == 1
-                BonsaiBytesAvailable = BpodSocketServer('bytesAvailable');
-                if BonsaiBytesAvailable > 0
-                    BpodSocketServer('read', BonsaiBytesAvailable);
+            if BpodSystem.Status.SessionStartFlag == 1 % On first run of session
+                BpodSystem.Status.SessionStartFlag = 0;
+                if BpodSystem.MachineType == 4
+                    BpodSystem.AnalogSerialPort.flush;
+                    start(BpodSystem.Timers.AnalogTimer);
                 end
             end
             if smaSent
                 if BpodSystem.Status.SM2runASAP == 0
                     BpodSystem.SerialPort.write('R', 'uint8');
                 end
+                BpodSystem.Status.BeingUsed = 1;
+                BpodSystem.Status.InStateMatrix = 1;
             else
-                SendStateMachine(StateMatrix, 'RunASAP');
+                BpodSystem.Status.BeingUsed = 1;
+                SendStateMachine(StateMatrix, 'RunASAP'); 
+                BpodSystem.Status.InStateMatrix = 1;
             end
             BpodSystem.Status.SM2runASAP = 0;
             SMA_Confirmed = BpodSystem.SerialPort.read(1, 'uint8');
             if isempty(SMA_Confirmed)
+                BpodSystem.Status.BeingUsed = 0;
+                BpodSystem.Status.InStateMatrix = 0;
                 error('Error: The last state machine sent was not acknowledged by the Bpod device.');
             elseif SMA_Confirmed ~= 1
+                BpodSystem.Status.BeingUsed = 0;
+                BpodSystem.Status.InStateMatrix = 0;
                 error('Error: The last state machine sent was not acknowledged by the Bpod device.');
             end
             TrialStartTimestampBytes = BpodSystem.SerialPort.read(8, 'uint8');
@@ -100,15 +118,13 @@ classdef TrialManagerObject < handle
             BpodSystem.Status.NewStateMachineSent = 0;
             BpodSystem.Status.LastStateCode = 0;
             BpodSystem.Status.CurrentStateCode = 1;
-            BpodSystem.Status.LastStateName = 'None';
+            BpodSystem.Status.LastStateName = '---';
             BpodSystem.Status.CurrentStateName = BpodSystem.StateMatrix.StateNames{1};
             BpodSystem.HardwareState.OutputOverride(1:end) = 0;
             BpodSystem.RefreshGUI;
             TimeElapsed = ceil((now*100000) - BpodSystem.ProtocolStartTime);
             set(BpodSystem.GUIHandles.TimeDisplay, 'String', obj.Secs2HMS(TimeElapsed));
             set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton);
-            BpodSystem.Status.BeingUsed = 1;
-            BpodSystem.Status.InStateMatrix = 1;
             if BpodSystem.EmulatorMode == 1
                 RunBpodEmulator('init', []);
                 BpodSystem.ManualOverrideFlag = 0;
@@ -134,6 +150,28 @@ classdef TrialManagerObject < handle
             obj.StateNames = BpodSystem.StateMatrix.StateNames;
             obj.nTotalStates = BpodSystem.StateMatrix.nStatesInManifest;
             start(obj.Timer);
+            if obj.LastTrialEndTime > 0
+                LastTrialDeadTime = obj.TrialStartTimestamp - obj.LastTrialEndTime;
+                if BpodSystem.MachineType > 2
+                    Threshold = 0.00051;
+                    Micros = num2str(500);
+                else
+                    Threshold = 0.00075;
+                    Micros = num2str(750);
+                end
+                if LastTrialDeadTime > Threshold
+                    disp(' ');
+                    disp('*********************************************************************');
+                    disp('*                            WARNING                                *');
+                    disp('*********************************************************************');
+                    disp(['TrialManager reported an inter-trial dead time of >' Micros ' microseconds.']);
+                    disp('This may indicate that inter-trial code (e.g. plotting, saving data)');
+                    disp('took MATLAB more than 1 trial duration to execute. MATLAB must reach');
+                    disp('TrialManager.getTrialData() before trial end. Please check lines of');
+                    disp('your protocol main loop (e.g. with tic/toc) and optimize accordingly.');
+                    disp('*********************************************************************');
+                end
+            end
         end
         function RawTrialEvents = getTrialData(obj)
             global BpodSystem
@@ -162,7 +200,7 @@ classdef TrialManagerObject < handle
                 end
                 ThisTrialErrorCodes = [];
                 TrialTimeFromMicros = (TrialEndTimestamp - obj.TrialStartTimestamp);
-                TrialTimeFromCycles = (nHWTimerCycles/BpodSystem.HW.CycleFrequency); % Add 1ms to adjust for bias due to placement of millis() in start+end code
+                TrialTimeFromCycles = (nHWTimerCycles/BpodSystem.HW.CycleFrequency);
                 Discrepancy = abs(TrialTimeFromMicros - TrialTimeFromCycles)*1000;
                 if Discrepancy > 1
                     disp([char(10) '***WARNING!***' char(10) 'Bpod missed hardware update deadline(s) on the past trial, by ~' num2str(Discrepancy)...
@@ -182,21 +220,6 @@ classdef TrialManagerObject < handle
                 RawTrialEvents.TrialEndTimestamp = obj.Round2Cycles(TrialEndTimestamp);
                 RawTrialEvents.StateTimestamps(end+1) = RawTrialEvents.EventTimestamps(end);
                 RawTrialEvents.ErrorCodes = ThisTrialErrorCodes;
-                if obj.LastTrialEndTime > 0
-                    LastTrialDeadTime = RawTrialEvents.TrialStartTimestamp - obj.LastTrialEndTime;
-                    if LastTrialDeadTime > 0.0002
-                        disp(' ');
-                        disp('*********************************************************************');
-                        disp('*                            WARNING                                *');
-                        disp('*********************************************************************');
-                        disp('TrialManager reported an inter-trial dead time of >200 microseconds.');
-                        disp('This may indicate that inter-trial code (e.g. plotting, saving data)');
-                        disp('took MATLAB more than 1 trial duration to execute. MATLAB must reach');
-                        disp('TrialManager.getTrialData() before trial end. Please check lines of');
-                        disp('your protocol main loop (e.g. with tic/toc) and optimize accordingly.');
-                        disp('*********************************************************************');
-                    end
-                end
                 obj.LastTrialEndTime = RawTrialEvents.TrialEndTimestamp;
             else
                 stop(obj.Timer);
@@ -213,7 +236,7 @@ classdef TrialManagerObject < handle
                 if ischar(triggerStates)
                     triggerStates = {triggerStates};
                 elseif ~iscell(triggerStates)
-                    error('Error running TrialManagerObject.getCurrentEvents() - triggerStates argument must be a cell array of strings')
+                    error('Error running BpodTrialManager.getCurrentEvents() - triggerStates argument must be a cell array of strings')
                 end
                 obj.NextTrialTriggerStates = find(ismember(BpodSystem.StateMatrix.StateNames, triggerStates));
                 if length(obj.NextTrialTriggerStates) == length(triggerStates)
@@ -236,10 +259,10 @@ classdef TrialManagerObject < handle
                         obj.Timer = [];
                     end
                 else
-                    error('Error running TrialManagerObject.getCurrentEvents() - triggerStates argument contains at least 1 invalid state name.')
+                    error('Error running BpodTrialManager.getCurrentEvents() - triggerStates argument contains at least 1 invalid state name.')
                 end
             else
-                error('Error running TrialManagerObject.getCurrentEvents() - triggerStates argument must be a cell array of strings')
+                error('Error running BpodTrialManager.getCurrentEvents() - triggerStates argument must be a cell array of strings')
             end
         end
         function delete(obj)
@@ -253,6 +276,18 @@ classdef TrialManagerObject < handle
     methods (Access = private)
         function processLiveEvents(obj, e)
             global BpodSystem
+            if obj.usingBonsai
+                if BpodSystem.BonsaiSocket.bytesAvailable() > 15
+                    OscMsg = BpodSystem.BonsaiSocket.read(16, 'uint8');
+                    BonsaiByte = OscMsg(end);
+                    if BpodSystem.EmulatorMode == 0
+                        SendBpodSoftCode(BonsaiByte);
+                    else
+                        BpodSystem.VirtualManualOverrideBytes = ['~' BonsaiByte];
+                        BpodSystem.ManualOverrideFlag = 1;
+                    end
+                end
+            end
             if BpodSystem.EmulatorMode == 0
                 NewMessage = 0; nBytesRead = 0;
                 MaxBytesToRead = BpodSystem.SerialPort.bytesAvailable;
@@ -260,14 +295,6 @@ classdef TrialManagerObject < handle
                     NewMessage = 1;
                 end
             else
-                if BpodSystem.BonsaiSocket.Connected == 1
-                    if BpodSocketServer('bytesAvailable') > 0
-                        Byte = ReadOscByte;
-                        OverrideMessage = ['~' Byte];
-                        BpodSystem.VirtualManualOverrideBytes = OverrideMessage;
-                        BpodSystem.ManualOverrideFlag = 1;
-                    end
-                end
                 if BpodSystem.ManualOverrideFlag == 1
                     ManualOverrideEvent = VirtualManualOverride(BpodSystem.VirtualManualOverrideBytes);
                     BpodSystem.ManualOverrideFlag = 0;
@@ -387,15 +414,17 @@ classdef TrialManagerObject < handle
                                 end
                             end
                             if BpodSystem.Status.InStateMatrix == 1
-                                BpodSystem.RefreshGUI;
+                                if MaxBytesToRead < 250 % Disable time-costly console GUI updates if data is backed up
+                                    BpodSystem.RefreshGUI;
+                                end
                                 obj.Events(obj.nEvents+1:(obj.nEvents+nCurrentEvents)) = obj.CurrentEvent(1:nCurrentEvents);
                                 if BpodSystem.LiveTimestamps == 1
                                     obj.LiveEventTimestamps(obj.nEvents+1:(obj.nEvents+nCurrentEvents)) = ThisTimestamp;
                                 end
                                 BpodSystem.Status.LastEvent = obj.CurrentEvent(1);
                                 obj.CurrentEvent(1:nCurrentEvents) = 0;
-                                set(BpodSystem.GUIHandles.LastEventDisplay, 'string', obj.EventNames{BpodSystem.Status.LastEvent});
-                                obj.nEvents = obj.nEvents + uint16(nCurrentEvents);
+                                %set(BpodSystem.GUIHandles.LastEventDisplay, 'string', obj.EventNames{BpodSystem.Status.LastEvent});
+                                obj.nEvents = obj.nEvents + uint32(nCurrentEvents);
                             end
                         case 2 % Soft-code
                             SoftCode = opCodeBytes(2);
@@ -405,16 +434,6 @@ classdef TrialManagerObject < handle
                     end
                     if BpodSystem.EmulatorMode == 1
                         nBytesRead = MaxBytesToRead;
-                    end
-                end
-            else
-                if BpodSystem.EmulatorMode == 0
-                    if BpodSystem.BonsaiSocket.Connected == 1
-                        if BpodSocketServer('bytesAvailable') > 0
-                            Byte = ReadOscByte;
-                            OverrideMessage = ['~' Byte];
-                            BpodSystem.SerialPort.write(OverrideMessage, 'uint8');
-                        end
                     end
                 end
             end
@@ -473,7 +492,7 @@ classdef TrialManagerObject < handle
                 if thisEvent ~= 255
                     switch BpodSystem.HW.EventTypes(thisEvent)
                         case 'I'
-                            p = ((thisEvent-BpodSystem.HW.IOEventStartposition)/2)+BpodSystem.HW.n.SerialChannels+1;
+                            p = ((thisEvent-BpodSystem.HW.IOEventStartposition)/2)+BpodSystem.HW.n.SerialChannels+BpodSystem.HW.n.FlexIO+1;
                             thisChannel = floor(p);
                             isOdd = rem(p,1);
                             if isOdd == 0

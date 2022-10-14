@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -19,9 +19,27 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 global BpodSystem
 if ~isempty(BpodSystem)
-    try
-        close(BpodSystem.GUIHandles.LiveDispFig)
-    catch
+    if  ~verLessThan('MATLAB', '8.4') % In MATLAB earlier than 8.4, figures are sequential integers and figure ID of handle is not guaranteed
+        % Close any open GUI figures
+        FigureList = {'LiveDispFig', 'SystemInfoFig', 'ModuleUSBFig', 'SettingsMenuFig', 'LaunchManagerFig', 'SyncConfigFig', 'PortConfigFig',...
+                      'FolderConfigFig','FlexConfigFig','ConfigureBonsaiFig'};
+        for i = 1:length(FigureList)
+            try
+                eval(['close(BpodSystem.GUIHandles.' FigureList{i} ')'])
+            catch
+            end
+        end
+        clear FigureList i
+        if isfield(BpodSystem.GUIHandles, 'LiquidCalibrator')
+            LiquidCalFigList = {'MainFig', 'ValueEntryFig', 'RunMeasurementsFig', 'TestSpecificAmtFig', 'RecommendedMeasureFig'};
+            CalUIHandles = BpodSystem.GUIHandles.LiquidCalibrator;
+            for i = 1:length(LiquidCalFigList)
+                try
+                    eval(['close(CalUIHandles.' LiquidCalFigList{i} ')'])
+                catch
+                end
+            end
+        end
     end
     if BpodSystem.Status.BeingUsed == 0
         if BpodSystem.EmulatorMode == 0
@@ -44,6 +62,18 @@ if ~isempty(BpodSystem)
             close(BpodSystem.GUIHandles.ConfigureBonsaiFig)
         catch
         end
+        try
+            close(BpodSystem.GUIHandles.OscopeFig_Builtin)
+        catch
+        end
+        stop(BpodSystem.Timers.AnalogTimer);
+        delete(BpodSystem.Timers.AnalogTimer);
+        BpodSystem.Timers.AnalogTimer = [];
+        stop(BpodSystem.Timers.PortRelayTimer);
+        delete(BpodSystem.Timers.PortRelayTimer);
+        BpodSystem.Timers.PortRelayTimer = [];
+        BpodSystem.SerialPort = [];
+        BpodSystem.AnalogSerialPort = [];
         clear global BpodSystem
     else
         msgbox('There is a running protocol. Please stop it first.')

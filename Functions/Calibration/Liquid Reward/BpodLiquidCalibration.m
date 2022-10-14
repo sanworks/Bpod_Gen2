@@ -1,7 +1,34 @@
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
 function varargout = BpodLiquidCalibration(op, varargin)
 global BpodSystem
 if isempty(isprop(BpodSystem, 'BpodPath'))
     error('You must run Bpod before using this function.');
+end
+if isfield(BpodSystem.GUIHandles, 'LiquidCalibrator')
+    if isfield(BpodSystem.GUIHandles.LiquidCalibrator, 'MainFig') && ~verLessThan('MATLAB', '8.4')
+        if isgraphics(BpodSystem.GUIHandles.LiquidCalibrator.MainFig)
+            figure(BpodSystem.GUIHandles.LiquidCalibrator.MainFig);
+            return;
+        end
+    end
 end
 ValveListboxString = {'Valve1', 'Valve2', 'Valve3', 'Valve4', 'Valve5', 'Valve6', 'Valve7', 'Valve8'};
 switch lower(op)
@@ -330,8 +357,12 @@ DisplayValve;
 
 function SuggestPoints(varargin)
 global BpodSystem
+if isfield(BpodSystem.GUIHandles.LiquidCalibrator, 'RecommendedMeasureFig')
+    figure(BpodSystem.GUIHandles.LiquidCalibrator.RecommendedMeasureFig);
+    return
+end
 CalData = BpodSystem.PluginObjects.LiquidCal.CalData;
-BpodSystem.PluginObjects.LiquidCal.RecommendedMeasureFig = figure('Position', [540 400 400 200],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off' );
+BpodSystem.GUIHandles.LiquidCalibrator.RecommendedMeasureFig = figure('Position', [540 400 400 200],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off' );
 ha = axes('units','normalized', 'position',[0 0 1 1]);
 uistack(ha,'bottom');
 BG = imread('RewardCalAddRecommends.bmp');
@@ -377,7 +408,7 @@ BpodSystem.PluginObjects.LiquidCal.SuggestButton = uicontrol('Style', 'pushbutto
 
 function AddSuggestedPoints(varargin)
 global BpodSystem
-figure(BpodSystem.PluginObjects.LiquidCal.RecommendedMeasureFig);
+figure(BpodSystem.GUIHandles.LiquidCalibrator.RecommendedMeasureFig);
 CalTable = BpodSystem.PluginObjects.LiquidCal.CalData;
 % Figure out which valves were to be targeted
 ValveLogic = zeros(1,8);
@@ -500,7 +531,7 @@ if InvalidParams == 0
     end
     BpodSystem.PluginObjects.LiquidCal.PendingMeasurements = CalPending;
     BpodSystem.PluginObjects.LiquidCal.CalibrationTargetRange = [RangeLow RangeHigh];
-    close(BpodSystem.PluginObjects.LiquidCal.RecommendedMeasureFig);
+    close(BpodSystem.GUIHandles.LiquidCalibrator.RecommendedMeasureFig);
     DisplayValve;
 else
     if (RangeHigh == 0) || (RangeLow == 0)
@@ -707,6 +738,10 @@ end
 
 function TestSpecificAmount(varargin)
 global BpodSystem
+if isfield(BpodSystem.GUIHandles.LiquidCalibrator, 'TestSpecificAmtFig')
+    figure(BpodSystem.GUIHandles.LiquidCalibrator.TestSpecificAmtFig);
+    return
+end
 BpodSystem.GUIHandles.LiquidCalibrator.TestSpecificAmtFig = figure('Position', [100 100 400 600],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'Name', 'Test specific amount');
 ha = axes('units','normalized', 'position',[0 0 1 1]);
 uistack(ha,'bottom');

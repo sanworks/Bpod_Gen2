@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -19,6 +19,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function ConfigureModuleUSB(junk, morejunk)
 global BpodSystem
+
+if isfield(BpodSystem.GUIHandles, 'ModuleUSBFig') && ~verLessThan('MATLAB', '8.4')
+    if isgraphics(BpodSystem.GUIHandles.ModuleUSBFig)
+        figure(BpodSystem.GUIHandles.ModuleUSBFig);
+        return
+    end
+end
+
 FontName = 'Courier New';
 if ~ismac && ~ispc
     FontName = 'DejaVu Sans Mono';
@@ -90,8 +98,13 @@ set(BpodSystem.GUIHandles.ModuleList, 'Value', selectedModule);
 function refreshFreeUSBPorts
 global BpodSystem
 USBPorts = BpodSystem.FindUSBSerialPorts;
-USBPorts = [USBPorts.Arduino USBPorts.Teensy USBPorts.Sparkfun USBPorts.COM];
 USBPorts = USBPorts(logical(1-strcmp(USBPorts, BpodSystem.SerialPort.PortName)));
+if ~isempty(BpodSystem.HW.AppSerialPortName)
+    USBPorts = USBPorts(logical(1-strcmp(USBPorts, BpodSystem.HW.AppSerialPortName)));
+end
+if ~isempty(BpodSystem.AnalogSerialPort)
+    USBPorts = USBPorts(logical(1-strcmp(USBPorts, BpodSystem.AnalogSerialPort.PortName)));
+end
 if ispc
     [Status RawString] = system('chgport'); % Extra step equired to find HARP Sound Card
     if ~strcmp(RawString(1:9), 'No serial')
