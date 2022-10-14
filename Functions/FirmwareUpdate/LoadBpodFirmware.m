@@ -268,13 +268,14 @@ classdef LoadBpodFirmware < handle
             [OK,msg] = obj.uploadFirmware(PortName, FileName, obj.LoaderApps{ModuleNamePos}, obj.PortType(PortNamePos));
             pause(1);
             progressbar(0.9);
+            pause(1); % Time for HiFi module to finish booting
             progressbar(1);
+            FontSize = 14;
+            if isunix
+                FontSize = 12;
+            end
             if OK
                 BGColor = [0.1 0.9 0.1];
-                FontSize = 14;
-                if isunix
-                    FontSize = 12;
-                end
                 Msg1 = '*GREAT SUCCESS*';
                 Msg2 = 'Firmware update complete';
                 global BpodSystem;
@@ -326,6 +327,66 @@ classdef LoadBpodFirmware < handle
             evalin('base', 'clear ans');
         end
         function [OK,msg] = uploadFirmware(obj, TargetPort, Filename, loaderApp, portType)
+            % Warn if non-FSM firmware is about to get loaded to an FSM
+            if portType == 1
+                isFSMFirmware = ~isempty(strfind(Filename, 'StateMachine'));
+                if ~isFSMFirmware
+                    tempPort = ArCOMObject_Bpod(TargetPort);
+                    pause(.3);
+                    portIsKnownFSM = 0;
+                    if tempPort.bytesAvailable > 0
+                        Msg = tempPort.read(1, 'uint8');
+                        if Msg == 222
+                            portIsKnownFSM = 1;
+                        end
+                    end
+                    clear tempPort
+                    if portIsKnownFSM
+                        disp('****** WARNING ******')
+                        disp(['State Machine detected on Port ' TargetPort '.' char(10) Filename ' is not state machine firmware!'])
+                        Reply = input('Enter ''y'' to load anyway, or any other key to exit >', 's');
+                        disp(' ');
+                        if Reply ~= 'y'
+                            OK = 0;
+                            msg = ['Firmware upload canceled by the user.' char(10) 'Please select state machine firmware and try again.'];
+                            return
+                        end
+                    end
+                end
+            end
+            % Warn if a paired module is about to get loaded with non-matching firmware
+            try
+                BpodPath = fileparts(which('Bpod'));
+                ParentDir = fileparts(BpodPath);
+                SettingsDir = fullfile(ParentDir, 'Bpod Local', 'Settings');
+                Data = load(fullfile(SettingsDir, 'ModuleUSBConfig.mat'));
+                ModuleUSBConfig = Data.ModuleUSBConfig(1);
+                for i = 1:length(ModuleUSBConfig.ModuleNames)
+                    thisModuleName = ModuleUSBConfig.ModuleNames{i};
+                    if ~isempty(thisModuleName)
+                        thisModuleName = thisModuleName(1:end-1);
+                        if strcmp(thisModuleName, 'PA')
+                            thisModuleName = 'PortArray';
+                        end
+                        thisPortName = ModuleUSBConfig.USBPorts{i};
+                        if strcmp(thisPortName, TargetPort)
+                            if isempty(strfind(Filename,thisModuleName))
+                                disp('****** WARNING ******')
+                                disp(['The ' thisModuleName ' module is paired with ' TargetPort ' in the Bpod console.' char(10) Filename ' is not a version of ' thisModuleName '!'])
+                                Reply = input('Enter ''y'' to load anyway, or any other key to exit >', 's');
+                                disp(' ');
+                                if Reply ~= 'y'
+                                    OK = 0;
+                                    msg = ['Firmware upload canceled by the user.' char(10) 'Please select a different firmware file and try again.'];
+                                    return
+                                end
+                            end
+                        end
+                    end
+                end
+            catch
+            end
+
             thisFolder = fileparts(which('LoadBpodFirmware'));
             switch loaderApp
                 case 'bossac'
