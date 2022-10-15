@@ -180,7 +180,7 @@ classdef LoadBpodFirmware < handle
             USBSerialPorts = setdiff(USBSerialPorts, ExcludedPorts);
             
             % Get Teensy RawHID boards
-            [~, Tstring] = system([obj.tycmd ' list']);
+            [~, Tstring] = system(['"' obj.tycmd '" list']);
             RawHIDs = regexp(Tstring,'\d*(?=-Teensy.*RawHID\)$)','match','lineanchors');
             RawHIDs = strcat('SER#',RawHIDs);
             obj.PortType = [obj.PortType ones(1,length(RawHIDs))*2];
@@ -420,9 +420,9 @@ classdef LoadBpodFirmware < handle
                     pause(.1);
                     switch portType
                         case 1
-                            programPath = [obj.tycmd ' upload ' firmwarePath ' --board "@' TargetPort '"'];
+                            programPath = ['"' obj.tycmd '" upload "' firmwarePath '" --board "@' TargetPort '"'];
                         case 2
-                            programPath = [obj.tycmd ' upload ' firmwarePath ' --board "' TargetPort(5:end) '"'];
+                            programPath = ['"' obj.tycmd '" upload "' firmwarePath '" --board "' TargetPort(5:end) '"'];
                     end
             end
             disp('------Uploading new firmware------')
