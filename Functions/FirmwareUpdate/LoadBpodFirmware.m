@@ -394,17 +394,17 @@ classdef LoadBpodFirmware < handle
                     if ispc
                         system(['@mode ' TargetPort ':1200,N,8,1']);
                         system('PING -n 3 127.0.0.1>NUL');
-                        programPath = fullfile(thisFolder, ['bossac -i -d -U true -e -w -v -b ' firmwarePath ' -R']);
+                        programPath = fullfile(thisFolder, ['bossac -i -d -U true -e -w -v -b "' firmwarePath '" -R']);
                     elseif isunix
                         if system('command -v bossac &> /dev/null')
                             error('Cannot find bossac. Please install bossa-cli using your system''s package management system.')
                         end
-                        programPath = ['bossac -i -d -U=true -e -w -v -b ' firmwarePath ' -R'];
+                        programPath = ['bossac -i -d -U=true -e -w -v -b "' firmwarePath '" -R'];
                     end
                 case 'tycmd'
                     if ~ispc && ~ismac
                         try % Try to give the uploader execute permissions
-                            [OK, Msg] = system(['chmod a+x ' fullfile(thisFolder, 'tycmd_linux64')]);
+                            [OK, Msg] = system(['chmod a+x "' fullfile(thisFolder, 'tycmd_linux64') '"']);
                             if ~isempty(Msg)
                                 warning(Msg)
                             end
