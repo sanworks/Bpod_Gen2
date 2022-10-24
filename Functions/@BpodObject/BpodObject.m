@@ -183,6 +183,9 @@ classdef BpodObject < handle
             end
 
             obj.HostOS = system_dependent('getos');
+            if ~isempty(strfind(obj.HostOS, 'Windows 10'))
+                disp(['Bpod Startup: Windows 7 detected.' char(10) 'Please consider updating to Windows 10 or 11 for improved stability.' char(10)])
+            end
             CalFolder = fullfile(obj.Path.LocalDir,'Calibration Files');
             if ~exist(CalFolder)
                 mkdir(CalFolder);
