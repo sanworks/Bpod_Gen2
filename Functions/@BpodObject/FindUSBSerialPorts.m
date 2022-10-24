@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function USBSerialPorts = FindUSBSerialPorts(obj)
     USBSerialPorts = cell(0,1);
     if ispc
-        [Status,RawString] = system('powershell.exe "[System.IO.Ports.SerialPort]::getportnames()"');
+        [Status,RawString] = system('powershell.exe -inputformat none "[System.IO.Ports.SerialPort]::getportnames()"');
         nPortsAdded = 0;
         if ~isempty(RawString)
             PortLocations = strsplit(RawString,char(10));

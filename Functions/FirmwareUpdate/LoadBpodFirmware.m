@@ -105,7 +105,7 @@ classdef LoadBpodFirmware < handle
             else % MATLAB pre r2017a. Fall back to system call
                 if ispc
                     USBSerialPorts = cell(0,1);
-                    [Status,RawString] = system('powershell.exe "[System.IO.Ports.SerialPort]::getportnames()"');
+                    [Status,RawString] = system('powershell.exe -inputformat none "[System.IO.Ports.SerialPort]::getportnames()"');
                     nPortsAdded = 0;
                     if ~isempty(RawString)
                         PortLocations = strsplit(RawString,char(10));
