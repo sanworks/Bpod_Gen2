@@ -24,9 +24,12 @@ if isempty(isprop(BpodSystem, 'BpodPath'))
 end
 if isfield(BpodSystem.GUIHandles, 'LiquidCalibrator')
     if isfield(BpodSystem.GUIHandles.LiquidCalibrator, 'MainFig') && ~verLessThan('MATLAB', '8.4')
-        if isgraphics(BpodSystem.GUIHandles.LiquidCalibrator.MainFig)
-            figure(BpodSystem.GUIHandles.LiquidCalibrator.MainFig);
-            return;
+        if ~strcmp(lower(op), 'getvalvetimes')
+            if isgraphics(BpodSystem.GUIHandles.LiquidCalibrator.MainFig)
+                figure(BpodSystem.GUIHandles.LiquidCalibrator.MainFig);
+                varargout{1} = [];
+                return;
+            end
         end
     end
 end
@@ -738,9 +741,11 @@ end
 
 function TestSpecificAmount(varargin)
 global BpodSystem
-if isfield(BpodSystem.GUIHandles.LiquidCalibrator, 'TestSpecificAmtFig')
-    figure(BpodSystem.GUIHandles.LiquidCalibrator.TestSpecificAmtFig);
-    return
+if isfield(BpodSystem.GUIHandles.LiquidCalibrator, 'TestSpecificAmtFig') && ~verLessThan('MATLAB', '8.4')
+    if isgraphics(BpodSystem.GUIHandles.LiquidCalibrator.TestSpecificAmtFig)
+        figure(BpodSystem.GUIHandles.LiquidCalibrator.TestSpecificAmtFig);
+        return
+    end
 end
 BpodSystem.GUIHandles.LiquidCalibrator.TestSpecificAmtFig = figure('Position', [100 100 400 600],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'Name', 'Test specific amount');
 ha = axes('units','normalized', 'position',[0 0 1 1]);
@@ -912,6 +917,7 @@ if InvalidParams == 0
 else
     warndlg('Invalid liquid amount.', 'Error', 'modal');
 end
+set(BpodSystem.GUIHandles.LiquidCalibrator.MeasuredAmtEdit, 'String', '');
 
 function EndCal(varargin)
 global BpodSystem
