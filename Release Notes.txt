@@ -1,3 +1,14 @@
+---v1.71---
+-LoadBpodFirmware: Added a warning to the user if a known target device does not match the firmware type selected
+-LoadBpodFirmware: Fixed handling of paths with spaces
+-LoadBpodFirmware: Restored detection of Teensy boards with HalfKay bootloader
+-Firmware: Added binaries for PulsePalModule firmware for Analog Output Module
+-ArCOM: Added option to enable or disable background reads when using IOPort serial interface. Restored default = disabled.
+-Startup: Fixed call to powershell to support Windows 7
+-Added recommended OS update notice for Windows 7 users
+-LiquidCalibration: Fixed error on launching TestSpecificAmount GUI on MATLAB r2014b or newer
+-BpodAnalogIn class: Removed USB read size handling (now handled internally by ArCOM class)
+
 ---v1.70---
 -Added support for state machine firmware v23 on all versions of the state machine hardware (note: v22 is still supported)
 -Added support for state machine 2+ and the new Flex I/O channel type
