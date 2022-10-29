@@ -32,12 +32,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % with PsychToolbox, use ArCOMObject('COM3', 'java')
 %
 % ArCOM can be created with the following optional arguments:
-% MyPort = ArCOMObject('COM3', baudRate, Interface, TCPPort, InputBufferSize, OutputBufferSize)
+% MyPort = ArCOMObject('COM3', baudRate, Interface, TCPPort, InputBufferSize, OutputBufferSize, IOPortBackgroundReads)
 % To avoid time-costly arg parsing, all arguments must be provided, up to the highest one needed.
 % baudRate is in bps. This is ignored for microcontrollers with native USB support (e.g. 32-bit Arduino, Teensy 3.X-4.X).
-% Interface can be either 'Java' or 'PsychToolbox'
+% Interface can be either [], 'Java', 'PsychToolbox'. [] defaults to Java for r2019b or newer, and Psychtoolbox on older versions.
 % TCPPort can be [], or a port on a remote computer if using the Ethernet interface.
 % InputBufferSize and OutputBufferSize must be in range 0-10M bytes
+% IOPortBackgroundReads is 0 (Do not Use Background Reads, Default) or 1 (Use Background Reads). Only relevant if IOPort serial interface is used.
 %
 % Write: MyPort.write(myData, 'uint8') % where 'uint8' is a
 % data type from the following list: 'uint8', 'uint16', 'uint32', 'int8', 'int16', 'int32', 'char'.
@@ -79,6 +80,11 @@ classdef ArCOMObject_Bpod < handle
         function obj = ArCOMObject_Bpod(portString, varargin)
             obj.UsePsychToolbox = 0;
             obj.Interface = 0; % Java serial interface
+            baudRate = 115200;
+            obj.TCPport = [];
+            IOPortBackgroundReadStr = [];
+            InputBufferSize = 1000000;
+            OutputBufferSize = 1000000;
             if verLessThan('matlab', '9.7') % Default to Psychtoolbox IOPort on old MATLAB
                 try
                     PsychtoolboxVersion;
@@ -87,17 +93,14 @@ classdef ArCOMObject_Bpod < handle
                 catch
                 end
             end
-            baudRate = 115200;
             if nargin > 1
-                arg = varargin{1};
-                if ~isempty(arg)
-                    baudRate = arg;
+                if ~isempty(varargin{1})
+                    baudRate = varargin{1};
                 end
             end
             if nargin > 2
-                forceOption = varargin{2};
-                if ~isempty(forceOption)
-                    switch lower(forceOption)
+                if ~isempty(varargin{2})
+                    switch lower(varargin{2})
                         case 'java'
                             obj.UsePsychToolbox = 0;
                             obj.Interface = 0;
@@ -105,23 +108,22 @@ classdef ArCOMObject_Bpod < handle
                             obj.UsePsychToolbox = 1;
                             obj.Interface = 1;
                         otherwise
-                            error('The third argument to ArCOM(''init'' must be either ''java'' or ''psychtoolbox''');
+                            error('The third argument to ArCOM(''init'' must be ''java'' or ''psychtoolbox''');
                     end
                 end
             end
-            obj.TCPport = [];
             if nargin > 3
                 obj.TCPport = varargin{3};
             end
             if nargin > 4
-                InputBufferSize = varargin{4};
-            else
-                InputBufferSize = 1000000;
+                if ~isempty(varargin{4})
+                    InputBufferSize = varargin{4};
+                end
             end
             if nargin > 5
-                OutputBufferSize = varargin{5};
-            else
-                OutputBufferSize = 1000000;
+                if ~isempty(varargin{5})
+                    OutputBufferSize = varargin{5};
+                end
             end
             if InputBufferSize > 10000000 || InputBufferSize < 0
                 error('ArCOM error: InputBufferSize must be in range 0,10000000')
@@ -131,6 +133,12 @@ classdef ArCOMObject_Bpod < handle
             end
             obj.InputBufferSize = InputBufferSize;
             obj.OutputBufferSize = OutputBufferSize;
+            if nargin > 6
+                IOPortBackgroundReads = varargin{6};
+                if IOPortBackgroundReads
+                    IOPortBackgroundReadStr = ', PollLatency=0.001, StartBackgroundRead=1';
+                end
+            end
 
             obj.Port = [];
             obj.InBuffer = BpodDoubleSidedBuffer(obj.InputBufferSize);
@@ -194,7 +202,7 @@ classdef ArCOMObject_Bpod < handle
                         portString = ['\\.\' portString];
                     end
                     IOPort('Verbosity', 0);
-                    obj.Port = IOPort('OpenSerialPort', portString, ['ReceiveTimeout=0.05, BaudRate=' num2str(baudRate) ', OutputBufferSize=' num2str(obj.OutputBufferSize) ', InputBufferSize=' num2str(obj.InputBufferSize) ', DTR=1, PollLatency=0.0001, StartBackgroundRead=1']);
+                    obj.Port = IOPort('OpenSerialPort', portString, ['ReceiveTimeout=3, BaudRate=' num2str(baudRate) ', OutputBufferSize=' num2str(obj.OutputBufferSize) ', InputBufferSize=' num2str(obj.InputBufferSize) ', DTR=1' IOPortBackgroundReadStr]);
                     if (obj.Port < 0)
                         error(['Error: Unable to connect to port ' portString '. The port may be in use by another application.'])
                     end

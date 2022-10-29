@@ -181,12 +181,31 @@ classdef LoadBpodFirmware < handle
             
             % Get Teensy RawHID boards
             [~, Tstring] = system(['"' obj.tycmd '" list']);
-            RawHIDs = regexp(Tstring,'\d*(?=-Teensy.*RawHID\)$)','match','lineanchors');
-            RawHIDs = strcat('SER#',RawHIDs);
-            obj.PortType = [obj.PortType ones(1,length(RawHIDs))*2];
+            AllRawHIDs = cell(0);
+            if ~isempty(Tstring)
+                HardReturns = find(Tstring == 10);
+                Pos = 1;
+                Found = 0;
+                if ~isempty(HardReturns)
+                    for i = 1:length(HardReturns)-1
+                        Segment = Tstring(Pos:HardReturns(i));
+                        if ~isempty(strfind(Segment, 'Teensyduino RawHID')) || ~isempty(strfind(Segment, 'HalfKay'))
+                            Found = Found + 1;
+                            AllRawHIDs{Found} = ['SER#' Segment(strfind(Segment, 'add ') + 4:strfind(Segment, '-Teensy')-1)];
+                        end
+                        Pos = Pos + length(Segment);
+                    end
+                    Segment = Tstring(Pos:end);
+                    if ~isempty(strfind(Segment, 'Teensyduino RawHID')) || ~isempty(strfind(Segment, 'HalfKay'))
+                        Found = Found + 1;
+                        AllRawHIDs{Found} = ['SER#' Segment(strfind(Segment, 'add ') + 4:strfind(Segment, '-Teensy')-1)];
+                    end
+                end
+            end
+            obj.PortType = [obj.PortType ones(1,length(AllRawHIDs))*2];
             
             % Combine lists of USB serial ports & RawHID devices
-            AllPorts = [USBSerialPorts RawHIDs];
+            AllPorts = [USBSerialPorts AllRawHIDs];
             if isempty(AllPorts)
                 error('Error: No USB serial devices were detected.');
             end
