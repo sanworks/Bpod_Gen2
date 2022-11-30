@@ -95,16 +95,13 @@ EarlyWithdrawalSound = EarlyWithdrawalSound.*GateVector; % Gate waveform to crea
 % A.TriggerMode = 'Master';
 H.HeadphoneAmpEnabled = true; H.HeadphoneAmpGain = 30; % Ignored if using HD version of the HiFi module
 H.DigitalAttenuation_dB = -10; % Set a comfortable listening level for most headphones (useful during protocol dev).
-H.VerboseMode = 1;
 H.load(1, LeftSound);
 H.load(2, [RightSound; RightSound]);
 H.load(3, ErrorSound);
 H.load(4, EarlyWithdrawalSound);
 H.push;
 Envelope = 1/(SF*0.001):1/(SF*0.001):1; % Define 1ms linear ramp envelope of amplitude coefficients, to apply at sound onset + in reverse at sound offset
-%Envelope = [];
-%H.AMenvelope = Envelope;
-%LoadSerialMessages('HiFi1', {['P' 0],['P' 1],['P' 2],['P' 3],['X'], ['*']});
+H.AMenvelope = Envelope;
 
 %% Prepare and start first trial
 sma = PrepareStateMachine(S, TrialTypes, 1, []); % Prepare state machine for trial 1 with empty "current events" variable
