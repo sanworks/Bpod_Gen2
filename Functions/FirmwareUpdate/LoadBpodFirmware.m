@@ -39,12 +39,16 @@ classdef LoadBpodFirmware < handle
                     'Please follow instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a> to update with the Arduino application.'],computer)
             end
             set2Device = [];
+            set2Port = [];
             excludeFSM = 0;
             if nargin > 0
                 set2Device = varargin{1};
             end
             if nargin > 1
                 excludeFSM = varargin{2};
+            end
+            if nargin > 2
+                set2Port = varargin{3};
             end
             
             % Location of firmware binaries
@@ -254,6 +258,13 @@ classdef LoadBpodFirmware < handle
                     obj.updateVersions();
                 end
             end
+            % Set the port if a port arg was provided
+            if ~isempty(set2Port)
+                PosExact = find(strcmp(AllPorts, set2Port));
+                if ~isempty(PosExact)
+                    set(obj.gui.Ports, 'Value', PosExact);
+                end
+            end
             
         end
         function updateVersions(obj, varargin)
@@ -331,12 +342,13 @@ classdef LoadBpodFirmware < handle
                         pause(.005);
                         drawnow;
                     end
+                    BGColor = [0.1 0.9 0.1];
+                    set(obj.gui.ConfirmModal, 'Color', BGColor);
+                    set(obj.gui.Msg1, 'BackgroundColor', BGColor);
+                    set(obj.gui.Msg2, 'BackgroundColor', BGColor);
                 catch
                 end
-                BGColor = [0.1 0.9 0.1];
-                set(obj.gui.ConfirmModal, 'Color', BGColor);
-                set(obj.gui.Msg1, 'BackgroundColor', BGColor);
-                set(obj.gui.Msg2, 'BackgroundColor', BGColor);
+
             end
             
         end

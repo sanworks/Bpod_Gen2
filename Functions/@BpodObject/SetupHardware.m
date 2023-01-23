@@ -58,6 +58,14 @@ function obj = SetupHardware(obj)
             case 3
                SMName = 'r2';
                FirmwareName = 'StateMachine_Bpod2';
+                if obj.FirmwareVersion > 22
+                    obj.SerialPort.write('v', 'uint8');
+                    SM_Revision = obj.SerialPort.read(1, 'uint8');
+                    if SM_Revision > 4
+                        SMName = 'r2.5';
+                        FirmwareName = 'StateMachine_Bpod2_5';
+                    end
+                end
             case 4
                SMName = 'r2_Plus';
                FirmwareName = 'StateMachine_Bpod2Plus';
@@ -69,7 +77,7 @@ function obj = SetupHardware(obj)
                 disp('***************************************************************');
                 disp([char(13) 'NOTICE: Old state machine firmware detected: v' num2str(obj.FirmwareVersion) '. ' char(13)...
                     'You may optionally update the state machine firmware to v' num2str(obj.CurrentFirmware.StateMachine) '.' char(13)...
-                    'Click <a href="matlab:EndBpod; LoadBpodFirmware(''' FirmwareName ''');">here</a> to start the update tool, or run LoadBpodFirmware().' char(13)...
+                    'Click <a href="matlab:EndBpod; LoadBpodFirmware(''' FirmwareName ''', 0, ''' obj.SerialPort.PortName ''');">here</a> to start the update tool, or run LoadBpodFirmware().' char(13)...
                     'If necessary, manual firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
                 disp('***************************************************************');
                 BpodErrorSound;
