@@ -243,6 +243,9 @@ classdef LoadBpodFirmware < handle
                 'FontWeight', 'bold', 'Enable', 'on','Callback', @(h,e)obj.updateFirmware(), 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
             % Filter list if a filter arg was provided
             if ~isempty(set2Device)
+                if strcmp(set2Device, 'PA') % Special handling of port array module for backwards compatability
+                    set2Device = 'PortArray';
+                end
                 Pos = strfind(FirmwareNames,set2Device);
                 Pos = find(~cellfun(@isempty,Pos));
                 PosExact = find(strcmp(FirmwareNames, set2Device));
