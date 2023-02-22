@@ -168,11 +168,22 @@ end
 %% Add output actions
 OutputChannelNames = BpodSystem.StateMachineInfo.OutputChannelNames;
 MetaActions = {'ValveState', 'LED', 'LEDState', 'BNCState', 'WireState', 'Valve'}; % ValveState is a byte whose bits control an array of valves
-
 % LED is an alternate syntax for PWM1-8,specifying one LED to set to max brightness (1-8)
 % LEDState is an alternate syntax for PWM1-8. A byte coding for binary sets which LEDs are at max brightness
 % BNCState and WireState are added for backwards compatability with Bpod
-% 0.5. A byte is converted to bits to control logic on the BNC and Wire outputs channel arrays.
+% 0.5. A byte is converted to bits to control logic on the BNC and Wire outputs channel arrays
+
+% Check for duplicate outputs
+OutputChannels = OutputActions(1:2:end);
+[~, uniqueIndexes] = unique(OutputChannels, 'stable');
+if length(OutputChannels) > length(uniqueIndexes)
+    firstViolation = find(uniqueIndexes' ~= 1:length(uniqueIndexes), 1);
+    if isempty(firstViolation)
+        firstViolation = length(uniqueIndexes)+1;
+    end
+    OutputChDuplicated = OutputChannels{firstViolation};
+    error(['Duplicate output actions detected in state: ' StateName '. Only one value for ' OutputChDuplicated ' is allowed.'])
+end
 for x = 1:2:length(OutputActions)
     MetaAction = find(strcmp(OutputActions{x}, MetaActions));
     if ~isempty(MetaAction)
