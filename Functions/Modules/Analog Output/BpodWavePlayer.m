@@ -314,7 +314,7 @@ classdef BpodWavePlayer < handle
         end
         function loadWaveform(obj, WaveIndex, Waveform)
             nSamples = length(Waveform);
-            WaveBits = obj.volts2Bits(obj, Waveform);
+            WaveBits = obj.volts2Bits(Waveform);
             obj.Port.write(['L' WaveIndex-1], 'uint8', nSamples, 'uint32', WaveBits, 'uint16');
             Confirmed = obj.Port.read(1, 'uint8');
             obj.Waveforms{WaveIndex} = Waveform;
@@ -394,7 +394,7 @@ classdef BpodWavePlayer < handle
                             firstWaveNotLoaded = find(obj.WaveformsLoaded(Waves2Trigger) == 0, 1);
                             error(['Waveform #' num2str(Waves2Trigger(firstWaveNotLoaded)) ' must be loaded with loadWaveform() before it can be triggered.'])
                         end
-                        if length(WaveList) > obj.maxSimultaneousChannels
+                        if length(Waves2Trigger) > obj.maxSimultaneousChannels
                             error(['Cannot trigger more than ' num2str(obj.maxSimultaneousChannels) ' simultaneous channel(s) at the current sampling rate.'])
                         end
                         WaveList(WaveList == 0) = 255;
