@@ -1,3 +1,12 @@
+---v1.73---
+-Added support for Analog Input Module v2
+-BpodAnalogIn: Added support for firmware v5
+-BpodWavePlayer: Added support for firmware v5
+-BpodWavePlayer (4-ch): With firmware v5, multiple waveforms can be triggered from a single state without trigger profile mode using '>' op (requires FSM v2 or newer).
+-BpodWavePlayer: Firmware v5 fixes a bug in loadWaveform() op that could overwrite end of allocated memory
+-BpodWavePlayer: Fixed bug in sanity check for maximum channels that can be triggered simultaneously at current sampling rate
+-Added sanity check to AddState() function to ensure that only one output channel value is given per state
+
 ---v1.72---
 -Analog Output: Updated firmware to support hardware v2. Consolidated firmware files for 4ch and 8ch modules.
 -PortArrayModule: Firmware bug fix: previously when using PWM dimming, duplicate poke events sometimes followed the actual event at 100us intervals.
