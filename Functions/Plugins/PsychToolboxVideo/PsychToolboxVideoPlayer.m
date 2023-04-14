@@ -324,6 +324,18 @@ classdef PsychToolboxVideoPlayer < handle
             frame(obj.ViewPortDimensions(2)+obj.ViewPortOffset(2), 1+obj.ViewPortOffset(1):obj.ViewPortDimensions(1)+obj.ViewPortOffset(1),:) = 64; % Bottom
             frame(1+obj.ViewPortOffset(2), 1+obj.ViewPortOffset(1):obj.ViewPortDimensions(1)+obj.ViewPortOffset(1),:) = 64; % Top
         end
+        function setSyncPatch(obj, state)
+            % For calibration. State = 0 (black) or 1 (sync patch intensity)
+            if ~(state == 0 || state == 1)
+                error('setSyncPatch: state must be 0 or 1');
+            end
+            frame = ones(obj.WindowDimensions(4)-obj.WindowDimensions(2), obj.WindowDimensions(3)-obj.WindowDimensions(1))*128;
+            frame(obj.SyncPatchDimensions(1):obj.SyncPatchDimensions(2),obj.SyncPatchDimensions(3):obj.SyncPatchDimensions(4),:) = 0;
+            frame(obj.SyncPatchActiveDimensions(1):obj.SyncPatchActiveDimensions(2),obj.SyncPatchActiveDimensions(3):obj.SyncPatchActiveDimensions(4),:) = state*obj.SyncPatchIntensity;
+            texture = Screen('MakeTexture', obj.Window, frame);
+            Screen('DrawTexture', obj.Window, texture);
+            Screen('Flip', obj.Window);
+        end
         function delete(obj)
             if ~isempty(obj.Timer)
                 stop(obj.Timer);

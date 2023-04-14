@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2021 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2023 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 classdef BpodWavePlayer < handle
     properties
         Port % ArCOM Serial port
+        Info % A struct containing information about the connected hardware
         SamplingRate % 1Hz-50kHz, affects all channels
         OutputRange % Voltage output range for all channels: '0V:5V', '0V:10V', '0V:12V', '-5V:5V', '-10V:10V', '-12V:12V'
         % For best signal quality, use the smallest range necessary for your application.
@@ -35,9 +36,6 @@ classdef BpodWavePlayer < handle
         LoopDuration % (seconds) In loop mode, specifies the duration to loop the waveform following a trigger.
         BpodEvents % 'On' sends byte 0x(channel) when starting playback, and 0x(channel+4) when playback finishes.
     end
-    properties (SetAccess = protected)
-        FirmwareVersion = 0;
-    end
     properties (Access = private)
         CurrentFirmwareVersion = 1;
         ValidRanges = {'0V:5V', '0V:10V', '0V:12V', '-5V:5V', '-10V:10V', '-12V:12V'};
@@ -48,12 +46,10 @@ classdef BpodWavePlayer < handle
         TriggerProfileLogic % Logic equivalent of TriggerProfileEnable vector
         ValidSamplingRates = [1 200000]; % Range of valid sampling rates
         WaveformsLoaded = zeros(1,256);
-        isPlaying;
-        maxSimultaneousChannels;
-        nTriggerProfiles = 0;
-        maxWaves; % Maximum number of waveforms to store on device
-        nChannels; % Number of output channels
-        channelNotice = false; % Notice of maximum channels for setting fixed voltage
+        maxSimultaneousChannels; % Maximum number of channels that can be triggered at the current sampling rate
+        nTriggerProfiles = 0; % Number of trigger profiles available on the connected device
+        maxWaves; % Maximum number of waveforms that can be stored on the connected device
+        nChannels; % Number of output channels on the connected device
         Initialized = 0; % Set to 1 when initialized (to avoid spamming device with settings as fields are populated)
     end
     methods
@@ -70,15 +66,22 @@ classdef BpodWavePlayer < handle
             if response ~= 228
                 error('Could not connect =( ')
             end
-            obj.FirmwareVersion = obj.Port.read(1, 'uint32');
-            if obj.FirmwareVersion < obj.CurrentFirmwareVersion  
+            obj.Info.FirmwareVersion = obj.Port.read(1, 'uint32');
+            if obj.Info.FirmwareVersion < obj.CurrentFirmwareVersion  
                 if ShowWarnings == 1
                     disp('*********************************************************************');
-                    disp(['Warning: Old firmware detected: v' num2str(obj.FirmwareVersion) ...
+                    disp(['Warning: Old firmware detected: v' num2str(obj.Info.FirmwareVersion) ...
                         '. The current version is: v' num2str(obj.CurrentFirmwareVersion) char(13)...
                         'Please update using the firmware update tool: UpdateBpodFirmware().'])
                     disp('*********************************************************************');
                 end
+            end
+            obj.Info.HardwareVersion = NaN;
+            obj.Info.CircuitRevision = NaN;
+            if obj.Info.FirmwareVersion > 4
+                obj.Port.write('H', 'uint8');
+                obj.Info.HardwareVersion = obj.Port.read(1, 'uint8');
+                obj.Info.CircuitRevision = obj.Port.read(1, 'uint8');
             end
             obj.Port.write('N', 'uint8');
             obj.nChannels = obj.Port.read(1, 'uint8');
@@ -92,17 +95,17 @@ classdef BpodWavePlayer < handle
             obj.LoopModeLogic = obj.Port.read(obj.nChannels, 'uint8');
             loopDurationSamples =  obj.Port.read(obj.nChannels, 'uint32');
             obj.Waveforms = cell(1,obj.maxWaves); % Local copy of currently loaded waveforms
-            obj.isPlaying = zeros(1,obj.nChannels);
             obj.maxSimultaneousChannels = obj.nChannels;
             obj.TriggerProfiles = zeros(obj.nTriggerProfiles, obj.nChannels);
             obj.TriggerProfileEnable = obj.ValidBinaryStates{obj.TriggerProfileLogic+1};
             obj.TriggerMode = obj.TriggerModeStrings{triggerModeIndex};
             obj.OutputRange = obj.ValidRanges{RangeIndex};
             obj.SamplingRate = 1/(SamplingPeriodMicroseconds/1000000);
-            obj.LoopDuration = single(loopDurationSamples)*single(obj.SamplingRate);
+            obj.LoopDuration = single(loopDurationSamples)/single(obj.SamplingRate);
             obj.LoopMode = obj.ValidBinaryStates(obj.LoopModeLogic+1);
             obj.BpodEvents = obj.ValidBinaryStates(obj.BpodEventsLogic+1);
             obj.Initialized = 1;
+            obj.set2Defaults;
         end
         function set.TriggerMode(obj, mode)
             switch lower(mode)
@@ -279,17 +282,18 @@ classdef BpodWavePlayer < handle
                 end
                 SamplingPeriodMicroseconds = (1/sf)*1000000;
                 obj.Port.write(['S' typecast(single(SamplingPeriodMicroseconds), 'uint8')], 'uint8');
-                
-                if sf > 100000
-                    obj.maxSimultaneousChannels = 1;
-                elseif sf > 75000
-                    obj.maxSimultaneousChannels = 2;
-                elseif sf > 50000
-                    obj.maxSimultaneousChannels = 3;
-                elseif sf > 30000
-                    obj.maxSimultaneousChannels = 4;
-                else
-                    obj.maxSimultaneousChannels = 8;
+                if obj.Info.HardwareVersion < 2
+                    if sf > 100000
+                        obj.maxSimultaneousChannels = 1;
+                    elseif sf > 75000
+                        obj.maxSimultaneousChannels = 2;
+                    elseif sf > 50000
+                        obj.maxSimultaneousChannels = 3;
+                    elseif sf > 30000
+                        obj.maxSimultaneousChannels = 4;
+                    else
+                        obj.maxSimultaneousChannels = 8;
+                    end
                 end
                 if sum(obj.LoopModeLogic) > 0 % Re-compute loop durations (in units of samples)
                     obj.Port.write(['O' obj.LoopModeLogic], 'uint8', obj.LoopDuration*sf, 'uint32'); % Update loop durations
@@ -298,8 +302,25 @@ classdef BpodWavePlayer < handle
             end
             obj.SamplingRate = sf;
         end
+        function set2Defaults(obj)
+            obj.SamplingRate = 10000;
+            obj.OutputRange = '-5V:5V';
+            obj.TriggerMode = 'Normal';
+            obj.TriggerProfileEnable = 'Off';
+            obj.TriggerProfiles = zeros(obj.nTriggerProfiles, obj.nChannels);
+            obj.LoopMode = repmat({'Off'}, 1, obj.nChannels);
+            obj.LoopDuration = zeros(1, obj.nChannels);
+            obj.BpodEvents = repmat({'Off'}, 1, obj.nChannels);
+        end
         function loadWaveform(obj, WaveIndex, Waveform)
             nSamples = length(Waveform);
+            WaveBits = obj.volts2Bits(Waveform);
+            obj.Port.write(['L' WaveIndex-1], 'uint8', nSamples, 'uint32', WaveBits, 'uint16');
+            Confirmed = obj.Port.read(1, 'uint8');
+            obj.Waveforms{WaveIndex} = Waveform;
+            obj.WaveformsLoaded(WaveIndex) = 1;
+        end
+        function Bits = volts2Bits(obj, volts)
             PositiveOnly = 0;
             switch obj.OutputRange
                 case '0V:5V'
@@ -318,19 +339,15 @@ classdef BpodWavePlayer < handle
                 case '-12V:12V'
                     VoltageWidth = 24;
             end
-            minWave = min(Waveform);
-            maxWave = max(Waveform);
+            minVolts = min(volts);
+            maxVolts = max(volts);
             maxRange = VoltageWidth+(PositiveOnly*0.5);
             minRange = ((VoltageWidth/2)*-1) * (1-PositiveOnly);
-            if ((minWave < minRange) || (maxWave > maxRange))
-                error(['Error setting waveform: All voltages must be within the current range: ' obj.OutputRange '.'])
+            if ((minVolts < minRange) || (maxVolts > maxRange))
+                error(['Error converting volts to bits: All voltages must be within the current range: ' obj.OutputRange '.'])
             end
             Offset = (VoltageWidth/2)*(1-PositiveOnly);
-            WaveBits = ceil(((Waveform+Offset)/VoltageWidth)*(2^(16)-1));
-            obj.Port.write(['L' WaveIndex-1], 'uint8', nSamples, 'uint32', WaveBits, 'uint16');
-            Confirmed = obj.Port.read(1, 'uint8');
-            obj.Waveforms{WaveIndex} = Waveform;
-            obj.WaveformsLoaded(WaveIndex) = 1;
+            Bits = ceil(((volts+Offset)/VoltageWidth)*(2^(16)-1));
         end
         function setupSDCard(obj)
             disp('Preparing SD card. This may take up to 1 minute. Please wait.')
@@ -352,41 +369,62 @@ classdef BpodWavePlayer < handle
                 end
                 obj.Port.write(['P' ProfileNum-1], 'uint8');
             else
-                Channels = varargin{1};
-                WaveIndex = varargin{2};
-                if ~obj.WaveformsLoaded(WaveIndex)
-                    error(['Error: waveform #' num2str(WaveIndex) ' must be loaded with loadWaveform() before it can be triggered.'])
+                if nargin > 2
+                    Channels = varargin{1};
+                    WaveIndex = varargin{2};
+                    if ~obj.WaveformsLoaded(WaveIndex)
+                        error(['Error: waveform #' num2str(WaveIndex) ' must be loaded with loadWaveform() before it can be triggered.'])
+                    end
+                    if length(Channels) > obj.maxSimultaneousChannels
+                        error(['Error: cannot trigger more than ' num2str(obj.maxSimultaneousChannels) ' simultaneous channel(s) at the current sampling rate.'])
+                    end
+                    ChannelBits = 0; % Channels to trigger are read as bits
+                    for i = 1:length(Channels)
+                        ChannelBits = ChannelBits + 2^(Channels(i)-1);
+                    end
+                    obj.Port.write(['P' ChannelBits WaveIndex-1], 'uint8');
+                else
+                    if obj.Info.FirmwareVersion > 4
+                        WaveList = varargin{1};
+                        if length(WaveList) ~= obj.nChannels
+                            error('When using syntax W.play([List of waveform indexes]) the list must include one waveform for each channel. Use 0 for no waveform.')
+                        end
+                        Waves2Trigger = WaveList(WaveList > 0);
+                        if sum(obj.WaveformsLoaded(Waves2Trigger) == 0) > 0
+                            firstWaveNotLoaded = find(obj.WaveformsLoaded(Waves2Trigger) == 0, 1);
+                            error(['Waveform #' num2str(Waves2Trigger(firstWaveNotLoaded)) ' must be loaded with loadWaveform() before it can be triggered.'])
+                        end
+                        if length(Waves2Trigger) > obj.maxSimultaneousChannels
+                            error(['Cannot trigger more than ' num2str(obj.maxSimultaneousChannels) ' simultaneous channel(s) at the current sampling rate.'])
+                        end
+                        WaveList(WaveList == 0) = 255;
+                        obj.Port.write(['>' WaveList-1], 'uint8');
+                    else
+                        error('WavePlayer must have firmware v5 or newer to trigger multiple channels without using trigger profile mode.')
+                    end
                 end
-                if length(Channels) > obj.maxSimultaneousChannels
-                    error(['Error: cannot trigger more than ' num2str(obj.maxSimultaneousChannels) ' simultaneous channel(s) at the current sampling rate.'])
-                end
-                ChannelBits = 0; % Channels to trigger are read as bits
-                for i = 1:length(Channels)
-                    ChannelBits = ChannelBits + 2^(Channels(i)-1);
-                end
-                obj.Port.write(['P' ChannelBits WaveIndex-1], 'uint8');
             end
         end
         function stop(obj)
             obj.Port.write('X', 'uint8');
         end
         function setFixedOutput(obj, Channels, DACOutputBits) % Channels are a list of channels to set. DACOutputBits range from 0-65535, mapped to current output range
-            if obj.nChannels > 4
-                if ~obj.channelNotice
-                    disp('Note: The setFixedOutput function is only supported on the first 4 channels of the analog output module')
-                    obj.channelNotice = 1;
-                end
+            if obj.Info.FirmwareVersion < 5
+                error('Error: Setting a fixed output value now requires firmware v5. All 8 output channels are now supported.')
             end
             ChannelBits = 0;
             for i = 1:length(Channels)
                 ChannelBits = ChannelBits + 2^(Channels(i)-1);
             end
-            ChannelBits = ChannelBits + 128; % Op codes in range 129-143 indicate channels to set, with last 4 bits encoding target channel(s)
-            obj.Port.write(ChannelBits, 'uint8', DACOutputBits, 'uint16');
+            obj.Port.write(['!' ChannelBits], 'uint8', DACOutputBits, 'uint16');
             Confirmed = obj.Port.read(1, 'uint8');
             if Confirmed ~= 1
                 error('Error setting fixed output voltage(s). Confirm code not returned.');
             end
+        end
+        function setFixedVoltage(obj, Channels, Voltage)
+            DACOutputBits = obj.volts2Bits(Voltage);
+            obj.setFixedOutput(Channels, DACOutputBits);
         end
         function delete(obj)
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)

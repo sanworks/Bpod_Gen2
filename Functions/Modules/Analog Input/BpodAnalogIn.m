@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
+Copyright (C) 2023 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -22,41 +22,35 @@ classdef BpodAnalogIn < handle
     
     properties
         About = struct; % Contains a text string describing each field
+        Info = struct; % Contains useful info about the specific hardware detected
         Port % ArCOM Serial port
         Timer % MATLAB timer object
         Status % Struct containing status of ongoing ops (logging, streaming, etc)
         nActiveChannels % Number of channels to sample (consecutive, beginning with channel 1)
-        SamplingRate % 1Hz-50kHz, affects all channels
-        InputRange % A cell array of strings indicating voltage range for 12-bit conversion. Valid ranges are in ValidRanges (below)
+        SamplingRate % 1Hz-10kHz on v1, 1Hz-50kHz on v2, affects all channels
+        InputRange % A cell array of strings indicating voltage range for 12-bit conversion. Valid ranges are in Info.InputVoltageRanges (below)
         Thresholds % Threshold (V) for each channel. Analog signal crossing the threshold generates an event.
-        ResetVoltages % Voltage must cross ResetValue (V) before another threshold event can occur
+        ResetVoltages % Voltage must cross ResetValue (V) before another threshold event can occur (except in Threshold Mode 1, see above)
         SMeventsEnabled % Logical vector indicating channels that generate events
-        Stream2Module % Logical vector indicating channels to stream to output module (raw data)
-        StreamPrefix % Prefix byte sent before each sample when streaming to output module
-        nSamplesToLog = Inf; % Number of samples to log on trigger, 0 = infinite
         Stream2USB % Logical vector indicating channels to stream to USB when streaming is enabled
+        Stream2Module % Logical vector indicating channels to stream via Ethernet cable directly to an analog output or DDS module (raw data)
+        StreamPrefix % Prefix byte sent before each sample when streaming to output module
+        nSamplesToLog = Inf; % Number of samples to log to microSD on trigger, 0 = infinite
         USBStreamFile = []; % Full path to file for data acquired with scope() GUI. If empty, scope() data is not saved.
-    end
-    
-    properties(Constant)
-        ValidRanges = {'-10V:10V', '-5V:5V', '-2.5V:2.5V','0V:10V'};
-        ValidSamplingRates = [1 10000]; % Range of valid sampling rates
     end
     
     properties (Access = private)
         UIhandles % A struct with UI handles
         UIdata % A struct with internal user interface data
         opMenuByte = 213; % Byte code to access op menu
-        RangeMultipliers = [20 10 5 10];
-        RangeOffsets = [10 5 2.5 0];
-        InputRangeLimits = [-10 10; -5 5; -2.5 2.5; 0 10];
-        RangeIndex = ones(1,8); % Integer code for voltage range (position in ValidRanges vector above)
+        RangeVoltageSpan % Span of each range in volts
+        RangeOffsets % Distance of 0V from bottom of each range
+        InputRangeLimits % Table of minimum and maximum voltages for each range
+        RangeIndex  % Integer code for voltage range (position in Info.InputVoltageRanges vector above)
         nPhysicalChannels = 8; % Number of physical channels
-        RootPath = fileparts(which('AnalogInObject'));
-        FirmwareVersion = 0;
         Initialized = 0; % Set to 1 after object constructor is done running
         Streaming = 0; % Set to 1 if the oscope display is streaming
-        chBits = (2^13); % Bit width of ADC
+        chBits % Bit width of ADC. AIM v1 = 2^13, AIM v2 = 2^16
         USBstream2File = false; % True if data acquired with the scope() GUI is streamed to a file
         USBstreamFile % A memory-mapped .mat file accessed with MATLAB's matfile() function
         USBFile_SamplePos = 1;
@@ -66,47 +60,83 @@ classdef BpodAnalogIn < handle
     methods
         function obj = BpodAnalogIn(portString, varargin)
             ShowWarnings = 1;
+            obj.Info.FirmwareVersion = NaN;
+            obj.Info.HardwareVersion = NaN;
+            obj.Info.InputVoltageRanges = NaN;
+            UsePsychToolbox = [];
             if nargin > 1
-                if strcmp(varargin{1}, 'NoWarnings')
-                    ShowWarnings = 0;
+                Op = varargin{1};
+                switch Op
+                    case 'nowarnings'
+                        ShowWarnings = 0;
+                    case 'psychtoolbox'
+                        UsePsychToolbox = 'psychtoolbox';
                 end
             end
-            try
-                obj.Port = ArCOMObject_Bpod(portString, 115200);
-            catch
-                error('Error: unable to connect to Bpod Analog Input module.')
-            end
+            obj.Port = ArCOMObject_Bpod(portString, 480000000, UsePsychToolbox, [], 1000000, 1000000); %115200
             obj.Port.write([obj.opMenuByte 'O'], 'uint8');
-            pause(.1);
             HandShakeOkByte = obj.Port.read(1, 'uint8');
             if HandShakeOkByte == 161 % Correct handshake response
-                obj.FirmwareVersion = obj.Port.read(1, 'uint32');
+                obj.Info.FirmwareVersion = obj.Port.read(1, 'uint32');
                 try
                     addpath(fullfile(fileparts(which('Bpod')), 'Functions', 'Internal Functions'));
                     CurrentFirmware = CurrentFirmwareList;
                     LatestFirmware = CurrentFirmware.AnalogIn;
                 catch
                     % Stand-alone configuration (Bpod not installed); assume latest firmware
-                    LatestFirmware = obj.FirmwareVersion;
+                    LatestFirmware = obj.Info.FirmwareVersion;
                 end
-                if obj.FirmwareVersion < LatestFirmware
+                if obj.Info.FirmwareVersion < LatestFirmware
                     if ShowWarnings == 1
                         disp('*********************************************************************');
-                        disp(['Warning: Old firmware detected: v' num2str(obj.FirmwareVersion) ...
+                        disp(['Warning: Old firmware detected: v' num2str(obj.Info.FirmwareVersion) ...
                             '. The current version is: v' num2str(LatestFirmware) char(13)...
-                            'Please update using the firmware update tool: UpdateBpodFirmware().'])
+                            'Please update using the firmware update tool: LoadBpodFirmware().'])
                         disp('*********************************************************************');
                     end
-                elseif obj.FirmwareVersion > LatestFirmware
+                elseif obj.Info.FirmwareVersion > LatestFirmware
                     error(['Analog Input Module with future firmware found. Please update your Bpod software from the Bpod_Gen2 repository.']);
-                else
-                    disp(['Analog Input Module found.']);
+                end
+                obj.Info.HardwareVersion = 1;
+                if obj.Info.FirmwareVersion > 4
+                    obj.Port.write([obj.opMenuByte 'H'], 'uint8');
+                    obj.Info.HardwareVersion = obj.Port.read(1, 'uint8');
+                    if isempty(UsePsychToolbox)
+                        obj.Port.write([obj.opMenuByte 't' 1], 'uint8'); % Throttle USB for Teensy 4.1 + MATLAB built-in serial interface
+                    else
+                        obj.Port.write([obj.opMenuByte 't' 0], 'uint8');
+                    end
+                    % If HW version 1, restart serial port with correct baud date --> buffer sizes
+                    if obj.Info.HardwareVersion == 1
+                        obj.Port = [];
+                        pause(.2);
+                        obj.Port = ArCOMObject_Bpod(portString, 12000000, UsePsychToolbox, [], 1000000, 1000000);
+                    end
+                end
+                switch obj.Info.HardwareVersion
+                    case 1
+                        obj.chBits = 2^13;
+                        obj.Info.SamplingRateRange = [1 10000];
+                        obj.Info.InputVoltageRanges = {'-10V:10V', '-5V:5V', '-2.5V:2.5V','0V:10V'};
+                        obj.RangeVoltageSpan = [20 10 5 10];
+                        obj.RangeOffsets = [10 5 2.5 0];
+                        obj.InputRangeLimits = [-10 10; -5 5; -2.5 2.5; 0 10];
+                        obj.RangeIndex = ones(1,obj.nPhysicalChannels);
+                    case 2
+                        obj.chBits = 2^16;
+                        obj.Info.SamplingRateRange = [1 50000];
+                        obj.Info.InputVoltageRanges = {'-2.5V:2.5V', '-5V:5V', '-6.25V:6.25V', '-10V:10V', '-12.5V:12.5V',...
+                                           '0V:5V', '0V:10V', '0V:12.5V', 'Δ-5V:5V', 'Δ-10V:10V', 'Δ-12.5V:12.5V'};
+                        obj.RangeVoltageSpan = [5 10 12.5 20 25 5 10 12.5 10 20 25];
+                        obj.RangeOffsets = [2.5 5 6.25 10 12.5 0 0 0 5 10 12.5];
+                        obj.InputRangeLimits = [-2.5 2.5; -5 5; -6.25 6.25; -10 10; -12.5 12.5; 0 5; 0 10; 0 12.5; -5 5; -10 10; -12.5 12.5];
+                        obj.RangeIndex = ones(1,obj.nPhysicalChannels)*4;
                 end
             else
                 error(['Error: The serial port (' portString ') returned an unexpected handshake signature.'])
             end
             % Set defaults (also set in parallel on device)
-            obj.InputRange  = repmat(obj.ValidRanges(1), 1, obj.nPhysicalChannels);
+            obj.Initialized = 1;
             obj.SamplingRate = 1000;
             obj.Status = struct;
             obj.Status.Logging = 0;
@@ -120,12 +150,13 @@ classdef BpodAnalogIn < handle
             obj.Stream2USB = zeros(1,obj.nPhysicalChannels);
             obj.Stream2Module = zeros(1,obj.nPhysicalChannels);
             obj.StreamPrefix = 'R';
+            obj.InputRange  = repmat(obj.Info.InputVoltageRanges(obj.RangeIndex(1)), 1, obj.nPhysicalChannels);
             
             obj.About.Port = 'ArCOM USB serial port object, to simplify data transactions with Arduino. See https://github.com/sanworks/ArCOM';
             obj.About.GUIhandles = 'A struct containing handles of the UI';
             obj.About.Status = 'A struct containing process status: logging, streaming to output module, returning threshold events to state machine';
             obj.About.SamplingRate = 'Sampling rate for all channels (in Hz)';
-            obj.About.InputRange = 'Voltage range mapped to 12 bits of each channel. Valid ranges are in .ValidRanges';
+            obj.About.InputRange = 'Voltage range mapped to 12 bits of each channel. Valid ranges are in .Info.InputVoltageRanges';
             obj.About.nActiveChannels = 'Number of channels to read, beginning with channel 1. Fewer channels -> faster sampling.';
             obj.About.Thresholds = 'Threshold, in volts, generates an event when crossed. The event will be sent to the state machine if SendBpodEvents was called earlier.';
             obj.About.ResetVoltages = 'Threshold reset voltages for each channel. Voltage must go below this value to enable the next event.';
@@ -133,8 +164,8 @@ classdef BpodAnalogIn < handle
             obj.About.Stream2USB = 'Logical vector indicating which channels stream raw data to USB.';
             obj.About.Stream2Module = 'Logical vector indicating which channels stream raw data to output module.';
             obj.About.nSamplesToLog = 'Number of samples to log following a call to StartSDlogging() or serial log command from the state machine. 0 = Infinite.';
-            obj.About.METHODS = 'type methods(myObject) at the command line to see a list of valid methods.';
-            obj.Initialized = 1;
+            obj.About.METHODS = 'type methods(myObject) at the command line to see a list of valid methods.';            
+
         end
         function set.nSamplesToLog(obj, nSamples)
             if obj.Initialized
@@ -157,8 +188,8 @@ classdef BpodAnalogIn < handle
                 if obj.USBstream2File
                     error('Error: The analog input module sampling rate cannot be changed while streaming to a file.');
                 end
-                if sf < obj.ValidSamplingRates(1) || sf > obj.ValidSamplingRates(2)
-                    error(['Error setting sampling rate: valid rates are in range: [' num2str(obj.ValidSamplingRates) '] Hz'])
+                if sf < obj.Info.SamplingRateRange(1) || sf > obj.Info.SamplingRateRange(2)
+                    error(['Error setting sampling rate: valid rates are in range: [' num2str(obj.Info.SamplingRateRange) '] Hz'])
                 end
                 obj.Port.write([obj.opMenuByte 'F'], 'uint8', sf,'uint32');
                 obj.confirmTransmission('sampling rate');
@@ -227,9 +258,9 @@ classdef BpodAnalogIn < handle
                 InputRangeIndex = ones(1,obj.nPhysicalChannels);
                 for i = 1:obj.nPhysicalChannels
                     RangeString = value{i};
-                    RangeIndex = find(strcmp(RangeString, obj.ValidRanges),1);
+                    RangeIndex = find(strcmp(RangeString, obj.Info.InputVoltageRanges),1);
                     if isempty(RangeIndex)
-                        error(['Invalid range specified: ' RangeString '. Valid ranges are: ' obj.ValidRanges]);
+                        error(['Invalid range specified: ' RangeString '. Valid ranges are: ' obj.Info.InputVoltageRanges]);
                     end
                     InputRangeIndex(i) = RangeIndex;
                 end
@@ -286,8 +317,13 @@ classdef BpodAnalogIn < handle
                         error(['Error setting threshold: the threshold for channel ' num2str(i) ' is not within the channel''s voltage range: ' obj.InputRange{i}])
                     end
                 end
+                % Set a default for obj.ResetVoltages
+                ResetVoltages = obj.ResetVoltages;
+                if isempty(ResetVoltages)
+                    ResetVoltages = ones(1,obj.nPhysicalChannels)*-10;
+                end
                 %Rescale thresholds according to voltage range.
-                ResetValueBits = obj.Volts2Bits(obj.ResetVoltages, obj.RangeIndex);
+                ResetValueBits = obj.Volts2Bits(ResetVoltages, obj.RangeIndex);
                 ThresholdBits = obj.Volts2Bits(value, obj.RangeIndex);
                 obj.Port.write([obj.opMenuByte 'T'], 'uint8', [ThresholdBits ResetValueBits], 'uint16');
                 obj.confirmTransmission('thresholds');
@@ -393,7 +429,11 @@ classdef BpodAnalogIn < handle
                 if ~(length(value) == obj.nPhysicalChannels && sum((value == 0) | (value == 1)) == obj.nPhysicalChannels)
                     error('Error setting Stream2USB channels: value for each channel must be 0 or 1')
                 end
-                obj.Port.write([obj.opMenuByte 'C' value obj.Stream2Module], 'uint8');
+                Stream2Module = obj.Stream2Module;
+                if isempty(Stream2Module) % This only occurs in the constructor
+                    Stream2Module = zeros(1, obj.nPhysicalChannels);
+                end
+                obj.Port.write([obj.opMenuByte 'C' value Stream2Module], 'uint8');
                 obj.confirmTransmission('stream to USB');
             end
             obj.Stream2USB = value;
@@ -404,30 +444,44 @@ classdef BpodAnalogIn < handle
                 if ~(length(value) == obj.nPhysicalChannels && sum((value == 0) | (value == 1)) == obj.nPhysicalChannels)
                     error('Error setting Stream2USB channels: value for each channel must be 0 or 1')
                 end
-                obj.Port.write([obj.opMenuByte 'C' obj.Stream2USB value], 'uint8');
+                Stream2USB = obj.Stream2USB;
+                if isempty(Stream2USB) % This only occurs in the constructor
+                    Stream2USB = zeros(1, obj.nPhysicalChannels);
+                end
+                obj.Port.write([obj.opMenuByte 'C' Stream2USB value], 'uint8');
                 obj.confirmTransmission('stream to Module');
             end
             obj.Stream2Module = value;
         end
         function FV = getFirmwareVersion(obj)
-            FV = obj.FirmwareVersion;
+            FV = obj.Info.FirmwareVersion;
         end
         function data = getData(obj)
-            if obj.Port.bytesAvailable > 0
-                obj.Port.read(obj.Port.bytesAvailable); % Clear buffer
-            end
+            obj.Port.flush;
             % Send 'Retrieve' command to the AM
             obj.Port.write([obj.opMenuByte 'D'], 'uint8');
             nSamples = double(obj.Port.read(1, 'uint32'));
             nValues = double(obj.nActiveChannels*nSamples);
-            RawData = obj.Port.read(nValues, 'uint16');
+            RawData = zeros(1,nValues, 'uint16');
+            MaxValuesToRead = 100000;
+            nReads = floor(nValues/MaxValuesToRead);
+            partialReadLength = nValues-(nReads*MaxValuesToRead);
+            Pos = 1;
+            for i = 1:nReads
+                RawData(Pos:Pos+MaxValuesToRead-1) = obj.Port.read(MaxValuesToRead, 'uint16');
+                Pos = Pos + MaxValuesToRead;
+            end
+            if partialReadLength > 0
+                RawData(Pos:Pos+partialReadLength-1) = obj.Port.read(partialReadLength, 'uint16');
+            end
+
             data = struct;
             data.y = zeros(obj.nActiveChannels, nSamples);
             ReshapedRawData = reshape(RawData, obj.nActiveChannels, nSamples);
             for i = 1:obj.nActiveChannels
-                thisMultiplier = obj.RangeMultipliers(obj.RangeIndex(i));
+                thisMultiplier = obj.RangeVoltageSpan(obj.RangeIndex(i));
                 thisOffset = obj.RangeOffsets(obj.RangeIndex(i));
-                data.y(i,:) = ((double(ReshapedRawData(i,:))/8192)*thisMultiplier)-thisOffset;
+                data.y(i,:) = ((double(ReshapedRawData(i,:))/obj.chBits)*thisMultiplier)-thisOffset;
             end
             Period = 1/obj.SamplingRate;
             data.x = 0:Period:(Period*double(nSamples)-Period);
@@ -450,9 +504,9 @@ classdef BpodAnalogIn < handle
             end
             obj.UIhandles.nXDivisions = 12;
             obj.UIhandles.nYDivisions = 8;
-            obj.UIdata.VoltDivPos = 9;
+            obj.UIdata.VoltDivPos = 11;
             obj.UIdata.TimeDivPos = 5;
-            obj.UIdata.VoltDivValues = [0.01 0.02 0.05 0.1 0.2 0.5 1 2 5];
+            obj.UIdata.VoltDivValues = [0.002 0.005 0.01 0.02 0.05 0.1 0.2 0.5 1 2 5];
             obj.UIdata.TimeDivValues = [0.01 0.02 0.05 0.1 0.2 0.5 1 2];
             obj.UIdata.nDisplaySamples = obj.SamplingRate*obj.UIdata.TimeDivValues(obj.UIdata.TimeDivPos)*obj.UIhandles.nXDivisions;
             obj.UIdata.SweepPos = 1;
@@ -576,10 +630,10 @@ classdef BpodAnalogIn < handle
                     'BackgroundColor', OscBGColor, 'FontWeight', 'bold', 'ForegroundColor', LineColors{i});
                 obj.UIhandles.chanEnable(i) = uicontrol('Style', 'checkbox', 'Position', [700 YPos 20 20], 'FontSize', 12,...
                     'BackgroundColor', OscBGColor, 'FontWeight', 'bold', 'Value', obj.Stream2USB(i), 'Callback',@(h,e)obj.UIenableChannel(i));
-                obj.UIhandles.rangeSelect(i) = uicontrol('Style', 'popupmenu', 'Position', [730 YPos 85 20], 'FontSize', dropFontSize,...
+                obj.UIhandles.rangeSelect(i) = uicontrol('Style', 'popupmenu', 'Position', [730 YPos 97 20], 'FontSize', dropFontSize,...
                     'BackgroundColor', [0.8 0.8 0.8], 'FontWeight', 'bold', 'Value', obj.RangeIndex(i), 'Callback',@(h,e)obj.UIsetRange(i),...
-                    'String',obj.ValidRanges, 'enable', EnableStrings{(i<= obj.nActiveChannels)+1});
-                obj.UIhandles.SMeventEnable(i) = uicontrol('Style', 'checkbox', 'Position', [840 YPos 20 20], 'FontSize', 12,...
+                    'String',obj.Info.InputVoltageRanges, 'enable', EnableStrings{(i<= obj.nActiveChannels)+1});
+                obj.UIhandles.SMeventEnable(i) = uicontrol('Style', 'checkbox', 'Position', [845 YPos 20 20], 'FontSize', 12,...
                     'BackgroundColor', OscBGColor, 'FontWeight', 'bold', 'Value', obj.SMeventsEnabled(i), 'Callback',@(h,e)obj.UIenableSMEvents(i),...
                     'TooltipString', ['Send threshold crossing events from channel ' num2str(i) ' to state machine']);
                 obj.UIhandles.thresholdSet(i) = uicontrol('Style', 'edit', 'Position', [890 YPos 55 20], 'FontSize', 10,...
@@ -613,7 +667,8 @@ classdef BpodAnalogIn < handle
                     if obj.USBstream2File
                         activeChannels = find(obj.Stream2USB(1:obj.nActiveChannels));
                         InfoStruct = struct;
-                        InfoStruct.FirmwareVersion = obj.FirmwareVersion;
+                        InfoStruct.HardwareVersion = obj.Info.HardwareVersion;
+                        InfoStruct.FirmwareVersion = obj.Info.FirmwareVersion;
                         InfoStruct.SamplingRate_Hz = obj.SamplingRate;
                         InfoStruct.ChannelInputRanges_V = obj.InputRange;
                         InfoStruct.SampleUnits = 'Volts';
@@ -645,6 +700,24 @@ classdef BpodAnalogIn < handle
                 drawnow;
             end
         end
+
+        function result = testPSRAM(obj)
+            if obj.Info.HardwareVersion ~= 2
+                error('Bpod Analog Input Module v1 does not have PSRAM.')
+            end
+            obj.Port.write([obj.opMenuByte '%'], 'uint8');
+            disp(['Testing PSRAM. This may take up to 20 seconds.']);
+            while obj.Port.bytesAvailable < 2
+                pause(.1);
+            end
+            memSize = obj.Port.read(1, 'uint8');
+            result = obj.Port.read(1, 'uint8');
+            if result
+                disp(['Test PASSED. ' num2str(memSize) ' MB detected.']);
+            else
+                disp('Test FAILED');
+            end
+        end
         
         function endAcq(obj)
             obj.stopUIStream;
@@ -653,6 +726,11 @@ classdef BpodAnalogIn < handle
         end
         
         function delete(obj)
+            try
+                obj.Port.write([obj.opMenuByte 'X'], 'uint8');
+                pause(.01);
+            catch
+            end
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
         end
         
@@ -699,50 +777,26 @@ classdef BpodAnalogIn < handle
             nElements = length(VoltVector);
             bits = zeros(1,nElements);
             for i = 1:nElements
-                thisMultiplier = obj.RangeMultipliers(RangeIndexes(i));
+                thisMultiplier = obj.RangeVoltageSpan(RangeIndexes(i));
                 thisOffset = obj.RangeOffsets(RangeIndexes(i));
-                bits(i) = ((VoltVector(i) + thisOffset)/thisMultiplier)*obj.chBits;
+                bits(i) = ((VoltVector(i) + thisOffset)/thisMultiplier)*(obj.chBits-1);
             end
         end
         function ValueOut = ScaleValue(obj,Action,ValueIn,RangeString)
             
             %validate input: nrows in ValueIn == n values in Range
-            
+            BitWidth = obj.chBits-1;
+            if obj.Info.HardwareVersion == 1
+                BitWidth = 2^13;
+            end
             ValueOut = nan(size(ValueIn));
-            
             for i=1:size(ValueIn,1)
-                
-                switch obj.RangeIndex(i)
-                    case 4 %'0V - 10V'
-                        switch Action
-                            case 'toVolts'
-                                ValueOut(i,:) = double(ValueIn(i,:)) * 10/2^13 - 0.0;
-                            case 'toBits'
-                                ValueOut(i,:) = uint32((ValueIn(i,:)+0.0)*2^13/10);
-                        end
-                    case 3 %'-2.5V - 2.5V'
-                        switch Action
-                            case 'toVolts'
-                                ValueOut(i,:) = double(ValueIn(i,:)) * 5/2^13 - 2.5;
-                            case 'toBits'
-                                ValueOut(i,:) = uint32((ValueIn(i,:)+2.5)*2^13/5);
-                        end
-                    case 2 %'5V - 5V'
-                        switch Action
-                            case 'toVolts'
-                                ValueOut(i,:) = double(ValueIn(i,:)) * 10/2^13 - 5.0;
-                            case 'toBits'
-                                ValueOut(i,:) = uint32((ValueIn(i,:)+5.0)*2^13/10);
-                        end
-                    case 1 %'-10V - 10V'
-                        switch Action
-                            case 'toVolts'
-                                ValueOut(i,:) = double(ValueIn(i,:)) * 0.002455851742364 -10.091771492112841;
-                                %ValueOut(i,:) = ValueIn(i,:);
-                            case 'toBits'
-                                ValueOut(i,:) = uint32((ValueIn(i,:)+10.0)*2^13/20);
-                        end
-                    otherwise
+                thisRange = obj.RangeIndex(i);
+                switch Action
+                    case 'toVolts'
+                        ValueOut(i,:) = double(ValueIn(i,:)) * obj.RangeVoltageSpan(thisRange)/BitWidth - obj.RangeOffsets(thisRange);
+                    case 'toBits'
+                        ValueOut(i,:) = uint32((ValueIn(i,:) + obj.RangeOffsets(thisRange)) * BitWidth/obj.RangeVoltageSpan(thisRange));
                 end
             end
         end
@@ -790,12 +844,12 @@ classdef BpodAnalogIn < handle
         end
         function UIsetSamplingRate(obj)
             obj.stopUIStream;
-            ValidSF = 0;
+            ValidSF = 1;
             SFstring = get(obj.UIhandles.SFEdit, 'String');
             SF = str2double(SFstring);
             if ~isnan(SF)
                 SF = round(SF);
-                if (SF >= 1) && (SF <= obj.ValidSamplingRates(2))
+                if (SF >= obj.Info.SamplingRateRange(1)) && (SF <= obj.Info.SamplingRateRange(2))
                     ValidSF = 1;
                 end
             end
@@ -881,7 +935,7 @@ classdef BpodAnalogIn < handle
         function UIsetRange(obj, chan)
             obj.stopUIStream;
             value = get(obj.UIhandles.rangeSelect(chan), 'Value');
-            obj.InputRange{chan} = obj.ValidRanges{value};
+            obj.InputRange{chan} = obj.Info.InputVoltageRanges{value};
             set(obj.UIhandles.thresholdSet(chan), 'String', num2str(obj.Thresholds(chan)));
             set(obj.UIhandles.resetSet(chan), 'String', num2str(obj.ResetVoltages(chan)));
             if obj.Streaming
@@ -962,9 +1016,9 @@ classdef BpodAnalogIn < handle
                         for ch = 1:nChannelsStreaming
                             thisChIndex = updateChannels(ch);
                             NSThisCh = NewSamples(ch:nChannelsStreaming:end);
-                            M = obj.RangeMultipliers(obj.RangeIndex(thisChIndex));
+                            M = obj.RangeVoltageSpan(obj.RangeIndex(thisChIndex));
                             O = obj.RangeOffsets(obj.RangeIndex(thisChIndex));
-                            NSThisChVolts = ((double(NSThisCh)/obj.chBits)*M)-O;
+                            NSThisChVolts = ((double(NSThisCh)/(obj.chBits-1))*M)-O;
                             if obj.USBstream2File
                                 SampleDataForFile(ch,:) = NSThisChVolts;
                             end
