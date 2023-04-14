@@ -27,15 +27,15 @@ classdef BpodAnalogIn < handle
         Timer % MATLAB timer object
         Status % Struct containing status of ongoing ops (logging, streaming, etc)
         nActiveChannels % Number of channels to sample (consecutive, beginning with channel 1)
-        SamplingRate % 1Hz-50kHz, affects all channels
+        SamplingRate % 1Hz-10kHz on v1, 1Hz-50kHz on v2, affects all channels
         InputRange % A cell array of strings indicating voltage range for 12-bit conversion. Valid ranges are in Info.InputVoltageRanges (below)
         Thresholds % Threshold (V) for each channel. Analog signal crossing the threshold generates an event.
-        ResetVoltages % Voltage must cross ResetValue (V) before another threshold event can occur
+        ResetVoltages % Voltage must cross ResetValue (V) before another threshold event can occur (except in Threshold Mode 1, see above)
         SMeventsEnabled % Logical vector indicating channels that generate events
         Stream2USB % Logical vector indicating channels to stream to USB when streaming is enabled
-        Stream2Module % Logical vector indicating channels to stream to output module (raw data)
+        Stream2Module % Logical vector indicating channels to stream via Ethernet cable directly to an analog output or DDS module (raw data)
         StreamPrefix % Prefix byte sent before each sample when streaming to output module
-        nSamplesToLog = Inf; % Number of samples to log on trigger, 0 = infinite
+        nSamplesToLog = Inf; % Number of samples to log to microSD on trigger, 0 = infinite
         USBStreamFile = []; % Full path to file for data acquired with scope() GUI. If empty, scope() data is not saved.
     end
     
@@ -105,6 +105,12 @@ classdef BpodAnalogIn < handle
                         obj.Port.write([obj.opMenuByte 't' 1], 'uint8'); % Throttle USB for Teensy 4.1 + MATLAB built-in serial interface
                     else
                         obj.Port.write([obj.opMenuByte 't' 0], 'uint8');
+                    end
+                    % If HW version 1, restart serial port with correct baud date --> buffer sizes
+                    if obj.Info.HardwareVersion == 1
+                        obj.Port = [];
+                        pause(.2);
+                        obj.Port = ArCOMObject_Bpod(portString, 12000000, UsePsychToolbox, [], 1000000, 1000000);
                     end
                 end
                 switch obj.Info.HardwareVersion
@@ -692,6 +698,24 @@ classdef BpodAnalogIn < handle
                     end
                 end
                 drawnow;
+            end
+        end
+
+        function result = testPSRAM(obj)
+            if obj.Info.HardwareVersion ~= 2
+                error('Bpod Analog Input Module v1 does not have PSRAM.')
+            end
+            obj.Port.write([obj.opMenuByte '%'], 'uint8');
+            disp(['Testing PSRAM. This may take up to 20 seconds.']);
+            while obj.Port.bytesAvailable < 2
+                pause(.1);
+            end
+            memSize = obj.Port.read(1, 'uint8');
+            result = obj.Port.read(1, 'uint8');
+            if result
+                disp(['Test PASSED. ' num2str(memSize) ' MB detected.']);
+            else
+                disp('Test FAILED');
             end
         end
         
