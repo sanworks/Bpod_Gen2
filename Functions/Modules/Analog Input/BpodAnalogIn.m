@@ -44,6 +44,7 @@ classdef BpodAnalogIn < handle
         UIdata % A struct with internal user interface data
         opMenuByte = 213; % Byte code to access op menu
         RangeVoltageSpan % Span of each range in volts
+        RangeCodes % Byte codes for voltage ranges in ADC registers
         RangeOffsets % Distance of 0V from bottom of each range
         InputRangeLimits % Table of minimum and maximum voltages for each range
         RangeIndex  % Integer code for voltage range (position in Info.InputVoltageRanges vector above)
@@ -118,6 +119,7 @@ classdef BpodAnalogIn < handle
                         obj.chBits = 2^13;
                         obj.Info.SamplingRateRange = [1 10000];
                         obj.Info.InputVoltageRanges = {'-10V:10V', '-5V:5V', '-2.5V:2.5V','0V:10V'};
+                        obj.RangeCodes = [0 1 2 3];
                         obj.RangeVoltageSpan = [20 10 5 10];
                         obj.RangeOffsets = [10 5 2.5 0];
                         obj.InputRangeLimits = [-10 10; -5 5; -2.5 2.5; 0 10];
@@ -126,10 +128,11 @@ classdef BpodAnalogIn < handle
                         obj.chBits = 2^16;
                         obj.Info.SamplingRateRange = [1 50000];
                         obj.Info.InputVoltageRanges = {'-2.5V:2.5V', '-5V:5V', '-6.25V:6.25V', '-10V:10V', '-12.5V:12.5V',...
-                                           '0V:5V', '0V:10V', '0V:12.5V', 'Δ-5V:5V', 'Δ-10V:10V', 'Δ-12.5V:12.5V'};
-                        obj.RangeVoltageSpan = [5 10 12.5 20 25 5 10 12.5 10 20 25];
-                        obj.RangeOffsets = [2.5 5 6.25 10 12.5 0 0 0 5 10 12.5];
-                        obj.InputRangeLimits = [-2.5 2.5; -5 5; -6.25 6.25; -10 10; -12.5 12.5; 0 5; 0 10; 0 12.5; -5 5; -10 10; -12.5 12.5];
+                                                        '0V:5V', '0V:10V', '0V:12.5V'};
+                        obj.RangeCodes = [0 1 2 3 4 5 6 7];
+                        obj.RangeVoltageSpan = [5 10 12.5 20 25 5 10 12.5];
+                        obj.RangeOffsets = [2.5 5 6.25 10 12.5 0 0 0];
+                        obj.InputRangeLimits = [-2.5 2.5; -5 5; -6.25 6.25; -10 10; -12.5 12.5; 0 5; 0 10; 0 12.5];
                         obj.RangeIndex = ones(1,obj.nPhysicalChannels)*4;
                 end
             else
@@ -250,21 +253,26 @@ classdef BpodAnalogIn < handle
         end
         
         function set.InputRange(obj, value)
-            %1: '-10V - 10V' 2: '-5V - 5V' 3: '-2.5V - 2.5V' 4: '0V - 10V'
             if obj.Initialized
                 if obj.USBstream2File
                     error('Error: The analog input module voltage range cannot be changed while streaming to a file.');
                 end
                 InputRangeIndex = ones(1,obj.nPhysicalChannels);
+                InputRangeIndexCode = ones(1, obj.nPhysicalChannels);
                 for i = 1:obj.nPhysicalChannels
                     RangeString = value{i};
                     RangeIndex = find(strcmp(RangeString, obj.Info.InputVoltageRanges),1);
                     if isempty(RangeIndex)
-                        error(['Invalid range specified: ' RangeString '. Valid ranges are: ' obj.Info.InputVoltageRanges]);
+                        RangeListString = [];
+                        for i = 1:length(obj.Info.InputVoltageRanges)
+                            RangeListString = [RangeListString char(10) obj.Info.InputVoltageRanges{i}];
+                        end
+                        error(['Invalid range specified: ' RangeString '. Valid ranges are: ' RangeListString]);
                     end
                     InputRangeIndex(i) = RangeIndex;
+                    InputRangeIndexCode(i) = obj.RangeCodes(RangeIndex);
                 end
-                obj.Port.write([obj.opMenuByte 'R' InputRangeIndex-1], 'uint8');
+                obj.Port.write([obj.opMenuByte 'R' InputRangeIndexCode], 'uint8');
                 obj.confirmTransmission('voltage range');
                 oldRangeIndex = obj.RangeIndex;
                 obj.RangeIndex = InputRangeIndex;
@@ -456,6 +464,26 @@ classdef BpodAnalogIn < handle
         function FV = getFirmwareVersion(obj)
             FV = obj.Info.FirmwareVersion;
         end
+
+        function voltage = readChannel(obj, chan)
+            USBStreamConfig = obj.Stream2USB;
+            NewStreamConfig = zeros(1,length(USBStreamConfig));
+            NewStreamConfig(chan) = 1;
+            obj.Stream2USB = NewStreamConfig;
+            obj.startUSBStream;
+            while obj.Port.bytesAvailable < 4
+                pause(.001);
+            end
+            obj.stopUSBStream;
+            Msg = obj.Port.read(2, 'uint16');
+            pause(.1); % Pause to ensure that streaming has stopped
+            obj.Port.flush;
+            thisMultiplier = obj.RangeVoltageSpan(obj.RangeIndex(chan));
+            thisOffset = obj.RangeOffsets(obj.RangeIndex(chan));
+            voltage = ((double(Msg(2))/obj.chBits)*thisMultiplier)-thisOffset;
+            obj.Stream2USB = USBStreamConfig;
+        end
+
         function data = getData(obj)
             obj.Port.flush;
             % Send 'Retrieve' command to the AM
