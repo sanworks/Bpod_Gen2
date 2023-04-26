@@ -98,7 +98,7 @@ classdef RotaryEncoderModule < handle
                 end
             end
             % Create ArCOM wrapper for USB communication with Teensy
-            obj.Port = ArCOMObject_Bpod(portString, 115200);
+            obj.Port = ArCOMObject_Bpod(portString, 12000000);
             obj.Port.write('CX', 'uint8'); % C = handshake, X = reset data streams
             response = obj.Port.read(1, 'uint8');
             if response ~= 217
@@ -111,6 +111,10 @@ classdef RotaryEncoderModule < handle
             if reply == 0
                 obj.HardwareVersion = 2;
                 obj.halfPoint = 2048;
+                % If HW version 2, restart serial port with Teensy 4's correct baud rate --> buffer sizes
+                obj.Port = [];
+                pause(.2);
+                obj.Port = ArCOMObject_Bpod(portString, 480000000);
             end
             obj.resetParams();
             obj.displayPositions = nan(1,obj.nDisplaySamples); % UI y data

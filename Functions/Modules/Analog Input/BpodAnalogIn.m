@@ -74,7 +74,7 @@ classdef BpodAnalogIn < handle
                         UsePsychToolbox = 'psychtoolbox';
                 end
             end
-            obj.Port = ArCOMObject_Bpod(portString, 480000000, UsePsychToolbox, [], 1000000, 1000000); %115200
+            obj.Port = ArCOMObject_Bpod(portString, 12000000, UsePsychToolbox, [], 1000000, 1000000); %115200
             obj.Port.write([obj.opMenuByte 'O'], 'uint8');
             HandShakeOkByte = obj.Port.read(1, 'uint8');
             if HandShakeOkByte == 161 % Correct handshake response
@@ -107,11 +107,11 @@ classdef BpodAnalogIn < handle
                     else
                         obj.Port.write([obj.opMenuByte 't' 0], 'uint8');
                     end
-                    % If HW version 1, restart serial port with correct baud date --> buffer sizes
-                    if obj.Info.HardwareVersion == 1
+                    % If HW version 2, restart serial port with Teensy 4's correct baud rate --> buffer sizes
+                    if obj.Info.HardwareVersion == 2
                         obj.Port = [];
                         pause(.2);
-                        obj.Port = ArCOMObject_Bpod(portString, 12000000, UsePsychToolbox, [], 1000000, 1000000);
+                        obj.Port = ArCOMObject_Bpod(portString, 480000000, UsePsychToolbox);
                     end
                 end
                 switch obj.Info.HardwareVersion

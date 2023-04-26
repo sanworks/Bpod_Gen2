@@ -46,13 +46,13 @@ function obj = Connect2BpodSM(obj, portString, varargin)
         Connected = 0;
         if ForceJava
             try
-                obj.SerialPort = ArCOMObject_Bpod(ThisPort, 115200, 'Java');
+                obj.SerialPort = ArCOMObject_Bpod(ThisPort, 12000000, 'Java');
                 Connected = 1;
             catch
             end
         else
             try
-                obj.SerialPort = ArCOMObject_Bpod(ThisPort, 115200);
+                obj.SerialPort = ArCOMObject_Bpod(ThisPort, 12000000);
                 Connected = 1;
             catch
             end
@@ -78,7 +78,7 @@ function obj = Connect2BpodSM(obj, portString, varargin)
                     if Message == 222 % If Bpod's discovery byte appeared in the buffer
                         obj.SerialPort.write('6', 'uint8'); % Cmd for handshake + stop sending discovery byte
                         pause(.5) % Wait for Bpod to stop sending discovery bytes
-                        Trash = obj.SerialPort.read(obj.SerialPort.bytesAvailable, 'uint8'); % Clear buffer
+                        obj.SerialPort.flush; % Clear buffer
                         obj.SerialPort.write('6', 'uint8'); % Re-request handshake
                         Reply = obj.SerialPort.read(1, 'uint8');
                         if (Reply == '5') % If the Bpod state machine replied correctly
