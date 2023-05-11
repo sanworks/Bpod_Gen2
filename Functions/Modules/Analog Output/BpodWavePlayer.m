@@ -341,7 +341,7 @@ classdef BpodWavePlayer < handle
             end
             minVolts = min(volts);
             maxVolts = max(volts);
-            maxRange = VoltageWidth+(PositiveOnly*0.5);
+            maxRange = (VoltageWidth/2)+(PositiveOnly*(VoltageWidth/2));
             minRange = ((VoltageWidth/2)*-1) * (1-PositiveOnly);
             if ((minVolts < minRange) || (maxVolts > maxRange))
                 error(['Error converting volts to bits: All voltages must be within the current range: ' obj.OutputRange '.'])

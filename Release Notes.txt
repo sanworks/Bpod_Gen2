@@ -1,3 +1,11 @@
+---v1.74---
+-Reconfigured baud rate arguments for serial interfaces of acquisition modules. Baud rate now matches the actual capacity of the channel. This improves handling of high throughput incoming data with MATLAB's new serialport class.
+-Python: Added class to control Bpod Valve Driver Module
+-Python: Moved module classes to a single folder with arcom and requirements.txt
+-Python: Edited code to improve compliance with PEP8 (not backwards compatible with existing code)
+-BpodWavePlayer: Fixed range verification for setFixedVoltage() function
+-BpodAnalogIn: Added readChannel() function to return the current voltage on an input channel
+
 ---v1.73---
 -Added support for Analog Input Module v2
 -BpodAnalogIn: Added support for firmware v5

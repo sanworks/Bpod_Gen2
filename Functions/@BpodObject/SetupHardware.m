@@ -69,6 +69,12 @@ function obj = SetupHardware(obj)
             case 4
                SMName = 'r2_Plus';
                FirmwareName = 'StateMachine_Bpod2Plus';
+               if obj.SerialPort.Interface == 0 % For Teensy 4.1, restart serial port with correct baud rate --> buffer sizes
+                   FSMportName = obj.SerialPort.PortName;
+                   obj.SerialPort = [];
+                   pause(.2);
+                   obj.SerialPort = ArCOMObject_Bpod(FSMportName, 480000000, [], [], 1000000, 1000000);
+               end
         end
         disp(['Bpod State Machine ' SMName ' connected on port ' obj.SerialPort.PortName])
         if obj.FirmwareVersion ~= obj.CurrentFirmware.StateMachine 
