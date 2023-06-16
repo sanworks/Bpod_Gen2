@@ -176,12 +176,28 @@ function obj = LoadModules(obj)
                 if isfield(obj.CurrentFirmware, thisModuleName)
                     expectedFirmwareVersion = obj.CurrentFirmware.(thisModuleName);
                     if thisModuleFirmware < expectedFirmwareVersion
+                        AutoUpdatable = 1;
+                        if strcmp(thisModuleName, 'ValveModule')
+                            thisModuleName = 'ValveDriverModule';
+                            if isnan(obj.Modules.HWVersion_Major(i))
+                                obj.Modules.HWVersion_Major(i) = 1;
+                                AutoUpdatable = 0;
+                            end
+                        end
+                        if strcmp(thisModuleName, 'I2C')
+                            AutoUpdatable = 0;
+                        end
                         disp([char(13) 'WARNING: ' thisModuleName ' module with old firmware detected, v' num2str(thisModuleFirmware) '. ' char(13)...
-                            'Please update its firmware to v' num2str(expectedFirmwareVersion) ', restart Bpod and try again.' char(13)...
-                            '1. From the Bpod console, pair the ' thisModuleName ' module with its USB port.' char(13)...
+                            'Please update its firmware to v' num2str(expectedFirmwareVersion) ', restart Bpod and try again.']);
+                        if AutoUpdatable
+                            disp(['1. From the Bpod console, pair the ' thisModuleName ' module with its USB port.' char(13)...
                             '2. While Bpod is still open, click <a href="matlab:LoadBpodFirmware(''' thisModuleName ''', 1);">here</a> to start the update tool, LoadBpodFirmware().' char(13)...
                             '3. Select the correct firmware and USB port.' char(13)  '   NOTE: If updating the analog output module, use the correct version (4ch or 8ch).' char(13) ...
                             'If necessary, manual firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
+                        else
+                            disp(['Firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
+                            disp(['IMPORTANT NOTE: Modules based on the red SAMD21 Mini board' char(13) '(Original Valve Driver, I2C and SNES)' char(13) 'should NOT be updated with the LoadBpodFirmware tool.'])
+                        end
                         oldFirmwareFound = 1;
                     elseif thisModuleFirmware > expectedFirmwareVersion
                         Errormsg = ['WARNING: The firmware on the ' thisModuleName ' module on port ' num2str(i) ' is newer than your Bpod software for MATLAB. ' char(13) 'Please update your MATLAB software from the Bpod repository and try again.'];

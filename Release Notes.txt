@@ -1,3 +1,7 @@
+---v1.75---
+-Added support for valve driver module v2
+-Analog Input: Added updated firmware to fix a bug affecting hardware v2. When logging to microSD at >10kHz, on stopping acquisition the last buffer-full of data was sometimes read from an incorrect memory location.
+
 ---v1.74---
 -Reconfigured baud rate arguments for serial interfaces of acquisition modules. Baud rate now matches the actual capacity of the channel. This improves handling of high throughput incoming data with MATLAB's new serialport class.
 -Python: Added class to control Bpod Valve Driver Module
