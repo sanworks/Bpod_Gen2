@@ -44,13 +44,18 @@ if nargin==0,
             CandidateHiFiPlayers = USBSerialPorts;
             load(BpodSystem.Path.ModuleUSBConfig)
             LastPairedAudioPlayerPort = ModuleUSBConfig.USBPorts(strcmp(ModuleUSBConfig.ModuleNames, 'AudioPlayer1'));
-            if ~isempty(LastPairedAudioPlayerPort)
-                LastPairedAudioPlayerPort = LastPairedAudioPlayerPort{1};
-            end
             LastPairedHiFiPort = ModuleUSBConfig.USBPorts(strcmp(ModuleUSBConfig.ModuleNames, 'HiFi1'));
             if ~isempty(LastPairedHiFiPort)
                 LastPairedHiFiPort = LastPairedHiFiPort{1};
+            else
+                LastPairedHiFiPort{1} = '';
             end
+            if ~isempty(LastPairedAudioPlayerPort)
+                LastPairedAudioPlayerPort = LastPairedAudioPlayerPort{1};
+            else
+                LastPairedAudioPlayerPort{1} = '';
+            end
+
             if sum(strcmp(CandidateAudioPlayers, LastPairedAudioPlayerPort)) > 0
                 AssertAudioPlayerAvailable(LastPairedAudioPlayerPort, 229);
                 BpodSystem.LoadModules();

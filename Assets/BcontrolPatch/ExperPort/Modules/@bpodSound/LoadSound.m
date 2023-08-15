@@ -1,5 +1,8 @@
 function [sm] = LoadSound(sm, trignum, sound, side, tau_ms, predelay_s, loop_fg)
    global BpodSystem
+   if ~isfield(BpodSystem.PluginObjects, 'SoundServerType')
+       error('LoadSound() requires a sound server. The current setup did not detect one.')
+   end
    if BpodSystem.PluginObjects.SoundServerType == 1
        if BpodSystem.Status.InStateMatrix == 0 % If pre-session, load in fast mode
            if strcmp(BpodSystem.PluginObjects.SoundServer.LoadMode, 'Safe')
