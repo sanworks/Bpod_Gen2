@@ -1,13 +1,6 @@
-This example Bonsai workflow sends a byte (3) directly to the state machine's App serial port, resulting in an APP_SoftCode3 event.
-NOTE: This example requires state machine r2 or newer, with firmware v23 and Bpod Console v1.71 or newer
-ALSO NOTE: This example relies on a C# workaround. Future versions of Bonsai may include a specialized source and sink for 
-           writing bytes to serial ports.
+This Bonsai example acts as an echo server. It opens the state machine's app serial port and waits for bytes to arrive. Bonsai reads any bytes arriving from the state machine, and sends the same bytes back, generating Bpod events.
 
-Usage:
--From the Bpod Console, click the info icon (magnifying glass)
--Note the name of the App Serial Port in the 'State Machine' hardware description (on the left side of the info panel). 
- It should be 'COM3' or similar.
--In the Bonsai workflow, select the 'USBSerial' sink and set the 'PortName' property equal to the app serial port name.
--The default byte to send is 3. To send a different byte (in range 0-14) select the 'Byte' source and adjust the 'Value' property.
--Run any Bpod protocol
--When the Bonsai workflow is run, the APP_SoftCode3 event will be received by the state machine.
+Use this with /Bpod_Gen2/Examples/State Machines/USB Soft Codes/SoftCode_2_App.m
+This example sends byte 0x5 to Bonsai, and waits for 1 second. Bonsai immediately returns the byte, creating a APP_SoftCode5 event. On our test PC, round trip latency was 0.5ms.
+
+In the Bonsai layout, in the 'CreateSerialPort' source, you'll need to update the name of the port to match the state machine's App serial port (see 'Info' by clicking the spyglass icon on the Bpod console). Also note that the 'DtrEnable' property must be set to 'true'.
