@@ -30,7 +30,9 @@
         </Combinator>
       </Expression>
       <Expression xsi:type="Combinator">
-        <Combinator xsi:type="port:SerialWrite" />
+        <Combinator xsi:type="port:SerialWrite">
+          <port:PortName>COM17</port:PortName>
+        </Combinator>
       </Expression>
     </Nodes>
     <Edges>
