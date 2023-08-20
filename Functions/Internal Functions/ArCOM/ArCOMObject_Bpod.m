@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+Copyright (C) 2023 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 

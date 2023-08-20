@@ -1,10 +1,33 @@
-% Example Bpod code that exchanges a byte code with Bonsai via the state machine's APP serial port.
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) 2023 Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
+
+% This example Bpod code exchanges a byte code with Bonsai via the state machine's APP serial port.
 % The APP serial port name can be found from the info (spyglass) icon on the Bpod console GUI.
 % Note: This feature is only available on FSM 2 or newer, and requires Firmware v23
 %
 % To run the example:
-% 1. Run the Bonsai app in this folder.
-% 2. Run this .m file
+% 1. Launch the Bpod console and find your APP serial port name by clicking the info (spyglass) icon  
+% 2. Launch Bonsai in this folder and load the workflow in this folder
+% 3. In the Bonsai workflow, click on each of the three nodes and change the PortName to the APP serial port name
+% 4. Run the workflow (click Start)
+% 5. Run this .m file
 %
 % How it works:
 % - The Bonsai app opens the Bpod APP serial port and acts as an echo server,
