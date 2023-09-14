@@ -177,4 +177,4 @@ if ~ispc && ~ismac
 end
 text(xPos(1), 190,' Bpod Finite', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
 text(xPos(2), 130,'State Machine', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
-text(xPos(3), 70, '    v2.0', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
+text(xPos(3), 70, ['    v2.' num2str(BpodSystem.HW.CircuitRevision.StateMachine)], 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);

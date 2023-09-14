@@ -208,7 +208,7 @@ classdef BpodWavePlayer < handle
         function set.TriggerProfiles(obj, profileMatrix)
             [length, width] = size(profileMatrix);
             if (length ~= obj.nTriggerProfiles) || (width ~= obj.nChannels)
-                error(['Error setting trigger profiles: matrix of trigger profiles must be ' num2str(obj.nTriggerProfiles) ' profiles X ' num2str(nChannels) ' channels.'])
+                error(['Error setting trigger profiles: matrix of trigger profiles must be ' num2str(obj.nTriggerProfiles) ' profiles X ' num2str(obj.nChannels) ' channels.'])
             end
             if sum(sum((profileMatrix > 0)') > obj.maxSimultaneousChannels) > 0
                 error(['Error setting trigger profiles: the current sampling rate only allows ' num2str(obj.maxSimultaneousChannels) ' channels to be triggered simultaneously. Your profile matrix contains at least 1 profile with too many channels.']);
