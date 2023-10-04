@@ -99,7 +99,6 @@ classdef BpodObject < handle
             obj.LiveTimestamps = 0;
             obj.SplashData.BG = SplashBGData;
             obj.SplashData.Messages = SplashMessageData;
-            obj.GUIHandles.SplashFig = figure('Position',[400 300 485 300],'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
             obj.Status.BpodStartTime = now;
             obj.Status = struct;
             obj.Status.LastTimestamp = 0;
@@ -339,10 +338,10 @@ classdef BpodObject < handle
         end
         function obj = Wiki(obj)
             if ispc || ismac
-                web ('https://www.sites.google.com/site/bpoddocumentation/home', '-browser');
+                web ('https://sanworks.github.io/Bpod_Wiki/', '-browser');
             else
-                disp('**NOTE** If MATLAB is running as root, Firefox may fail to open. The wiki is at: https://www.sites.google.com/site/bpoddocumentation/home');
-                web ('https://www.sites.google.com/site/bpoddocumentation/home');
+                disp('**NOTE** If MATLAB is running as root, your browser may fail to open. The wiki is at: https://sanworks.github.io/Bpod_Wiki/');
+                web ('https://sanworks.github.io/Bpod_Wiki/');
             end
         end
         function obj = SaveSettings(obj)
@@ -654,6 +653,7 @@ classdef BpodObject < handle
 
         function BpodSplashScreen(obj, Stage)
             if Stage == 1
+                obj.GUIHandles.SplashFig = figure('Position',[400 300 485 300],'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
                 ha = axes('units','normalized', 'position',[0 0 1 1]);
                 uistack(ha,'bottom');
             end
