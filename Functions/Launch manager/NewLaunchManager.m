@@ -233,7 +233,7 @@ else
     startPos = 2;
 end
 Candidates = dir(BpodSystem.Path.ProtocolFolder);
-ProtocolNames = cell(1);
+ProtocolNames = cell(0);
 nProtocols = 0;
 for x = startPos:length(Candidates)
     if Candidates(x).isdir
@@ -255,6 +255,7 @@ for x = startPos:length(Candidates)
         ProtocolNames{nProtocols} = ProtocolName;
     end
 end
+
 if isempty(ProtocolNames)
     ProtocolNames = {'No Protocols Found'};
 else

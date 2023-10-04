@@ -43,7 +43,11 @@ if ~isempty(BpodSystem)
     end
     if BpodSystem.Status.BeingUsed == 0
         if BpodSystem.EmulatorMode == 0
-            BpodSystem.SerialPort.write('Z', 'uint8');
+            try
+                BpodSystem.SerialPort.write('Z', 'uint8');
+            catch Error
+                disp("It appears that the BPOD may have been disconnected prematurely. Close GUI.")
+            end
         end
         pause(.1);
         delete(BpodSystem.GUIHandles.MainFig);
