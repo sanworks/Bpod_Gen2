@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -23,10 +23,13 @@ function obj = SetupStateMachine(obj)
     InputChannelNames = cell(1,obj.HW.n.Inputs);
     Pos = 1;
     nUSB = 0;
+    nUSB_APP = 0;
     nBNCs = 0;
     nWires = 0;
     nPorts = 0;
+    nFlexIO = 0;
     nChannels = 0;
+    nSoftCodesPerUSBChannel = obj.HW.n.SoftCodes/(obj.HW.n.USBChannels+obj.HW.n.USBChannels_External);
     for i = 1:obj.HW.n.Inputs
         switch obj.HW.Inputs(i)
             case 'U'
@@ -55,13 +58,47 @@ function obj = SetupStateMachine(obj)
                 end
                 nChannels = nChannels + 1; nUSB = nUSB + 1;
                 InputChannelNames{nChannels} = 'USB';
-                for j = 1:obj.HW.n.SoftCodes;
+                for j = 1:nSoftCodesPerUSBChannel
                     EventNames{Pos} = ['SoftCode' num2str(j)]; Pos = Pos + 1;
+                end
+                if obj.MachineType < 3
+                    if Pos < obj.HW.n.MaxSerialEvents
+                        for j = obj.HW.n.SoftCodes+1:obj.HW.n.SoftCodes+(obj.HW.n.MaxSerialEvents-Pos)+1
+                            EventNames{Pos} = ['SoftCode' num2str(j)]; Pos = Pos + 1;
+                        end
+                    end
+                end
+            case 'Z'
+                if nUSB_APP == 0
+                    obj.HW.Pos.Event_USB_APP = Pos;
+                end
+                nChannels = nChannels + 1; nUSB_APP = nUSB_APP + 1;
+                InputChannelNames{nChannels} = 'APP_USB';
+                for j = 1:nSoftCodesPerUSBChannel
+                    EventNames{Pos} = ['APP_SoftCode' num2str(j-1)]; Pos = Pos + 1;
                 end
                 if Pos < obj.HW.n.MaxSerialEvents
                     for j = obj.HW.n.SoftCodes+1:obj.HW.n.SoftCodes+(obj.HW.n.MaxSerialEvents-Pos)+1
-                        EventNames{Pos} = ['SoftCode' num2str(j)]; Pos = Pos + 1;
+                        EventNames{Pos} = ['APP_SoftCode' num2str(j-1)]; Pos = Pos + 1;
                     end
+                end
+            case 'F'
+                if nFlexIO == 0
+                    obj.HW.Pos.Event_FlexIO = Pos;
+                end
+                nChannels = nChannels + 1; nFlexIO = nFlexIO + 1;
+                if obj.HW.FlexIO_ChannelTypes(nFlexIO) == 0
+                    InputChannelNames{nChannels} = ['Flex' num2str(nFlexIO)];
+                    EventNames{Pos} = [InputChannelNames{nChannels} 'High']; Pos = Pos + 1;
+                    EventNames{Pos} = [InputChannelNames{nChannels} 'Low']; Pos = Pos + 1;
+                elseif obj.HW.FlexIO_ChannelTypes(nFlexIO) == 2
+                    InputChannelNames{nChannels} = ['Flex' num2str(nFlexIO)];
+                    EventNames{Pos} = [InputChannelNames{nChannels} 'Trig1']; Pos = Pos + 1;
+                    EventNames{Pos} = [InputChannelNames{nChannels} 'Trig2']; Pos = Pos + 1;
+                else
+                    InputChannelNames{nChannels} = '---';
+                    EventNames{Pos} = '---'; Pos = Pos + 1;
+                    EventNames{Pos} = '---'; Pos = Pos + 1;
                 end
             case 'P'
                 if nPorts == 0
@@ -115,6 +152,8 @@ function obj = SetupStateMachine(obj)
     OutputChannelNames = cell(1,obj.HW.n.Outputs + 3);
     Pos = 0;
     nUSB = 0;
+    nUSB_APP = 0;
+    nFlexIO = 0;
     nSPI = 0;
     nBNCs = 0;
     nWires = 0;
@@ -135,6 +174,24 @@ function obj = SetupStateMachine(obj)
                 if nUSB == 0
                     obj.HW.Pos.Output_USB = Pos;
                     nUSB = 1;
+                end
+            case 'Z'
+                OutputChannelNames{Pos} = 'APP_SoftCode';
+                if nUSB_APP == 0
+                    obj.HW.Pos.Output_USB_APP = Pos;
+                    nUSB_APP = 1;
+                end
+            case 'F' % FlexIO output
+                if nFlexIO == 0
+                    obj.HW.Pos.Output_FlexIO = Pos;
+                end
+                nFlexIO = nFlexIO + 1;
+                if obj.HW.FlexIO_ChannelTypes(nFlexIO) == 1
+                    OutputChannelNames{Pos} = ['Flex' num2str(nFlexIO) 'DO'];
+                elseif obj.HW.FlexIO_ChannelTypes(nFlexIO) == 3
+                    OutputChannelNames{Pos} = ['Flex' num2str(nFlexIO) 'AO'];
+                else
+                    OutputChannelNames{Pos} = '---';
                 end
             case 'S' % Valves controlled by an SPI shift register
                 if nSPI == 0
@@ -177,6 +234,14 @@ function obj = SetupStateMachine(obj)
     Pos = Pos + 1;
     OutputChannelNames{Pos} = 'GlobalCounterReset';
     obj.HW.Pos.GlobalCounterReset = Pos;
+    if obj.MachineType > 3
+        Pos = Pos + 1;
+        OutputChannelNames{Pos} = 'AnalogThreshEnable';
+        obj.HW.Pos.AnalogThreshEnable = Pos;
+        Pos = Pos + 1;
+        OutputChannelNames{Pos} = 'AnalogThreshDisable';
+        obj.HW.Pos.AnalogThreshDisable = Pos;
+    end
     obj.StateMachineInfo.OutputChannelNames = OutputChannelNames;
     obj.StateMachineInfo.nEvents = length(obj.StateMachineInfo.EventNames);
     obj.StateMachineInfo.nOutputChannels = length(obj.StateMachineInfo.OutputChannelNames);

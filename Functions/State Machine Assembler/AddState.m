@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -26,7 +26,7 @@ function sma_out = AddState(sma, namestr, StateName, timerstr, StateTimer, condi
 %  'Name', 'Deliver_Stimulus', ...
 %  'Timer', .001,...
 %  'StateChangeConditions', {'Port2Out', 'WaitForResponse', 'Tup', 'ITI'},...
-%  'OutputActions', {'LEDState', 1, 'WireState', 3, 'SerialCode', 3});
+%  'OutputActions', {'LEDState', 1, 'WireState', 3});
 
 global BpodSystem
 % Sanity check state name
@@ -104,7 +104,7 @@ for x = 1:2:length(StateChangeConditions)
                 EventSuffix = lower(CandidateEventName(length(CandidateEventName)-3:length(CandidateEventName)));
                 switch EventSuffix
                     case '_end'
-                        if CandidateEventCode < nInputColumns+(BpodSystem.HW.n.GlobalTimers*2)+1;
+                        if CandidateEventCode < nInputColumns+(BpodSystem.HW.n.GlobalTimers*2)+1
                             % This is a transition for a global timer end. Add to global timer end matrix.
                             StartPos = length(CandidateEventName) - 5; EndPos = StartPos+1;
                             TimerNumString = CandidateEventName(StartPos:EndPos);
@@ -115,7 +115,7 @@ for x = 1:2:length(StateChangeConditions)
                             if ~isnan(GlobalTimerNumber)
                                 sma.GlobalTimerEndMatrix(CurrentState, GlobalTimerNumber) = TargetStateNumber;
                             else
-                                EventSpellingErrorMessage(ThisStateName);
+                                EventNotFoundMessage(StateChangeConditions{x},StateName);
                             end
                         else
                             % This is a transition for a global counter. Add to global counter matrix.
@@ -123,7 +123,7 @@ for x = 1:2:length(StateChangeConditions)
                             if ~isnan(GlobalCounterNumber)
                                 sma.GlobalCounterMatrix(CurrentState, GlobalCounterNumber) = TargetStateNumber;
                             else
-                                EventSpellingErrorMessage(ThisStateName);
+                                EventNotFoundMessage(StateChangeConditions{x},StateName);
                             end
                         end
                     case 'tart'
@@ -138,7 +138,7 @@ for x = 1:2:length(StateChangeConditions)
                         if ~isnan(GlobalTimerNumber)
                             sma.GlobalTimerStartMatrix(CurrentState, GlobalTimerNumber) = TargetStateNumber;
                         else
-                            EventSpellingErrorMessage(ThisStateName);
+                            EventNotFoundMessage(StateChangeConditions{x},StateName);
                         end
                     otherwise
                         % This is a transition for a condition. Add to condition matrix
@@ -151,7 +151,7 @@ for x = 1:2:length(StateChangeConditions)
                         if ~isnan(ConditionNumber)
                             sma.ConditionMatrix(CurrentState, ConditionNumber) = TargetStateNumber;
                         else
-                            EventSpellingErrorMessage(ThisStateName);
+                            EventNotFoundMessage(StateChangeConditions{x},StateName);
                         end
                 end
             else % Tup
@@ -161,18 +161,29 @@ for x = 1:2:length(StateChangeConditions)
             sma.InputMatrix(CurrentState,CandidateEventCode) = TargetStateNumber;
         end
     else
-        EventSpellingErrorMessage(ThisStateName);
+        EventNotFoundMessage(StateChangeConditions{x}, StateName);
     end
 end
 
 %% Add output actions
 OutputChannelNames = BpodSystem.StateMachineInfo.OutputChannelNames;
 MetaActions = {'ValveState', 'LED', 'LEDState', 'BNCState', 'WireState', 'Valve'}; % ValveState is a byte whose bits control an array of valves
-
 % LED is an alternate syntax for PWM1-8,specifying one LED to set to max brightness (1-8)
 % LEDState is an alternate syntax for PWM1-8. A byte coding for binary sets which LEDs are at max brightness
 % BNCState and WireState are added for backwards compatability with Bpod
-% 0.5. A byte is converted to bits to control logic on the BNC and Wire outputs channel arrays.
+% 0.5. A byte is converted to bits to control logic on the BNC and Wire outputs channel arrays
+
+% Check for duplicate outputs
+OutputChannels = OutputActions(1:2:end);
+[~, uniqueIndexes] = unique(OutputChannels, 'stable');
+if length(OutputChannels) > length(uniqueIndexes)
+    firstViolation = find(uniqueIndexes' ~= 1:length(uniqueIndexes), 1);
+    if isempty(firstViolation)
+        firstViolation = length(uniqueIndexes)+1;
+    end
+    OutputChDuplicated = OutputChannels{firstViolation};
+    error(['Duplicate output actions detected in state: ' StateName '. Only one value for ' OutputChDuplicated ' is allowed.'])
+end
 for x = 1:2:length(OutputActions)
     MetaAction = find(strcmp(OutputActions{x}, MetaActions));
     if ~isempty(MetaAction)
@@ -221,13 +232,29 @@ for x = 1:2:length(OutputActions)
                     % global timers convert to equivalent binary decimals. To
                     % specify binary, use a string of bits.
                     Value = 2^(Value-1);
+                elseif BpodSystem.MachineType == 4
+                    if (TargetEventCode >= BpodSystem.HW.Pos.Output_FlexIO) && (TargetEventCode < BpodSystem.HW.Pos.Output_BNC)
+                    % If FlexIO channel is analog output, convert volts to bits
+                        TargetFlexIOChannel = TargetEventCode - (BpodSystem.HW.Pos.Output_FlexIO-1);
+                        if BpodSystem.HW.FlexIO_ChannelTypes(TargetFlexIOChannel) == 3
+                            MaxFlexIOVoltage = 5;
+                            if (Value > MaxFlexIOVoltage) || (Value < 0)
+                                error('Error: Flex I/O channel voltages must be in range [0, 5]');
+                            end
+                            Value = uint16((Value/MaxFlexIOVoltage)*4095);
+                        else
+                            Value = uint16(Value);
+                        end
+                    else
+                        Value = uint16(Value);
+                    end
                 else
-                    Value = uint8(Value);
+                        Value = uint8(Value);
                 end
             else
                 if ischar(Value) && ((sum(Value == '0') + sum(Value == '1')) == length(Value)) % Assume binary string, convert to decimal
                         Value = bin2dec(Value);
-                else
+                else % Implicit programming of serial message library
                     sma.SerialMessageMode = 1;
                     messageIndex = 0;
                     for i = 1:sma.nSerialMessages(TargetEventCode)
@@ -250,7 +277,8 @@ for x = 1:2:length(OutputActions)
             end
             sma.OutputMatrix(CurrentState,TargetEventCode) = Value;
         else
-            error(['Check spelling of your output actions for state: ' StateName '.']);
+            error(['Unknown output action found: ''' OutputActions{x} ''' in state: ''' StateName '''.' char(10)... 
+                'A list of registered output action names is given <a href="matlab:BpodSystemInfo;">here</a>.']);
         end
     end
 end
@@ -263,8 +291,9 @@ sma_out = sma;
 
 %%%%%%%%%%%%%% End Main Code. Functions below. %%%%%%%%%%%%%%
 
-function EventSpellingErrorMessage(ThisStateName)
-error(['Check spelling of your state transition events for state: ' ThisStateName '. Valid events (% is an index): Port%In Port%Out BNC%High BNC%Low Wire%High Wire%Low SoftCode% GlobalTimer%End Tup'])
+function EventNotFoundMessage(ThisEventName, ThisStateName)
+error(['Unknown event found: ''' ThisEventName ''' in state: ''' ThisStateName '''.' char(10)... 
+                'A list of registered event names is given <a href="matlab:BpodSystemInfo;">here</a>.']);
 
 function [IsOp, opCode] = findOpName(ThisStateName)
 IsOp = false; opCode = 0;

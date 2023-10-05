@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -18,36 +18,29 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function USBSerialPorts = FindUSBSerialPorts(obj)
-    SerialPortKeywords = {'Arduino', 'Teensy', 'Sparkfun', 'COM'};
-    nKeywords = length(SerialPortKeywords);
-    USBSerialPorts = struct;
+    USBSerialPorts = cell(0,1);
     if ispc
-        for k = 1:nKeywords
-            USBSerialPorts.(SerialPortKeywords{k}) = cell(1,100);
-        end
-        for k = 1:nKeywords
-            [Status RawString] = system(['wmic path Win32_SerialPort Where "Caption LIKE ''%' SerialPortKeywords{k} '%''" Get DeviceID']);
-            PortLocations = strfind(RawString, 'COM');
+        [Status,RawString] = system('powershell.exe -inputformat none "[System.IO.Ports.SerialPort]::getportnames()"');
+        nPortsAdded = 0;
+        if ~isempty(RawString)
+            PortLocations = strsplit(RawString,char(10));
+            PortLocations = PortLocations(1:end-1);
             nPorts = length(PortLocations);
-            nPortsAdded = 0;
             for p = 1:nPorts
-                Clip = RawString(PortLocations(p):PortLocations(p)+6);
-                CandidatePort = Clip(1:find(Clip == 32,1, 'first')-1);
+                CandidatePort = PortLocations{p};
                 if ~strcmp(CandidatePort, 'COM1')
                     novelPort = 1;
-                    for i = 1:nKeywords
-                        if sum(strcmp(CandidatePort, USBSerialPorts.(SerialPortKeywords{i}))) > 0
-                            novelPort = 0;
-                        end
+                    if sum(strcmp(CandidatePort, USBSerialPorts)) > 0
+                        novelPort = 0;
                     end
                     if novelPort == 1
                         nPortsAdded = nPortsAdded + 1;
-                        USBSerialPorts.(SerialPortKeywords{k}){nPortsAdded} = CandidatePort;
+                        USBSerialPorts{nPortsAdded} = CandidatePort;
                     end
                 end
             end
-            USBSerialPorts.(SerialPortKeywords{k}) = USBSerialPorts.(SerialPortKeywords{k})(1:nPortsAdded);
         end
+        
     elseif ismac % Contributed by Thiago Gouvea JUN_9_2016
         [trash, RawSerialPortList] = system('ls /dev/cu.usbmodem*');
         string = strtrim(RawSerialPortList);
@@ -65,12 +58,7 @@ function USBSerialPorts = FindUSBSerialPorts(obj)
             nGoodPorts = nGoodPorts + 1;
             CandidatePorts{nGoodPorts} = CandidatePort;
         end
-        USBSerialPorts.(SerialPortKeywords{1}) = CandidatePorts(1:nGoodPorts);
-        if nKeywords > 1
-            for i = 2:nKeywords
-                USBSerialPorts.(SerialPortKeywords{i}) = '';
-            end
-        end
+        USBSerialPorts = CandidatePorts(1:nGoodPorts);
     else
         [trash, RawSerialPortList] = system('ls /dev/ttyACM*');
         string = strtrim(RawSerialPortList);
@@ -85,11 +73,6 @@ function USBSerialPorts = FindUSBSerialPorts(obj)
                 CandidatePorts{nGoodPorts} = CandidatePort;
             end
         end
-        USBSerialPorts.(SerialPortKeywords{1}) = CandidatePorts(1:nGoodPorts);
-        if nKeywords > 1
-            for i = 2:nKeywords
-                USBSerialPorts.(SerialPortKeywords{i}) = '';
-            end
-        end
+        USBSerialPorts = CandidatePorts(1:nGoodPorts);
     end
 end

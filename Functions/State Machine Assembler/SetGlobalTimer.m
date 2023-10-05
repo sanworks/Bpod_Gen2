@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2021 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -10,8 +10,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3.
 
-This program is distributed  WITHOUT ANY WARRANTY and without even the 
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -19,16 +19,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function sma = SetGlobalTimer(sma, TimerID, varargin)
 global BpodSystem
-% TimerNumber = the ID of the global timer to set. Valid timer IDs are usually 1-5 (depending on firmware, there may be more). 
+% TimerNumber = the ID of the global timer to set. Valid timer IDs are usually 1-5 (depending on firmware, there may be more).
 
-% Optional arguments: (..., Duration, myduration, OnsetDelay, mydelay, Channel, mychannel, ... 
+% Optional arguments: (..., Duration, myduration, OnsetDelay, mydelay, Channel, mychannel, ...
 %                      OnMessage, my_onmessage, OffMessage, my_offmessage, LoopMode, my_loopmode,...
 %                      SendEvents, y_n, LoopInterval, myInterval)
 % For execution speed, Unused optional arguments prior to the last non-default must be specified as 0 (default).
 %
 % Duration = Duration from timer start to timer stop in seconds (default = 0s).
 % OnsetDelay = Latency of timer onset after timer is triggered by a state
-% Channel = an output channel driven by the timer onset and offset (0 = None, default). 
+% Channel = an output channel driven by the timer onset and offset (0 = None, default).
 %     Channel names depend on connected hardware, and are listed in: BpodSystem.StateMachineInfo.OutputChannelNames
 %     If the channel is a digital output (BNC, Wire), the channel will be
 %     set high (3.3 or 5V) when the timer starts, and low again (0V) when the timer elapses.
@@ -40,7 +40,7 @@ global BpodSystem
 %     send to the module when the timer elapses.
 % LoopMode = 0 if a one-shot timer, 1 if the timer loops until stopped with the GlobalTimerCancel action (or trial end)
 % SendEvents = 0 to disable wave onset and offset events (useful if looping at high frequency to control something)
-% LoopInterval = Configurable interval between global timer loop iterations (default = 0s). 
+% LoopInterval = Configurable interval between global timer loop iterations (default = 0s).
 % TimerOn_Trigger = An integer whose bits indicate other global timers to trigger when the timer turns on.
 %
 % Example usage:
@@ -90,11 +90,34 @@ LoopMode = 0;
 SendEvents = 1;
 LoopInterval = 0;
 OnTriggerByte = 0;
+MaxFlexIOVoltage = 5;
 if nargin > 10
     OnMessage = varargin{9};
+    if BpodSystem.MachineType == 4
+        if (OutputChannelIndex >= BpodSystem.HW.Pos.Output_FlexIO) && (OutputChannelIndex < BpodSystem.HW.Pos.Output_BNC)
+            TargetFlexIOChannel = OutputChannelIndex - (BpodSystem.HW.Pos.Output_FlexIO-1);
+            if BpodSystem.HW.FlexIO_ChannelTypes(TargetFlexIOChannel) == 3
+                if (OnMessage > MaxFlexIOVoltage) || (OnMessage < 0)
+                    error('Error: Flex I/O channel voltages must be in range [0, 5]');
+                end
+                OnMessage = uint16((OnMessage/MaxFlexIOVoltage)*4095);
+            end
+        end
+    end
 end
 if nargin > 12
     OffMessage = varargin{11};
+    if BpodSystem.MachineType == 4
+        if (OutputChannelIndex >= BpodSystem.HW.Pos.Output_FlexIO) && (OutputChannelIndex < BpodSystem.HW.Pos.Output_BNC)
+            TargetFlexIOChannel = OutputChannelIndex - (BpodSystem.HW.Pos.Output_FlexIO-1);
+            if BpodSystem.HW.FlexIO_ChannelTypes(TargetFlexIOChannel) == 3
+                if (OffMessage > MaxFlexIOVoltage) || (OffMessage < 0)
+                    error('Error: Flex I/O channel voltages must be in range [0, 5]');
+                end
+                OffMessage = uint16((OffMessage/MaxFlexIOVoltage)*4095);
+            end
+        end
+    end
 end
 if nargin > 14
     LoopMode = varargin{13};
@@ -109,13 +132,13 @@ if nargin > 20
     OnTriggerByte = varargin{19};
 end
 
- if ischar(OnTriggerByte) 
-        if (sum(OnTriggerByte == '0') + sum(OnTriggerByte == '1')) == length(OnTriggerByte) % Assume binary string, convert to decimal
-            OnTriggerByte = bin2dec(OnTriggerByte);
-        else
-            OnTriggerByte = 2^(OnTriggerByte-1); % Assume single channel
-        end
- end
+if ischar(OnTriggerByte)
+    if (sum(OnTriggerByte == '0') + sum(OnTriggerByte == '1')) == length(OnTriggerByte) % Assume binary string, convert to decimal
+        OnTriggerByte = bin2dec(OnTriggerByte);
+    else
+        OnTriggerByte = 2^(OnTriggerByte-1); % Assume single channel
+    end
+end
 
 sma.GlobalTimers.OnsetDelay(TimerID) = OnsetDelay;
 sma.GlobalTimers.OutputChannel(TimerID) = OutputChannelIndex;

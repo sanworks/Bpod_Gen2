@@ -29,8 +29,8 @@ for currentTrial = 1:MaxTrials
         'StateChangeConditions', {'Tup', 'exit'},...
         'OutputActions', {}); 
     
-    SendStateMatrix(sma); % Send state machine to the Bpod state machine device
-    RawEvents = RunStateMatrix; % Run the trial and return events
+    SendStateMachine(sma); % Send state machine to the Bpod state machine device
+    RawEvents = RunStateMachine; % Run the trial and return events
     
     %--- Package and save the trial's data, update plots
     if ~isempty(fieldnames(RawEvents)) % If you didn't stop the session manually mid-trial

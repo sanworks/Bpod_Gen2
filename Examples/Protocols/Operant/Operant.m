@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -112,8 +112,8 @@ for currentTrial = 1:MaxTrials
         'Timer', S.GUI.PortOutRegDelay,...
         'StateChangeConditions', {'Tup', 'exit', 'Port1In', 'Drinking', 'Port3In', 'Drinking'},...
         'OutputActions', {});
-    SendStateMatrix(sma);
-    RawEvents = RunStateMatrix;
+    SendStateMachine(sma);
+    RawEvents = RunStateMachine;
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
         BpodSystem.Data = BpodNotebook('sync', BpodSystem.Data); % Sync with Bpod notebook plugin

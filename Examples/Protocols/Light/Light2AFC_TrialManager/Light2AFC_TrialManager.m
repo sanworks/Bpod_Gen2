@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2020 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@ function Light2AFC_TrialManager
 
 global BpodSystem
 %% Create trial manager object
-TrialManager = TrialManagerObject;
+TrialManager = BpodTrialManager;
 
 %% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S

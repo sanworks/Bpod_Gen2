@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -19,6 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function obj = LoadModules(obj)
     defaultBaudRate = 1312500;
+    if obj.MachineType < 2
+        defaultBaudRate = 115200;
+    end
     if obj.EmulatorMode == 0 && obj.Status.BeingUsed == 0
         nModules = sum(obj.HW.Outputs=='U');
         if isfield(obj.Modules, 'USBport')
@@ -37,6 +40,8 @@ function obj = LoadModules(obj)
         obj.Modules.nSerialEvents = ones(1,nModules)*(floor(obj.HW.n.MaxSerialEvents/obj.HW.n.SerialChannels));
         obj.Modules.EventNames = cell(1,nModules);
         obj.Modules.USBport = USBPairing;
+        obj.Modules.HWVersion_Major = nan(1,nModules);
+        obj.Modules.HWVersion_Minor = nan(1,nModules);
         obj.SerialPort.write('M', 'uint8');
         if obj.SerialPort.Interface == 3 || obj.SerialPort.Interface == 4
             pause(1);
@@ -73,6 +78,10 @@ function obj = LoadModules(obj)
                                         nCharInThisString = obj.SerialPort.read(1, 'uint8');
                                         obj.Modules.EventNames{i}{j} = obj.SerialPort.read(nCharInThisString, 'char');
                                     end
+                                case 'V'
+                                    obj.Modules.HWVersion_Major(i) = obj.SerialPort.read(1, 'uint8');
+                                case 'v'
+                                    obj.Modules.HWVersion_Minor(i) = obj.SerialPort.read(1, 'uint8');
                             end
                             moreInfoFollows = obj.SerialPort.read(1, 'uint8');
                         end
@@ -110,7 +119,12 @@ function obj = LoadModules(obj)
                 end
             end
             obj.HW.n.SoftCodes = obj.HW.n.MaxSerialEvents-sum(obj.Modules.nSerialEvents);
-            obj.SerialPort.write(['%' obj.Modules.nSerialEvents obj.HW.n.SoftCodes], 'uint8');
+            nSoftCodes = obj.HW.n.SoftCodes/(obj.HW.n.USBChannels+obj.HW.n.USBChannels_External);
+            nExternalSoftCodes = obj.HW.n.USBChannels_External*nSoftCodes;
+            if nExternalSoftCodes == 0
+                nExternalSoftCodes = [];
+            end
+            obj.SerialPort.write(['%' obj.Modules.nSerialEvents nSoftCodes nExternalSoftCodes], 'uint8');
             Confirmed = obj.SerialPort.read(1, 'uint8');
             if Confirmed ~= 1
                 error('Error: State machine did not confirm module event reallocation');
@@ -118,7 +132,6 @@ function obj = LoadModules(obj)
 
             % Load module USB port configuration
             USBPorts = obj.FindUSBSerialPorts;
-            USBPorts = [USBPorts.Arduino USBPorts.Teensy USBPorts.Sparkfun USBPorts.COM];
             USBPorts = USBPorts(logical(1-strcmp(USBPorts, obj.SerialPort.PortName)));
 
             for i = 1:length(obj.Modules.Name)
@@ -163,10 +176,28 @@ function obj = LoadModules(obj)
                 if isfield(obj.CurrentFirmware, thisModuleName)
                     expectedFirmwareVersion = obj.CurrentFirmware.(thisModuleName);
                     if thisModuleFirmware < expectedFirmwareVersion
+                        AutoUpdatable = 1;
+                        if strcmp(thisModuleName, 'ValveModule')
+                            thisModuleName = 'ValveDriverModule';
+                            if isnan(obj.Modules.HWVersion_Major(i))
+                                obj.Modules.HWVersion_Major(i) = 1;
+                                AutoUpdatable = 0;
+                            end
+                        end
+                        if strcmp(thisModuleName, 'I2C')
+                            AutoUpdatable = 0;
+                        end
                         disp([char(13) 'WARNING: ' thisModuleName ' module with old firmware detected, v' num2str(thisModuleFirmware) '. ' char(13)...
-                            'Please update its firmware to v' num2str(expectedFirmwareVersion) ', restart Bpod and try again.' char(13)...
-                            'While Bpod is still open, click <a href="matlab:UpdateBpodFirmware;">here</a> to start the update tool, UpdateBpodFirmware().' char(13)...
+                            'Please update its firmware to v' num2str(expectedFirmwareVersion) ', restart Bpod and try again.']);
+                        if AutoUpdatable
+                            disp(['1. From the Bpod console, pair the ' thisModuleName ' module with its USB port.' char(13)...
+                            '2. While Bpod is still open, click <a href="matlab:LoadBpodFirmware(''' thisModuleName ''', 1);">here</a> to start the update tool, LoadBpodFirmware().' char(13)...
+                            '3. Select the correct firmware and USB port.' char(13)  '   NOTE: If updating the analog output module, use the correct version (4ch or 8ch).' char(13) ...
                             'If necessary, manual firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
+                        else
+                            disp(['Firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
+                            disp(['IMPORTANT NOTE: Modules based on the red SAMD21 Mini board' char(13) '(Original Valve Driver, I2C and SNES)' char(13) 'should NOT be updated with the LoadBpodFirmware tool.'])
+                        end
                         oldFirmwareFound = 1;
                     elseif thisModuleFirmware > expectedFirmwareVersion
                         Errormsg = ['WARNING: The firmware on the ' thisModuleName ' module on port ' num2str(i) ' is newer than your Bpod software for MATLAB. ' char(13) 'Please update your MATLAB software from the Bpod repository and try again.'];
@@ -179,6 +210,16 @@ function obj = LoadModules(obj)
         if oldFirmwareFound == 1
             BpodErrorSound;
             warndlg('WARNING: Old module firmware detected. See instructions in the MATLAB command window.');
+        end
+        % Update central HW revision information
+        SMrevision = obj.HW.CircuitRevision.StateMachine;
+        obj.HW.CircuitRevision = struct;
+        obj.HW.CircuitRevision.StateMachine = SMrevision;
+        for i = 1:nModules 
+            if obj.Modules.Connected(i)
+                thisModuleName = obj.Modules.Name{i};
+                obj.HW.CircuitRevision.(thisModuleName) = obj.Modules.HWVersion_Minor(i);
+            end
         end
     elseif obj.Status.BeingUsed == 1
          BpodErrorDlg(['Cannot refresh modules.' char(10) 'Stop the session first.'], 0);

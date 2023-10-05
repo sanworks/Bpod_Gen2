@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2020 Sanworks LLC, Rochester, New York, USA
+Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -52,9 +52,9 @@ Label = ['Module ' num2str(ModuleNumber) ' Serial Terminal'];
 text(xOffset+25, yOffset+80, Label, 'FontName', FontName, 'FontSize', BpodSystem.GUIData.TitleFontSize, 'Color', [.8 .8 .8]);
 line([xOffset-30 xOffset+360], [yOffset+65 yOffset+65], 'Color', [.8 .8 .8], 'LineWidth', 2);
 xPos = xOffset;
-ByteModeInstructions = 'Spaces delimit bytes, use '' '' for char i.e. ''A'' 5 213 ''B''';
-MessageModeInstructions = 'Spaces delimit serial message indexes i.e. 4 22 3 128';
-CharModeInstructions = 'Enter characters to send as ASCII i.e. HELLO';
+ByteModeInstructions = 'Spaces delimit bytes, use '' '' for char e.g. ''A'' 5 213 ''B''';
+MessageModeInstructions = 'Spaces delimit serial message indexes e.g. 4 22 3 128';
+CharModeInstructions = 'Enter characters to send as ASCII e.g. HELLO';
 ModeInstructions = {ByteModeInstructions, CharModeInstructions, MessageModeInstructions};
 BpodSystem.GUIHandles.SerialTerminalInput(ModuleNumber) = uicontrol('Parent', PanelHandle,'Style', 'edit',...
     'String', CharModeInstructions, 'UserData', ModeInstructions,...

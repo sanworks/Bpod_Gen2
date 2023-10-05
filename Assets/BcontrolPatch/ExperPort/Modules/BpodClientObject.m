@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2018 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) 2021 Sanworks LLC, Stony Brook, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -501,8 +501,6 @@ classdef BpodClientObject < handle
         end
         
         function ok = sendmatrix(obj, sma)
-            
-            
             ok = 1;
         end
         
@@ -515,7 +513,9 @@ classdef BpodClientObject < handle
             else
                 BpodSystem.HardwareState.InputState(1:end) = 0;
                 BpodSystem.HardwareState.OutputState(1:end) = 0;
-                BpodSystem.RefreshGUI;
+                if BpodSystem.SerialPort.bytesAvailable < 250
+                    BpodSystem.RefreshGUI;
+                end
             end
         end
         
