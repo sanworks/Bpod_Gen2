@@ -140,7 +140,11 @@ switch Op
                     TargetState = BpodSystem.StateMatrix.ConditionMatrix(BpodSystem.Emulator.CurrentState, x);
                     if TargetState ~= BpodSystem.Emulator.CurrentState
                         ThisChannel = BpodSystem.StateMatrix.ConditionChannels(x);
-                        HWState = BpodSystem.HardwareState.InputState(ThisChannel);                        
+                        if ThisChannel <= BpodSystem.HW.n.Inputs
+                            HWState = BpodSystem.HardwareState.InputState(ThisChannel);
+                        else
+                            HWState = BpodSystem.Emulator.GlobalTimersActive(ThisChannel-BpodSystem.HW.n.Inputs);
+                        end
                         if HWState == BpodSystem.StateMatrix.ConditionValues(x)
                             BpodSystem.Emulator.nCurrentEvents = BpodSystem.Emulator.nCurrentEvents + 1;
                             VirtualCurrentEvents(BpodSystem.Emulator.nCurrentEvents) = ConditionOffset+x;
