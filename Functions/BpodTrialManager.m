@@ -480,6 +480,13 @@ classdef BpodTrialManager < handle
             elseif OpCode == 'S'
                 HandleSoftCode(uint8(OverrideMessage(2)));
                 ManualOverrideEvent = [];
+            elseif OpCode == '~'
+                Code = OverrideMessage(2);
+                if Code <= BpodSystem.HW.n.SoftCodes && Code ~= 0
+                    ManualOverrideEvent = BpodSystem.HW.Pos.Event_USB-1 + Code;
+                else
+                    error(['Error: cannot send soft code ' num2str(Code) '; Soft codes must be in range: [1 ' num2str(BpodSystem.HW.n.SoftCodes) '].'])
+                end
             else
                 ManualOverrideEvent = [];
             end
