@@ -414,6 +414,7 @@ classdef BpodTrialManager < handle
                                 end
                             end
                             if BpodSystem.Status.InStateMatrix == 1
+                                BpodSystem.Status.LastEvent = obj.CurrentEvent(1);
                                 if MaxBytesToRead < 250 % Disable time-costly console GUI updates if data is backed up
                                     BpodSystem.RefreshGUI;
                                 end
@@ -421,7 +422,6 @@ classdef BpodTrialManager < handle
                                 if BpodSystem.LiveTimestamps == 1
                                     obj.LiveEventTimestamps(obj.nEvents+1:(obj.nEvents+nCurrentEvents)) = ThisTimestamp;
                                 end
-                                BpodSystem.Status.LastEvent = obj.CurrentEvent(1);
                                 obj.CurrentEvent(1:nCurrentEvents) = 0;
                                 %set(BpodSystem.GUIHandles.LastEventDisplay, 'string', obj.EventNames{BpodSystem.Status.LastEvent});
                                 obj.nEvents = obj.nEvents + uint32(nCurrentEvents);

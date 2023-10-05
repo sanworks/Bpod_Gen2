@@ -720,6 +720,7 @@ if BpodSystem.MachineType > 3
 end
 
 BpodSystem.Status.Live = 1;
+BpodSystem.Status.LastEvent = 0;
 BpodSystem.GUIData.ProtocolName = ProtocolName;
 BpodSystem.GUIData.SubjectName = SubjectName;
 BpodSystem.GUIData.SettingsFileName = SettingsFileName;
