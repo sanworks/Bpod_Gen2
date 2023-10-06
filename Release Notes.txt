@@ -1,3 +1,28 @@
+---v1.76---
+-BControl: Updated patch to work with firmware v23
+-Bonsai: Added example code for direct USB transactions with state machine via its APP port
+-Bonsai: Improved example code setup comments 
+-BpodWavePlayer: Fixed error message format 
+-Console GUI: Fixed display of state machine r2.5 (previously showed 2.0 even if using 2.5)
+-Console GUI: Fixed bug where Console would fail to close after USB disconnect 
+-Console GUI: Updated '?' link to point to new Bpod wiki
+-Console GUI: Fixed 'last event' display (previously did not clear on starting a new session)
+-BpodTrialManager: Fixed last event display update routine (previously lagged by one event)
+-Performance Plot: Fixed a bug in legend
+-RotaryEncoderModule: Added capability to retrieve current position during USB streaming
+-Bpod Emulator: Fixed handling of conditions when attached to global timer run state  
+-Bpod Emulator: Fixed handling of soft codes
+-Launch Manager: Fixed error if protocol folder is empty 
+-Splash Screen: Updated splash screen graphics
+-Fixed a bug where last event display was not cleared on starting a new session
+-Added CONTRIBUTING README text doc with guidance for pull requests
+
+Release 1.76 features code and doc contributions from:
+Mario Prsa @ Univ. of Freibourg
+Pamela Reinagel @ UCSD
+Austin Pauley @ Florida State Univ.
+Hatem Oraby @ Humboldt Univ. Berlin
+
 ---v1.75---
 -Added support for valve driver module v2
 -Analog Input: Added updated firmware to fix a bug affecting hardware v2. When logging to microSD at >10kHz, on stopping acquisition the last buffer-full of data was sometimes read from an incorrect memory location.
