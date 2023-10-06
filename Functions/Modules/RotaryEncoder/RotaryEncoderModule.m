@@ -130,9 +130,13 @@ classdef RotaryEncoderModule < handle
         end
         
         function pos = currentPosition(obj)
-            obj.assertNotUSBStreaming;
-            obj.Port.write('Q', 'uint8');
-            pos = obj.pos2degrees(obj.Port.read(1, 'int16'));
+            if obj.acquiring == 1
+                obj.captureUSBStream; % Push latest data to buffer
+                pos = obj.usbCapturedData.Positions(end);
+            else
+                obj.Port.write('Q', 'uint8');
+                pos = obj.pos2degrees(obj.Port.read(1, 'int16'));
+            end
         end
         function set.userCallbackFcn(obj, newFcn)
             if obj.acquiring == 1

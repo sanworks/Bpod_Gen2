@@ -247,6 +247,22 @@ for i = 1:nWavesDeclared
         if SW(i).dio_line ~= -1
             % Map dio CHANNELS to Bpod (no bits)
             bsma.GlobalTimers.OutputChannel(i) = BpodSystem.PluginObjects.Bcontrol2Bpod_DO_Map(SW(i).dio_line+1);
+            % Set on and off events for FSM onboard channel type 
+            %(Analog and Sound module channels are set separately per module below)
+            switch BpodSystem.HW.Outputs(bsma.GlobalTimers.OutputChannel(i))
+                case 'P'
+                    bsma.GlobalTimers.OnMessage(i) = 255;
+                    bsma.GlobalTimers.OffMessage(i) = 0;
+                case 'B'
+                    bsma.GlobalTimers.OnMessage(i) = 1;
+                    bsma.GlobalTimers.OffMessage(i) = 0;
+                case 'W'
+                    bsma.GlobalTimers.OnMessage(i) = 1;
+                    bsma.GlobalTimers.OffMessage(i) = 0;
+                case 'V'
+                    bsma.GlobalTimers.OnMessage(i) = 1;
+                    bsma.GlobalTimers.OffMessage(i) = 0;
+            end
         end
     end
     if ~isempty(SW(i).analog_waveform)

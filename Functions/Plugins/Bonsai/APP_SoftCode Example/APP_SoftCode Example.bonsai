@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<WorkflowBuilder Version="2.8.1"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 xmlns:port="clr-namespace:Bonsai.IO.Ports;assembly=Bonsai.System"
+                 xmlns="https://bonsai-rx.org/2018/workflow">
+  <Workflow>
+    <Nodes>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="port:CreateSerialPort">
+          <port:PortName>COM17</port:PortName>
+          <port:BaudRate>12000000</port:BaudRate>
+          <port:NewLine>\r\n</port:NewLine>
+          <port:Parity>None</port:Parity>
+          <port:ParityReplace>63</port:ParityReplace>
+          <port:DataBits>8</port:DataBits>
+          <port:StopBits>One</port:StopBits>
+          <port:Handshake>None</port:Handshake>
+          <port:DiscardNull>false</port:DiscardNull>
+          <port:DtrEnable>true</port:DtrEnable>
+          <port:RtsEnable>false</port:RtsEnable>
+          <port:ReadBufferSize>4096</port:ReadBufferSize>
+          <port:WriteBufferSize>2048</port:WriteBufferSize>
+          <port:ReceivedBytesThreshold>1</port:ReceivedBytesThreshold>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="port:SerialRead">
+          <port:PortName>COM17</port:PortName>
+          <port:Count>1</port:Count>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="port:SerialWrite">
+          <port:PortName>COM17</port:PortName>
+        </Combinator>
+      </Expression>
+    </Nodes>
+    <Edges>
+      <Edge From="1" To="2" Label="Source1" />
+    </Edges>
+  </Workflow>
+</WorkflowBuilder>

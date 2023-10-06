@@ -110,6 +110,7 @@ switch Opstring
             end
             
             BpodSystem.Status.Live = 1;
+            BpodSystem.Status.LastEvent = 0;
             BpodSystem.GUIData.ProtocolName = protocolName;
             BpodSystem.GUIData.SubjectName = subjectName;
             BpodSystem.GUIData.SettingsFileName = SettingsFileName;

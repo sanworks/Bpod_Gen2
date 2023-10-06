@@ -79,8 +79,7 @@ classdef BpodObject < handle
             addpath(genpath(fullfile(BpodPath, 'Assets')));
             rmpath(genpath(fullfile(BpodPath, 'Assets', 'BControlPatch', 'ExperPort')));
             addpath(genpath(fullfile(BpodPath, 'Examples', 'State Machines')));
-            load SplashBGData;
-            load SplashMessageData;
+            load BpodSplashData;
             if exist('rng','file') == 2
                 rng('shuffle', 'twister'); % Seed the random number generator by CPU clock
             else
@@ -97,9 +96,7 @@ classdef BpodObject < handle
 
             % Initialize fields
             obj.LiveTimestamps = 0;
-            obj.SplashData.BG = SplashBGData;
-            obj.SplashData.Messages = SplashMessageData;
-            obj.GUIHandles.SplashFig = figure('Position',[400 300 485 300],'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+            obj.SplashData = SplashData;
             obj.Status.BpodStartTime = now;
             obj.Status = struct;
             obj.Status.LastTimestamp = 0;
@@ -339,10 +336,10 @@ classdef BpodObject < handle
         end
         function obj = Wiki(obj)
             if ispc || ismac
-                web ('https://www.sites.google.com/site/bpoddocumentation/home', '-browser');
+                web ('https://sanworks.github.io/Bpod_Wiki/', '-browser');
             else
-                disp('**NOTE** If MATLAB is running as root, Firefox may fail to open. The wiki is at: https://www.sites.google.com/site/bpoddocumentation/home');
-                web ('https://www.sites.google.com/site/bpoddocumentation/home');
+                disp('**NOTE** If MATLAB is running as root, your browser may fail to open. The wiki is at: https://sanworks.github.io/Bpod_Wiki/');
+                web ('https://sanworks.github.io/Bpod_Wiki/');
             end
         end
         function obj = SaveSettings(obj)
@@ -654,51 +651,64 @@ classdef BpodObject < handle
 
         function BpodSplashScreen(obj, Stage)
             if Stage == 1
+                SS = get(0,'screensize');
+                Yoffset = round((SS(4)/2))-(300/2);
+                Xoffset = round((SS(3)/2))-(485/2);
+                obj.GUIHandles.SplashFig = figure('Position',[Xoffset Yoffset 485 300],'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
                 ha = axes('units','normalized', 'position',[0 0 1 1]);
                 uistack(ha,'bottom');
             end
-            Img = obj.SplashData.BG;
-            Img(201:240,1:485) = obj.SplashData.Messages(:,:,Stage);
-            Img(270:274, 43:442) = ones(5,400)*128;
-            StartPos = 43;
-            EndPos = 44;
+            Img = obj.SplashData(:,:,:,Stage);
+            Img(540:548, 86:885,:) = ones(9,800,3)*160;
+            StartPos = 86;
+            EndPos = 87;
             StepSize = 5;
             if ~verLessThan('matlab', '9')
                 StepSize = 10;
             end
             switch Stage
                 case 1
-                    while EndPos < 123
+                    while EndPos < 246
                         EndPos = EndPos + StepSize;
-                        Img(270:274, StartPos:EndPos) = ones(5,(EndPos-(StartPos-1)))*20;
+                        Img(540:548, StartPos:EndPos,1) = ones(9,(EndPos-(StartPos-1)),1)*200;
+                        Img(540:548, StartPos:EndPos,2) = ones(9,(EndPos-(StartPos-1)),1)*30;
+                        Img(540:548, StartPos:EndPos,3) = ones(9,(EndPos-(StartPos-1)),1)*30;
                         imagesc(Img); colormap('gray'); set(gcf,'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off'); axis off; drawnow;
                     end
                 case 2
-                    EndPos = 123;
-                    while EndPos < 203
+                    EndPos = 246;
+                    while EndPos < 406
                         EndPos = EndPos + StepSize;
-                        Img(270:274, StartPos:EndPos) = ones(5,(EndPos-(StartPos-1)))*20;
+                        Img(540:548, StartPos:EndPos,1) = ones(9,(EndPos-(StartPos-1)),1)*200;
+                        Img(540:548, StartPos:EndPos,2) = ones(9,(EndPos-(StartPos-1)),1)*30;
+                        Img(540:548, StartPos:EndPos,3) = ones(9,(EndPos-(StartPos-1)),1)*30;
                         imagesc(Img); colormap('gray'); set(gcf,'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off'); axis off; drawnow;
                     end
                 case 3
-                    EndPos = 203;
-                    while EndPos < 283
+                    EndPos = 406;
+                    while EndPos < 566
                         EndPos = EndPos + StepSize;
-                        Img(270:274, StartPos:EndPos) = ones(5,(EndPos-(StartPos-1)))*20;
+                        Img(540:548, StartPos:EndPos,1) = ones(9,(EndPos-(StartPos-1)),1)*200;
+                        Img(540:548, StartPos:EndPos,2) = ones(9,(EndPos-(StartPos-1)),1)*30;
+                        Img(540:548, StartPos:EndPos,3) = ones(9,(EndPos-(StartPos-1)),1)*30;
                         imagesc(Img); colormap('gray'); set(gcf,'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off'); axis off; drawnow;
                     end
                 case 4
-                    EndPos = 283;
-                    while EndPos < 363
+                    EndPos = 566;
+                    while EndPos < 726
                         EndPos = EndPos + StepSize;
-                        Img(270:274, StartPos:EndPos) = ones(5,(EndPos-(StartPos-1)))*20;
+                        Img(540:548, StartPos:EndPos,1) = ones(9,(EndPos-(StartPos-1)),1)*200;
+                        Img(540:548, StartPos:EndPos,2) = ones(9,(EndPos-(StartPos-1)),1)*30;
+                        Img(540:548, StartPos:EndPos,3) = ones(9,(EndPos-(StartPos-1)),1)*30;
                         imagesc(Img); colormap('gray'); set(gcf,'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off'); axis off; drawnow;
                     end
                 case 5
-                    EndPos = 363;
-                    while EndPos < 442
+                    EndPos = 726;
+                    while EndPos < 886
                         EndPos = EndPos + StepSize;
-                        Img(270:274, StartPos:EndPos) = ones(5,(EndPos-(StartPos-1)))*20;
+                        Img(540:548, StartPos:EndPos,1) = ones(9,(EndPos-(StartPos-1)),1)*200;
+                        Img(540:548, StartPos:EndPos,2) = ones(9,(EndPos-(StartPos-1)),1)*30;
+                        Img(540:548, StartPos:EndPos,3) = ones(9,(EndPos-(StartPos-1)),1)*30;
                         imagesc(Img); colormap('gray'); set(gcf,'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off'); axis off; drawnow;
                     end
                     pause(.5);
