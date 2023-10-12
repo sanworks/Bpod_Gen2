@@ -18,7 +18,7 @@ This repository includes:
 ## Setup ##
 
 * Add /Bpod_Gen2/ to the MATLAB path
-* Connect a Bpod State Machine
+* Connect a Bpod State Machine to your PC
 * Run Bpod() at the MATLAB command prompt
 * See the wiki (above) for more info
 
