@@ -46,7 +46,7 @@ if ~isempty(BpodSystem)
             try
                 BpodSystem.SerialPort.write('Z', 'uint8');
             catch Error
-                disp("Note: The Bpod state machine may have disconnected prematurely. Closing GUI.")
+                disp('Note: The Bpod state machine may have disconnected prematurely. Closing GUI.')
             end
         end
         pause(.1);
