@@ -1,1 +1,0 @@
-OpenEphysEvents2Bpod returns Bpod state numbers from a stream of Open Ephys digital events. This script is only necessary for Bpod 0.5.
