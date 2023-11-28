@@ -1,3 +1,11 @@
+---v1.77---
+-EndBpod: Fixed bug introduced in v1.76 affecting MATLAB r2016a or older that could cause a crash on application close. 
+-Splash Screen: Improved display on MATLAB v8 and older
+-PsychToolboxAudio: fixed performance with Bpod emulator (contributed by github/ogeesan)
+-Moved Python module classes to github.com/sanworks/PyBpod2
+-Updated contributor guidelines
+-Added code of conduct
+
 ---v1.76---
 -BControl: Updated patch to work with firmware v23
 -Bonsai: Added example code for direct USB transactions with state machine via its APP port

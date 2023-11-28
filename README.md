@@ -23,7 +23,7 @@ This repository includes:
 * See the wiki (above) for more info
 
 ## Contributions ##
-* Please note the guidelines given [here](/CONTRIBUTING%20README.txt).
+* Please note the guidelines given [here](/CONTRIBUTING.md).
 
 ## Companion Repositories ##
 * [Bpod Firmware](https://sanworks.github.io/Bpod_Wiki/install-and-update/firmware-repo-list/)<br>

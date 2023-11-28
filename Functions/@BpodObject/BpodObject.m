@@ -651,10 +651,16 @@ classdef BpodObject < handle
 
         function BpodSplashScreen(obj, Stage)
             if Stage == 1
+                Ysize = 970;
+                Xsize = 600;
+                if ~verLessThan('matlab', '9') % Image scaling was not as graceful in prior MATLAB
+                    Ysize = floor(Ysize*0.7);
+                    Xsize = floor(Xsize*0.7);
+                end
                 SS = get(0,'screensize');
-                Yoffset = round((SS(4)/2))-(300/2);
-                Xoffset = round((SS(3)/2))-(485/2);
-                obj.GUIHandles.SplashFig = figure('Position',[Xoffset Yoffset 485 300],'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+                Yoffset = round((SS(4)/2))-(Xsize/2);
+                Xoffset = round((SS(3)/2))-(Ysize/2);
+                obj.GUIHandles.SplashFig = figure('Position',[Xoffset Yoffset Ysize Xsize],'name','Bpod','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
                 ha = axes('units','normalized', 'position',[0 0 1 1]);
                 uistack(ha,'bottom');
             end
