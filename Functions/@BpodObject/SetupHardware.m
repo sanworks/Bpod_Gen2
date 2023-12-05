@@ -43,6 +43,7 @@ function obj = SetupHardware(obj)
         obj.Modules.RelayActive = zeros(1,nModules);
         obj.Modules.USBport = cell(1,nModules);
         AppSerialPortName = [];
+        obj.HW.StateMachineModel = 'r0.7-1.0';
     else
         % Get firmware version
         obj.SerialPort.write('F', 'uint8');
@@ -76,6 +77,7 @@ function obj = SetupHardware(obj)
                    obj.SerialPort = ArCOMObject_Bpod(FSMportName, 480000000, [], [], 1000000, 1000000);
                end
         end
+        obj.HW.StateMachineModel = SMName;
         disp(['Bpod State Machine ' SMName ' connected on port ' obj.SerialPort.PortName])
         if obj.FirmwareVersion ~= obj.CurrentFirmware.StateMachine 
             if obj.FirmwareVersion < obj.CurrentFirmware.StateMachine
