@@ -131,8 +131,10 @@ classdef RotaryEncoderModule < handle
         
         function pos = currentPosition(obj)
             if obj.acquiring == 1
+                stop(obj.Timer);
                 obj.captureUSBStream; % Push latest data to buffer
                 pos = obj.usbCapturedData.Positions(end);
+                start(obj.Timer);
             else
                 obj.Port.write('Q', 'uint8');
                 pos = obj.pos2degrees(obj.Port.read(1, 'int16'));
@@ -380,11 +382,12 @@ classdef RotaryEncoderModule < handle
                         op = varargin{1};
                         switch lower(op)
                             case 'usetimer'
-                                obj.usbCaptureEnabled = 1;
+                                
                             otherwise
                                 error(['Error starting rotary encoder USB stream: Invalid argument ' op '. Valid arguments are: ''UseTimer'''])
                         end     
                     end
+                    obj.usbCaptureEnabled = 1;
                     obj.Timer = timer('TimerFcn',@(h,e)obj.captureUSBStream(), 'ExecutionMode', 'fixedRate', 'Period', obj.timerInterval, 'Tag', ['RE_' obj.Port.PortName]);
                     start(obj.Timer);
                 else
