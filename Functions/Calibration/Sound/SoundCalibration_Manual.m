@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -20,21 +20,33 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 % Usage Notes:
 % Required: Bpod HiFi Module, manual sound level meter
-% SoundCal is a struct contining Bpod sound calibration data, stored by default in /Bpod_Local/Calibration Files/Sound Calibration/
-% FreqRange is a 2-element vector specifying the range of frequencies to calibrate
-% nMeasurements = number of measurements within FreqRange. These will be log-spaced.
-% dbSPL_Target is the target sound level for each frequency in dB SPL
-% nSpeakers is 1 for mono and 2 for stereo
+%
+% Parameters:
+% FreqRange:     a 2-element vector specifying the range of frequencies to calibrate in Hz, e.g. [1000 20000] for 1kHz to 20kHz
+% nMeasurements: the number of separate pure tone frequencies to measure within FreqRange. These will be log-spaced.
+% dbSPL_Target:  the target sound level for each frequency in dB SPL
+% nSpeakers:     1 for mono and 2 for stereo
+% digitalAtt_dB: a Bpod HiFi module parameter specifying digital attenuation. Units = dB FS. 0 = no attenuation, -120 = max attenuation
+%                Usage Note: Attenuating will reduce the amount your waveform has to be compressed within the DAC bit range to achieve 
+%                the target dB SPL. Choose the digitalAtt_dB that results in the largest possible attenuation factors in your system, 
+%                or (even better) set digitalAtt_dB to 0 and attenuate with the audio amplifier volume control.
+%                Computed attenuation factors for the supplied digitalAtt_dB are visible in SoundCal, the output of this function.
+%                IMPORTANT: your protocol must use the same digital attenuation as used for calibration! 
+%                           Set in your protocol .m file with H.DigitalAttenuation_dB = value.
+%
+% Returns:
+% SoundCal: a struct contining Bpod sound calibration data, stored by default in /Bpod_Local/Calibration Files/Sound Calibration/
 %
 % Example:
-% SoundCal = SoundCalibration_Manual([1000 80000], 10, 60, 2); % Measure attenuation factors for 10
-% frequencies between 1khz and 80kHz such that a full scale tone * attenuation factor --> 60dB. Return a best-fit polynomial function for interpolation.
+% SoundCal = SoundCalibration_Manual([1000 80000], 10, 60, 2, 0); % Measure attenuation factors for 10
+% frequencies between 1khz and 80kHz such that a full scale tone * attenuation factor --> 60dB with no digital attenuation. 
+% Return a best-fit polynomial function for interpolation.
 %
 % Once SoundCal is returned, calibrated pure tones can be generated with CalibratedPureTone().
 % A sample-wise attentuation envelope for pure frequency sweep waveforms can be calculated
 % with toneAtt = polyval(SoundCal(1,s).Coefficient,freqvec) where freqvec contains the instantaneous frequency at each sample.
 
-function SoundCal = SoundCalibration_Manual(FreqRange, nMeasurements, dbSPL_Target, nSpeakers)
+function SoundCal = SoundCalibration_Manual(FreqRange, nMeasurements, dbSPL_Target, nSpeakers, digitalAtt_dB)
 
 global BpodSystem
 %% Resolve HiFi Module USB port
@@ -45,7 +57,7 @@ else
     error('Error: To run this protocol, you must first pair the HiFi module with its USB port. Click the USB config button on the Bpod console.')
 end
 % Params
-H.DigitalAttenuation_dB = -15;
+H.DigitalAttenuation_dB = digitalAtt_dB;
 H.SamplingRate = 192000;
 H.AMenvelope = 1/192:1/192:1;
 FreqRangeError = 0;
@@ -53,6 +65,7 @@ nTriesPerFrequency = 7;
 toneDuration = 5; % Seconds
 AcceptableDifference_dBSPL = 0.5;
 
+% Sanitize inputs
 if (length(FreqRange) ~= 2) || (sum(FreqRange < 20) > 0) || (sum(FreqRange > 100000) > 0)
     FreqRangeError = 1;
 elseif FreqRange(1) > FreqRange(2)
@@ -68,7 +81,7 @@ if FreqRangeError
     error('Error: Frequency range must be a two element vector specifying the range of frequencies to calibrate')
 end
 
-% Setup struct
+% Setup sound cal struct
 SoundCal = struct;
 for i = 1:nSpeakers
     SoundCal(i).Table = [];
@@ -78,6 +91,7 @@ for i = 1:nSpeakers
     SoundCal(i).Coefficient = [];
 end
 
+% Calibraiton main loop
 MinFreq = FreqRange(1);
 MaxFreq = FreqRange(2);
 FrequencyVector =  logspace(log10(MinFreq),log10(MaxFreq),nMeasurements);
@@ -112,9 +126,13 @@ for s = 1:nSpeakers
             else
                 AmpFactor = sqrt(10^((dbSPL_Measured - dbSPL_Target)/10));
                 attFactor = attFactor/AmpFactor;
+                if attFactor > 1
+                    attFactor = 1;
+                end
             end
         end
     end
     SoundCal(s).Table = ThisTable;
     SoundCal(s).Coefficient = polyfit(ThisTable(:,1)',ThisTable(:,2)',1);
 end
+SoundCal.DigitalAttenuation_dB = digitalAtt_dB;
