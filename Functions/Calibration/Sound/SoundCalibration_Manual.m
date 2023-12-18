@@ -49,20 +49,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function SoundCal = SoundCalibration_Manual(FreqRange, nMeasurements, dbSPL_Target, nSpeakers, digitalAtt_dB)
 
 global BpodSystem
-%% Resolve HiFi Module USB port
-if (isfield(BpodSystem.ModuleUSB, 'HiFi1'))
-    %% Create an instance of the HiFi module
-    H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1);
+if isempty(BpodSystem)
+    clear global BpodSystem
+    disp(['***ALERT*** Calibrating in stand-alone mode.' char(10)... 
+        'If you are using the HiFi module with a Bpod State Machine,' char(10) 'please quit and run Bpod before calibrating.' char(10)])
+    hifiSerialPort = input('Enter the HiFi module serial port name, e.g. COM3: ', 's');
 else
-    error('Error: To run this protocol, you must first pair the HiFi module with its USB port. Click the USB config button on the Bpod console.')
+    %% Resolve HiFi Module USB port
+    if (isfield(BpodSystem.ModuleUSB, 'HiFi1'))
+        hifiSerialPort = BpodSystem.ModuleUSB.HiFi1;
+    else
+        error('Error: To run this protocol, you must first pair the HiFi module with its USB port. Click the USB config button on the Bpod console.')
+    end
 end
+
+%% Create an instance of the HiFi module
+H = BpodHiFi(hifiSerialPort);
+
 % Params
 H.DigitalAttenuation_dB = digitalAtt_dB;
 H.SamplingRate = 192000;
 H.AMenvelope = 1/192:1/192:1;
 FreqRangeError = 0;
 nTriesPerFrequency = 7;
-toneDuration = 5; % Seconds
+toneDuration = 3; % Seconds
 AcceptableDifference_dBSPL = 0.5;
 
 % Sanitize inputs
