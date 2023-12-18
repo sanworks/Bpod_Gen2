@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -31,8 +31,11 @@ function obj = SetupHardware(obj)
         obj.HW.Inputs = 'UUUXBBWWPPPPPPPP';
         obj.HW.n.Outputs = 25;
         obj.HW.Outputs = 'UUUXBBWWWPPPPPPPPVVVVVVVVGGG';
-        close(obj.GUIHandles.LaunchEmuFig);
-        disp('Connection aborted. Bpod started in Emulator mode: State Machine v1.0')
+        try % If the emulator was launched from the GUI
+            close(obj.GUIHandles.LaunchEmuFig);
+        catch
+        end
+        disp('Bpod started in Emulator mode: State Machine v1.0')
         obj.FirmwareVersion = obj.CurrentFirmware.StateMachine;
         obj.MachineType = 2;
         nModules = sum(obj.HW.Outputs=='U');

@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -67,13 +67,18 @@ classdef BpodObject < handle
         IsOnline % 1 if connection to Internet is available, 0 if not
     end
     methods
-        function obj = BpodObject %Constructor
+        function obj = BpodObject % Constructor
+            % Notify the user of the installed software version
+            ver = BpodSoftwareVersion;
+            disp(['Starting Bpod Console v' sprintf('%3.2f', ver)])
+
             % Check path for duplicate Bpod installations
             MatlabPath = path;
             nInstallations = length([strfind(MatlabPath, 'Bpod_Gen2;') strfind(MatlabPath, 'Bpod_Gen2-develop;')]);
             if nInstallations > 1
                 error(['Duplicate Bpod_Gen2 folders found in the MATLAB path. ' char(10) 'Please remove duplicates of Bpod_Gen2 and any duplicate subfolders before running Bpod.'])
             end
+
             % Add Bpod code to MATLAB path
             BpodPath = fileparts(which('Bpod'));
             addpath(genpath(fullfile(BpodPath, 'Assets')));
@@ -99,6 +104,7 @@ classdef BpodObject < handle
             obj.SplashData = SplashData;
             obj.Status.BpodStartTime = now;
             obj.Status = struct;
+            obj.Status.Initialized = false;
             obj.Status.LastTimestamp = 0;
             obj.Status.CurrentStateCode = 0;
             obj.Status.LastStateCode = 0;
@@ -191,7 +197,8 @@ classdef BpodObject < handle
                     'Calibration folder not found', ...
                     'Ok', 'Ok');
             end
-            % Liquid
+
+            % Load liquid calibration
             try
                 LiquidCalibrationFilePath = fullfile(obj.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
                 load(LiquidCalibrationFilePath);
@@ -199,7 +206,8 @@ classdef BpodObject < handle
             catch
                 obj.CalibrationTables.LiquidCal = [];
             end
-            % Sound
+
+            % Load sound calibration
             try
                 SoundCalibrationFilePath = fullfile(obj.Path.LocalDir, 'Calibration Files', 'SoundCalibration.mat');
                 load(SoundCalibrationFilePath);
@@ -213,6 +221,7 @@ classdef BpodObject < handle
             end
             load(obj.Path.InputConfig);
             obj.InputsEnabled = BpodInputConfig;
+
             % Load sync settings
             if ~exist(obj.Path.SyncConfig)
                 copyfile(fullfile(obj.Path.BpodRoot, 'Examples', 'Example Settings Files', 'SyncConfig.mat'), obj.Path.SyncConfig);
@@ -227,7 +236,6 @@ classdef BpodObject < handle
 
             % Load list of current firmware versions
             CF = CurrentFirmwareList; % Located in /Functions/Internal Functions/, returns list of current firmware
-            % for state machine and modules
             obj.CurrentFirmware = CF;
 
             % Create timer objects
@@ -654,8 +662,8 @@ classdef BpodObject < handle
                 Ysize = 970;
                 Xsize = 600;
                 if ~verLessThan('matlab', '9') % Image scaling was not as graceful in prior MATLAB
-                    Ysize = floor(Ysize*0.7);
-                    Xsize = floor(Xsize*0.7);
+                     Ysize = floor(Ysize*0.5);
+                     Xsize = floor(Xsize*0.5);
                 end
                 SS = get(0,'screensize');
                 Yoffset = round((SS(4)/2))-(Xsize/2);
