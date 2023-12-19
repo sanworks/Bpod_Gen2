@@ -65,11 +65,21 @@ if ~hasDAQ
 end
 
 % Determine DAQ board type (NI or MC)
-daqDevice = daq.getDevices;
-vendorName = daqDevice.Vendor.FullName;
 useNI = 0; % Default to use MC
-if strcmp(vendorName, 'National Instruments')
-    useNI = 1;
+deviceIndex = 0;
+installedDaqList = daqlist;
+for i = 1:height(installedDaqList)
+    thisName = installedDaqList.VendorID(i);
+    if strcmp(thisName,'ni')
+        deviceIndex = i;
+        useNI = 1;
+    end
+    if strcmp(thisName,'mcc')
+        deviceIndex = i;
+    end
+end
+if deviceIndex == 0
+    error('National Instruments or Measurement Computing DAQ board not detected.')
 end
 BpodSystem.PluginObjects.AudioCalibrationSetup.useNI = useNI;
 
@@ -108,12 +118,12 @@ uiwait(d);
 if ispc 
     if ~useNI % If not NI, start the MCC board
         BpodSystem.GUIData.SoundCalSys = 'MC';
-        BpodSystem.PluginObjects.USB1608G = struct;
-        warning off; BpodSystem.PluginObjects.USB1608G.Board = analoginput('mcc', 0); warning on;
-        BpodSystem.PluginObjects.USB1608G.Board.SampleRate = 200000;
-        BpodSystem.PluginObjects.USB1608G.Board.SamplesPerTrigger = 200000*.3;
-        BpodSystem.PluginObjects.USB1608G.Ch0 = addchannel(BpodSystem.PluginObjects.USB1608G.Board, 0);
-        BpodSystem.PluginObjects.USB1608G.Ch0.InputRange = [-10 10];
+        if ~isfield(BpodSystem.PluginObjects, 'MCC')
+            msgHandle = msgbox('Finding MCC USB Device. This may take up to 30 seconds...');
+            MCC = MCC_AnalogIn(.3);
+            close(msgHandle);
+            clear MCC % Now that the interface is verified, it will be created again later
+        end
     else      
         BpodSystem.GUIData.SoundCalSys = 'NI';
         if ~isfield(BpodSystem.PluginObjects, 'NI')
@@ -297,7 +307,8 @@ for inds=1:nSpeakers            % --   Loop through speakers  --
     SoundCal(1,inds).CalibrationTargetRange = [MinFreq MaxFreq];
     SoundCal(1,inds).TargetSPL = TargetSPL;
     SoundCal(1,inds).LastDateModified = date;
-    SoundCal(1,inds).Coefficient = polyfit(FrequencyVector',mean(AttenuationVector(:,inds),3),1);
+    %SoundCal(1,inds).Coefficient = polyfit(FrequencyVector',mean(AttenuationVector(:,inds),3),1); Depricated method: single polynomial fitting
+    SoundCal(1,inds).Interpolant = griddedInterpolant(SoundCal(1,inds).Table(:,1)',SoundCal(1,inds).Table(:,2)','pchip');
     drawnow;
 end
 if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
@@ -390,6 +401,8 @@ function edit10_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+function TargetSPL_Callback(hObject, eventdata, handles)
 
 
 % --- Executes on button press in test_btn.

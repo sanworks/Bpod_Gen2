@@ -51,31 +51,22 @@ end
 
 if ispc
     if ~BpodSystem.PluginObjects.AudioCalibrationSetup.useNI % Use MC
-        % --- Play the sound ---
-        if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
-            BpodSystem.PluginObjects.HiFiModule.play(1);
-        else
-            PsychToolboxSoundServer('Play', 1);
-        end
-        pause(0.1);
-        start(BpodSystem.PluginObjects.USB1608G.Board);
-        pause(.5);
-        RawSignal = getdata(BpodSystem.PluginObjects.USB1608G.Board)';
+        DAQ = MCC_AnalogIn(Parameters.TimeToRecord);
     else
-        NI = NI_AnalogIn(Parameters.TimeToRecord);
-        % --- Play the sound ---
-        if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
-            BpodSystem.PluginObjects.HiFiModule.play(1);
-        else
-            PsychToolboxSoundServer('Play', 1);
-        end
-        pause(0.1);
-        NI.startAcquiring();
-        pause(0.4);
-        RawSignal =  NI.GetData();
-        RawSignal = RawSignal.Data;
-        clear NI
+        DAQ = NI_AnalogIn(Parameters.TimeToRecord);
     end
+    % --- Play the sound ---
+    if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
+        BpodSystem.PluginObjects.HiFiModule.play(1);
+    else
+        PsychToolboxSoundServer('Play', 1);
+    end
+    pause(0.1);
+    DAQ.startAcquiring();
+    pause(0.4);
+    RawSignal =  DAQ.GetData();
+    RawSignal = RawSignal.Data;
+    clear DAQ
 else
     data = mcc_daq('n_scan',n_data,'freq',Parameters.FsIn,'n_chan',n_chan);
     RawSignal = data(channel,:);
