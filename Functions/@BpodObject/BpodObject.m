@@ -661,7 +661,7 @@ classdef BpodObject < handle
             if Stage == 1
                 Ysize = 970;
                 Xsize = 600;
-                if ~verLessThan('matlab', '9') % Image scaling was not as graceful in prior MATLAB
+                if ~isunix && ~verLessThan('matlab', '9') % Image scaling was not as graceful in prior MATLAB
                      Ysize = floor(Ysize*0.5);
                      Xsize = floor(Xsize*0.5);
                 end

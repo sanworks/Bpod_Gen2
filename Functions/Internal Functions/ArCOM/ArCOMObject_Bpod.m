@@ -185,6 +185,9 @@ classdef ArCOMObject_Bpod < handle
                     end
                 end
             end
+            if isunix && baudRate > 4000000
+                baudRate = 4000000;
+            end
             originalPortString = portString;
             switch obj.Interface
                 case 0
@@ -499,26 +502,28 @@ classdef ArCOMObject_Bpod < handle
         end
 
         function delete(obj)
-            switch obj.Interface
-                case 0
-                    if obj.JavaPortType == 0
+            if ~isempty(obj.Port)
+                switch obj.Interface
+                    case 0
+                        if obj.JavaPortType == 0
+                            fclose(obj.Port);
+                            delete(obj.Port);
+                        else
+                            obj.Port = [];
+                        end
+                    case 1
+                        if (obj.Port >= 0)
+                            IOPort('Close', obj.Port);
+                        end
+                    case 2
+                        fclose(obj.Port);
+                        obj.Port = [];
+                    case 3
                         fclose(obj.Port);
                         delete(obj.Port);
-                    else
-                        obj.Port = [];
-                    end
-                case 1
-                    if (obj.Port >= 0)
-                        IOPort('Close', obj.Port);
-                    end
-                case 2
-                    fclose(obj.Port);
-                    obj.Port = [];
-                case 3
-                    fclose(obj.Port);
-                    delete(obj.Port);
-                case 4
-                    pnet(obj.Port,'close');
+                    case 4
+                        pnet(obj.Port,'close');
+                end
             end
         end
         function close(obj)

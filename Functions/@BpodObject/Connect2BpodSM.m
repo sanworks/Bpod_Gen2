@@ -104,10 +104,6 @@ function obj = Connect2BpodSM(obj, portString, varargin)
             if AutoMode
                 AutoModeMessage = ['Try calling Bpod with a serial port argument, i.e. Bpod(''' Ports{1} ''')'];
             end
-            try
-                close(obj.GUIHandles.SplashFig);
-            catch
-            end
             error([char(10) 'Error: Could not find Bpod State Machine.' char(10)...
                 'Tried USB serial port(s): ' PortsTried char(10)...
                 AutoModeMessage]);
