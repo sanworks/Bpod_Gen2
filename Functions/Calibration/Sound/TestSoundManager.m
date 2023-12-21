@@ -143,13 +143,19 @@ if useHiFi
     BpodSystem.PluginObjects.HiFiModule.load(1, SoundData);
     BpodSystem.PluginObjects.HiFiModule.push;
     BpodSystem.PluginObjects.HiFiModule.play(1);
-    pause(toneDuration);
+    pause(toneDuration+.3);
     BpodSystem.PluginObjects.HiFiModule = [];
 else
+    if isfield(BpodSystem.PluginObjects, 'SoundServer')
+        BpodSystem.PluginObjects.SoundServer = [];
+    end
+    BpodSystem.PluginObjects.SoundServer = PsychToolboxAudio;
     % Load sound
-    PsychToolboxSoundServer('Load', 1, SoundData);
+    BpodSystem.PluginObjects.SoundServer.load(1, SoundData);
     % --- Play the sound ---
-    PsychToolboxSoundServer('Play', 1);
+    BpodSystem.PluginObjects.SoundServer.play(1);
+    pause(toneDuration+.3);
+    BpodSystem.PluginObjects.SoundServer = [];
 end
 
 

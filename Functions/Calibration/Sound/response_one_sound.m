@@ -46,7 +46,7 @@ if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
     BpodSystem.PluginObjects.HiFiModule.load(1, SoundVec);
     BpodSystem.PluginObjects.HiFiModule.push;
 else
-    PsychToolboxSoundServer('Load', 1, SoundVec);
+    BpodSystem.PluginObjects.SoundServer.load(1, SoundVec);
 end
 
 if ispc
@@ -59,7 +59,7 @@ if ispc
     if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
         BpodSystem.PluginObjects.HiFiModule.play(1);
     else
-        PsychToolboxSoundServer('Play', 1);
+        BpodSystem.PluginObjects.SoundServer.play(1);
     end
     pause(0.1);
     DAQ.startAcquiring();
@@ -79,7 +79,7 @@ signal_toplot = [0:1/Parameters.FsIn:(size(RawSignal,2)-1)/Parameters.FsIn; RawS
 if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
     BpodSystem.PluginObjects.HiFiModule.stop;
 else
-    PsychToolboxSoundServer('StopAll');
+    BpodSystem.PluginObjects.SoundServer.stopAll;
 end
 
 % --- Calculate power ---

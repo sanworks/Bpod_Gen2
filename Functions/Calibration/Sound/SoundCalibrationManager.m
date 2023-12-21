@@ -67,15 +67,24 @@ end
 % Determine DAQ board type (NI or MC)
 useNI = 0; % Default to use MC
 deviceIndex = 0;
-installedDaqList = daqlist;
-for i = 1:height(installedDaqList)
-    thisName = installedDaqList.VendorID(i);
-    if strcmp(thisName,'ni')
-        deviceIndex = i;
+if verLessThan('MATLAB', '9.8')
+    daqDevice = daq.getDevices;
+    vendorName = daqDevice.Vendor.FullName;
+    if strcmp(vendorName, 'National Instruments') % Only NI supported pre-2020a
+        deviceIndex = 1;
         useNI = 1;
     end
-    if strcmp(thisName,'mcc')
-        deviceIndex = i;
+else
+    installedDaqList = daqlist;
+    for i = 1:height(installedDaqList)
+        thisName = installedDaqList.VendorID(i);
+        if strcmp(thisName,'ni')
+            deviceIndex = i;
+            useNI = 1;
+        end
+        if strcmp(thisName,'mcc')
+            deviceIndex = i;
+        end
     end
 end
 if deviceIndex == 0
@@ -249,7 +258,10 @@ if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
     BpodSystem.PluginObjects.HiFiModule.SamplingRate = 192000;
     BpodSystem.PluginObjects.HiFiModule.DigitalAttenuation_dB = digitalAttenuation;
 else
-    PsychToolboxSoundServer('init');
+    if isfield(BpodSystem.PluginObjects, 'SoundServer')
+        BpodSystem.PluginObjects.SoundServer = [];
+    end
+    BpodSystem.PluginObjects.SoundServer = PsychToolboxAudio;
 end
 
 [FileName,PathName] = uiputfile(fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', 'SoundCalibration.mat'), 'Save Sound Calibration File');
