@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -36,7 +36,7 @@ classdef LoadBpodFirmware < handle
             % excludeFSM: 0 to include FSM serial port, 1 to hide it. This only works if the Bpod console is open.
             if ~ismember(computer,{'PCWIN64', 'GLNXA64'})
                 error(['Error: The Bpod firmware updater is not yet available on %s.' char(10)...
-                    'Please follow instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a> to update with the Arduino application.'],computer)
+                    'Please follow instructions <a href="matlab:web(''https://sanworks.github.io/Bpod_Wiki/install-and-update/firmware-update/#manual'',''-browser'')">here</a> to update with the Arduino application.'],computer)
             end
             set2Device = [];
             set2Port = [];

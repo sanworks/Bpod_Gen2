@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -35,7 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % - Run R.streamUI to see streaming output (for testing purposes)
 % - Run P = R.currentPosition to return the current encoder position (for testing purposes).
 % - Other methods can be viewed with methods(R), and documentation is on the Bpod wiki at: 
-% https://sites.google.com/site/bpoddocumentation/bpod-user-guide/function-reference-beta/rotaryencodermodule
+%   https://sanworks.github.io/Bpod_Wiki/module-documentation/rotary-encoder-module/
 
 classdef RotaryEncoderModule < handle
     properties

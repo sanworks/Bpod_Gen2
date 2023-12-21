@@ -22,11 +22,11 @@ warning off
 % Check for compatible system
 if verLessThan('MATLAB', '8.4')
     error(['Error: The automatic updater requires MATLAB r2014b or newer. ' char(10)...
-        'Update your software manually, following the instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/software-update'',''-browser'')">here</a>.'])
+        'Update your software manually, following the instructions <a href="matlab:web(''https://sanworks.github.io/Bpod_Wiki/install-and-update/software-update/'',''-browser'')">here</a>.'])
 end
 if ~ispc
     error(['Error: The automatic updater does not yet work on OSX or Linux. ' char(10)...
-        'Update your software manually, following the instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/software-update'',''-browser'')">here</a>.'])
+        'Update your software manually, following the instructions <a href="matlab:web(''https://sanworks.github.io/Bpod_Wiki/install-and-update/software-update/'',''-browser'')">here</a>.'])
 end
 
 % Check for open Bpod
@@ -57,23 +57,23 @@ Path.LocalDir = fullfile(Path.ParentDir, 'Bpod Local');
 Path.Functions = fullfile(Path.BpodRoot, 'Functions');
 addpath(genpath(Path.Functions));
 % Check for latest version
-Ver = BpodSoftwareVersion;
+Ver = BpodSoftwareVersion_Semantic;
 latestVersion = [];
-[reply, status] = urlread(['https://raw.githubusercontent.com/sanworks/Bpod_Gen2/master/Functions/Internal%20Functions/BpodSoftwareVersion.m']);
+[reply, status] = urlread('https://raw.githubusercontent.com/sanworks/Bpod_Gen2/master/Functions/Internal%20Functions/BpodSoftwareVersion_Semantic.m');
 verPos = find(reply == '=');
 if ~isempty(verPos)
-    verString = strtrim(reply(verPos(end)+1:end-1));
-    latestVersion = str2double(verString);
+    latestVersion = strtrim(reply(verPos(end)+2:end-2));
 end
 if ~isempty(latestVersion)
-    if Ver == latestVersion 
+    if compareBpodVersions(Ver, latestVersion) == 0
         error(['No update required - you already have the latest stable version of Bpod: v' verString]);
     end
 end
+
 BackupDir = fullfile(Path.LocalDir, 'Temp', 'Backup');
 disp(' ');
 disp('----Bpod Software Updater Beta----')
-disp(['This will update your Bpod software from v' num2str(Ver) ' to v' num2str(latestVersion) '.']);
+disp(['This will update your Bpod software from v' Ver ' to v' latestVersion '.']);
 disp('A backup copy of your current Bpod_Gen2 folder will be made in: ');
 disp(BackupDir);
 disp('Then, the latest software from Github will replace your current Bpod_Gen2 folder.');
@@ -81,10 +81,10 @@ disp(' ');
 disp('If you are using Git to keep Bpod software current, please')
 disp('do NOT use the updater - use the Git pull command instead.')
 disp(' ');
-disp('*IMPORTANT* This update tool is a BETA release.')
+disp('*IMPORTANT*')
 disp('Please manually back up your Bpod_Gen2 folder and data')
-disp('before you try it for the first time! If you prefer to update')
-disp('manually, please follow the instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/software-update'',''-browser'')">here</a>.')
+disp('before you try using the update tool! If you prefer to update')
+disp('manually, please follow the instructions <a href="matlab:web(''https://sanworks.github.io/Bpod_Wiki/install-and-update/software-update/'',''-browser'')">here</a>.')
 disp(' ');
 reply = input('Do you want to proceed with automatic update? (y/n) ', 's');
 if lower(reply) == 'y'

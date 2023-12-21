@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -19,12 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function Light2AFC_TrialManager
 % This protocol is a starting point for a visual 2AFC task like Light2AFC, 
-% but using the TrialManager object instead of RunStateMachine().
+% but using the BpodTrialManager class instead of RunStateMachine().
 % TrialManager allows heavy MATLAB-side processing (i.e., plots,
 % saving data, computing and loading the next trial's state machine)
 % without causing a long period of dead-time between trials. For more info
 % see the TrialManager documentation on the Bpod wiki:
-% https://sites.google.com/site/bpoddocumentation/bpod-user-guide/function-reference-beta/trialmanagerobject
+% https://sanworks.github.io/Bpod_Wiki/function-reference/running-statemachine/#bpodtrialmanager
 %
 % After initiating each trial with a center-poke,
 % the subject is rewarded for choosing the port that is lit.

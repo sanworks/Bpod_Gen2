@@ -31,6 +31,7 @@ if isfield(TE, 'RawEvents')
 else
     TrialNum = 1;
     TE.Info = struct;
+    TE.Info.SoftwareVersion = BpodSoftwareVersion_Semantic;
     if BpodSystem.EmulatorMode == 1
         TE.Info.StateMachineVersion = 'Bpod 0.7-1.0 EMULATOR';
     else

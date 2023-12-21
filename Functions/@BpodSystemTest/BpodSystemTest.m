@@ -71,7 +71,7 @@ classdef BpodSystemTest < handle
             obj.dispAndLog(['Date: ' datestr(now, 1) char(10) 'Time: ' datestr(now, 13)]);
             % Print system, software and PC info
             obj.FSM_Model = BpodSystem.HW.StateMachineModel;
-            obj.SoftwareVersion = BpodSoftwareVersion;
+            obj.SoftwareVersion = BpodSoftwareVersion_Semantic;
             obj.FirmwareVersion = BpodSystem.FirmwareVersion;
             [~,systemview] = memory;
             ptbInstalled = false;

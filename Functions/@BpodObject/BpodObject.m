@@ -69,8 +69,8 @@ classdef BpodObject < handle
     methods
         function obj = BpodObject % Constructor
             % Notify the user of the installed software version
-            ver = BpodSoftwareVersion;
-            disp(['Starting Bpod Console v' sprintf('%3.2f', ver)])
+            ver = BpodSoftwareVersion_Semantic;
+            disp(['Starting Bpod Console v' ver])
 
             % Check path for duplicate Bpod installations
             MatlabPath = path;
