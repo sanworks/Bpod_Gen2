@@ -101,7 +101,7 @@ function obj = SetupHardware(obj)
             else
                 obj.SerialPort.write('Z');
                 obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
-                obj.GUIData.OldFirmwareFlag = 1; % Signal to the Bpod.m launch code that old firmware was detected
+                obj.GUIData.FutureFirmwareFlag = 1; % Signal to the Bpod.m launch code that future firmware was detected
                 error('The firmware on the Bpod state machine is newer than your Bpod software for MATLAB. Please update your MATLAB software from the Bpod repository and try again.')
             end
         end
