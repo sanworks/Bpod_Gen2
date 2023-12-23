@@ -1,5 +1,5 @@
 ---v1.7.8---
--Switched to semantic versioning.
+-Switched to semantic versioning. Previously Github release tags used semantic, but software displayed version as X.XX
 -Automatic Sound Calibration: Fixed support for Measurement Computing USB1608G
 -Automatic Sound Calibration: Fixed test tone GUI (previously crashed on open)
 -Sound Calibration: Replaced polynomial fits with piecewise interpolation: griddedInterpolant with 'pchip'
