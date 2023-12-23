@@ -74,9 +74,10 @@ else
         bpodSetup;
     catch ME
         BpodSystem.GUIData.LaunchError = ME;
-        if isfield(BpodSystem.GUIData, 'OldFirmwareFlag')
+        if isfield(BpodSystem.GUIData, 'FutureFirmwareFlag')
             close(BpodSystem.GUIHandles.SplashFig);
-            delete(BpodSystem)
+            clear global BpodSystem
+            rethrow(ME)
         else
             emulatorDialog;
         end
@@ -126,9 +127,10 @@ global BpodSystem
 close(BpodSystem.GUIHandles.LaunchEmuFig);
 close(BpodSystem.GUIHandles.SplashFig);
 disp('Error: Bpod State Machine not found.')
-if isfield(BpodSystem.GUIData, 'LaunchError')
-    rethrow(BpodSystem.GUIData.LaunchError)
+GUIData = BpodSystem.GUIData;
+clear global BpodSystem
+if isfield(GUIData, 'LaunchError')
+    rethrow(GUIData.LaunchError)
 else
     lasterr
 end
-delete(BpodSystem)
