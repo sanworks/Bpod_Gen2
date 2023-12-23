@@ -18,7 +18,7 @@ W.loadWaveform(2, Wave);
 clear W % Calls the object destructor, frees the serial port
 
 % Set start/stop serial messages on state machine, to trigger the
-% WavePlayer. See https://sites.google.com/site/bpoddocumentation/bpod-user-guide/function-reference-beta/waveplayerserialinterface
+% WavePlayer. See https://sanworks.github.io/Bpod_Wiki/serial-interfaces/waveplayer-serial-interface/
 LoadSerialMessages('WavePlayer1', {['P' 1 1], ['X']}); % These will be referenced below as messages 1 and 2.
 
 % Create state machine

@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -26,11 +26,23 @@ function SoundData = CalibratedPureTone(Frequency, ToneDuration, Intensity, Side
 %
 % Additional required arguments are: SamplingFreq (Sampling Frequency of
 % the sound server in Hz), and CalibrationData (also stored in BpodSystem.CalibrationTables.SoundCal)
+%
+% 12/2023: This function now supports piecewise interpolation. The current version of SoundCalibration_Manual() 
+% generates a calibration function using griddedInterpolant() instead of polynomial fitting with polyfit().
+% This method better captures the nuanced frequency response of speakers.
+% New calibration files have an Interpolant field instead of the Coefficient field.
+% Old calibration files are supported, and will automatically use polyfit. A warning will urge the user to recalibrate. 
+
 nChannels = length(CalibrationData);
 nSamples = ToneDuration*SamplingFreq;
 nRampSamples = RampDuration*SamplingFreq;
 if nRampSamples >= nSamples/2
     error('Error: ramp duration (in seconds) cannot exceed half of the sound duration');
+end
+useInterpolant = true;
+if isfield(CalibrationData, 'Coefficient')
+    useInterpolant = false;
+    warning('Legacy Audio Calibration file detected. Please recalibrate for improved performance.')
 end
 switch Side
     case 0
@@ -60,13 +72,21 @@ if nRampSamples > 0
 end
     
 if (UseLeft)
-    toneAttLeft = polyval(CalibrationData(1,1).Coefficient,Frequency);
+    if useInterpolant
+        toneAttLeft = CalibrationData(1,1).Interpolant(Frequency);
+    else
+        toneAttLeft = polyval(CalibrationData(1,1).Coefficient,Frequency);
+    end
     attFactorLeft = toneAttLeft * sqrt(10^((Intensity - CalibrationData(1,1).TargetSPL)/10));
     SoundVecLeft = attFactorLeft * sin(2*pi*Frequency*(1/SamplingFreq:1/SamplingFreq:ToneDuration));
     SoundVecLeft = SoundVecLeft.*RampEnvelope;
 end
 if (UseRight)
-    toneAttRight = polyval(CalibrationData(1,2).Coefficient,Frequency);
+    if useInterpolant
+        toneAttRight = CalibrationData(1,2).Interpolant(Frequency);
+    else
+        toneAttRight = polyval(CalibrationData(1,2).Coefficient,Frequency);
+    end
     attFactorRight = toneAttRight * sqrt(10^((Intensity - CalibrationData(1,2).TargetSPL)/10));
     SoundVecRight = attFactorRight * sin(2*pi*Frequency*(1/SamplingFreq:1/SamplingFreq:ToneDuration));
     SoundVecRight = SoundVecRight.*RampEnvelope;

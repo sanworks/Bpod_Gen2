@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2017 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -51,7 +51,7 @@ end
 if OptedIn == 1
     Machine = num2str(obj.MachineType);
     FV = num2str(obj.FirmwareVersion);
-    SV = num2str(BpodSoftwareVersion);
+    SV = BpodSoftwareVersion_Semantic;
     if ispc
         WinVer = [];
         [a,reply]=system('ver');

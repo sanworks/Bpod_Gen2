@@ -6,4 +6,4 @@ More details at: https://github.com/shumatech/BOSSA
 
 Firmware files in this folder begin with stable versions as of 1 July, 2022, and include more recent updates.
 If you need an earlier firmware version, it must be installed manually. Installation instructions are here:
-https://sites.google.com/site/bpoddocumentation/firmware-update
+https://sanworks.github.io/Bpod_Wiki/install-and-update/firmware-update/#manual

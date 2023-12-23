@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -31,6 +31,7 @@ if isfield(TE, 'RawEvents')
 else
     TrialNum = 1;
     TE.Info = struct;
+    TE.Info.SoftwareVersion = BpodSoftwareVersion_Semantic;
     if BpodSystem.EmulatorMode == 1
         TE.Info.StateMachineVersion = 'Bpod 0.7-1.0 EMULATOR';
     else

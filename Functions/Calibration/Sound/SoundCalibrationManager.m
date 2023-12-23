@@ -23,7 +23,7 @@ function varargout = SoundCalibrationManager(varargin)
 
 % Edit the above text to modify the response to help SoundCalibrationManager
 
-% Last Modified by GUIDE v2.5 18-Sep-2015 10:31:07
+% Last Modified by GUIDE v2.5 15-Dec-2023 17:19:06
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -53,45 +53,96 @@ function SoundCalibrationManager_OpeningFcn(hObject, eventdata, handles, varargi
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to SoundCalibrationManager (see VARARGIN)
 global BpodSystem
+disp('Starting sound calibration. Please wait.')
+
+% Create a shared struct for setup info
+BpodSystem.PluginObjects.AudioCalibrationSetup = struct;
+
+% Assert DAQ toolbox
 hasDAQ = license('test', 'data_acq_toolbox');
 if ~hasDAQ
-    error('Error: You must have the MATLAB Data Acquisition Toolbox to use the sound calibration tool.')
+    error('Error: You must have the MATLAB Data Acquisition Toolbox to use the automatic sound calibration tool.')
 end
-if ispc % Start the MCC board with PsychToolbox
-    Ext = mexext; Ext = str2double(Ext(end-1:end));
-    if Ext == 32
-        BpodSystem.GUIData.SoundCalSys = 'MC';
-        BpodSystem.PluginObjects.USB1608G = struct;
-        warning off; BpodSystem.PluginObjects.USB1608G.Board = analoginput('mcc', 0); warning on;
-        BpodSystem.PluginObjects.USB1608G.Board.SampleRate = 200000;
-        BpodSystem.PluginObjects.USB1608G.Board.SamplesPerTrigger = 200000*.3;
-        BpodSystem.PluginObjects.USB1608G.Ch0 = addchannel(BpodSystem.PluginObjects.USB1608G.Board, 0);
-        BpodSystem.PluginObjects.USB1608G.Ch0.InputRange = [-10 10];
-    else
-        d = dialog('Position',[300 300 250 150],'Name','Sound Cal');
 
-        txt = uicontrol('Parent',d,...
-                   'Style','text',...
-                   'Position',[10 80 240 60],...
-                   'String',['Welcome to Bpod Sound Calibration!' char(10)... 
-                   'Connect the NI USB-6211 to your PC,' char(10)... 
-                   'Bruel & Kjær Nexus Amp to NI channel AI0,' char(10)... 
-                   'set up mic and click Ok to continue.']);
-
-        btn = uicontrol('Parent',d,...
-                   'Position',[85 20 70 25],...
-                   'String','Ok',...
-                   'Callback','delete(gcf)');
-        uiwait(d);        
-        BpodSystem.GUIData.SoundCalSys = 'NI';
-        if ~isfield(BpodSystem.PluginObjects, 'NI')
-            msgHandle = msgbox('Finding NI Card. This may take up to 30 seconds...');
-            NI = NI_AnalogIn(.3);
-            close(msgHandle);
-            clear NI
+% Determine DAQ board type (NI or MC)
+useNI = 0; % Default to use MC
+deviceIndex = 0;
+if verLessThan('MATLAB', '9.8')
+    daqDevice = daq.getDevices;
+    vendorName = daqDevice.Vendor.FullName;
+    if strcmp(vendorName, 'National Instruments') % Only NI supported pre-2020a
+        deviceIndex = 1;
+        useNI = 1;
+    end
+else
+    installedDaqList = daqlist;
+    for i = 1:height(installedDaqList)
+        thisName = installedDaqList.VendorID(i);
+        if strcmp(thisName,'ni')
+            deviceIndex = i;
+            useNI = 1;
+        end
+        if strcmp(thisName,'mcc')
+            deviceIndex = i;
         end
     end
-    
+end
+if deviceIndex == 0
+    error('National Instruments or Measurement Computing DAQ board not detected.')
+end
+BpodSystem.PluginObjects.AudioCalibrationSetup.useNI = useNI;
+
+% Determine sound system type (HiFi module or PsychToolbox)
+useHiFi = 0;
+if sum(strcmp(BpodSystem.Modules.Name, 'HiFi1')) > 0
+    useHiFi = 1;
+    BpodSystem.assertModule('HiFi', 1);
+end
+BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi = useHiFi;
+
+d = dialog('Position',[300 300 250 150],'Name','Sound Cal');
+
+if BpodSystem.PluginObjects.AudioCalibrationSetup.useNI
+    daqName = 'NI USB-621X';
+    chanName = 'channel AI0';
+else
+    daqName = 'MCC USB1608G';
+    chanName = 'CH0';
+end
+
+txt = uicontrol('Parent',d,...
+           'Style','text',...
+           'Position',[10 80 240 60],...
+           'String',['Welcome to Bpod Sound Calibration!' char(10)... 
+           'Connect the ' daqName ' to your PC,' char(10)... 
+           'Bruel & Kjær Nexus Amp out to ' chanName ',' char(10)... 
+           'set up mic and click Ok to continue.']);
+
+btn = uicontrol('Parent',d,...
+           'Position',[85 20 70 25],...
+           'String','Ok',...
+           'Callback','delete(gcf)');
+uiwait(d);  
+
+if ispc 
+    if ~useNI % If not NI, start the MCC board
+        BpodSystem.GUIData.SoundCalSys = 'MC';
+        if ~isfield(BpodSystem.PluginObjects, 'MCC')
+            msgHandle = msgbox('Finding MCC USB Device. This may take up to 30 seconds...');
+            MCC = MCC_AnalogIn(.3);
+            close(msgHandle);
+            clear MCC % Now that the interface is verified, it will be created again later
+        end
+    else      
+        BpodSystem.GUIData.SoundCalSys = 'NI';
+        if ~isfield(BpodSystem.PluginObjects, 'NI')
+            msgHandle = msgbox('Finding NI USB Device. This may take up to 30 seconds...');
+            NI = NI_AnalogIn(.3);
+            close(msgHandle);
+            clear NI % Now that the interface is verified, it will be created again later
+        end
+    end
+    disp('Sound calibration initialized.')
 end
 % Choose default command line output for SoundCalibrationManager
 handles.output = hObject;
@@ -187,16 +238,33 @@ MaxFreq = str2double(get(handles.MaxFreq,'String'));
 nFreq = str2double(get(handles.nFreq,'String'));
 nSpeakers = str2double(get(handles.nSpeakers,'String'));
 nRepeats = str2double(get(handles.edit11,'String'));
-
+digitalAttenuation = str2double(get(handles.digitalAttEdit,'String'));
+if digitalAttenuation > 0
+    error('Error: Digital Attenuation (units in dB) must be 0 or negative.')
+end
 MinBandLimit = str2double(get(handles.MinBandLimit,'String'));
 MaxBandLimit = str2double(get(handles.MaxBandLimit,'String'));
 
 FrequencyVector =  logspace(log10(MinFreq),log10(MaxFreq),nFreq);
 
-PsychToolboxSoundServer('init')
+% Start audio interface
+if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
+    if isfield(BpodSystem.PluginObjects, 'HiFiModule')
+        if ~isempty(BpodSystem.PluginObjects.HiFiModule)
+            BpodSystem.PluginObjects.HiFiModule = []; % Trigger class destructor, releasing USB serial port
+        end
+    end
+    BpodSystem.PluginObjects.HiFiModule = BpodHiFi(BpodSystem.ModuleUSB.HiFi1);
+    BpodSystem.PluginObjects.HiFiModule.SamplingRate = 192000;
+    BpodSystem.PluginObjects.HiFiModule.DigitalAttenuation_dB = digitalAttenuation;
+else
+    if isfield(BpodSystem.PluginObjects, 'SoundServer')
+        BpodSystem.PluginObjects.SoundServer = [];
+    end
+    BpodSystem.PluginObjects.SoundServer = PsychToolboxAudio;
+end
 
-OutputFileName = ['SoundCalibration'];
-[FileName,PathName] = uiputfile('.mat','Save Sound Calibration File',OutputFileName);
+[FileName,PathName] = uiputfile(fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', 'SoundCalibration.mat'), 'Save Sound Calibration File');
 
 handles.filename = fullfile(PathName,FileName);
 
@@ -251,9 +319,16 @@ for inds=1:nSpeakers            % --   Loop through speakers  --
     SoundCal(1,inds).CalibrationTargetRange = [MinFreq MaxFreq];
     SoundCal(1,inds).TargetSPL = TargetSPL;
     SoundCal(1,inds).LastDateModified = date;
-    SoundCal(1,inds).Coefficient = polyfit(FrequencyVector',mean(AttenuationVector(:,inds),3),1);
-
+    %SoundCal(1,inds).Coefficient = polyfit(FrequencyVector',mean(AttenuationVector(:,inds),3),1); Depricated method: single polynomial fitting
+    SoundCal(1,inds).Interpolant = griddedInterpolant(SoundCal(1,inds).Table(:,1)',SoundCal(1,inds).Table(:,2)','pchip');
     drawnow;
+end
+if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
+    SoundCal.DigitalAttenuation_dB = digitalAttenuation;
+end
+
+if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
+    BpodSystem.PluginObjects.HiFiModule = []; % Trigger class destructor, releasing USB serial port
 end
 
 % -- Saving results --
@@ -339,6 +414,8 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
+function TargetSPL_Callback(hObject, eventdata, handles)
+
 
 % --- Executes on button press in test_btn.
 function test_btn_Callback(hObject, eventdata, handles)
@@ -375,6 +452,29 @@ function edit11_Callback(hObject, eventdata, handles)
 % --- Executes during object creation, after setting all properties.
 function edit11_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit11 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function digitalAttEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to digitalAttEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of digitalAttEdit as text
+%        str2double(get(hObject,'String')) returns contents of digitalAttEdit as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function digitalAttEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to digitalAttEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 

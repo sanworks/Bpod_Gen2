@@ -17,13 +17,13 @@ classdef UpdateBpodFirmware < handle
             global BpodSystem
             if ~ispc
                 error(['Error: The Bpod firmware updater is not yet available on OSX or Linux.' char(10)...
-                    'Please follow instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a> to update with the Arduino application.'])
+                    'Please follow instructions <a href="matlab:web(''https://sanworks.github.io/Bpod_Wiki/install-and-update/firmware-update/#manual'',''-browser'')">here</a> to update with the Arduino application.'])
             end
             disp(' ');
             disp('----Bpod Firmware Updater Beta----')
             disp('*IMPORTANT* The Bpod firmware update tool is a BETA release.')
             disp('If it does not work, you may need to update your firmware')
-            disp('manually. To do so, follow the instructions <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.')
+            disp('manually. To do so, follow the instructions <a href="matlab:web(''https://sanworks.github.io/Bpod_Wiki/install-and-update/firmware-update/#manual'',''-browser'')">here</a>.')
             disp(' ');
             reply = input('Do you want to launch the update tool? (y/n) ', 's');
             if lower(reply) ~= 'y'

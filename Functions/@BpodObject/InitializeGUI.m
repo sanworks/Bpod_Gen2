@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -224,8 +224,8 @@ function obj = InitializeGUI(obj)
     text(10, 306,'Port', 'FontName', FontName, 'FontSize', Vsm, 'Color', LabelFontColor);
     text(23, 65,'Live Info', 'FontName', FontName, 'FontSize', Med, 'Color', LabelFontColor);
     line([10 130], [79 79], 'Color', LabelFontColor, 'LineWidth', 2);
-    Ver = BpodSoftwareVersion;
-    text(10, 376,['Console v' sprintf('%3.2f', Ver)], 'FontName', FontName, 'FontSize', Vsm, 'Color', [0.8 0.8 0.8]);
+    Ver = BpodSoftwareVersion_Semantic;
+    text(10, 376,['Console v' Ver], 'FontName', FontName, 'FontSize', Vsm, 'Color', [0.8 0.8 0.8]);
     drawnow;
     if obj.IsOnline == 1
         if isfield(obj.SystemSettings, 'PhoneHome')

@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2019 Sanworks LLC, Stony Brook, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -175,6 +175,10 @@ end
 if ~ispc && ~ismac
     xPos = [378 375 380];
 end
+smCircuitVersion = 0;
+if ~isnan(BpodSystem.HW.CircuitRevision.StateMachine)
+    smCircuitVersion = BpodSystem.HW.CircuitRevision.StateMachine;
+end
 text(xPos(1), 190,' Bpod Finite', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
 text(xPos(2), 130,'State Machine', 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
-text(xPos(3), 70, ['    v2.' num2str(BpodSystem.HW.CircuitRevision.StateMachine)], 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);
+text(xPos(3), 70, ['    v2.' num2str(smCircuitVersion)], 'FontName', FontName, 'FontSize', 16, 'Color', [.7 .7 .7]);

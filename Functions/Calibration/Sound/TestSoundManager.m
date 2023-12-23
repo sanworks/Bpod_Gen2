@@ -104,44 +104,59 @@ function play_Callback(hObject, eventdata, handles)
 % hObject    handle to play (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-% --- Parameters of the test ---
-toneDuration = 1;
-fsOut = 192000;
-tvec = 0:1/fsOut:toneDuration;
+global BpodSystem
+sampling_freq = 192000;
+frequency = str2double(get(handles.frequency_edit, 'String'));
+intensity = str2double(get(handles.volume_edit, 'String'));
+toneDuration = 3;
+side = get(handles.speaker1, 'Value');
+side = 1-side;
+rampDuration = 0.001;
 
 CalFilePath = get(handles.filename_edit, 'String');
 try
-    open(CalFilePath); % Creates local variable "SoundCal", a struct with the cal table and coefficients
+    SoundCal = open(CalFilePath); % Creates local variable "SoundCal", a struct with the cal table and coefficients
+    SoundCal = SoundCal.SoundCal;
 catch
     error('Could not open calibration file');
 end
-frequency = str2double(get(handles.frequency_edit, 'String'));
-speaker = get(handles.speaker1, 'Value');
-if speaker == 0 % Other radio button is selected
-    speaker = 2;
+
+SoundData = CalibratedPureTone(frequency, toneDuration, intensity, side, rampDuration, sampling_freq, SoundCal);
+useHiFi = 0;
+if sum(strcmp(BpodSystem.Modules.Name, 'HiFi1')) > 0
+    useHiFi = 1;
+    BpodSystem.assertModule('HiFi', 1);
 end
-% Attenuation for this frequency at Target SPL
-toneAtt = polyval(SoundCal(1,handles.speaker).Coefficient,frequency);
-
-diffSPL = str2double(handles.volume_edit.String) - SoundCal(1,speaker).TargetSPL;
-attFactor = sqrt(10^(diffSPL/10));
-
-amplitude = toneAtt*attFactor;
-
-SoundVec = amplitude * sin(2*pi*frequency*tvec);
-
-if handles.speaker==1
-    SoundVec = [ SoundVec; zeros(1,length(SoundVec)) ];
+if useHiFi
+    if isfield(BpodSystem.PluginObjects, 'HiFiModule')
+        if ~isempty(BpodSystem.PluginObjects.HiFiModule)
+            BpodSystem.PluginObjects.HiFiModule = []; % Trigger class destructor, releasing USB serial port
+        end
+    end
+    BpodSystem.PluginObjects.HiFiModule = BpodHiFi(BpodSystem.ModuleUSB.HiFi1);   
+    BpodSystem.PluginObjects.HiFiModule.SamplingRate = 192000;
+    if isfield(SoundCal, 'DigitalAttenuation_dB')
+        BpodSystem.PluginObjects.HiFiModule.DigitalAttenuation_dB = SoundCal.DigitalAttenuation_dB;
+    else
+        warning('Warning: Old calibration file without digital attenuation data. Please re-run calibration.')
+    end
+    BpodSystem.PluginObjects.HiFiModule.load(1, SoundData);
+    BpodSystem.PluginObjects.HiFiModule.push;
+    BpodSystem.PluginObjects.HiFiModule.play(1);
+    pause(toneDuration+.3);
+    BpodSystem.PluginObjects.HiFiModule = [];
+else
+    if isfield(BpodSystem.PluginObjects, 'SoundServer')
+        BpodSystem.PluginObjects.SoundServer = [];
+    end
+    BpodSystem.PluginObjects.SoundServer = PsychToolboxAudio;
+    % Load sound
+    BpodSystem.PluginObjects.SoundServer.load(1, SoundData);
+    % --- Play the sound ---
+    BpodSystem.PluginObjects.SoundServer.play(1);
+    pause(toneDuration+.3);
+    BpodSystem.PluginObjects.SoundServer = [];
 end
-if handles.speaker==2
-    SoundVec = [ zeros(1,length(SoundVec)); SoundVec ];
-end
-
-% Load sound
-PsychToolboxSoundServer('Load', 1, SoundVec);
-% --- Play the sound ---
-PsychToolboxSoundServer('Play', 1);
 
 
 % --- Executes on button press in close.
@@ -188,14 +203,17 @@ end
 
 % --- Executes on button press in file.
 function file_Callback(hObject, eventdata, handles)
+global BpodSystem
 % hObject    handle to file (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[FileName,PathName] = uigetfile;
-handles.calfile = fullfile(PathName,FileName);
-handles.filename_edit.String = handles.calfile;
-load(handles.calfile)
-handles.SoundCal = SoundCal;
+[FileName,PathName] = uigetfile(fullfile(BpodSystem.Path.LocalDir, 'Calibration Files'));
+if FileName ~= 0
+    handles.calfile = fullfile(PathName,FileName);
+    set(handles.filename_edit, 'String', handles.calfile);
+    load(handles.calfile)
+    handles.SoundCal = SoundCal;
+end
 guidata(hObject,handles)
 
 

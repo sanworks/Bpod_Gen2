@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -193,9 +193,9 @@ function obj = LoadModules(obj)
                             disp(['1. From the Bpod console, pair the ' thisModuleName ' module with its USB port.' char(13)...
                             '2. While Bpod is still open, click <a href="matlab:LoadBpodFirmware(''' thisModuleName ''', 1);">here</a> to start the update tool, LoadBpodFirmware().' char(13)...
                             '3. Select the correct firmware and USB port.' char(13)  '   NOTE: If updating the analog output module, use the correct version (4ch or 8ch).' char(13) ...
-                            'If necessary, manual firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
+                            'If necessary, manual firmware update instructions are <a href="matlab:web(''https://sanworks.github.io/Bpod_Wiki/install-and-update/firmware-update/#manual'',''-browser'')">here</a>.' char(13)]);
                         else
-                            disp(['Firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
+                            disp(['Firmware update instructions are <a href="matlab:web(''https://sanworks.github.io/Bpod_Wiki/install-and-update/firmware-update/#manual'',''-browser'')">here</a>.' char(13)]);
                             disp(['IMPORTANT NOTE: Modules based on the red SAMD21 Mini board' char(13) '(Original Valve Driver, I2C and SNES)' char(13) 'should NOT be updated with the LoadBpodFirmware tool.'])
                         end
                         oldFirmwareFound = 1;

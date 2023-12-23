@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -35,7 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % - Run R.streamUI to see streaming output (for testing purposes)
 % - Run P = R.currentPosition to return the current encoder position (for testing purposes).
 % - Other methods can be viewed with methods(R), and documentation is on the Bpod wiki at: 
-% https://sites.google.com/site/bpoddocumentation/bpod-user-guide/function-reference-beta/rotaryencodermodule
+%   https://sanworks.github.io/Bpod_Wiki/module-documentation/rotary-encoder-module/
 
 classdef RotaryEncoderModule < handle
     properties
@@ -131,8 +131,10 @@ classdef RotaryEncoderModule < handle
         
         function pos = currentPosition(obj)
             if obj.acquiring == 1
+                stop(obj.Timer);
                 obj.captureUSBStream; % Push latest data to buffer
                 pos = obj.usbCapturedData.Positions(end);
+                start(obj.Timer);
             else
                 obj.Port.write('Q', 'uint8');
                 pos = obj.pos2degrees(obj.Port.read(1, 'int16'));
@@ -380,11 +382,12 @@ classdef RotaryEncoderModule < handle
                         op = varargin{1};
                         switch lower(op)
                             case 'usetimer'
-                                obj.usbCaptureEnabled = 1;
+                                
                             otherwise
                                 error(['Error starting rotary encoder USB stream: Invalid argument ' op '. Valid arguments are: ''UseTimer'''])
                         end     
                     end
+                    obj.usbCaptureEnabled = 1;
                     obj.Timer = timer('TimerFcn',@(h,e)obj.captureUSBStream(), 'ExecutionMode', 'fixedRate', 'Period', obj.timerInterval, 'Tag', ['RE_' obj.Port.PortName]);
                     start(obj.Timer);
                 else

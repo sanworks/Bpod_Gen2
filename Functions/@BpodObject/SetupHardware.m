@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2022 Sanworks LLC, Rochester, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 ----------------------------------------------------------------------------
 
@@ -31,8 +31,11 @@ function obj = SetupHardware(obj)
         obj.HW.Inputs = 'UUUXBBWWPPPPPPPP';
         obj.HW.n.Outputs = 25;
         obj.HW.Outputs = 'UUUXBBWWWPPPPPPPPVVVVVVVVGGG';
-        close(obj.GUIHandles.LaunchEmuFig);
-        disp('Connection aborted. Bpod started in Emulator mode: State Machine v1.0')
+        try % If the emulator was launched from the GUI
+            close(obj.GUIHandles.LaunchEmuFig);
+        catch
+        end
+        disp('Bpod started in Emulator mode: State Machine v1.0')
         obj.FirmwareVersion = obj.CurrentFirmware.StateMachine;
         obj.MachineType = 2;
         nModules = sum(obj.HW.Outputs=='U');
@@ -43,6 +46,7 @@ function obj = SetupHardware(obj)
         obj.Modules.RelayActive = zeros(1,nModules);
         obj.Modules.USBport = cell(1,nModules);
         AppSerialPortName = [];
+        obj.HW.StateMachineModel = 'r0.7-1.0';
     else
         % Get firmware version
         obj.SerialPort.write('F', 'uint8');
@@ -76,6 +80,7 @@ function obj = SetupHardware(obj)
                    obj.SerialPort = ArCOMObject_Bpod(FSMportName, 480000000, [], [], 1000000, 1000000);
                end
         end
+        obj.HW.StateMachineModel = SMName;
         disp(['Bpod State Machine ' SMName ' connected on port ' obj.SerialPort.PortName])
         if obj.FirmwareVersion ~= obj.CurrentFirmware.StateMachine 
             if obj.FirmwareVersion < obj.CurrentFirmware.StateMachine
@@ -84,7 +89,7 @@ function obj = SetupHardware(obj)
                 disp([char(13) 'NOTICE: Old state machine firmware detected: v' num2str(obj.FirmwareVersion) '. ' char(13)...
                     'You may optionally update the state machine firmware to v' num2str(obj.CurrentFirmware.StateMachine) '.' char(13)...
                     'Click <a href="matlab:EndBpod; LoadBpodFirmware(''' FirmwareName ''', 0, ''' obj.SerialPort.PortName ''');">here</a> to start the update tool, or run LoadBpodFirmware().' char(13)...
-                    'If necessary, manual firmware update instructions are <a href="matlab:web(''https://sites.google.com/site/bpoddocumentation/firmware-update'',''-browser'')">here</a>.' char(13)]);
+                    'If necessary, manual firmware update instructions are <a href="matlab:web(''https://sanworks.github.io/Bpod_Wiki/install-and-update/firmware-update/#manual'',''-browser'')">here</a>.' char(13)]);
                 disp('***************************************************************');
                 BpodErrorSound;
                 if obj.FirmwareVersion > 21

@@ -3,7 +3,7 @@ function StateTiming(t0)
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
-Copyright (C) 2020 Sanworks LLC, Rochester, New York, USA
+Copyright (C) Sanworks LLC, Rochester, New York, USA
 
 This plugin was contributed in its original form by Florian Rau / Poulet Lab
 See original version and copyright notice in StateTiming.m at https://github.com/poulet-lab/Bpod_Gen2

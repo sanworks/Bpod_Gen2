@@ -10,7 +10,7 @@ global BpodSystem
 % --- Parameters of the test ---
 Parameters.ToneDuration = 0.8;        % sec
 Parameters.TimeToRecord = 0.4;        % sec
-Parameters.FsOut = 192000;              % Sampling frequency
+Parameters.FsOut = 192000;            % Sampling frequency
 tvec = 0:1/Parameters.FsOut:Parameters.ToneDuration;
 
 % --- Setting up PSD estimation ---
@@ -19,7 +19,7 @@ hPSD.SegmentLength=2048*8;
 
 % --- Set the acquisition card ---
 channel = 1;
-n_chan = 1; 
+n_chan = 1;
 
 Parameters.FsIn = 200000;
 n_data = Parameters.TimeToRecord*Parameters.FsIn;
@@ -32,7 +32,7 @@ rampNsamples = 400;
 ramp = 1/rampNsamples:1/rampNsamples:1;
 endramp = ramp(end:-1:1);
 SoundVec(1:rampNsamples) = SoundVec(1:rampNsamples) .* ramp;
-    SoundVec(end-rampNsamples+1:end) = SoundVec(end-rampNsamples+1:end).* endramp;
+SoundVec(end-rampNsamples+1:end) = SoundVec(end-rampNsamples+1:end).* endramp;
 
 if SoundParam.Speaker==1
     SoundVec = [ SoundVec; zeros(1,length(SoundVec)) ];
@@ -42,39 +42,45 @@ if SoundParam.Speaker==2
 end
 
 % Load sound
-PsychToolboxSoundServer('Load', 1, SoundVec);
+if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
+    BpodSystem.PluginObjects.HiFiModule.load(1, SoundVec);
+    BpodSystem.PluginObjects.HiFiModule.push;
+else
+    BpodSystem.PluginObjects.SoundServer.load(1, SoundVec);
+end
 
 if ispc
-    if strcmp(BpodSystem.GUIData.SoundCalSys, 'MC')
-        % --- Play the sound ---
-        PsychToolboxSoundServer('Play', 1);
-        pause(0.1);
-        start(BpodSystem.PluginObjects.USB1608G.Board);
-        pause(.5);
-        RawSignal = getdata(BpodSystem.PluginObjects.USB1608G.Board)';
-    elseif strcmp(BpodSystem.GUIData.SoundCalSys, 'NI')
-        NI = NI_AnalogIn(Parameters.TimeToRecord);
-        % --- Play the sound ---
-        PsychToolboxSoundServer('Play', 1);
-        pause(0.1);
-         NI.startAcquiring();
-         pause(0.4);
-        RawSignal =  NI.GetData();
-        RawSignal = RawSignal.Data;
-        clear NI
+    if ~BpodSystem.PluginObjects.AudioCalibrationSetup.useNI % Use MC
+        DAQ = MCC_AnalogIn(Parameters.TimeToRecord);
     else
-        error('Error: Unknown sound calibration interface');
+        DAQ = NI_AnalogIn(Parameters.TimeToRecord);
     end
+    % --- Play the sound ---
+    if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
+        BpodSystem.PluginObjects.HiFiModule.play(1);
+    else
+        BpodSystem.PluginObjects.SoundServer.play(1);
+    end
+    pause(0.1);
+    DAQ.startAcquiring();
+    pause(0.4);
+    RawSignal =  DAQ.GetData();
+    RawSignal = RawSignal.Data;
+    clear DAQ
 else
     data = mcc_daq('n_scan',n_data,'freq',Parameters.FsIn,'n_chan',n_chan);
-    RawSignal = data(channel,:); 
+    RawSignal = data(channel,:);
 end
 
 pause(Parameters.ToneDuration);
 
 signal_toplot = [0:1/Parameters.FsIn:(size(RawSignal,2)-1)/Parameters.FsIn; RawSignal];
 
-PsychToolboxSoundServer('StopAll');
+if BpodSystem.PluginObjects.AudioCalibrationSetup.useHiFi
+    BpodSystem.PluginObjects.HiFiModule.stop;
+else
+    BpodSystem.PluginObjects.SoundServer.stopAll;
+end
 
 % --- Calculate power ---
 ThisPSD = psd(hPSD,RawSignal,'Fs',Parameters.FsIn);
