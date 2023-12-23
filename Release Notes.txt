@@ -1,3 +1,17 @@
+---v1.7.8---
+-Switched to semantic versioning.
+-Automatic Sound Calibration: Fixed support for Measurement Computing USB1608G
+-Automatic Sound Calibration: Fixed test tone GUI (previously crashed on open)
+-Sound Calibration: Replaced polynomial fits with piecewise interpolation: griddedInterpolant with 'pchip'
+-HiFi Module: Updated firmware to v5. This fixes an issue: setting sampling rate would reset digital attenuation to default.
+-RotaryEncoderModule: Fixed a bug where using readCurrentPosition() during USB streaming could cause a crash
+-Added Bpod test suite with several key state machine performance tests
+-Bpod.m: Improvements to comments and code style.
+-ArCOM: Fixed baud rate crash on Ubuntu 20.04
+-AddTrialEvents: Bpod software version is now included in data Info field.
+-Updated copyright notices
+
+
 ---v1.77---
 -EndBpod: Fixed bug introduced in v1.76 affecting MATLAB r2016a or older that could cause a crash on application close. 
 -Splash Screen: Improved display on MATLAB v8 and older
