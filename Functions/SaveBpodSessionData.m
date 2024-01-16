@@ -17,7 +17,22 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% SaveBpodSessionData() saves the BpodSystem.Data struct to the current data
+% file. It overwrites the previous file.
+% Note that SaveBpodSessionData can take time to execute, prolonging the
+% inter-trial interval as the data file gets bigger if using RunStateMachine() 
+% instead of BpodTrialManager(). To mitigate this issue, RunStateMachine users may 
+% consider calling SaveBpodSessionData only a few times per session, or even 
+% at the end (at risk of losing data in a crash)
+%
+% Arguments: None
+% Returns: None
+% Example usage: SaveBpodSessionData;
+
 function SaveBpodSessionData
-global BpodSystem
+
+global BpodSystem % Imports the BpodSystem object to the function workspace
+
 SessionData = BpodSystem.Data;
 save(BpodSystem.Path.CurrentDataFile, 'SessionData');

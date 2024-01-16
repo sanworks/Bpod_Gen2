@@ -18,11 +18,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function rawTrialEvents = RunStateMachine
-% RunStateMachine() initiates and monitors the execution of a single
-% experimental trial's state machine. The function blocks the MATLAB command
-% line while the trial is running. On trial end, it returns rawTrialEvents, 
-% a struct containing the states visited, events captured and timestamps.
+% RunStateMachine() initiates and monitors the execution of a single experimental trial's 
+% state machine, previously loaded to the state machine with SendStateMachine(). 
+% The function blocks the MATLAB interpreter while the trial is running. 
+% 
+% Arguments: None
+% Returns: rawTrialEvents, a struct containing the states visited, events captured and timestamps.
 %
 % The format of rawTrialEvents is:
 % rawTrialEvents.States - A list of states in the order visited. Units = state index.
@@ -33,6 +34,10 @@ function rawTrialEvents = RunStateMachine
 % rawTrialEvents.TrialEndTimestamp - Time from the Bpod State Machine clock on exiting the final state.
 % rawTrialEvents.ErrorCodes - A list of error codes thrown by the system while executing the trial
 % NOTE: A legend of state and event indexes is given on the system info panel of the Bpod Console GUI
+%
+% Example usage: rawTrialEvents = RunStateMachine;
+
+function rawTrialEvents = RunStateMachine
 
 global BpodSystem % Imports the BpodSystem object to the function workspace
 
@@ -120,18 +125,21 @@ BpodSystem.RefreshGUI;
 % state is inferred from the sequence of events. Soft codes are
 % passed to the current soft code handler function.
 while BpodSystem.Status.InStateMatrix
+    % Check for events on legacy Bonsai TCP/IP inferface if initialized.
     if usingBonsai
-        if BpodSystem.BonsaiSocket.bytesAvailable() > 15
-            oscMsg = BpodSystem.BonsaiSocket.read(16, 'uint8');
-            bonsaiByte = oscMsg(end);
+        if BpodSystem.BonsaiSocket.bytesAvailable() > 15 % If a full OSC packet is ready
+            oscMsg = BpodSystem.BonsaiSocket.read(16, 'uint8'); % Read the packet
+            bonsaiByte = oscMsg(end); % Read the data byte
             if BpodSystem.EmulatorMode == 0
-                SendBpodSoftCode(bonsaiByte);
+                SendBpodSoftCode(bonsaiByte); % Pass the data byte to the state machine
             else
                 BpodSystem.VirtualManualOverrideBytes = ['~' bonsaiByte];
                 BpodSystem.ManualOverrideFlag = 1;
             end
         end
     end
+
+    % Check for new messages from the Bpod State Machine
     if BpodSystem.EmulatorMode == 0
         serialPortBytesAvailable = BpodSystem.SerialPort.bytesAvailable;
         if serialPortBytesAvailable > 0
@@ -150,7 +158,8 @@ while BpodSystem.Status.InStateMatrix
         end
         [newMessage, opCodeBytes, VirtualCurrentEvents] = RunBpodEmulator('loop', manualOverrideEvent);
     end
-    if newMessage
+
+    if newMessage % If there are new events or soft codes to read
         opCode = opCodeBytes(1);
         switch opCode
             case 1 % Receive and handle events

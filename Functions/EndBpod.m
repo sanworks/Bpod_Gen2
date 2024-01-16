@@ -17,30 +17,44 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-global BpodSystem
+
+% EndBpod() closes the Bpod GUI, sends the termination command to the state machine 
+% clears timers and releases the USB serial ports. It is called on closing
+% the GUI, and can be called manually by the user from the command prompt.
+%
+% Arguments: None
+% Returns: None
+% Example usage: EndBpod;
+
+global BpodSystem % Imports the BpodSystem object to the function workspace
+
 if ~isempty(BpodSystem)
-    if  ~verLessThan('MATLAB', '8.4') % In MATLAB earlier than 8.4, figures are sequential integers and figure ID of handle is not guaranteed
+    if  ~verLessThan('MATLAB', '8.4') % In MATLAB pre v8.4, figs are sequential integers and handle ID is not guaranteed
         % Close any open GUI figures
-        FigureList = {'LiveDispFig', 'SystemInfoFig', 'ModuleUSBFig', 'SettingsMenuFig', 'LaunchManagerFig', 'SyncConfigFig', 'PortConfigFig',...
-                      'FolderConfigFig','FlexConfigFig','ConfigureBonsaiFig'};
-        for i = 1:length(FigureList)
+        figureList = {'LiveDispFig', 'SystemInfoFig', 'ModuleUSBFig', 'SettingsMenuFig', 'LaunchManagerFig',... 
+                      'SyncConfigFig', 'PortConfigFig', 'FolderConfigFig','FlexConfigFig','ConfigureBonsaiFig'};
+        for i = 1:length(figureList)
             try
-                eval(['close(BpodSystem.GUIHandles.' FigureList{i} ')'])
+                eval(['close(BpodSystem.GUIHandles.' figureList{i} ')'])
             catch
             end
         end
-        clear FigureList i
+        clear figureList i
+
+        % Close liquid calibration figures
         if isfield(BpodSystem.GUIHandles, 'LiquidCalibrator')
-            LiquidCalFigList = {'MainFig', 'ValueEntryFig', 'RunMeasurementsFig', 'TestSpecificAmtFig', 'RecommendedMeasureFig'};
-            CalUIHandles = BpodSystem.GUIHandles.LiquidCalibrator;
-            for i = 1:length(LiquidCalFigList)
+            liquidCalFigList = {'MainFig', 'ValueEntryFig', 'RunMeasurementsFig', 'TestSpecificAmtFig', 'RecommendedMeasureFig'};
+            calUIHandles = BpodSystem.GUIHandles.LiquidCalibrator;
+            for i = 1:length(liquidCalFigList)
                 try
-                    eval(['close(CalUIHandles.' LiquidCalFigList{i} ')'])
+                    eval(['close(calUIHandles.' liquidCalFigList{i} ')'])
                 catch
                 end
             end
         end
     end
+
+    % Disconnect from hardware and close remaining figures
     if BpodSystem.Status.BeingUsed == 0
         if BpodSystem.EmulatorMode == 0
             try
@@ -50,18 +64,25 @@ if ~isempty(BpodSystem)
             end
         end
         pause(.1);
-        delete(BpodSystem.GUIHandles.MainFig);
+
+        % Close legacy TeensySoundServer if present
         if BpodSystem.EmulatorMode == 0
             if isfield(BpodSystem.PluginSerialPorts, 'TeensySoundServer')
                 TeensySoundServer('end');
             end
         end
+        
+        % Close legacy Bonsai TCP server if open
+        BpodSocketServer('close');
+
         if BpodSystem.EmulatorMode == 0
             disp('Bpod successfully disconnected.')
         else
             disp('Bpod emulator successfully closed.')
         end
-        BpodSocketServer('close');
+
+        % Close remaining figures
+        delete(BpodSystem.GUIHandles.MainFig);
         try
             close(BpodSystem.GUIHandles.ConfigureBonsaiFig)
         catch
@@ -70,14 +91,20 @@ if ~isempty(BpodSystem)
             close(BpodSystem.GUIHandles.OscopeFig_Builtin)
         catch
         end
+
+        % Stop and clear timers
         stop(BpodSystem.Timers.AnalogTimer);
         delete(BpodSystem.Timers.AnalogTimer);
         BpodSystem.Timers.AnalogTimer = [];
         stop(BpodSystem.Timers.PortRelayTimer);
         delete(BpodSystem.Timers.PortRelayTimer);
         BpodSystem.Timers.PortRelayTimer = [];
+
+        % Clear serial port objects, triggering destructors to release ports
         BpodSystem.SerialPort = [];
         BpodSystem.AnalogSerialPort = [];
+
+        % Clear BpodSystem
         clear global BpodSystem
     else
         msgbox('There is a running protocol. Please stop it first.')
