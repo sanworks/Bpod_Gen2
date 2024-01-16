@@ -201,7 +201,8 @@ end
 inputMatrix = uint8(inputMatrix);
 
 % Compute compressed output matrix
-outputMatrixRaw = sma.OutputMatrix(:, 1:BpodSystem.HW.Pos.GlobalTimerTrig-1); % All physical channels. Virtual outputs are handled separately
+outputMatrixRaw = sma.OutputMatrix(:, 1:BpodSystem.HW.Pos.GlobalTimerTrig-1); % All physical channels. 
+                                                                              % Virtual outputs are handled separately
 differenceMatrix = (outputMatrixRaw ~= 0)';
 nDifferences = sum(differenceMatrix, 1);
 msgLength = sum(nDifferences>0)*2 + nStates;
@@ -360,7 +361,8 @@ end
 analogThreshEnable = [];
 analogThreshDisable = [];
 if BpodSystem.MachineType == 4
-    atEnable = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.AnalogThreshEnable))'; % Bits indicate thresholds to enable (zeros are not disabled)
+    atEnable = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.AnalogThreshEnable))'; 
+               % Bits indicate thresholds to enable (zeros are not disabled)
     atOverrides = find(atEnable ~= 0);
     nOverrides = length(atOverrides);
     outMatrix = [];
@@ -372,7 +374,8 @@ if BpodSystem.MachineType == 4
     end
     analogThreshEnable = [nOverrides outMatrix(1:end)]; 
     
-    atDisable = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.AnalogThreshDisable))'; % Bits indicate thresholds to disable (zeros are not enabled)
+    atDisable = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.AnalogThreshDisable))'; 
+                % Bits indicate thresholds to disable (zeros are not enabled)
     atOverrides = find(atDisable ~= 0);
     nOverrides = length(atOverrides);
     outMatrix = [];
@@ -471,7 +474,8 @@ if BpodSystem.EmulatorMode == 0
     
     BpodSystem.Status.NewStateMachineSent = 1; % On next run, a byte is returned confirming that the state machine was received.
     BpodSystem.Status.SM2runASAP = runASAP;
-    % Note: depricated confirmation. To reduce dead time when SerialMessageMode = 0, transmission is confirmed on next call to RunStateMachine()
+    % Note: depricated confirmation. To reduce dead time when SerialMessageMode = 0, 
+    %       transmission is confirmed on next call to RunStateMachine()
     confirmed = 1;
 else % In emulator mode, the state machine is not actually sent to a device.
     confirmed = 1;

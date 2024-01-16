@@ -17,7 +17,7 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function Operant
+
 % This protocol introduces a naive mouse to water available in ports 1 and 3. 
 % Written by Josh Sanders, 5/2015.
 %
@@ -26,7 +26,9 @@ function Operant
 % - A Bpod MouseBox (or equivalent) configured with 3 ports.
 % - Place masking tape over the center port (Port 2).
 
-global BpodSystem
+function Operant
+
+global BpodSystem % Imports the BpodSystem object to the function workspace
 
 %% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
@@ -41,36 +43,37 @@ nSinglePokeTrials = 5;
 nDoublePokeTrials = 5;
 nTriplePokeTrials = 5;
 nRandomTrials = 850;
-MaxTrials = nSinglePokeTrials+nDoublePokeTrials+nTriplePokeTrials+nRandomTrials;
-TrialTypes = [ones(1,nSinglePokeTrials) ones(1,nDoublePokeTrials)*2 ones(1,nTriplePokeTrials)*3 ceil(rand(1,nRandomTrials)*3)];
+maxTrials = nSinglePokeTrials+nDoublePokeTrials+nTriplePokeTrials+nRandomTrials;
+trialTypes = [ones(1,nSinglePokeTrials) ones(1,nDoublePokeTrials)*2 ones(1,nTriplePokeTrials)*3 ceil(rand(1,nRandomTrials)*3)];
 BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
 
 %% Initialize plots
-BpodSystem.ProtocolFigures.OutcomePlotFig = figure('Position', [50 540 1000 250],'name','Outcome plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+BpodSystem.ProtocolFigures.OutcomePlotFig = figure('Position', [50 540 1000 250],'name','Outcome plot',...
+                                                   'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 BpodSystem.GUIHandles.OutcomePlot = axes('Position', [.075 .3 .89 .6]);
-TrialTypeOutcomePlot(BpodSystem.GUIHandles.OutcomePlot,'init',TrialTypes);
+TrialTypeOutcomePlot(BpodSystem.GUIHandles.OutcomePlot,'init',trialTypes);
 BpodNotebook('init'); % Initialize Bpod notebook (for manual data annotation)
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin
 
 %% Main trial loop
-for currentTrial = 1:MaxTrials
+for currentTrial = 1:maxTrials
     S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
-    R = GetValveTimes(S.GUI.RewardAmount, [1 3]); LeftValveTime = R(1); RightValveTime = R(2); % Update reward amounts
-    switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
+    vt = GetValveTimes(S.GUI.RewardAmount, [1 3]); leftValveTime = vt(1); rightValveTime = vt(2); % Update reward amounts
+    switch trialTypes(currentTrial) % Determine trial-specific state matrix fields
         case 1
-            StateOnLeftPoke1 = 'LeftReward'; StateOnRightPoke1 = 'RightReward';
-            StateOnLeftPoke2 = 'LeftReward'; StateOnRightPoke2 = 'RightReward'; 
+            stateOnLeftPoke1 = 'LeftReward'; stateOnRightPoke1 = 'RightReward';
+            stateOnLeftPoke2 = 'LeftReward'; stateOnRightPoke2 = 'RightReward'; 
         case 2
-            StateOnLeftPoke1 = 'WaitForPokeOut1'; StateOnRightPoke1 = 'WaitForPokeOut1';
-            StateOnLeftPoke2 = 'LeftReward'; StateOnRightPoke2 = 'RightReward'; 
+            stateOnLeftPoke1 = 'WaitForPokeOut1'; stateOnRightPoke1 = 'WaitForPokeOut1';
+            stateOnLeftPoke2 = 'LeftReward'; stateOnRightPoke2 = 'RightReward'; 
         case 3
-            StateOnLeftPoke1 = 'WaitForPokeOut1'; StateOnRightPoke1 = 'WaitForPokeOut1';
-            StateOnLeftPoke2 = 'WaitForPokeOut2'; StateOnRightPoke2 = 'WaitForPokeOut2';  
+            stateOnLeftPoke1 = 'WaitForPokeOut1'; stateOnRightPoke1 = 'WaitForPokeOut1';
+            stateOnLeftPoke2 = 'WaitForPokeOut2'; stateOnRightPoke2 = 'WaitForPokeOut2';  
     end
     sma = NewStateMachine(); % Initialize new state machine description
     sma = AddState(sma, 'Name', 'WaitForPoke1', ...
         'Timer', 0,...
-        'StateChangeConditions', {'Port1In', StateOnLeftPoke1, 'Port3In', StateOnRightPoke1},...
+        'StateChangeConditions', {'Port1In', stateOnLeftPoke1, 'Port3In', stateOnRightPoke1},...
         'OutputActions', {}); 
     sma = AddState(sma, 'Name', 'WaitForPokeOut1', ...
         'Timer', S.GUI.PortOutRegDelay,...
@@ -82,7 +85,7 @@ for currentTrial = 1:MaxTrials
         'OutputActions', {});
     sma = AddState(sma, 'Name', 'WaitForPoke2', ...
         'Timer', 0,...
-        'StateChangeConditions', {'Port1In', StateOnLeftPoke2, 'Port3In', StateOnRightPoke2},...
+        'StateChangeConditions', {'Port1In', stateOnLeftPoke2, 'Port3In', stateOnRightPoke2},...
         'OutputActions', {}); 
     sma = AddState(sma, 'Name', 'WaitForPokeOut2', ...
         'Timer', S.GUI.PortOutRegDelay,...
@@ -97,11 +100,11 @@ for currentTrial = 1:MaxTrials
         'StateChangeConditions', {'Port1In', 'LeftReward', 'Port3In', 'RightReward'},...
         'OutputActions', {}); 
     sma = AddState(sma, 'Name', 'LeftReward', ...
-        'Timer', LeftValveTime,...
+        'Timer', leftValveTime,...
         'StateChangeConditions', {'Tup', 'Drinking'},...
         'OutputActions', {'ValveState', 1}); 
     sma = AddState(sma, 'Name', 'RightReward', ...
-        'Timer', RightValveTime,...
+        'Timer', rightValveTime,...
         'StateChangeConditions', {'Tup', 'Drinking'},...
         'OutputActions', {'ValveState', 4}); 
     sma = AddState(sma, 'Name', 'Drinking', ...
@@ -117,9 +120,9 @@ for currentTrial = 1:MaxTrials
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
         BpodSystem.Data = BpodNotebook('sync', BpodSystem.Data); % Sync with Bpod notebook plugin
-        BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)
-        BpodSystem.Data.TrialTypes(currentTrial) = TrialTypes(currentTrial); % Adds the trial type of the current trial to data
-        UpdateOutcomePlot(TrialTypes, BpodSystem.Data);
+        BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct
+        BpodSystem.Data.TrialTypes(currentTrial) = trialTypes(currentTrial); % Adds the trial type of the current trial to data
+        update_outcome_plot(trialTypes, BpodSystem.Data);
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
     end
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
@@ -128,14 +131,14 @@ for currentTrial = 1:MaxTrials
     end
 end
 
-function UpdateOutcomePlot(TrialTypes, Data)
+function update_outcome_plot(TrialTypes, Data)
 global BpodSystem
-Outcomes = zeros(1,Data.nTrials);
+outcomes = zeros(1,Data.nTrials);
 for x = 1:Data.nTrials
     if ~isnan(Data.RawEvents.Trial{x}.States.Drinking(1))
-        Outcomes(x) = 1;
+        outcomes(x) = 1;
     else
-        Outcomes(x) = 3;
+        outcomes(x) = 3;
     end
 end
-TrialTypeOutcomePlot(BpodSystem.GUIHandles.OutcomePlot,'update',Data.nTrials+1,TrialTypes,Outcomes);
+TrialTypeOutcomePlot(BpodSystem.GUIHandles.OutcomePlot,'update',Data.nTrials+1,TrialTypes,outcomes);

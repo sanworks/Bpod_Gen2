@@ -17,7 +17,7 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function PsychToolboxSound
+
 % This protocol demonstrates a 2AFC task using PsychToolbox to generate sound stimuli.
 % Subjects initialize each trial with a poke into port 2. After a delay, a tone plays.
 % Subjects are rewarded for responding left for low-pitch tones, and right for high.
@@ -34,7 +34,9 @@ function PsychToolboxSound
 %    exact time each sound played. For Xonar AE and SE, you'll need the
 %    Bpod AudioSync module.
 
-global BpodSystem
+function PsychToolboxSound
+
+global BpodSystem % Imports the BpodSystem object to the function workspace
 
 %% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
@@ -57,65 +59,66 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
 end
 
 %% Define trials
-MaxTrials = 5000;
-TrialTypes = ceil(rand(1,MaxTrials)*2);
+maxTrials = 5000;
+trialTypes = ceil(rand(1,maxTrials)*2);
 BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
 
 %% Initialize plots
 % Side Outcome Plot
-BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 200],'name','Outcome plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 200],'name','Outcome plot',...
+                                                       'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .3 .89 .6]);
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-TrialTypes);
+SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-trialTypes);
 TotalRewardDisplay('init'); % Total Reward display (online display of the total amount of liquid reward earned)
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin
 
 %% Define stimuli and send to sound server
-SF = 192000; % Sound card sampling rate
-LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-PunishSound = ((rand(1,SF*.5)*2) - 1);
+sf = 192000; % Sound card sampling rate
+leftSound = GenerateSineWave(sf, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
+rightSound = GenerateSineWave(sf, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
+errorSound = ((rand(1,sf*.5)*2) - 1);
 % Generate early withdrawal sound
-W1 = GenerateSineWave(SF, 1000, .5); W2 = GenerateSineWave(SF, 1200, .5); EarlyWithdrawalSound = W1+W2;
-P = SF/100; Interval = P;
+w1 = GenerateSineWave(sf, 1000, .5); w2 = GenerateSineWave(sf, 1200, .5); earlyWithdrawalSound = w1+w2;
+p = sf/100; Interval = p;
 for x = 1:50 % Gate waveform to create pulses
-    EarlyWithdrawalSound(P:P+Interval) = 0;
-    P = P+(Interval*2);
+    earlyWithdrawalSound(p:p+Interval) = 0;
+    p = p+(Interval*2);
 end
 
 % Program sound server
 if ~isfield(BpodSystem.PluginObjects, 'Sound')
     BpodSystem.PluginObjects.Sound = PsychToolboxAudio;
 end
-BpodSystem.PluginObjects.Sound.load(1, LeftSound);
-BpodSystem.PluginObjects.Sound.load(2, RightSound);
-BpodSystem.PluginObjects.Sound.load(3, PunishSound);
-BpodSystem.PluginObjects.Sound.load(4, EarlyWithdrawalSound);
+BpodSystem.PluginObjects.Sound.load(1, leftSound);
+BpodSystem.PluginObjects.Sound.load(2, rightSound);
+BpodSystem.PluginObjects.Sound.load(3, errorSound);
+BpodSystem.PluginObjects.Sound.load(4, earlyWithdrawalSound);
 
 % Set soft code handler to trigger sounds
 BpodSystem.SoftCodeHandlerFunction = 'SoftCodeHandler_PlaySound';
 
 %% Main trial loop
-for currentTrial = 1:MaxTrials
+for currentTrial = 1:maxTrials
     S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
     if S.GUI.PunishSound
-        PunishOutputAction = {'SoftCode', 3};
+        errorOutputAction = {'SoftCode', 3};
     else
-        PunishOutputAction = {};
+        errorOutputAction = {};
     end
-    LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-    RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-    BpodSystem.PluginObjects.Sound.load(1, LeftSound);
-    BpodSystem.PluginObjects.Sound.load(2, RightSound);
-    R = GetValveTimes(S.GUI.RewardAmount, [1 3]); LeftValveTime = R(1); RightValveTime = R(2); % Update reward amounts
-    switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
+    leftSound = GenerateSineWave(sf, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
+    rightSound = GenerateSineWave(sf, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
+    BpodSystem.PluginObjects.Sound.load(1, leftSound);
+    BpodSystem.PluginObjects.Sound.load(2, rightSound);
+    vt = GetValveTimes(S.GUI.RewardAmount, [1 3]); leftValveTime = vt(1); rightValveTime = vt(2); % Update reward amounts
+    switch trialTypes(currentTrial) % Determine trial-specific state matrix fields
         case 1
-            OutputActionArgument = {'SoftCode', 1, 'BNCState', 1}; 
-            LeftActionState = 'Reward'; RightActionState = 'Punish'; CorrectWithdrawalEvent = 'Port1Out';
-            ValveCode = 1; ValveTime = LeftValveTime;
+            outputActionArgument = {'SoftCode', 1, 'BNCState', 1}; 
+            leftActionState = 'Reward'; rightActionState = 'Punish'; correctWithdrawalEvent = 'Port1Out';
+            valveCode = 1; valveTime = leftValveTime;
         case 2
-            OutputActionArgument = {'SoftCode', 2, 'BNCState', 1};
-            LeftActionState = 'Punish'; RightActionState = 'Reward'; CorrectWithdrawalEvent = 'Port3Out';
-            ValveCode = 4; ValveTime = RightValveTime;
+            outputActionArgument = {'SoftCode', 2, 'BNCState', 1};
+            leftActionState = 'Punish'; rightActionState = 'Reward'; correctWithdrawalEvent = 'Port3Out';
+            valveCode = 4; valveTime = rightValveTime;
     end
     sma = NewStateMachine(); % Initialize new state machine description
     sma = AddState(sma, 'Name', 'WaitForCenterPoke', ...
@@ -129,27 +132,27 @@ for currentTrial = 1:MaxTrials
     sma = AddState(sma, 'Name', 'DeliverStimulus', ...
         'Timer', S.GUI.SoundDuration,...
         'StateChangeConditions', {'Tup', 'WaitForResponse', 'Port2Out', 'EarlyWithdrawal'},...
-        'OutputActions', OutputActionArgument);
+        'OutputActions', outputActionArgument);
     sma = AddState(sma, 'Name', 'EarlyWithdrawal', ...
         'Timer', 0,...
         'StateChangeConditions', {'Tup', 'EarlyWithdrawalPunish'},...
         'OutputActions', {'SoftCode', 255});
     sma = AddState(sma, 'Name', 'WaitForResponse', ...
         'Timer', S.GUI.TimeForResponse,...
-        'StateChangeConditions', {'Tup', 'exit', 'Port1In', LeftActionState, 'Port3In', RightActionState},...
+        'StateChangeConditions', {'Tup', 'exit', 'Port1In', leftActionState, 'Port3In', rightActionState},...
         'OutputActions', {'PWM1', 255, 'PWM3', 255});
     sma = AddState(sma, 'Name', 'Reward', ...
-        'Timer', ValveTime,...
+        'Timer', valveTime,...
         'StateChangeConditions', {'Tup', 'Drinking'},...
-        'OutputActions', {'ValveState', ValveCode});
+        'OutputActions', {'ValveState', valveCode});
     sma = AddState(sma, 'Name', 'Drinking', ...
         'Timer', 10,...
-        'StateChangeConditions', {'Tup', 'exit', CorrectWithdrawalEvent, 'exit'},...
+        'StateChangeConditions', {'Tup', 'exit', correctWithdrawalEvent, 'exit'},...
         'OutputActions', {});
     sma = AddState(sma, 'Name', 'Punish', ...
         'Timer', S.GUI.PunishTimeoutDuration,...
         'StateChangeConditions', {'Tup', 'exit'},...
-        'OutputActions', PunishOutputAction);
+        'OutputActions', errorOutputAction);
     sma = AddState(sma, 'Name', 'EarlyWithdrawalPunish', ...
         'Timer', S.GUI.PunishTimeoutDuration,...
         'StateChangeConditions', {'Tup', 'exit'},...
@@ -159,9 +162,9 @@ for currentTrial = 1:MaxTrials
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned (i.e. if not final trial, interrupted by user)
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
         BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)
-        BpodSystem.Data.TrialTypes(currentTrial) = TrialTypes(currentTrial); % Adds the trial type of the current trial to data
-        UpdateSideOutcomePlot(TrialTypes, BpodSystem.Data);
-        UpdateTotalRewardDisplay(S.GUI.RewardAmount, currentTrial);
+        BpodSystem.Data.TrialTypes(currentTrial) = trialTypes(currentTrial); % Adds the trial type of the current trial to data
+        update_outcome_plot(trialTypes, BpodSystem.Data);
+        update_reward_display(S.GUI.RewardAmount, currentTrial);
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
     end
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
@@ -170,24 +173,24 @@ for currentTrial = 1:MaxTrials
     end
 end
 
-function UpdateSideOutcomePlot(TrialTypes, Data)
+function update_outcome_plot(trialTypes, data)
 % Determine outcomes from state data and score as the SideOutcomePlot plugin expects
 global BpodSystem
-Outcomes = zeros(1,Data.nTrials);
-for x = 1:Data.nTrials
-    if ~isnan(Data.RawEvents.Trial{x}.States.Reward(1))
-        Outcomes(x) = 1;
-    elseif ~isnan(Data.RawEvents.Trial{x}.States.Punish(1))
-        Outcomes(x) = 0;
+outcomes = zeros(1,data.nTrials);
+for x = 1:data.nTrials
+    if ~isnan(data.RawEvents.Trial{x}.States.Reward(1))
+        outcomes(x) = 1;
+    elseif ~isnan(data.RawEvents.Trial{x}.States.Punish(1))
+        outcomes(x) = 0;
     else
-        Outcomes(x) = 3;
+        outcomes(x) = 3;
     end
 end
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'update',Data.nTrials+1,2-TrialTypes,Outcomes);
+SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'update',data.nTrials+1,2-trialTypes,outcomes);
 
-function UpdateTotalRewardDisplay(RewardAmount, currentTrial)
+function update_reward_display(rewardAmount, currentTrial)
 % If rewarded based on the state data, update the TotalRewardDisplay
 global BpodSystem
     if ~isnan(BpodSystem.Data.RawEvents.Trial{currentTrial}.States.Reward(1))
-        TotalRewardDisplay('add', RewardAmount);
+        TotalRewardDisplay('add', rewardAmount);
     end

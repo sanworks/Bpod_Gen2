@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function LastTrialEncoderPlot(axes, op, choiceThreshold, varargin)
+function last_trial_encoder_plot(axes, op, choiceThreshold, varargin)
 global BpodSystem
 switch op
     case 'init'
@@ -29,10 +29,10 @@ switch op
         ylabel('Position (deg)', 'FontSize', 12); 
         xlabel('Time (s)', 'FontSize', 12);
     case 'update'
-        EncoderData = varargin{1};
-        TrialDuration = varargin{2};
-        set(BpodSystem.GUIHandles.EncoderPlot, 'XData', EncoderData.Times,'YData', EncoderData.Positions);
-        set(axes, 'ylim', [-choiceThreshold*2 choiceThreshold*2], 'xlim', [0 TrialDuration]);
+        encoderData = varargin{1};
+        trialDuration = varargin{2};
+        set(BpodSystem.GUIHandles.EncoderPlot, 'XData', encoderData.Times,'YData', encoderData.Positions);
+        set(axes, 'ylim', [-choiceThreshold*2 choiceThreshold*2], 'xlim', [0 trialDuration]);
         set(BpodSystem.GUIHandles.EncoderPlotThreshold1Line,'ydata',[-choiceThreshold, -choiceThreshold]);
         set(BpodSystem.GUIHandles.EncoderPlotThreshold2Line,'ydata',[choiceThreshold, choiceThreshold]);
 end

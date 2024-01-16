@@ -1,5 +1,4 @@
-% Example state matrix: Runs through 128 states of 1ms each. 
-% Useful for bench-testing SYNC lines.
+% Example state matrix: Runs through 255 states of 1ms each. 
 
 sma = NewStateMachine;
 

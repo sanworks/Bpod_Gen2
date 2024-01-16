@@ -1,5 +1,6 @@
-% Example state matrix: A global timer triggers 2 other global timers(after its onset delay) using the
+% Example state matrix: Global timer 1 triggers global timers 2 and 3 (after its onset delay) using the
 % 'OnsetTrigger' binary trigger argument. 
+% Requires: behavior ports or lickometers with visible LEDs connected to Ch1, Ch2 and Ch3
 
 sma = NewStateMachine;
 sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', 0.5, 'OnsetDelay', 0,...

@@ -107,8 +107,9 @@ if BpodSystem.MachineType > 3
             end
             oneTrialCompleted = isfield(sessionData, 'TrialStartTimestamp');
             if oneTrialCompleted
-                sessionData.Analog.Timestamps = sessionData.TrialStartTimestamp:(1/analogMeta.SamplingRate):sessionData.TrialStartTimestamp + ... 
-                                                ((1/analogMeta.SamplingRate)*(analogMeta.nSamples-1));
+                sessionData.Analog.Timestamps =... 
+                                  sessionData.TrialStartTimestamp:(1/analogMeta.SamplingRate):sessionData.TrialStartTimestamp + ... 
+                                  ((1/analogMeta.SamplingRate)*(analogMeta.nSamples-1));
                 sessionData.Analog.TrialNumber = Data(1:analogMeta.nChannels+1:end)';
                 if includeTrialAlignedData
                     sessionData.Analog.TrialData = cell(1,sessionData.nTrials);

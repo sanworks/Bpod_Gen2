@@ -5,6 +5,7 @@
 % it sets port 2 LED to maximum, and triggers transition to a second infinite loop with brighter port 1+3 LEDs. 
 % When the timer's 3 second duration elapses, Port2LED is returned low, 
 % and a GlobalTimer1_End event occurs (handled by exiting the state machine).
+% Requires: behavior ports or lickometers with visible LEDs connected to Ch1, Ch2 and Ch3
 
 sma = NewStateMachine;
 sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', 3, 'OnsetDelay', 1.5, 'Channel', 'PWM2'); 

@@ -17,15 +17,17 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function Light2AFC_AnalogStreaming
+
 % This protocol showcases analog acquisition with the analog input module during a visual 2AFC task.
 % After initiating each trial with a center-poke,
 % the subject is rewarded for choosing the port that is lit.
-% Analog signals are captured from channels 1+2 at 1kHz, displayed on the scope() GUI and logged to a data file alongside the behavior data.
-% During each trial, sync bytes are explicitly sent from the state machine to the analog input module, at trial start (0), stimulus onset(1), choice (2) and trial end (3). 
+% Analog signals are captured from channels 1+2 at 1kHz, displayed on the scope() GUI and logged to 
+% a data file alongside the behavior data.
+% During each trial, sync bytes are explicitly sent from the state machine to the analog input module, 
+% at trial start (0), stimulus onset(1), choice (2) and trial end (3). 
 % Each sync event will be recorded and timestamped in the analog input module dataset.
-% Separately, a voltage threshold is set on analog input Ch1 at 2.5V. Threshold crossing events are sent to the state machine.
-% Written by Josh Sanders, 4/2021.
+% Separately, a voltage threshold is set on analog input Ch1 at 2.5V. Threshold crossing events are 
+% sent to the state machine.
 %
 % SETUP
 % You will need:
@@ -39,7 +41,9 @@ function Light2AFC_AnalogStreaming
 % > Make sure the liquid calibration tables for ports 1 and 3 have 
 %   calibration curves with several points surrounding 3ul.
 
-global BpodSystem
+function Light2AFC_AnalogStreaming
+
+global BpodSystem % Imports the BpodSystem object to the function workspace
 
 %% Assert Analog Input module is present + USB-paired (via USB button on console GUI)
 BpodSystem.assertModule('AnalogIn', 1); % The second argument (1) indicates that AnalogIn must be paired with its USB serial port
@@ -57,18 +61,19 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
 end
 
 %% Define trials
-MaxTrials = 1000;
-TrialTypes = ceil(rand(1,1000)*2);
+maxTrials = 1000;
+trialTypes = ceil(rand(1,1000)*2);
 BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
 
 %% Initialize plots
-BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 250],'name','Outcome plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 250],'name','Outcome plot',...
+                                                   'NumberTitle','off', 'MenuBar', 'none', 'Resize', 'off');
 BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .3 .89 .6]);
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-TrialTypes);
+SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-trialTypes);
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin
 
 %% Setup analog input module
-BehaviorDataFile = BpodSystem.Path.CurrentDataFile;
+behaviorDataFile = BpodSystem.Path.CurrentDataFile;
 A.SamplingRate = 1000; % Hz
 A.nActiveChannels = 2; % Record from up to 2 channels
 A.Stream2USB(1:2) = 1; % Configure only channels 1 and 2 for USB streaming
@@ -76,20 +81,20 @@ A.SMeventsEnabled(1) = 1; % Return threshold crossing events from Ch1
 A.Thresholds(1) = 2.5; % Set voltage threshold of Ch1 to 2.5V
 A.ResetVoltages(1) = 1; % Voltage must return below 1V before another threshold crossing event can be triggered
 A.startReportingEvents; % Enable threshold event signaling
-A.USBStreamFile = [BehaviorDataFile(1:end-4) '_Alg.mat']; % Set datafile for analog data captured in this session
+A.USBStreamFile = [behaviorDataFile(1:end-4) '_Alg.mat']; % Set datafile for analog data captured in this session
 A.scope; % Launch Scope GUI
 A.scope_StartStop % Start USB streaming + data logging
 
 %% Main trial loop
-for currentTrial = 1:MaxTrials
+for currentTrial = 1:maxTrials
     S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
     
-    R = GetValveTimes(S.GUI.RewardAmount, [1 3]); LeftValveTime = R(1); RightValveTime = R(2); % Update reward amounts
-    switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
+    vt = GetValveTimes(S.GUI.RewardAmount, [1 3]); leftValveTime = vt(1); rightValveTime = vt(2); % Update reward amounts
+    switch trialTypes(currentTrial) % Determine trial-specific state matrix fields
         case 1
-            LeftPokeAction = 'LeftRewardDelay'; RightPokeAction = 'Punish'; StimulusOutput = {'PWM1', 255}; 
+            leftPokeAction = 'LeftRewardDelay'; rightPokeAction = 'Punish'; stimulusOutput = {'PWM1', 255}; 
         case 2
-            LeftPokeAction = 'Punish'; RightPokeAction = 'RightRewardDelay'; StimulusOutput = {'PWM3', 255};
+            leftPokeAction = 'Punish'; rightPokeAction = 'RightRewardDelay'; stimulusOutput = {'PWM3', 255};
     end
     sma = NewStateMatrix(); % Assemble state matrix
     sma = AddState(sma, 'Name', 'TrialStart', ...
@@ -107,11 +112,11 @@ for currentTrial = 1:MaxTrials
     sma = AddState(sma, 'Name', 'WaitForPortOut', ...
         'Timer', 0,...
         'StateChangeConditions', {'Port2Out', 'WaitForResponse'},...
-        'OutputActions', [StimulusOutput {'AnalogIn1', ['#' 1]}]); % Send sync byte 1 to analog input module to indicate stimulus onset
+        'OutputActions', [stimulusOutput {'AnalogIn1', ['#' 1]}]); % Send sync byte 1 to analog input module to indicate stimulus onset
     sma = AddState(sma, 'Name', 'WaitForResponse', ...
         'Timer', S.GUI.ResponseTime,...
-        'StateChangeConditions', {'Port1In', LeftPokeAction, 'Port3In', RightPokeAction, 'Tup', 'FinalState'},...
-        'OutputActions', StimulusOutput); 
+        'StateChangeConditions', {'Port1In', leftPokeAction, 'Port3In', rightPokeAction, 'Tup', 'FinalState'},...
+        'OutputActions', stimulusOutput); 
     sma = AddState(sma, 'Name', 'LeftRewardDelay', ...
         'Timer', S.GUI.RewardDelay,...
         'StateChangeConditions', {'Tup', 'LeftReward', 'Port1Out', 'CorrectEarlyWithdrawal'},...
@@ -121,11 +126,11 @@ for currentTrial = 1:MaxTrials
         'StateChangeConditions', {'Tup', 'RightReward', 'Port3Out', 'CorrectEarlyWithdrawal'},...
         'OutputActions', {'AnalogIn1', ['#' 2]}); % Send sync byte 2 to analog input module to indicate choice
     sma = AddState(sma, 'Name', 'LeftReward', ...
-        'Timer', LeftValveTime,...
+        'Timer', leftValveTime,...
         'StateChangeConditions', {'Tup', 'Drinking'},...
         'OutputActions', {'ValveState', 1}); 
     sma = AddState(sma, 'Name', 'RightReward', ...
-        'Timer', RightValveTime,...
+        'Timer', rightValveTime,...
         'StateChangeConditions', {'Tup', 'Drinking'},...
         'OutputActions', {'ValveState', 4}); 
     sma = AddState(sma, 'Name', 'Drinking', ...
@@ -152,9 +157,9 @@ for currentTrial = 1:MaxTrials
     RawEvents = RunStateMachine;
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
-        BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)
-        BpodSystem.Data.TrialTypes(currentTrial) = TrialTypes(currentTrial); % Adds the trial type of the current trial to data
-        UpdateSideOutcomePlot(TrialTypes, BpodSystem.Data);
+        BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct
+        BpodSystem.Data.TrialTypes(currentTrial) = trialTypes(currentTrial); % Adds the trial type of the current trial to data
+        update_outcome_plot(trialTypes, BpodSystem.Data);
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
     end
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
@@ -166,18 +171,18 @@ for currentTrial = 1:MaxTrials
     end
 end
 
-function UpdateSideOutcomePlot(TrialTypes, Data)
+function update_outcome_plot(TrialTypes, Data)
 global BpodSystem
-Outcomes = zeros(1,Data.nTrials);
+outcomes = zeros(1,Data.nTrials);
 for x = 1:Data.nTrials
     if ~isnan(Data.RawEvents.Trial{x}.States.Drinking(1))
-        Outcomes(x) = 1;
+        outcomes(x) = 1;
     elseif ~isnan(Data.RawEvents.Trial{x}.States.Punish(1))
-        Outcomes(x) = 0;
+        outcomes(x) = 0;
     elseif ~isnan(Data.RawEvents.Trial{x}.States.CorrectEarlyWithdrawal(1))
-        Outcomes(x) = 2;
+        outcomes(x) = 2;
     else
-        Outcomes(x) = 3;
+        outcomes(x) = 3;
     end
 end
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'update',Data.nTrials+1,2-TrialTypes,Outcomes);
+SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'update',Data.nTrials+1,2-TrialTypes,outcomes);

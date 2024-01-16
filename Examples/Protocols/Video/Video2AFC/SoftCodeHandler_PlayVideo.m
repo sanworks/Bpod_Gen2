@@ -1,7 +1,7 @@
-function SoftCodeHandler_PlayVideo(VidID)
+function SoftCodeHandler_PlayVideo(vidID)
 global BpodSystem
-if VidID ~= 255
-    BpodSystem.PluginObjects.V.play(VidID);
+if vidID ~= 255
+    BpodSystem.PluginObjects.V.play(vidID);
 else
     BpodSystem.PluginObjects.V.stop;
 end

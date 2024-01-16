@@ -49,7 +49,8 @@ end
 
 % Ensure that the relay is active 
 if BpodSystem.Modules.RelayActive(moduleIndex) == 0
-    error(['Error: the state machine must first be configured to relay bytes from ' moduleName '. Set this with BpodSystem.StartModuleRelay(MyModule).']);
+    error(['Error: the state machine must first be configured to relay bytes from ' moduleName... 
+           '. Set this with BpodSystem.StartModuleRelay(MyModule).']);
 end
 
 % Resolve data type to read

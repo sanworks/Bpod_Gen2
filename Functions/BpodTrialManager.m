@@ -19,19 +19,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 % BpodTrialManager() is a class that manages execution of experimental
-% trials without blocking the MATLAB command interpreter. 
+% trials without blocking the MATLAB command interpreter.
 % It has three user-facing methods (more detail in the method comments):
 %
 % 1. startTrial() begins monitoring events from the Bpod State Machine, and
 % starts the state machine if it was not already running a trial. A MATLAB
 % timer callback is started to read and parse incoming events, track the
 % current state, manage USB soft codes and update the Bpod Console GUI.
-% 
-% 2. getCurrentEvents() blocks the MATLAB interpreter until specific state(s) 
-% are reached. It returns a trial event structure for the trial up to that point, 
+%
+% 2. getCurrentEvents() blocks the MATLAB interpreter until specific state(s)
+% are reached. It returns a trial event structure for the trial up to that point,
 % that can be used to compute the next trial's state machine description.
 %
-% 3. getTrialData() blocks execution until the Bpod State Machine reaches an exit 
+% 3. getTrialData() blocks execution until the Bpod State Machine reaches an exit
 % state. It returns a complete set of events and states for the trial just
 % completed, which can be added to the session dataset with AddTrialEvents().
 %
@@ -88,30 +88,30 @@ classdef BpodTrialManager < handle
             % Returns: None
             %
             % Usage example:
-            % B = BpodTrialManager; % Create B, an instance of BpodTrialManager 
-            
+            % B = BpodTrialManager; % Create B, an instance of BpodTrialManager
+
             global BpodSystem % Imports the BpodSystem object to the function workspace
-            
+
             % Ensure that the system was initialized
             if isempty(BpodSystem)
                 error('You must run Bpod() before creating an instance of BpodTrialManager.')
             end
-            
+
             % Ensure that the user is not using emulator mode
             if BpodSystem.EmulatorMode == 1
                 error('Error: The Bpod emulator does not currently support running state machines with TrialManager.')
             end
-            
+
             % Set up session variables
             obj.timeScaleFactor = (BpodSystem.HW.CyclePeriod/1000);
             obj.lastTrialEndTime = 0;
             obj.usingBonsai = 0;
             obj.cycleFrequency = BpodSystem.HW.CycleFrequency;
-            
-            % Initialize a timer object. The callback processLiveEvents() will poll the 
+
+            % Initialize a timer object. The callback processLiveEvents() will poll the
             % USB serial port and handle incoming events during the trial.
             obj.timer = timer('TimerFcn',@(h,e)obj.processLiveEvents(), 'ExecutionMode', 'fixedRate', 'Period', 0.01);
-            
+
             % If using the legacy Bonsai TCP/IP socket, clear any bytes remaining from the trial interval
             if ~isempty(BpodSystem.BonsaiSocket)
                 obj.usingBonsai = 1;
@@ -128,7 +128,7 @@ classdef BpodTrialManager < handle
             % startTrial sends the 'R' command to the Bpod State Machine to start the
             % trial before BpodTrialManager begins monitoring.
             %
-            % Arguments: 
+            % Arguments:
             % sma (optional), a state machine description struct to send to the state
             % machine before running the trial. This is not necessary if a state machine
             % description was previously sent with a call to SendStateMachine().
@@ -136,7 +136,7 @@ classdef BpodTrialManager < handle
             % Returns: None
             %
             % Usage Example:
-            % B = BpodTrialManager; % Create an instance of BpodTrialManager 
+            % B = BpodTrialManager; % Create an instance of BpodTrialManager
             % B.startTrial(sma); % Send sma to the Bpod State Machine, send the 'R'
             % command and begin monitoring events.
 
@@ -148,7 +148,7 @@ classdef BpodTrialManager < handle
                 smaSent = 0;
                 stateMatrix = varargin{1};
             end
-            
+
             % Initialize flags
             obj.prepareNextTrialFlag = 0;
             obj.trialEndFlag = 0;
@@ -162,7 +162,7 @@ classdef BpodTrialManager < handle
                 end
             end
 
-            % Send the run command to the state machine and load the current trial's 
+            % Send the run command to the state machine and load the current trial's
             % state machine description if necessary
             if smaSent
                 if BpodSystem.Status.SM2runASAP == 0
@@ -171,7 +171,7 @@ classdef BpodTrialManager < handle
                 BpodSystem.Status.BeingUsed = 1;
             else
                 BpodSystem.Status.BeingUsed = 1;
-                SendStateMachine(stateMatrix, 'RunASAP'); 
+                SendStateMachine(stateMatrix, 'RunASAP');
             end
             BpodSystem.Status.InStateMatrix = 1; % Flag indicating that a trial is running
             BpodSystem.Status.SM2runASAP = 0; % Reset runASAP flag, previously set by SendStateMachine()
@@ -187,8 +187,9 @@ classdef BpodTrialManager < handle
 
             % Read and format trial start timestamp
             trialStartTimestampBytes = BpodSystem.SerialPort.read(8, 'uint8');
-            obj.trialStartTimestamp = double(typecast(trialStartTimestampBytes, 'uint64'))/1000000; % Start-time of the trial in microseconds (compensated for 32-bit clock rollover)
-            
+            obj.trialStartTimestamp = double(typecast(trialStartTimestampBytes, 'uint64'))/1000000;
+            % Start-time of the trial in microseconds (compensated for 32-bit clock rollover)
+
             % Set current state machine description
             BpodSystem.StateMatrix = BpodSystem.StateMatrixSent;
 
@@ -211,7 +212,7 @@ classdef BpodTrialManager < handle
                 RunBpodEmulator('init', []);
                 BpodSystem.ManualOverrideFlag = 0;
             end
-            
+
             % Populate local copy of state machine description
             obj.inputMatrix = BpodSystem.StateMatrix.InputMatrix;
             obj.globalTimerStartMatrix = BpodSystem.StateMatrix.GlobalTimerStartMatrix;
@@ -231,9 +232,9 @@ classdef BpodTrialManager < handle
             obj.eventNames = BpodSystem.StateMachineInfo.EventNames;
 
             % Initialize trial variables
-            obj.nEvents = 0; 
+            obj.nEvents = 0;
             obj.nStates = 1;
-            obj.trialEvents = zeros(1,obj.maxEvents); 
+            obj.trialEvents = zeros(1,obj.maxEvents);
             obj.states = zeros(1,obj.maxEvents);
             obj.liveEventTimestamps = zeros(1,obj.maxEvents);
             obj.currentEvent = zeros(1,100);
@@ -268,8 +269,8 @@ classdef BpodTrialManager < handle
             end
         end
 
-        function rawTrialEvents = getTrialData(obj)       
-            % getTrialData() blocks the MATLAB interpreter until the Bpod State Machine reaches 
+        function rawTrialEvents = getTrialData(obj)
+            % getTrialData() blocks the MATLAB interpreter until the Bpod State Machine reaches
             % an exit state. It returns a complete set of events and states for the trial just
             % completed, which can be added to the session dataset with AddTrialEvents().
             %
@@ -286,9 +287,9 @@ classdef BpodTrialManager < handle
             % rawTrialEvents.TrialEndTimestamp - Time from the Bpod State Machine clock on exiting the final state.
             % rawTrialEvents.ErrorCodes - A list of error codes thrown by the system while executing the trial
             % NOTE: A legend of state and event indexes is given on the system info panel of the Bpod Console GUI
-            % 
+            %
             % Usage example:
-            % B = BpodTrialManager; % Create an instance of BpodTrialManager 
+            % B = BpodTrialManager; % Create an instance of BpodTrialManager
             % --- start trial with B.startTrial() and execute MATLAB-side user code during the trial ---
             % rawEvents = B.getTrialData();
 
@@ -335,7 +336,8 @@ classdef BpodTrialManager < handle
                 trialTimeFromCycles = (nHWTimerCycles/BpodSystem.HW.CycleFrequency);
                 discrepancy = abs(trialTimeFromMicros - trialTimeFromCycles)*1000;
                 if discrepancy > 1
-                    disp([char(10) '***WARNING!***' char(10) 'Bpod missed hardware update deadline(s) on the past trial, by ~' num2str(discrepancy)...
+                    disp([char(10) '***WARNING!***' char(10) 'Bpod missed hardware update deadline(s) on the past trial, by ~'...
+                        num2str(discrepancy)...
                         'ms!' char(10) 'An error code (1) has been added to your trial data.' char(10) '**************'])
                     thisTrialErrorCodes(1) = 1;
                 end
@@ -343,7 +345,7 @@ classdef BpodTrialManager < handle
                 % Determine event and state timestamps
                 eventTimeStamps = timeStamps;
                 stateTimeStamps = zeros(1,obj.nStates);
-                stateTimeStamps(2:obj.nStates) = timeStamps(obj.stateChangeIndexes); 
+                stateTimeStamps(2:obj.nStates) = timeStamps(obj.stateChangeIndexes);
                 stateTimeStamps(1) = 0;
 
                 % Package trial events, states and timestamps
@@ -356,7 +358,7 @@ classdef BpodTrialManager < handle
                 rawTrialEvents.StateTimestamps(end+1) = rawTrialEvents.EventTimestamps(end);
                 rawTrialEvents.ErrorCodes = thisTrialErrorCodes;
                 obj.lastTrialEndTime = rawTrialEvents.TrialEndTimestamp;
-            else 
+            else
                 % Trial was terminated manually. Clear the timer object
                 stop(obj.timer);
                 delete(obj.timer);
@@ -370,8 +372,8 @@ classdef BpodTrialManager < handle
         end
 
         function currentEvents = getCurrentEvents(obj, triggerStates)
-            % getCurrentEvents() blocks the MATLAB interpreter until specific state(s) 
-            % are reached. It returns a trial event structure for the trial up to that point, 
+            % getCurrentEvents() blocks the MATLAB interpreter until specific state(s)
+            % are reached. It returns a trial event structure for the trial up to that point,
             % that can be used to compute the next trial's state machine description.
             %
             % Arguments:
@@ -380,13 +382,13 @@ classdef BpodTrialManager < handle
             % Returns: currentEvents, a struct containing the states visited, events captured and timestamps.
             %
             % The format of currentEvents is:
-            % currentEvents.RawData - A struct with a list of states visited, events captured and timestamps. 
+            % currentEvents.RawData - A struct with a list of states visited, events captured and timestamps.
             % currentEvents.StatesVisited - A human-readable cell array listing state names in the order they were visited
             % currentEvents.EventsCaptured - A human-readable cell array listing event names in the order they occurred
             % NOTE: A legend of state and event indexes is given on the system info panel of the Bpod Console GUI
-            % 
+            %
             % Usage example:
-            % B = BpodTrialManager; % Create an instance of BpodTrialManager 
+            % B = BpodTrialManager; % Create an instance of BpodTrialManager
             % --- start trial with B.startTrial() and execute MATLAB-side user code during the trial ---
             % currentEvents = B.getCurrentEvents();
 
@@ -400,7 +402,7 @@ classdef BpodTrialManager < handle
                 elseif ~iscell(triggerStates)
                     error('Error running BpodTrialManager.getCurrentEvents() - triggerStates argument must be a cell array of strings')
                 end
-                
+
                 % Find state numbers corresponding to state names provided
                 obj.nextTrialTriggerStates = find(ismember(BpodSystem.StateMatrix.StateNames, triggerStates));
 
@@ -433,7 +435,8 @@ classdef BpodTrialManager < handle
                         obj.timer = [];
                     end
                 else
-                    error('Error running BpodTrialManager.getCurrentEvents() - triggerStates argument contains at least 1 invalid state name.')
+                    error(['Error running BpodTrialManager.getCurrentEvents() - '''...
+                        'triggerStates argument contains at least 1 invalid state name.'])
                 end
             else
                 error('Error running BpodTrialManager.getCurrentEvents() - triggerStates argument must be a cell array of strings')
@@ -457,7 +460,7 @@ classdef BpodTrialManager < handle
             % timer object initialized in the BpodTrialManager constructor.
 
             global BpodSystem % Imports the BpodSystem object to the function workspace
-            
+
             % Check for events on legacy Bonsai TCP/IP inferface if initialized.
             if obj.usingBonsai
                 if BpodSystem.BonsaiSocket.bytesAvailable() > 15 % If a full OSC packet is ready
@@ -529,17 +532,17 @@ classdef BpodTrialManager < handle
                                 elseif obj.currentEvent(i) < obj.globalTimerStartOffset
                                     newState = obj.inputMatrix(BpodSystem.Status.CurrentStateCode, obj.currentEvent(i));
                                 elseif obj.currentEvent(i) < obj.globalTimerEndOffset
-                                    newState = obj.globalTimerStartMatrix(BpodSystem.Status.CurrentStateCode,... 
-                                               obj.currentEvent(i)-(obj.globalTimerStartOffset-1));
+                                    newState = obj.globalTimerStartMatrix(BpodSystem.Status.CurrentStateCode,...
+                                        obj.currentEvent(i)-(obj.globalTimerStartOffset-1));
                                 elseif obj.currentEvent(i) < obj.globalCounterOffset
-                                    newState = obj.globalTimerEndMatrix(BpodSystem.Status.CurrentStateCode,... 
-                                               obj.currentEvent(i)-(obj.globalTimerEndOffset-1));
+                                    newState = obj.globalTimerEndMatrix(BpodSystem.Status.CurrentStateCode,...
+                                        obj.currentEvent(i)-(obj.globalTimerEndOffset-1));
                                 elseif obj.currentEvent(i) < obj.conditionOffset
-                                    newState = obj.globalCounterMatrix(BpodSystem.Status.CurrentStateCode,... 
-                                               obj.currentEvent(i)-(obj.globalCounterOffset-1));
+                                    newState = obj.globalCounterMatrix(BpodSystem.Status.CurrentStateCode,...
+                                        obj.currentEvent(i)-(obj.globalCounterOffset-1));
                                 elseif obj.currentEvent(i) < obj.stateTimerOffset
                                     newState = obj.conditionMatrix(BpodSystem.Status.CurrentStateCode,...
-                                               obj.currentEvent(i)-(obj.conditionOffset-1));
+                                        obj.currentEvent(i)-(obj.conditionOffset-1));
                                 elseif obj.currentEvent(i) == BpodSystem.HW.StateTimerPosition
                                     newState = obj.stateTimerMatrix(BpodSystem.Status.CurrentStateCode);
                                 else
@@ -577,34 +580,40 @@ classdef BpodTrialManager < handle
                                         BpodSystem.Emulator.CurrentState = newState;
                                         BpodSystem.Emulator.StateStartTime = BpodSystem.Emulator.CurrentTime;
                                         % Set global timer end-time
-                                        thisGlobalTimer = BpodSystem.StateMatrix.OutputMatrix(newState,BpodSystem.HW.Pos.GlobalTimerTrig);
+                                        thisGlobalTimer =... 
+                                            BpodSystem.StateMatrix.OutputMatrix(newState,BpodSystem.HW.Pos.GlobalTimerTrig);
                                         if thisGlobalTimer ~= 0
                                             if BpodSystem.StateMatrix.GlobalTimers.OnsetDelay(thisGlobalTimer) == 0
-                                                BpodSystem.Emulator.GlobalTimerEnd(thisGlobalTimer) = BpodSystem.Emulator.CurrentTime +... 
+                                                BpodSystem.Emulator.GlobalTimerEnd(thisGlobalTimer) =... 
+                                                    BpodSystem.Emulator.CurrentTime +...
                                                     BpodSystem.StateMatrix.GlobalTimers.Duration(thisGlobalTimer);
                                                 BpodSystem.Emulator.GlobalTimersActive(thisGlobalTimer) = 1;
                                                 BpodSystem.Emulator.GlobalTimersTriggered(thisGlobalTimer) = 0;
                                             else
-                                                BpodSystem.Emulator.GlobalTimerStart(thisGlobalTimer) = BpodSystem.Emulator.CurrentTime +... 
+                                                BpodSystem.Emulator.GlobalTimerStart(thisGlobalTimer) =... 
+                                                    BpodSystem.Emulator.CurrentTime +...
                                                     BpodSystem.StateMatrix.GlobalTimers.OnsetDelay(thisGlobalTimer);
-                                                BpodSystem.Emulator.GlobalTimerEnd(thisGlobalTimer) =... 
-                                                    BpodSystem.Emulator.GlobalTimerStart(thisGlobalTimer) +... 
+                                                BpodSystem.Emulator.GlobalTimerEnd(thisGlobalTimer) =...
+                                                    BpodSystem.Emulator.GlobalTimerStart(thisGlobalTimer) +...
                                                     BpodSystem.StateMatrix.GlobalTimers.Duration(thisGlobalTimer);
                                                 BpodSystem.Emulator.GlobalTimersTriggered(thisGlobalTimer) = 1;
                                             end
                                         end
                                         % Cancel global timers
-                                        thisGlobalTimer = BpodSystem.StateMatrix.OutputMatrix(newState,BpodSystem.HW.Pos.GlobalTimerCancel);
+                                        thisGlobalTimer = ...
+                                            BpodSystem.StateMatrix.OutputMatrix(newState,BpodSystem.HW.Pos.GlobalTimerCancel);
                                         if thisGlobalTimer ~= 0
                                             BpodSystem.Emulator.GlobalTimersActive(thisGlobalTimer) = 0;
                                         end
                                         % Reset global counter counts
-                                        thisGlobalCounter = BpodSystem.StateMatrix.OutputMatrix(newState,BpodSystem.HW.Pos.GlobalCounterReset);
+                                        thisGlobalCounter = ...
+                                            BpodSystem.StateMatrix.OutputMatrix(newState,BpodSystem.HW.Pos.GlobalCounterReset);
                                         if thisGlobalCounter ~= 0
                                             BpodSystem.Emulator.GlobalCounterCounts(thisGlobalCounter) = 0;
                                         end
                                         % Update soft code
-                                        BpodSystem.Emulator.SoftCode = BpodSystem.StateMatrix.OutputMatrix(newState,BpodSystem.HW.Pos.Output_USB);
+                                        BpodSystem.Emulator.SoftCode = ...
+                                            BpodSystem.StateMatrix.OutputMatrix(newState,BpodSystem.HW.Pos.Output_USB);
                                     end
                                 else
                                     if BpodSystem.EmulatorMode == 1
@@ -667,8 +676,8 @@ classdef BpodTrialManager < handle
                 eventType = BpodSystem.HardwareState.InputType(inputChannel);
                 if ~strcmp(eventType, {'U','X'})
                     newChannelState = BpodSystem.HardwareState.InputState(inputChannel);
-                    manualOverrideEvent = BpodSystem.HW.Pos.Event_BNC-1 +... 
-                                          2*(inputChannel-BpodSystem.HW.Pos.Output_USB)-1 + (1-newChannelState);
+                    manualOverrideEvent = BpodSystem.HW.Pos.Event_BNC-1 +...
+                        2*(inputChannel-BpodSystem.HW.Pos.Output_USB)-1 + (1-newChannelState);
                 else
                     switch eventType
                         case 'U'
@@ -685,8 +694,8 @@ classdef BpodTrialManager < handle
                 if code <= BpodSystem.HW.n.SoftCodes && code ~= 0
                     manualOverrideEvent = BpodSystem.HW.Pos.Event_USB-1 + code;
                 else
-                    error(['Error: cannot send soft code ' num2str(code) '; Soft codes must be in range: [1 '... 
-                           num2str(BpodSystem.HW.n.SoftCodes) '].'])
+                    error(['Error: cannot send soft code ' num2str(code) '; Soft codes must be in range: [1 '...
+                        num2str(BpodSystem.HW.n.SoftCodes) '].'])
                 end
             else
                 manualOverrideEvent = [];
@@ -701,7 +710,7 @@ classdef BpodTrialManager < handle
                 if thisEvent ~= 255
                     switch BpodSystem.HW.EventTypes(thisEvent)
                         case 'I'
-                            p = ((thisEvent-BpodSystem.HW.IOEventStartposition)/2) +... 
+                            p = ((thisEvent-BpodSystem.HW.IOEventStartposition)/2) +...
                                 BpodSystem.HW.n.SerialChannels+BpodSystem.HW.n.FlexIO+1;
                             thisChannel = floor(p);
                             isOdd = rem(p,1);

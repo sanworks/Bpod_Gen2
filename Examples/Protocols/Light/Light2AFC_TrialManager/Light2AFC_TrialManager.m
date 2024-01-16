@@ -17,7 +17,7 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function Light2AFC_TrialManager
+
 % This protocol is a starting point for a visual 2AFC task like Light2AFC, 
 % but using the BpodTrialManager class instead of RunStateMachine().
 % TrialManager allows heavy MATLAB-side processing (i.e., plots,
@@ -38,9 +38,12 @@ function Light2AFC_TrialManager
 % > Make sure the liquid calibration tables for ports 1 and 3 have 
 %   calibration curves with several points surrounding 3ul.
 
-global BpodSystem
+function Light2AFC_TrialManager
+
+global BpodSystem % Imports the BpodSystem object to the function workspace
+
 %% Create trial manager object
-TrialManager = BpodTrialManager;
+trialManager = BpodTrialManager;
 
 %% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
@@ -53,44 +56,45 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
 end
 
 %% Define trial types
-MaxTrials = 1000;
-TrialTypes = ceil(rand(1,MaxTrials)*2);
+maxTrials = 1000;
+trialTypes = ceil(rand(1,maxTrials)*2);
 BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
 
 %% Initialize plots
-BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 250],'name','Outcome plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 250],'name','Outcome plot',...
+                                                       'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .35 .89 .6]);
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-TrialTypes);
+SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-trialTypes);
 BpodNotebook('init');
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin   
 PokesPlot('init', getStateColors, getPokeColors);
 
 %% Prepare and start first trial
-sma = PrepareStateMachine(S, TrialTypes, 1, []); % Prepare state machine for trial 1 with empty "current events" variable
-TrialManager.startTrial(sma); % Sends & starts running first trial's state machine. A MATLAB timer object updates the 
+sma = PrepareStateMachine(S, trialTypes, 1, []); % Prepare state machine for trial 1 with empty "current events" variable
+trialManager.startTrial(sma); % Sends & starts running first trial's state machine. A MATLAB timer object updates the 
                               % console UI, while code below proceeds in parallel.
 
 %% Main trial loop
-for currentTrial = 1:MaxTrials
-    currentTrialEvents = TrialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimeOutState', 'Punish'}); 
+for currentTrial = 1:maxTrials
+    currentTrialEvents = trialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimeOutState', 'Punish'}); 
                                        % Hangs here until Bpod enters one of the listed trigger states, 
                                        % then returns current trial's states visited + events captured to this point
     if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session 
-    [sma, S] = PrepareStateMachine(S, TrialTypes, currentTrial+1, currentTrialEvents); % Prepare next state machine.
+    [sma, S] = PrepareStateMachine(S, trialTypes, currentTrial+1, currentTrialEvents); % Prepare next state machine.
     % Since PrepareStateMachine is a function with a separate workspace, pass any local variables needed to make 
     % the state machine as fields of settings struct S e.g. S.learningRate = 0.2.
-    SendStateMachine(sma, 'RunASAP'); % With TrialManager, you can send the next trial's state machine while the current trial is ongoing
-    RawEvents = TrialManager.getTrialData; % Hangs here until trial is over, then retrieves full trial's raw data
+    SendStateMachine(sma, 'RunASAP'); % With TrialManager, you can send the next trial's state machine during the current trial
+    RawEvents = trialManager.getTrialData; % Hangs here until trial is over, then retrieves full trial's raw data
     if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session 
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
-    TrialManager.startTrial(); % Start processing the next trial's events (call with no argument since SM was already sent)
+    trialManager.startTrial(); % Start processing the next trial's events (call with no argument since SM was already sent)
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned from last trial, update plots and save data
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
         BpodSystem.Data = BpodNotebook('sync', BpodSystem.Data); % Sync with Bpod notebook plugin
-        BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)
-        BpodSystem.Data.TrialTypes(currentTrial) = TrialTypes(currentTrial); % Adds the trial type of the current trial to data
+        BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct
+        BpodSystem.Data.TrialTypes(currentTrial) = trialTypes(currentTrial); % Adds the trial type of the current trial to data
         PokesPlot('update'); % Update Pokes Plot
-        UpdateSideOutcomePlot(TrialTypes, BpodSystem.Data); % Update side outcome plot
+        update_outcome_plot(trialTypes, BpodSystem.Data); % Update side outcome plot
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
     end
 end
@@ -99,12 +103,12 @@ function [sma, S] = PrepareStateMachine(S, TrialTypes, currentTrial, currentTria
 % In this case, we don't need trial events to build the state machine - but
 % they are available in currentTrialEvents.
 S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
-R = GetValveTimes(S.GUI.RewardAmount, [1 3]); LeftValveTime = R(1); RightValveTime = R(2); % Update reward amounts
+vt = GetValveTimes(S.GUI.RewardAmount, [1 3]); leftValveTime = vt(1); rightValveTime = vt(2); % Update reward amounts
 switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
     case 1
-        LeftPokeAction = 'LeftRewardDelay'; RightPokeAction = 'Punish'; StimulusOutput = {'PWM1', 255};
+        leftPokeAction = 'LeftRewardDelay'; rightPokeAction = 'Punish'; stimulusOutput = {'PWM1', 255};
     case 2
-        LeftPokeAction = 'Punish'; RightPokeAction = 'RightRewardDelay'; StimulusOutput = {'PWM3', 255};
+        leftPokeAction = 'Punish'; rightPokeAction = 'RightRewardDelay'; stimulusOutput = {'PWM3', 255};
 end
 sma = NewStateMachine(); % Initialize new state machine description
 sma = SetCondition(sma, 1, 'Port1', 0); % Condition 1: Port 1 low (is out)
@@ -120,11 +124,11 @@ sma = AddState(sma, 'Name', 'CueDelay', ...
 sma = AddState(sma, 'Name', 'WaitForPortOut', ...
     'Timer', 0,...
     'StateChangeConditions', {'Port2Out', 'WaitForResponse'},...
-    'OutputActions', StimulusOutput);
+    'OutputActions', stimulusOutput);
 sma = AddState(sma, 'Name', 'WaitForResponse', ...
     'Timer', S.GUI.ResponseTime,...
-    'StateChangeConditions', {'Port1In', LeftPokeAction, 'Port3In', RightPokeAction, 'Tup', 'TimeOutState'},...
-    'OutputActions', StimulusOutput); 
+    'StateChangeConditions', {'Port1In', leftPokeAction, 'Port3In', rightPokeAction, 'Tup', 'TimeOutState'},...
+    'OutputActions', stimulusOutput); 
 sma = AddState(sma, 'Name', 'LeftRewardDelay', ...
     'Timer', S.GUI.RewardDelay,...
     'StateChangeConditions', {'Tup', 'LeftReward', 'Port1Out', 'CorrectEarlyWithdrawal'},...
@@ -134,11 +138,11 @@ sma = AddState(sma, 'Name', 'RightRewardDelay', ...
     'StateChangeConditions', {'Tup', 'RightReward', 'Port3Out', 'CorrectEarlyWithdrawal'},...
     'OutputActions', {}); 
 sma = AddState(sma, 'Name', 'LeftReward', ...
-    'Timer', LeftValveTime,...
+    'Timer', leftValveTime,...
     'StateChangeConditions', {'Tup', 'Drinking'},...
     'OutputActions', {'ValveState', 1}); 
 sma = AddState(sma, 'Name', 'RightReward', ...
-    'Timer', RightValveTime,...
+    'Timer', rightValveTime,...
     'StateChangeConditions', {'Tup', 'Drinking'},...
     'OutputActions', {'ValveState', 4}); 
 sma = AddState(sma, 'Name', 'Drinking', ...
@@ -162,21 +166,21 @@ sma = AddState(sma, 'Name', 'TimeOutState', ... % Record events while next trial
     'StateChangeConditions', {'Tup', '>exit'},...
     'OutputActions', {});
 
-function UpdateSideOutcomePlot(TrialTypes, Data)
+function update_outcome_plot(TrialTypes, Data)
 global BpodSystem
-Outcomes = zeros(1,Data.nTrials);
-for x = 1:Data.nTrials
-    if ~isnan(Data.RawEvents.Trial{x}.States.Drinking(1))
-        Outcomes(x) = 1;
-    elseif ~isnan(Data.RawEvents.Trial{x}.States.Punish(1))
-        Outcomes(x) = 0;
-    elseif ~isnan(Data.RawEvents.Trial{x}.States.CorrectEarlyWithdrawal(1))
-        Outcomes(x) = 2;
+outcomes = zeros(1,Data.nTrials);
+for i = 1:Data.nTrials
+    if ~isnan(Data.RawEvents.Trial{i}.States.Drinking(1))
+        outcomes(i) = 1;
+    elseif ~isnan(Data.RawEvents.Trial{i}.States.Punish(1))
+        outcomes(i) = 0;
+    elseif ~isnan(Data.RawEvents.Trial{i}.States.CorrectEarlyWithdrawal(1))
+        outcomes(i) = 2;
     else
-        Outcomes(x) = 3;
+        outcomes(i) = 3;
     end
 end
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'update',Data.nTrials+1,2-TrialTypes,Outcomes);
+SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'update',Data.nTrials+1,2-TrialTypes,outcomes);
 
 function state_colors = getStateColors
 state_colors = struct( ...
