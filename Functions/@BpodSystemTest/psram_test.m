@@ -18,13 +18,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function psRAMTest(obj)
+function psram_test(obj)
 % psRAM Test
 %
 % This method tests the external PSRAM IC on Bpod state machine 2+
 % It skips the test for state machine models without PSRAM.
 
-global BpodSystem % Access the global BpodSystem variable
+global BpodSystem % Import the global BpodSystem object
 obj.dispAndLog(' ');
 if BpodSystem.MachineType < 4
     obj.dispAndLog('Skipping PSRAM Test, current model does not have PSRAM.');

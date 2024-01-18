@@ -18,14 +18,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function stateTransitionTest(obj)
+function state_transition_test(obj)
 % STATE TRANSITION TEST
 %
 % This test cycles through 255 states, verifies that all were passed 
 % through. State visits verified by list of states returned, and 
 % confirmed by number of BNC toggles captured.
 
-global BpodSystem % Access the global BpodSystem variable
+global BpodSystem % Import the global BpodSystem object
 
 testPass = 1;  % Initialize testPass flag as 1 (true)
 

@@ -17,6 +17,25 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% PsychToolboxAudio is a class to play sounds using the PC sound card.
+% Channels 1+2 are used for audio. Ch3 plays a 1ms voltage pulse to
+% synchronize sound onset with a compatible logic or analog acquisition device.
+%
+% Requirements:
+% 1. PsychToolbox must be installed for this plugin to work.
+% 2. A compatible sound card is required:
+%    -ASUS Xonar DX
+%    -ASUS Xonar AE
+%    -HTOmega Fenix (strongly preferred)
+% 
+% Example usage:
+% P = PsychToolboxAudio;
+% P.load(2, mySound); % Load audio waveform mySound to sound library position 2
+% P.play(2);          % Play the sound at library position 2 (non-blocking)
+% P.stopAll;          % Stop playback
+% clear P             % Clear the object and release the sound hardware
+
 classdef PsychToolboxAudio < handle
     properties
         
@@ -36,7 +55,8 @@ classdef PsychToolboxAudio < handle
     
     methods
         function obj = PsychToolboxAudio(EmulatorModeOverride)
-            global BpodSystem
+            global BpodSystem % Import the global BpodSystem object
+            
             if isprop(BpodSystem, 'EmulatorMode')
                 obj.EmulatorMode = BpodSystem.EmulatorMode;
             else
@@ -148,6 +168,7 @@ classdef PsychToolboxAudio < handle
             end
         end
         function load(obj, soundIndex, waveform)
+            global BpodSystem
             Siz = size(waveform);
             if Siz(1) > 2
                 error('Sound data must be a row vector');
@@ -167,7 +188,6 @@ classdef PsychToolboxAudio < handle
                 waveform(3:obj.nOutputChannels,1:(obj.SamplingRate/1000)) = ones(obj.nOutputChannels-2,(obj.SamplingRate/1000));
                 PsychPortAudio('FillBuffer', obj.SlaveOutput(soundIndex), waveform);
             else
-                global BpodSystem
                 if Siz(1) == 1 % If mono, send the same signal on both channels
                     R = rem(length(waveform), 4); % Trim for down-sampling
                     if R > 0
@@ -195,18 +215,20 @@ classdef PsychToolboxAudio < handle
                 BpodSystem.PluginObjects.SoundServer.Sounds{soundIndex} = waveform;
             end
         end
+
         function play(obj, soundIndex)
+            global BpodSystem
             if soundIndex <= obj.MaxSounds
                 if obj.EmulatorMode == 0
                     PsychPortAudio('Start', obj.SlaveOutput(soundIndex));
                 else
-                    global BpodSystem
                     sound(BpodSystem.PluginObjects.SoundServer.Sounds{soundIndex}, 48000);
                 end
             else
                 error(['The PsychToolboxAudio plugin currently supports only ' num2str(obj.MaxSounds) ' sounds.'])
             end
         end
+
         function stop(obj, soundIndex)
             if obj.EmulatorMode == 0
                 PsychPortAudio('Stop', obj.SlaveOutput(soundIndex));
@@ -214,6 +236,7 @@ classdef PsychToolboxAudio < handle
                 clear playsnd
             end
         end
+
         function stopAll(obj)
             if obj.EmulatorMode == 0
                 for i = 1:obj.MaxSounds
@@ -223,11 +246,12 @@ classdef PsychToolboxAudio < handle
                 clear playsnd
             end
         end
+
         function delete(obj)
+            global BpodSystem
             obj.stopAll();
             PsychPortAudio('Close');
             if obj.EmulatorMode == 1
-                global BpodSystem
                 BpodSystem.PluginObjects = rmfield(BpodSystem.PluginObjects, 'SoundServer');
             end
         end

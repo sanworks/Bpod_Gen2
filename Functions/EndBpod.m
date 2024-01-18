@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % Returns: None
 % Example usage: EndBpod;
 
-global BpodSystem % Imports the BpodSystem object to the function workspace
+global BpodSystem % Import the global BpodSystem object
 
 if ~isempty(BpodSystem)
     if  ~verLessThan('MATLAB', '8.4') % In MATLAB pre v8.4, figs are sequential integers and handle ID is not guaranteed

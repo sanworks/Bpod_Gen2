@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 % TCPCom wraps the PsychToolbox PNET class for communication with processes
-% on the same machine, or on the local network. It inherits read/write syntax
+% on the same machine, or on the local network. It shares read/write syntax
 % from the Sanworks ArCOM class: https://github.com/sanworks/ArCOM
 %
 % Usage:
@@ -105,10 +105,12 @@ classdef TCPCom < handle
             obj.IPAddress = IP;
             obj.Port = Port;
         end
+
         function bytesAvailable = bytesAvailable(obj)
             obj.assertConn; % Assert that connection is still active, and attempt to renew if not
             bytesAvailable = length(pnet(obj.TCPobj,'read', 65536, 'uint8', 'native','view', 'noblock')) + obj.InBufferBytesAvailable;
         end
+
         function write(obj, varargin)
             obj.assertConn; % Assert that connection is still active, and attempt to renew if not
             if nargin == 2 % Single array with no data type specified (defaults to uint8)
@@ -121,63 +123,64 @@ classdef TCPCom < handle
                 dataTypes = varargin(2:2:end);
             end
             nTotalBytes = 0;
-            DataLength = cellfun('length',data2Send);
+            dataLength = cellfun('length',data2Send);
             for i = 1:nArrays
                 switch dataTypes{i}
                     case 'uint16'
-                        DataLength(i) = DataLength(i)*2;
+                        dataLength(i) = dataLength(i)*2;
                     case 'uint32'
-                        DataLength(i) = DataLength(i)*4;
+                        dataLength(i) = dataLength(i)*4;
                     case 'uint64'
-                        DataLength(i) = DataLength(i)*8;
+                        dataLength(i) = dataLength(i)*8;
                     case 'int16'
-                        DataLength(i) = DataLength(i)*2;
+                        dataLength(i) = dataLength(i)*2;
                     case 'int32'
-                        DataLength(i) = DataLength(i)*4;
+                        dataLength(i) = dataLength(i)*4;
                     case 'int64'
-                        DataLength(i) = DataLength(i)*8;
+                        dataLength(i) = dataLength(i)*8;
                     case 'single'
-                        DataLength(i) = DataLength(i)*4;
+                        dataLength(i) = dataLength(i)*4;
                     case 'double'
-                        DataLength(i) = DataLength(i)*8;
+                        dataLength(i) = dataLength(i)*8;
                 end
-                nTotalBytes = nTotalBytes + DataLength(i);
+                nTotalBytes = nTotalBytes + dataLength(i);
             end
-            ByteStringPos = 1;
-            ByteString = uint8(zeros(1,nTotalBytes));
+            byteStringPos = 1;
+            byteString = uint8(zeros(1,nTotalBytes));
             for i = 1:nArrays
                 dataType = dataTypes{i};
                 data = data2Send{i};
                 switch dataType % Check range and cast to uint8
                     case 'char'
-                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = uint8(char(data));
+                        byteString(byteStringPos:byteStringPos+dataLength(i)-1) = uint8(char(data));
                     case 'uint8'
-                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = uint8(data);
+                        byteString(byteStringPos:byteStringPos+dataLength(i)-1) = uint8(data);
                     case 'uint16'
-                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(uint16(data), 'uint8');
+                        byteString(byteStringPos:byteStringPos+dataLength(i)-1) = typecast(uint16(data), 'uint8');
                     case 'uint32'
-                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(uint32(data), 'uint8');
+                        byteString(byteStringPos:byteStringPos+dataLength(i)-1) = typecast(uint32(data), 'uint8');
                     case 'uint64'
-                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(uint64(data), 'uint8');
+                        byteString(byteStringPos:byteStringPos+dataLength(i)-1) = typecast(uint64(data), 'uint8');
                     case 'int8'
-                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(int8(data), 'uint8');
+                        byteString(byteStringPos:byteStringPos+dataLength(i)-1) = typecast(int8(data), 'uint8');
                     case 'int16'
-                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(int16(data), 'uint8');
+                        byteString(byteStringPos:byteStringPos+dataLength(i)-1) = typecast(int16(data), 'uint8');
                     case 'int32'
-                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(int32(data), 'uint8');
+                        byteString(byteStringPos:byteStringPos+dataLength(i)-1) = typecast(int32(data), 'uint8');
                     case 'int64'
-                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(int64(data), 'uint8');
+                        byteString(byteStringPos:byteStringPos+dataLength(i)-1) = typecast(int64(data), 'uint8');
                     case 'single'
-                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(single(data), 'uint8');
+                        byteString(byteStringPos:byteStringPos+dataLength(i)-1) = typecast(single(data), 'uint8');
                     case 'double'
-                        ByteString(ByteStringPos:ByteStringPos+DataLength(i)-1) = typecast(double(data), 'uint8');
+                        byteString(byteStringPos:byteStringPos+dataLength(i)-1) = typecast(double(data), 'uint8');
                     otherwise
                         error(['Error: Data type: ' dataType ' not supported by PythonLink'])
                 end
-                ByteStringPos = ByteStringPos + DataLength(i);
+                byteStringPos = byteStringPos + dataLength(i);
             end
-            pnet(obj.TCPobj,'write', ByteString);
+            pnet(obj.TCPobj,'write', byteString);
         end
+
         function varargout = read(obj, varargin)
             obj.assertConn; % Assert that connection is still active, and attempt to renew if not
             if nargin == 2
@@ -203,19 +206,19 @@ classdef TCPCom < handle
                         nTotalBytes = nTotalBytes + nValues(i)*8;
                 end
             end
-            StartTime = now*100000;
-            while nTotalBytes > obj.InBufferBytesAvailable && ((now*100000)-StartTime < obj.Timeout)
+            startTime = now*100000;
+            while nTotalBytes > obj.InBufferBytesAvailable && ((now*100000)-startTime < obj.Timeout)
                 nBytesAvailable = length(pnet(obj.TCPobj,'read', 65536, 'uint8', 'native','view', 'noblock'));
                 if nBytesAvailable > 0
                     obj.InBuffer = [obj.InBuffer uint8(pnet(obj.TCPobj,'read', nBytesAvailable, 'uint8'))];
                 end
                 obj.InBufferBytesAvailable = obj.InBufferBytesAvailable + nBytesAvailable;
             end
-            
+
             if nTotalBytes > obj.InBufferBytesAvailable
                 error('Error: The TCP port did not return the requested number of bytes.')
             end
-            Pos = 1;
+            pos = 1;
             varargout = cell(1,nArrays);
             for i = 1:nArrays
                 switch dataTypes{i}
@@ -253,11 +256,12 @@ classdef TCPCom < handle
                         nBytesRead = nValues(i)*8;
                         varargout{i} = typecast(uint8(obj.InBuffer(1:nBytesRead)), 'double');
                 end
-                Pos = Pos + nBytesRead;
+                pos = pos + nBytesRead;
                 obj.InBuffer = obj.InBuffer(nBytesRead+1:end);
                 obj.InBufferBytesAvailable = obj.InBufferBytesAvailable - nBytesRead;
             end
         end
+
         function renew(obj) % Disconnect and renew connection
             if obj.TCPobj ~= -1
                 pnet(obj.TCPobj,'close');
@@ -288,6 +292,7 @@ classdef TCPCom < handle
             pnet(obj.TCPobj,'setreadtimeout',obj.Timeout);
             disp('REMOTE HOST RECONNECTED');
         end
+
         function assertConn(obj)
             pnet(obj.TCPobj,'read', 1, 'uint8', 'native','view', 'noblock'); % Peek at first byte available. If connection is broken, this updates pnet 'status'
             status = pnet(obj.TCPobj, 'status');
@@ -295,6 +300,7 @@ classdef TCPCom < handle
                 obj.renew;
             end
         end
+
         function delete(obj)
             if obj.TCPobj ~= -1
                 pnet(obj.TCPobj,'close');

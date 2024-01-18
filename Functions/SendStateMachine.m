@@ -42,7 +42,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 function confirmed = SendStateMachine(sma, varargin)
 
-global BpodSystem % Imports the BpodSystem object to the function workspace
+global BpodSystem % Import the global BpodSystem object
 
 % Determine runASAP, a flag indicating whether to auto-run the state matrix when the current one exits
 runASAP = 0; 

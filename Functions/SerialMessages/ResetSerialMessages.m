@@ -18,15 +18,23 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% Resets all serial messages to equivalent byte codes (i.e. message# 4 = one byte, 0x4)
-function Ack = ResetSerialMessages
-global BpodSystem
+% ResetSerialMessages() resets all serial messages to equivalent byte codes 
+%                       (i.e. message# 4 = one byte long, 0x4)
+%
+% Arguments: None
+%
+% Returns: ack, the acknowledgement flag. 1 if the messages were reset by the state machine, 0 if not.
+
+function ack = ResetSerialMessages
+
+global BpodSystem % Import the global BpodSystem object
+
 if BpodSystem.EmulatorMode == 0
     BpodSystem.SerialPort.write('>', 'uint8');
-    Ack = BpodSystem.SerialPort.read(1, 'uint8');
-    if isempty(Ack)
-        Ack = 0;
+    ack = BpodSystem.SerialPort.read(1, 'uint8');
+    if isempty(ack)
+        ack = 0;
     end
 else
-    Ack = 1;
+    ack = 1;
 end

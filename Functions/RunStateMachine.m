@@ -39,7 +39,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 function rawTrialEvents = RunStateMachine
 
-global BpodSystem % Imports the BpodSystem object to the function workspace
+global BpodSystem % Import the global BpodSystem object
 
 % Setup
 timeScaleFactor = (BpodSystem.HW.CyclePeriod/1000); % To convert state machine cycles to seconds

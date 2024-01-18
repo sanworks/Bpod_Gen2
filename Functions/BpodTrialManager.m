@@ -90,7 +90,7 @@ classdef BpodTrialManager < handle
             % Usage example:
             % B = BpodTrialManager; % Create B, an instance of BpodTrialManager
 
-            global BpodSystem % Imports the BpodSystem object to the function workspace
+            global BpodSystem % Import the global BpodSystem object
 
             % Ensure that the system was initialized
             if isempty(BpodSystem)
@@ -140,7 +140,7 @@ classdef BpodTrialManager < handle
             % B.startTrial(sma); % Send sma to the Bpod State Machine, send the 'R'
             % command and begin monitoring events.
 
-            global BpodSystem % Imports the BpodSystem object to the function workspace
+            global BpodSystem % Import the global BpodSystem object
 
             % Raise a flag a state machine description was passed in, to send to the machine
             smaSent = 1;
@@ -293,7 +293,7 @@ classdef BpodTrialManager < handle
             % --- start trial with B.startTrial() and execute MATLAB-side user code during the trial ---
             % rawEvents = B.getTrialData();
 
-            global BpodSystem % Imports the BpodSystem object to the function workspace
+            global BpodSystem % Import the global BpodSystem object
 
             rawTrialEvents = struct; % Create struct for trial data
 
@@ -392,7 +392,7 @@ classdef BpodTrialManager < handle
             % --- start trial with B.startTrial() and execute MATLAB-side user code during the trial ---
             % currentEvents = B.getCurrentEvents();
 
-            global BpodSystem % Imports the BpodSystem object to the function workspace
+            global BpodSystem % Import the global BpodSystem object
 
             if ~isempty(triggerStates)
 
@@ -459,7 +459,7 @@ classdef BpodTrialManager < handle
             % Bpod State Machine. This function is called every 10ms by a
             % timer object initialized in the BpodTrialManager constructor.
 
-            global BpodSystem % Imports the BpodSystem object to the function workspace
+            global BpodSystem % Import the global BpodSystem object
 
             % Check for events on legacy Bonsai TCP/IP inferface if initialized.
             if obj.usingBonsai
@@ -663,13 +663,13 @@ classdef BpodTrialManager < handle
         function handle_soft_code(obj,softCode)
             % Calls the current soft code handler function, passing it the SoftCode
             % received from the state machine
-            global BpodSystem
+            global BpodSystem % Import the global BpodSystem object
             eval([BpodSystem.SoftCodeHandlerFunction '(' num2str(softCode) ')'])
         end
 
         function manualOverrideEvent = VirtualManualOverride(a,overrideMessage)
             % Converts the byte code transmission formatted for the state machine into event codes
-            global BpodSystem
+            global BpodSystem % Import the global BpodSystem object
             opCode = overrideMessage(1);
             if opCode == 'V'
                 inputChannel = overrideMessage(2)+1;
@@ -704,7 +704,7 @@ classdef BpodTrialManager < handle
 
         function update_hardwarestate_new_event(a,events)
             % Updates BpodSystem.HardwareState to reflect new event(s).
-            global BpodSystem
+            global BpodSystem % Import the global BpodSystem object
             for i = 1:sum(events ~= 0)
                 thisEvent = events(i);
                 if thisEvent ~= 255
@@ -744,7 +744,7 @@ classdef BpodTrialManager < handle
 
         function update_hardwarestate_new_state(obj,currentState)
             % Updates BpodSystem.HardwareState to reflect entry into a new state
-            global BpodSystem
+            global BpodSystem % Import the global BpodSystem object
             if currentState > 0
                 newOutputState = BpodSystem.StateMatrix.OutputMatrix(currentState,:);
                 outputOverride = BpodSystem.HardwareState.OutputOverride;

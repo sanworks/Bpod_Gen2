@@ -44,8 +44,8 @@ catch
     % Bpod was already started
 end
 
-Byte2Send = 5;
-EventName = ['APP_SoftCode' num2str(Byte2Send)]; % Name of event generated when Bonsai returns the byte
+byte2Send = 5;
+eventName = ['APP_SoftCode' num2str(byte2Send)]; % Name of event generated when Bonsai returns the byte
 
 % Set up state machine
 sma = NewStateMachine(); % Initialize a blank state machine description
@@ -53,11 +53,11 @@ sma = NewStateMachine(); % Initialize a blank state machine description
 sma = AddState(sma, 'Name', 'SendSoftCode2Bonsai', ... % This state sends the byte 0x5 to Bonsai via the APP serial port
     'Timer', 0,...
     'StateChangeConditions', {'Tup', 'ReceiveSoftCodeFromBonsai'},...
-    'OutputActions', {'APP_SoftCode', Byte2Send});
+    'OutputActions', {'APP_SoftCode', byte2Send});
 
 sma = AddState(sma, 'Name', 'ReceiveSoftCodeFromBonsai', ... % This state waits for the APP_SoftCode5 event, then exits the trial
     'Timer', 0,...
-    'StateChangeConditions', {EventName, '>exit'},...
+    'StateChangeConditions', {eventName, '>exit'},...
     'OutputActions', {});
 
 % Send the state machine description to the Bpod Finite State Machine device
@@ -65,12 +65,12 @@ SendStateMachine(sma);
 
 % Run the state machine, and return event and state timestamps
 disp('Running state machine...')
-RawEvents = RunStateMachine; 
+rawEvents = RunStateMachine; 
 disp('State machine exited.')
 
 % Make the timestamps human-readable
 TE = struct; % Create an empty struct
-TE = AddTrialEvents(TE, RawEvents); % Add raw events to the struct
+TE = AddTrialEvents(TE, rawEvents); % Add raw events to the struct
 
 % Calculate and display the round trip latency
 startTime = TE.RawEvents.Trial{1}.States.SendSoftCode2Bonsai(1);

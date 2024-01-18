@@ -33,7 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 function SendBpodSoftCode(code)
 
-global BpodSystem % Imports the BpodSystem object to the function workspace
+global BpodSystem % Import the global BpodSystem object
 
 if BpodSystem.Status.InStateMatrix == 1
     if code <= BpodSystem.HW.n.SoftCodes && code ~= 0

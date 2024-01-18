@@ -17,10 +17,26 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function SessionData = BpodNotebook(Op, varargin)
-global BpodSystem
-Op = lower(Op);
-switch Op
+
+% BpodNotebook() displays a "notebook" for taking notes on individual trials, 
+% or marking them digitally for classification based on manual criteria.
+% Data entered into the notebook is saved with the Bpod session dataset.
+%
+% Arguments:
+% op: The operation. This must be one of:
+%                    'init' to initialize the plugin
+%                    'sync' to update sessionData
+% sessionData: A Bpod session data struct
+%
+% Returns:
+% sessionData, the session data struct with added notes
+
+function sessionData = BpodNotebook(op, varargin)
+
+global BpodSystem % Import the global BpodSystem object
+
+op = lower(op);
+switch op
     case 'init'
         % Initialize BpodSystem.GUIHandles.Notebook structure
         BpodSystem.GUIHandles.Notebook = struct();
@@ -137,32 +153,32 @@ switch Op
             'BackgroundColor', [1 1 1], ...
             'String', {'1','2','3','4','5','6','7','8','9','10'}, ...
             'Callback', @popupmenu1_Callback);
-        SessionData = 0;
+        sessionData = 0;
     case 'sync'
-        SessionData = varargin{1};
-        nTrials = SessionData.nTrials+1;
+        sessionData = varargin{1};
+        nTrials = sessionData.nTrials+1;
         nTrialsLogged = length(BpodSystem.GUIData.Notebook.Notes);
         if nTrials > nTrialsLogged
             BpodSystem.GUIData.Notebook.Notes(nTrialsLogged+1:nTrials) = cell(1,nTrials-nTrialsLogged);
             BpodSystem.GUIData.Notebook.MarkerCodes(nTrialsLogged+1:nTrials) = zeros(1,nTrials-nTrialsLogged);
         end
-        SessionData.Notes = BpodSystem.GUIData.Notebook.Notes;
-        SessionData.MarkerCodes = BpodSystem.GUIData.Notebook.MarkerCodes;
+        sessionData.Notes = BpodSystem.GUIData.Notebook.Notes;
+        sessionData.MarkerCodes = BpodSystem.GUIData.Notebook.MarkerCodes;
 end
 end
 
 %% ---------------------------------------------------------------------------
-function pushbutton3_Callback(hObject,evendata) %#ok<INUSD>
+function pushbutton3_Callback(~,~)
 global BpodSystem
-CurrentTrialViewing = str2double(get(BpodSystem.GUIHandles.Notebook.edit2, 'String'));
-if CurrentTrialViewing > 1
-    CurrentTrialViewing = CurrentTrialViewing - 1;
+currentTrialViewing = str2double(get(BpodSystem.GUIHandles.Notebook.edit2, 'String'));
+if currentTrialViewing > 1
+    currentTrialViewing = currentTrialViewing - 1;
 end
-set(BpodSystem.GUIHandles.Notebook.edit1, 'String', BpodSystem.GUIData.Notebook.Notes{CurrentTrialViewing});
-set(BpodSystem.GUIHandles.Notebook.edit2, 'String', num2str(CurrentTrialViewing));
-set(BpodSystem.GUIHandles.Notebook.checkbox1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing) > 0)
-if BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing) > 0
-    set(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing))
+set(BpodSystem.GUIHandles.Notebook.edit1, 'String', BpodSystem.GUIData.Notebook.Notes{currentTrialViewing});
+set(BpodSystem.GUIHandles.Notebook.edit2, 'String', num2str(currentTrialViewing));
+set(BpodSystem.GUIHandles.Notebook.checkbox1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing) > 0)
+if BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing) > 0
+    set(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing))
 else
     set(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value', 1)
 end
@@ -170,18 +186,18 @@ drawnow;
 end
 
 %% ---------------------------------------------------------------------------
-function pushbutton4_Callback(hObject,evendata) %#ok<INUSD>
+function pushbutton4_Callback(~,~)
 global BpodSystem
-CurrentTrialViewing = str2double(get(BpodSystem.GUIHandles.Notebook.edit2, 'String'));
-MaxTrials = length(BpodSystem.GUIData.Notebook.Notes);
-if CurrentTrialViewing < MaxTrials
-    CurrentTrialViewing = CurrentTrialViewing + 1;
+currentTrialViewing = str2double(get(BpodSystem.GUIHandles.Notebook.edit2, 'String'));
+maxTrials = length(BpodSystem.GUIData.Notebook.Notes);
+if currentTrialViewing < maxTrials
+    currentTrialViewing = currentTrialViewing + 1;
 end
-set(BpodSystem.GUIHandles.Notebook.edit1, 'String', BpodSystem.GUIData.Notebook.Notes{CurrentTrialViewing});
-set(BpodSystem.GUIHandles.Notebook.edit2, 'String', num2str(CurrentTrialViewing));
-set(BpodSystem.GUIHandles.Notebook.checkbox1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing) > 0)
-if BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing) > 0
-    set(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing))
+set(BpodSystem.GUIHandles.Notebook.edit1, 'String', BpodSystem.GUIData.Notebook.Notes{currentTrialViewing});
+set(BpodSystem.GUIHandles.Notebook.edit2, 'String', num2str(currentTrialViewing));
+set(BpodSystem.GUIHandles.Notebook.checkbox1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing) > 0)
+if BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing) > 0
+    set(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing))
 else
     set(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value', 1)
 end
@@ -189,14 +205,14 @@ drawnow;
 end
 
 %% ---------------------------------------------------------------------------
-function pushbutton5_Callback(hObject,evendata) %#ok<INUSD>
+function pushbutton5_Callback(~,~)
 global BpodSystem
-CurrentTrialViewing = length(BpodSystem.GUIData.Notebook.Notes);
-set(BpodSystem.GUIHandles.Notebook.edit1, 'String', BpodSystem.GUIData.Notebook.Notes{CurrentTrialViewing});
-set(BpodSystem.GUIHandles.Notebook.edit2, 'String', num2str(CurrentTrialViewing));
-set(BpodSystem.GUIHandles.Notebook.checkbox1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing) > 0)
-if BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing) > 0
-    set(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing))
+currentTrialViewing = length(BpodSystem.GUIData.Notebook.Notes);
+set(BpodSystem.GUIHandles.Notebook.edit1, 'String', BpodSystem.GUIData.Notebook.Notes{currentTrialViewing});
+set(BpodSystem.GUIHandles.Notebook.edit2, 'String', num2str(currentTrialViewing));
+set(BpodSystem.GUIHandles.Notebook.checkbox1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing) > 0)
+if BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing) > 0
+    set(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing))
 else
     set(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value', 1)
 end
@@ -204,14 +220,14 @@ drawnow;
 end
 
 %% ---------------------------------------------------------------------------
-function pushbutton6_Callback(hObject,evendata) %#ok<INUSD>
+function pushbutton6_Callback(~,~)
 global BpodSystem
-CurrentTrialViewing = 1;
-set(BpodSystem.GUIHandles.Notebook.edit1, 'String', BpodSystem.GUIData.Notebook.Notes{CurrentTrialViewing});
-set(BpodSystem.GUIHandles.Notebook.edit2, 'String', num2str(CurrentTrialViewing));
-set(BpodSystem.GUIHandles.Notebook.checkbox1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing) > 0)
-if BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing) > 0
-    set(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing))
+currentTrialViewing = 1;
+set(BpodSystem.GUIHandles.Notebook.edit1, 'String', BpodSystem.GUIData.Notebook.Notes{currentTrialViewing});
+set(BpodSystem.GUIHandles.Notebook.edit2, 'String', num2str(currentTrialViewing));
+set(BpodSystem.GUIHandles.Notebook.checkbox1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing) > 0)
+if BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing) > 0
+    set(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value', BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing))
 else
     set(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value', 1)
 end
@@ -219,58 +235,58 @@ drawnow;
 end
 
 %% ---------------------------------------------------------------------------
-function checkbox1_Callback(hObject,evendata) %#ok<INUSD>
+function checkbox1_Callback(~,~)
 global BpodSystem
-CurrentTrialViewing = str2double(get(BpodSystem.GUIHandles.Notebook.edit2, 'String'));
-CBval = get(BpodSystem.GUIHandles.Notebook.checkbox1, 'Value');
-if CBval == 1
-    BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing) = get(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value');
+currentTrialViewing = str2double(get(BpodSystem.GUIHandles.Notebook.edit2, 'String'));
+cbval = get(BpodSystem.GUIHandles.Notebook.checkbox1, 'Value');
+if cbval == 1
+    BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing) = get(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value');
 else
-    BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing) = 0;
+    BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing) = 0;
 end
 drawnow;
 end
 
 %% ---------------------------------------------------------------------------
-function edit2_Callback(hObject,evendata) %#ok<INUSD>
+function edit2_Callback(~,~)
 global BpodSystem
-MaxTrials = length(BpodSystem.GUIData.Notebook.Notes);
-Num = ceil(str2double(get(BpodSystem.GUIHandles.Notebook.edit2, 'String')));
-if ~isnan(Num)
-    if Num < 1
+maxTrials = length(BpodSystem.GUIData.Notebook.Notes);
+num = ceil(str2double(get(BpodSystem.GUIHandles.Notebook.edit2, 'String')));
+if ~isnan(num)
+    if num < 1
         msgbox('Invalid trial number.')
         BpodErrorSound
-        Num = 1;
-    elseif Num > MaxTrials
+        num = 1;
+    elseif num > maxTrials
         msgbox('Invalid trial number.')
         BpodErrorSound
-        Num = MaxTrials;
+        num = maxTrials;
     end
 else
     msgbox('Invalid trial number.')
     BpodErrorSound
-    Num = MaxTrials;
+    num = maxTrials;
 end
-Str = BpodSystem.GUIData.Notebook.Notes{Num};
-set(BpodSystem.GUIHandles.Notebook.edit2, 'String', num2str(Num));
-set(BpodSystem.GUIHandles.Notebook.edit1, 'String', Str);
+str = BpodSystem.GUIData.Notebook.Notes{num};
+set(BpodSystem.GUIHandles.Notebook.edit2, 'String', num2str(num));
+set(BpodSystem.GUIHandles.Notebook.edit1, 'String', str);
 drawnow;
 end
 
 %% ---------------------------------------------------------------------------
-function edit1_Callback(hObject,evendata) %#ok<INUSD>
+function edit1_Callback(~,~)
 global BpodSystem
-    CurrentTrialViewing = str2double(get(BpodSystem.GUIHandles.Notebook.edit2, 'String'));
-    BpodSystem.GUIData.Notebook.Notes{CurrentTrialViewing} = get(BpodSystem.GUIHandles.Notebook.edit1, 'String');
+    currentTrialViewing = str2double(get(BpodSystem.GUIHandles.Notebook.edit2, 'String'));
+    BpodSystem.GUIData.Notebook.Notes{currentTrialViewing} = get(BpodSystem.GUIHandles.Notebook.edit1, 'String');
     drawnow;
 end
 
 %% ---------------------------------------------------------------------------
-function popupmenu1_Callback(hObject,evendata) %#ok<INUSD>
+function popupmenu1_Callback(~,~)
 global BpodSystem
-CurrentTrialViewing = str2double(get(BpodSystem.GUIHandles.Notebook.edit2, 'String'));
+currentTrialViewing = str2double(get(BpodSystem.GUIHandles.Notebook.edit2, 'String'));
 if get(BpodSystem.GUIHandles.Notebook.checkbox1, 'Value')
-    BpodSystem.GUIData.Notebook.MarkerCodes(CurrentTrialViewing) = get(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value');
+    BpodSystem.GUIData.Notebook.MarkerCodes(currentTrialViewing) = get(BpodSystem.GUIHandles.Notebook.popupmenu1, 'Value');
 end
 drawnow;
 end

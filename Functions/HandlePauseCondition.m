@@ -30,7 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 function HandlePauseCondition
 
-global BpodSystem % Imports the BpodSystem object to the function workspace
+global BpodSystem % Import the global BpodSystem object
 
 if BpodSystem.Status.Pause == 1
     set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.GoButton, 'TooltipString', 'Press to resume');

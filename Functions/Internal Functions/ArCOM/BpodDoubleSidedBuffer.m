@@ -18,14 +18,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
+% The BpodDoubleSidedBuffer class implements a double sided buffer for bytes (uint8 type).
+% This is more efficient than a circular buffer, but requires twice the memory.
+%
+% Usage:
+% B = BpodDoubleSidedBuffer;
+% B.write([1 2 3 4 5]); % Add bytes [1 2 3 4 5] to the buffer
+% message = B.read(5); % Read 5 bytes from the buffer
+
+
 classdef BpodDoubleSidedBuffer < handle
-    % Implements a double sided buffer for bytes (uint8 type).
-    % This is more efficient than a circular buffer, but requires twice the memory.
-    
     properties
         bytesAvailable
     end
-    
     properties (Access = private)
         Buffer1
         Buffer2

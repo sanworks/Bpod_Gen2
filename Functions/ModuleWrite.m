@@ -34,7 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 function ModuleWrite(moduleName, message, varargin)
 
-global BpodSystem % Imports the BpodSystem object to the function workspace
+global BpodSystem % Import the global BpodSystem object
 
 % Resolve module index from moduleName
 moduleIndex = find(strcmp(moduleName, BpodSystem.Modules.Name));

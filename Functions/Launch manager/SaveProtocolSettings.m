@@ -17,6 +17,10 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% SaveProtocolSettings() saves the ProtocolSettings struct to the currently
+% selected protocol settings file.
+
 function SaveProtocolSettings(ProtocolSettings)
-global BpodSystem
+global BpodSystem % Import the global BpodSystem object
 save(BpodSystem.Path.Settings, 'ProtocolSettings');

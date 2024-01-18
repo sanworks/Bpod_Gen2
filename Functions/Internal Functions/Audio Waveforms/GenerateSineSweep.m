@@ -18,8 +18,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function SweepWave = GenerateSineSweep(SamplingRate, StartFreq, EndFreq, Duration)
-t=1/SamplingRate:1/SamplingRate:Duration;
+% GenerateSineSweep() returns a sampled frequency sweep waveform
+%
+% Arguments:
+% samplingRate: sampling rate of the system that will play the sound. Unit = Hz
+% startFreq: The initial frequency of the sweep. Unit = Hz
+% endFreq: The final frequency of the sweep. Unit = Hz
+% duration: The duration of the sweep. Unit = seconds
+%
+% Returns: sweepWave, the sweep waveform.
+
+function sweepWave = GenerateSineSweep(samplingRate, startFreq, endFreq, duration)
+
+% Compute time vector
+t=1/samplingRate:1/samplingRate:duration;
 
 % Using Statistics toolbox -----------------------------------------------
 % phaseInit = -90;
@@ -27,5 +39,5 @@ t=1/SamplingRate:1/SamplingRate:Duration;
 % ------------------------------------------------------------------------
 
 % The much less expensive way
-k=(EndFreq-StartFreq)/(Duration-t(1));
-SweepWave=cos(2*pi*(k/2*t+StartFreq).*t+(pi/2));
+k=(endFreq-startFreq)/(duration-t(1));
+sweepWave=cos(2*pi*(k/2*t+startFreq).*t+(pi/2));

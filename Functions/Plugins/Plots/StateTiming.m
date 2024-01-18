@@ -1,12 +1,8 @@
-function StateTiming(t0)
 %{
 ----------------------------------------------------------------------------
 
 This file is part of the Sanworks Bpod repository
 Copyright (C) Sanworks LLC, Rochester, New York, USA
-
-This plugin was contributed in its original form by Florian Rau / Poulet Lab
-See original version and copyright notice in StateTiming.m at https://github.com/poulet-lab/Bpod_Gen2
 
 ----------------------------------------------------------------------------
 
@@ -22,23 +18,27 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-%STATETIMING Display timing of Bpod states
-%   STATETIMING visualizes the state timings of a Bpod's most recently run
-%   trial. It only has one optional parameter, T0, that can be used to
-%   shift the x-axis by a user-defined amount of seconds. This can be
-%   useful if you want to display the state timings relative to a specific
-%   event (e.g., the onset of a stimulus).
-%   Note: STATETIMING has overlapping functionality with the PokesPlot plugin.
+%   StateTiming is a plugin to Display the fraction of trial time spent in 
+%   Bpod states during the most recent trial. It only has one optional 
+%   parameter, T0, that can be used to shift the x-axis by a user-defined 
+%   amount of seconds. This can be useful if you want to display the state 
+%   timings relative to a specific event (e.g., the onset of a stimulus).
 
+%   This plugin was contributed in its original form by Florian Rau / Poulet Lab
+%   12/2022. See original version and copyright notice in StateTiming.m at 
+%   https://github.com/poulet-lab/Bpod_Gen2
 
-% obtain access to Bpod data, return if empty
-global BpodSystem
+function StateTiming(t0)
+
+global BpodSystem % Import the global BpodSystem object
+
+% Obtain access to Bpod data, return if empty
 if isempty(BpodSystem) || ~isstruct(BpodSystem.Data) || ...
         isempty(fieldnames(BpodSystem.Data))
     return
 end
 
-% obtain axes handle for plots, prepare axes
+% Obtain axes handle for plots, prepare axes
 persistent hAx
 if isempty(hAx) || ~isvalid(hAx)
     if verLessThan('matlab','9.5')
@@ -66,9 +66,12 @@ end
 
 ch = get(hAx, 'Children');
 delete(ch(1:end-1)); % Clear the previous patches. Last item is always the xline
-if ~isfield(BpodSystem.Data, 'RawEvents') % If BpodSystem.Data has been initialized by the user but events have not been added
+
+% If BpodSystem.Data has been initialized by the user but events have not been added
+if ~isfield(BpodSystem.Data, 'RawEvents') 
     return
 end
+
 % some variables
 trials  = BpodSystem.Data.RawEvents.Trial;  % trial structure
 timings = struct2cell(trials{end}.States);  % the most recent state timings
@@ -78,13 +81,13 @@ nTrial  = numel(trials);                    % number of current trial
 hBar    = .9;                               % height of bars
 colors  = get(hAx, 'ColorOrder');           % a list of face colors
 
-% correct timings by t0 & indicate it
+% Correct timings by t0 & indicate it
 if exist('t0','var') && t0
     timings = cellfun(@(x) {x - t0},timings);
 end
 
 
-% plot state timing
+% Plot state timing
 for idxState = 1:nStates
     x = [timings{idxState} fliplr(timings{idxState})]';
     y = repmat(idxState + hBar./[2;2;-2;-2],1,size(x,2));
@@ -92,7 +95,7 @@ for idxState = 1:nStates
     patch(hAx,x,y,c)
 end
 
-% format axes & labels
+% Format axes & labels
 title(hAx,sprintf('State Timing, Trial %d',nTrial));
 set(hAx, ...
     'YTick',      1:nStates, ...

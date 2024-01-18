@@ -39,7 +39,7 @@ classdef BpodSystemTest < handle
     end
     methods
         function obj = BpodSystemTest()
-            global BpodSystem
+            global BpodSystem % Import the global BpodSystem object
             if isempty(BpodSystem)
                 clear global BpodSystem
                 disp(' ')
@@ -49,13 +49,13 @@ classdef BpodSystemTest < handle
             end
 
             % Set up log file
-            DateInfo = datestr(now, 30);
-            DateInfo(DateInfo == 'T') = '_';
+            dateInfo = datestr(now, 30);
+            dateInfo(dateInfo == 'T') = '_';
             if ~isdir(fullfile(BpodSystem.Path.LocalDir, 'System Logs'))
                 mkdir(fullfile(BpodSystem.Path.LocalDir, 'System Logs'))
             end
-            LogFilename = fullfile(BpodSystem.Path.LocalDir, 'System Logs', ['SystemTest_' DateInfo '.txt']);
-            obj.LogFile = fopen(LogFilename,'wt');
+            logFilename = fullfile(BpodSystem.Path.LocalDir, 'System Logs', ['SystemTest_' dateInfo '.txt']);
+            obj.LogFile = fopen(logFilename,'wt');
             if obj.LogFile == -1
                 error('Error: Could not open log file.')
             end
@@ -66,9 +66,10 @@ classdef BpodSystemTest < handle
             obj.dispAndLog('* Bpod System Test *')
             obj.dispAndLog('********************')
             disp(' ')
-            disp(['Logging to: ' LogFilename])
+            disp(['Logging to: ' logFilename])
             obj.dispAndLog(' ');
             obj.dispAndLog(['Date: ' datestr(now, 1) char(10) 'Time: ' datestr(now, 13)]);
+
             % Print system, software and PC info
             obj.FSM_Model = BpodSystem.HW.StateMachineModel;
             obj.SoftwareVersion = BpodSoftwareVersion_Semantic;
@@ -103,6 +104,8 @@ classdef BpodSystemTest < handle
             obj.dispAndLog(['Free System RAM: ' num2str(systemview.PhysicalMemory.Available/1000000000) 'GB'])
             obj.dispAndLog(['Number of CPU Cores: ' getenv('NUMBER_OF_PROCESSORS')])
             obj.dispAndLog(' ');
+
+            % Print instructions
             disp('INSTRUCTIONS:')
             disp('Init with: B = BpodSystemTest;')
             disp('Use B.testAll; to run the complete suite of tests.')
@@ -114,19 +117,21 @@ classdef BpodSystemTest < handle
         end
 
         function testAll(obj)
-            obj.stateTransitionTest;
-            obj.stateMachineExtensionTest;
-            obj.rapidEventTest;
-            obj.psRAMTest;
-            obj.behaviorPortTest;
+            % Run all tests sequentially
+            obj.state_transition_test;
+            obj.fsm_extension_test;
+            obj.rapid_event_test;
+            obj.psram_test;
+            obj.behaviorport_test;
         end
 
         function showTests(obj)
-            disp('stateTransitionTest: Cycles through 255 states, verifies that all were passed through.')
-            disp('metaFunctionTest: Verifies global timer, global counter and condition functionality.')
-            disp('rapidEventTest: Ensures data integrity during rapid events (10kHz) with rapid state transitions (5kHz).')
-            disp('psRAMTest: Tests the external PSRAM IC on Bpod State Machine r2+. Test skipped on other models.')
-            disp('behaviorPortTest: Verifies functionality of all behavior port channels. Test requires manual operation.')
+            % Display test names and single-line descriptions
+            disp('state_transition_test: Cycles through 255 states, verifies that all were passed through.')
+            disp('fsm_extension_test: Verifies global timer, global counter and condition functionality.')
+            disp('rapid_event_test: Ensures data integrity during rapid events (10kHz) with rapid state transitions (5kHz).')
+            disp('psram_test: Tests the external PSRAM IC on Bpod State Machine r2+. Test skipped on other models.')
+            disp('behaviorport_test: Verifies functionality of all behavior port channels. Test requires manual operation.')
         end
 
         function delete(obj)
@@ -136,6 +141,7 @@ classdef BpodSystemTest < handle
     end
     methods (Access = private)
         function dispAndLog(obj, msg)
+            % Display a message to the MATLAB command window, and write it to the log file
             fwrite(obj.LogFile, [msg char(10)]); % Use char(10) instead of newline for compatibility with r2015b and earlier
             disp(msg);
         end

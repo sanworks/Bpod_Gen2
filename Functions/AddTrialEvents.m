@@ -49,7 +49,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 function updatedSD = AddTrialEvents(sd, rawTrialEvents)
 
-global BpodSystem % Imports the BpodSystem object to the function workspace
+global BpodSystem % Import the global BpodSystem object
 
 stateNames = BpodSystem.LastStateMatrix.StateNames;
 

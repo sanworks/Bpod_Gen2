@@ -18,8 +18,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function SineWave = GenerateSineWave(SamplingRate, Frequency, Duration)
-% Duration in seconds
-dt = 1/double(SamplingRate);
-t = dt:dt:Duration;
-SineWave=sin(2*pi*Frequency*t);
+% GenerateSineWave() returns a sampled sine waveform 
+%
+% Arguments:
+% samplingRate: sampling rate of the system that will play the sound. Unit = Hz
+% frequency: The frequency of the sine waveform. Unit = Hz
+% duration: The duration of the waveform. Unit = seconds
+%
+% Returns:
+% sineWave: The sine waveform. Samples range in amplitude between [-1, 1].
+
+
+function sineWave = GenerateSineWave(samplingRate, frequency, duration)
+dt = 1/double(samplingRate);
+t = dt:dt:duration;
+sineWave=sin(2*pi*frequency*t);

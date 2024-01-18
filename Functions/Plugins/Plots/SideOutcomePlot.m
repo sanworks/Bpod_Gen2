@@ -17,20 +17,18 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-% function OutcomePlot(AxesHandle,TrialTypeSides, OutcomeRecord, CurrentTrial)
-function SideOutcomePlot(AxesHandle, Action, varargin)
-%% 
-% Plug in to Plot reward side and trial outcome.
-% For non-sided trial types, use the TrialTypeOutcomePlot plugin.
+
+% OutcomePlot() is a plugin to plot reward side and trial outcome.
+% Note: For non-sided trial types, use the TrialTypeOutcomePlot() plugin.
+%
+% Usage:
+% function OutcomePlot(AxesHandle, Action, TrialTypeSides, OutcomeRecord, CurrentTrial)
+%
+% Arguments:
 % AxesHandle = handle of axes to plot on
 % Action = specific action for plot, "init" - initialize OR "update" -  update plot
-
-%Example usage:
-% SideOutcomePlot(AxesHandle,'init',TrialTypeSides)
-% SideOutcomePlot(AxesHandle,'init',TrialTypeSides,'ntrials',90)
-% SideOutcomePlot(AxesHandle,'update',CurrentTrial,TrialTypeSides,OutcomeRecord)
-
-% varargins:
+%
+% Optional Arguments:
 % TrialTypeSides: Vector of 0's (right) or 1's (left) to indicate reward side (0,1), or 'None' to plot trial types individually
 % OutcomeRecord:  Vector of trial outcomes
 %                 Simplest case: 
@@ -43,34 +41,40 @@ function SideOutcomePlot(AxesHandle, Action, varargin)
 %                                 1: correct choice (green dot)
 %                                 2: did not choose (green circle)
 % OutcomeRecord can also be empty
-% Current trial: the current trial number
+% CurrentTrial: the current trial number
+%
+% Example usage:
+% SideOutcomePlot(AxesHandle,'init',TrialTypeSides)
+% SideOutcomePlot(AxesHandle,'init',TrialTypeSides,'ntrials',90)
+% SideOutcomePlot(AxesHandle,'update',CurrentTrial,TrialTypeSides,OutcomeRecord)
 
 % Adapted from BControl (SidesPlotSection.m) 
-% Kachi O. 2014.Mar.17
-% Josh S. 2015.Jan.24 - optimized for speed
+% Port contributed by Kachi Odomene, 2014.Mar.17
 
-%% Code Starts Here
-global nTrialsToShow %this is for convenience
-global BpodSystem
+function SideOutcomePlot(AxesHandle, Action, varargin)
+
+global BpodSystem % Import the global BpodSystem object
 
 switch Action
     case 'init'
-        %initialize pokes plot
         SideList = varargin{1};
-        
-        nTrialsToShow = 90; %default number of trials to display
-        
+
+        % Set #Trials to show
+        BpodSystem.GUIData.SOPnTrialsToShow = 90; %default number of trials to display
         if nargin > 3 %custom number of trials
-            nTrialsToShow =varargin{3};
+            BpodSystem.GUIData.SOPnTrialsToShow = varargin{3};
         end
+
+        % Set label font size
         if ispc
             labelFontSize = 18;
         else
             labelFontSize = 15;
         end
         axes(AxesHandle);
-        %plot in specified axes
-        Xdata = 1:nTrialsToShow; Ydata = SideList(Xdata);
+
+        % Plot in specified axes
+        Xdata = 1:BpodSystem.GUIData.SOPnTrialsToShow; Ydata = SideList(Xdata);
         BpodSystem.GUIHandles.FutureTrialLine = line([Xdata,Xdata],[Ydata,Ydata],'LineStyle','none','Marker','o','MarkerEdge','b','MarkerFace','b', 'MarkerSize',6);
         BpodSystem.GUIHandles.CurrentTrialCircle = line([0,0],[0,0], 'LineStyle','none','Marker','o','MarkerEdge','k','MarkerFace',[1 1 1], 'MarkerSize',6);
         BpodSystem.GUIHandles.CurrentTrialCross = line([0,0],[0,0], 'LineStyle','none','Marker','+','MarkerEdge','k','MarkerFace',[1 1 1], 'MarkerSize',6);
@@ -84,19 +88,18 @@ switch Action
         hold(AxesHandle, 'on');
         
     case 'update'
+        % Import vars
         CurrentTrial = varargin{1};
         SideList = varargin{2};
         OutcomeRecord = varargin{3};
-        
         if CurrentTrial<1
             CurrentTrial = 1;
         end
-        
-        % recompute xlim
-        [mn, mx] = rescaleX(AxesHandle,CurrentTrial,nTrialsToShow);
-        
-        %axes(AxesHandle); %cla;
-        %plot future trials
+
+        % Recompute xlim
+        [mn, mx] = rescale_x(AxesHandle,CurrentTrial,BpodSystem.GUIData.SOPnTrialsToShow);
+
+        % Plot future trials
         FutureTrialsIndx = CurrentTrial:mx;
         Xdata = FutureTrialsIndx; Ydata = SideList(Xdata);
         set(BpodSystem.GUIHandles.FutureTrialLine, 'xdata', [Xdata,Xdata], 'ydata', [Ydata,Ydata]);
@@ -104,25 +107,30 @@ switch Action
         set(BpodSystem.GUIHandles.CurrentTrialCircle, 'xdata', [CurrentTrial,CurrentTrial], 'ydata', [SideList(CurrentTrial),SideList(CurrentTrial)]);
         set(BpodSystem.GUIHandles.CurrentTrialCross, 'xdata', [CurrentTrial,CurrentTrial], 'ydata', [SideList(CurrentTrial),SideList(CurrentTrial)]);
         
-        %Plot past trials
+        % Plot past trials
         if ~isempty(OutcomeRecord)
             indxToPlot = mn:CurrentTrial-1;
+
             %Plot Error, unpunished
             EarlyWithdrawalTrialsIndx =(OutcomeRecord(indxToPlot) == -1);
             Xdata = indxToPlot(EarlyWithdrawalTrialsIndx); Ydata = SideList(Xdata);
             set(BpodSystem.GUIHandles.UnpunishedErrorLine, 'xdata', [Xdata,Xdata], 'ydata', [Ydata,Ydata]);
+
             %Plot Error, punished
             InCorrectTrialsIndx = (OutcomeRecord(indxToPlot) == 0);
             Xdata = indxToPlot(InCorrectTrialsIndx); Ydata = SideList(Xdata);
             set(BpodSystem.GUIHandles.PunishedErrorLine, 'xdata', [Xdata,Xdata], 'ydata', [Ydata,Ydata]);
+
             %Plot Correct, rewarded
             CorrectTrialsIndx = (OutcomeRecord(indxToPlot) == 1);
             Xdata = indxToPlot(CorrectTrialsIndx); Ydata = SideList(Xdata);
             set(BpodSystem.GUIHandles.RewardedCorrectLine, 'xdata', [Xdata,Xdata], 'ydata', [Ydata,Ydata]);
+
             %Plot Correct, unrewarded
             UnrewardedTrialsIndx = (OutcomeRecord(indxToPlot) == 2);
             Xdata = indxToPlot(UnrewardedTrialsIndx); Ydata = SideList(Xdata);
             set(BpodSystem.GUIHandles.UnrewardedCorrectLine, 'xdata', [Xdata,Xdata], 'ydata', [Ydata,Ydata]);
+
             %Plot DidNotChoose
             DidNotChooseTrialsIndx = (OutcomeRecord(indxToPlot) == 3);
             Xdata = indxToPlot(DidNotChooseTrialsIndx); Ydata = SideList(Xdata);
@@ -132,11 +140,12 @@ end
 
 end
 
-function [mn,mx] = rescaleX(AxesHandle,CurrentTrial,nTrialsToShow)
-FractionWindowStickpoint = .75; % After this fraction of visible trials, the trial position in the window "sticks" and the window begins to slide through trials.
-mn = max(round(CurrentTrial - FractionWindowStickpoint*nTrialsToShow),1);
-mx = mn + nTrialsToShow - 1;
-set(AxesHandle,'XLim',[mn-1 mx+1]);
+function [mn,mx] = rescale_x(axesHandle,currentTrial,nTrialsToShow)
+    FractionWindowStickpoint = .75; % After this fraction of visible trials, the trial position in the window 
+                                    % "sticks" and the window begins to slide through trials.
+    mn = max(round(currentTrial - FractionWindowStickpoint*nTrialsToShow),1);
+    mx = mn + nTrialsToShow - 1;
+    set(axesHandle,'XLim',[mn-1 mx+1]);
 end
 
 

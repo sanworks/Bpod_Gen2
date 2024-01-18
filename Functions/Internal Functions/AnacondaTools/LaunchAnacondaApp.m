@@ -18,29 +18,31 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% LaunchAnacondaApp detects the system's default Anaconda installation, and
+% LaunchAnacondaApp() detects the system's default Anaconda installation, and
 % launches a specific .py file in a specific environment.
 %
 % Arguments:
-%
-% Path: The complete path to the target folder where your .py file is, 
-% including the filename and extension
-%
-% Env: The name of the anaconda environment to use. Use 'base' for the
+% env: The name of the anaconda environment to use. Use 'base' for the
 % default environment. If a full path is not given, the environment must
 % reside in .../Anaconda3/envs/
+%
+% folderPath: The complete path to the target folder where your .py file is, 
+% including the filename and extension
+%
+% commands: A cell array with commands to add to the system call
 
-function LaunchAnacondaApp(Env, FolderPath, Commands)
-CondaPath = FindAnaconda();
-if strcmpi(Env, 'base')
+
+function LaunchAnacondaApp(env, folderPath, commands)
+condaPath = FindAnaconda();
+if strcmpi(env, 'base')
     EnvStr = [];
 else
-    EnvStr = fullfile(CondaPath, 'envs', Env);
+    EnvStr = fullfile(condaPath, 'envs', env);
 end
-LaunchCommand = ['chcp 1252 & call ' fullfile(CondaPath, 'Scripts', 'activate') ' '...
-                EnvStr ' & cd "' FolderPath '" & python'];
-nCommands = length(Commands);
+launchCommand = ['chcp 1252 & call ' fullfile(condaPath, 'Scripts', 'activate') ' '...
+                EnvStr ' & cd "' folderPath '" & python'];
+nCommands = length(commands);
 for i = 1:nCommands
-    LaunchCommand = [LaunchCommand ' & ' Commands{i}];
+    launchCommand = [launchCommand ' & ' commands{i}];
 end
-system(LaunchCommand);
+system(launchCommand);

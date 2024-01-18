@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function rapidEventTest(obj)
+function rapid_event_test(obj)
 % RAPID EVENT TEST FUNCTION
 %
 % This method is designed to test the performance of the Bpod state machine
@@ -26,7 +26,7 @@ function rapidEventTest(obj)
 % captured via BNC loopback. The resulting data is checked for consistency 
 % and data loss.
 
-global BpodSystem % Access the global BpodSystem variable
+global BpodSystem % Import the global BpodSystem object
 
 % Define test durations (in seconds)
 stateDuration = 0.0002;
@@ -68,11 +68,12 @@ RawEvents = RunStateMachine;
 nStatesVisited = length(RawEvents.States(2:end));
 nSeconds = RawEvents.StateTimestamps(end) - RawEvents.StateTimestamps(2);
 statesPerSecond = nStatesVisited/nSeconds;
-BNC1High = BpodSystem.HW.IOEventStartposition;
-BNC1Low = BpodSystem.HW.IOEventStartposition+1;
-BNC2High = BpodSystem.HW.IOEventStartposition+2;
-BNC2Low = BpodSystem.HW.IOEventStartposition+3;
-nEventsCaptured = sum(RawEvents.Events == BNC1High) + sum(RawEvents.Events == BNC1Low) + sum(RawEvents.Events == BNC2High) + sum(RawEvents.Events == BNC2Low);
+bnc1High = BpodSystem.HW.IOEventStartposition;
+bnc1Low = BpodSystem.HW.IOEventStartposition+1;
+bnc2High = BpodSystem.HW.IOEventStartposition+2;
+bnc2Low = BpodSystem.HW.IOEventStartposition+3;
+nEventsCaptured = sum(RawEvents.Events == bnc1High) + sum(RawEvents.Events == bnc1Low) + sum(RawEvents.Events == bnc2High)... 
+                  + sum(RawEvents.Events == bnc2Low);
 nExpectedEvents = floor(2*(1/stateDuration))*testDuration;
 obj.dispAndLog([num2str(nExpectedEvents) ' events expected, ' num2str(nEventsCaptured) ' captured.'])
 if nEventsCaptured == nExpectedEvents

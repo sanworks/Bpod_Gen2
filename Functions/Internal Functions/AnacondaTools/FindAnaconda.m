@@ -17,28 +17,32 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function CondaPath = FindAnaconda()
+
+% FindAnaconda() returns the path to the local installation of Anaconda.
+
+function condaPath = FindAnaconda()
+
 if ispc
     [~,CondaPathStr] = system('for /F "tokens=2,*" %a in (''reg query HKCU\Software\Python /f InstallPath /s /k /ve ^| findstr Default'') do @echo %b');
-    CondaPosInStr = strfind(CondaPathStr, 'Anaconda');
-    if isempty(CondaPosInStr)
+    condaPosInStr = strfind(CondaPathStr, 'Anaconda');
+    if isempty(condaPosInStr)
         error('Error: Anaconda auto-detect failed');
     end
-    nCandidates = length(CondaPosInStr);
-    HRpos = strfind(CondaPathStr, 10);
-    Pos = 1;
-    Found = 0;
-    CondaPath = [];
+    nCandidates = length(condaPosInStr);
+    hrPos = strfind(CondaPathStr, 10);
+    pos = 1;
+    found = 0;
+    condaPath = [];
     for i = 1:nCandidates
-      if ~Found
-          Candidate = CondaPathStr(Pos:Pos+HRpos(i)-2);
+      if ~found
+          candidate = CondaPathStr(pos:pos+hrPos(i)-2);
           if ~isempty(strfind(CondaPathStr, 'Anaconda'))
-              CondaPath = Candidate;
-              Found = 1;
+              condaPath = candidate;
+              found = 1;
           end
       end
     end
-    if isempty(CondaPath)
+    if isempty(condaPath)
         error('Error: Anaconda auto-detect failed');
     end
 else

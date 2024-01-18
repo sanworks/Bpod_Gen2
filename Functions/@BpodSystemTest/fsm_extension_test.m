@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function stateMachineExtensionTest(obj)
+function fsm_extension_test(obj)
 % STATE MACHINE EXTENSION TEST
 %
 % This test verifies the functionality of state machine framework extensions:
@@ -30,30 +30,30 @@ function stateMachineExtensionTest(obj)
 % A condition attached to BNC2_High moves the machine to the final
 % state. Event flow is sanity-checked.
 
-global BpodSystem % Access the global BpodSystem variable
+global BpodSystem % Import the global BpodSystem object
 
 testPass = 1;  % Initialize testPass flag as 1 (true)
 
 % Define test durations (in seconds)
-TimerInterval = 0.1;
-TimerDelay = 0.05;
+timerInterval = 0.1;
+timerDelay = 0.05;
 
 % Display test information
 obj.dispAndLog(' ');
-obj.dispAndLog('Starting: Meta Function Test.');
+obj.dispAndLog('Starting: State Machine Extension Test.');
 
 % Repeat the test multiple times
 nIterations = 10;
 for i = 1:nIterations
     % Setup the state machine description for the test
     sma = NewStateMachine;
-    sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', TimerInterval, 'OnsetDelay', 0,...
+    sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', timerInterval, 'OnsetDelay', 0,...
         'Channel', 'BNC1', 'OnEvent', 1, 'OffEvent', 0,...
-        'Loop', 1, 'SendGlobalTimerEvents', 1, 'LoopInterval', TimerInterval);
+        'Loop', 1, 'SendGlobalTimerEvents', 1, 'LoopInterval', timerInterval);
     sma = SetGlobalTimer(sma, 'TimerID', 2, 'Duration', 3, 'OnsetDelay', 0);
-    sma = SetGlobalTimer(sma, 'TimerID', BpodSystem.HW.n.GlobalTimers, 'Duration', TimerInterval, 'OnsetDelay', TimerDelay,...
+    sma = SetGlobalTimer(sma, 'TimerID', BpodSystem.HW.n.GlobalTimers, 'Duration', timerInterval, 'OnsetDelay', timerDelay,...
         'Channel', 'BNC2', 'OnEvent', 1, 'OffEvent', 0,...
-        'Loop', 1, 'SendGlobalTimerEvents', 1, 'LoopInterval', TimerInterval);
+        'Loop', 1, 'SendGlobalTimerEvents', 1, 'LoopInterval', timerInterval);
     sma = SetGlobalCounter(sma, 1, 'BNC1High', 3);
     sma = SetCondition(sma, 2, 'BNC2', 1);
     sma = AddState(sma, 'Name', 'TimerTrig', ...
@@ -75,45 +75,49 @@ for i = 1:nIterations
 
     % Send the description and run the test
     SendStateMatrix(sma);
-    RawEvents = RunStateMachine;
+    rawEvents = RunStateMachine;
     
     % Analyze results
-    if sum(RawEvents.States == find(strcmp(BpodSystem.StateMatrixSent.StateNames, 'Timeout')))>0
+    if sum(rawEvents.States == find(strcmp(BpodSystem.StateMatrixSent.StateNames, 'Timeout')))>0
         testPass = 0;
         obj.dispAndLog('Error: Test FAILED. A Condition was not registered.');
     end
-    if RawEvents.States ~= 1:BpodSystem.StateMatrixSent.nStatesInManifest-1
+    if rawEvents.States ~= 1:BpodSystem.StateMatrixSent.nStatesInManifest-1
         testPass = 0;
         obj.dispAndLog('Error: Test FAILED. Incorrect state flow detected.')
     end
-    GlobalCounterEnd = find(strcmp(BpodSystem.StateMachineInfo.EventNames, 'GlobalCounter1_End'));
-    ConditionEvent = find(strcmp(BpodSystem.StateMachineInfo.EventNames, 'Condition2'));
-    if find(RawEvents.Events == GlobalCounterEnd) > find(RawEvents.Events == ConditionEvent)
+    globalCounterEnd = find(strcmp(BpodSystem.StateMachineInfo.EventNames, 'GlobalCounter1_End'));
+    conditionEvent = find(strcmp(BpodSystem.StateMachineInfo.EventNames, 'Condition2'));
+    if find(rawEvents.Events == globalCounterEnd) > find(rawEvents.Events == conditionEvent)
         testPass = 0;
         obj.dispAndLog('Error: Test FAILED. Incorrect event sequence detected.')
     end
-    BNC1High = find(strcmp(BpodSystem.StateMachineInfo.EventNames, 'BNC1High'));
-    BNC1Low = find(strcmp(BpodSystem.StateMachineInfo.EventNames, 'BNC1Low'));
-    BNC2High = find(strcmp(BpodSystem.StateMachineInfo.EventNames, 'BNC2High'));
-    BNC2Low = find(strcmp(BpodSystem.StateMachineInfo.EventNames, 'BNC2Low'));
-    BNC1HighTimes = RawEvents.EventTimestamps(RawEvents.Events == BNC1High);
-    BNC1LowTimes = RawEvents.EventTimestamps(RawEvents.Events == BNC1Low);
-    BNC2HighTimes = RawEvents.EventTimestamps(RawEvents.Events == BNC2High);
-    BNC2LowTimes = RawEvents.EventTimestamps(RawEvents.Events == BNC2Low);
-    CyclePeriod = 1/BpodSystem.HW.CycleFrequency;
-    if sum(round(diff(BNC1HighTimes)*10000)/10000 == 2*TimerInterval)~=length(BNC1HighTimes)-1 || abs(BNC1HighTimes(1) - CyclePeriod) > 0.00001
+    bnc1High = find(strcmp(BpodSystem.StateMachineInfo.EventNames, 'BNC1High'));
+    bnc1Low = find(strcmp(BpodSystem.StateMachineInfo.EventNames, 'BNC1Low'));
+    bnc2High = find(strcmp(BpodSystem.StateMachineInfo.EventNames, 'BNC2High'));
+    bnc2Low = find(strcmp(BpodSystem.StateMachineInfo.EventNames, 'BNC2Low'));
+    bnc1HighTimes = rawEvents.EventTimestamps(rawEvents.Events == bnc1High);
+    bnc1LowTimes = rawEvents.EventTimestamps(rawEvents.Events == bnc1Low);
+    bnc2HighTimes = rawEvents.EventTimestamps(rawEvents.Events == bnc2High);
+    bnc2LowTimes = rawEvents.EventTimestamps(rawEvents.Events == bnc2Low);
+    cyclePeriod = 1/BpodSystem.HW.CycleFrequency;
+    if sum(round(diff(bnc1HighTimes)*10000)/10000 == 2*timerInterval)~=length(bnc1HighTimes)-1 ||... 
+                                                     abs(bnc1HighTimes(1) - cyclePeriod) > 0.00001
         testPass = 0;
         obj.dispAndLog('Error: BNC1High events occurred out of sequence')
     end
-    if sum(round(diff(BNC1LowTimes)*10000)/10000 == 2*TimerInterval)~=length(BNC1LowTimes)-1 || abs(BNC1LowTimes(1) - (TimerInterval + CyclePeriod)) > 0.00001
+    if sum(round(diff(bnc1LowTimes)*10000)/10000 == 2*timerInterval)~=length(bnc1LowTimes)-1 ||... 
+                                                    abs(bnc1LowTimes(1) - (timerInterval + cyclePeriod)) > 0.00001
         testPass = 0;
         obj.dispAndLog('Error: BNC1Low events occurred out of sequence')
     end
-    if sum(round(diff(BNC2HighTimes)*10000)/10000 == 2*TimerInterval)~=length(BNC2HighTimes)-1 || abs(BNC2HighTimes(1) - (TimerDelay + CyclePeriod)) > 0.00001
+    if sum(round(diff(bnc2HighTimes)*10000)/10000 == 2*timerInterval)~=length(bnc2HighTimes)-1 ||... 
+                                                     abs(bnc2HighTimes(1) - (timerDelay + cyclePeriod)) > 0.00001
         testPass = 0;
         obj.dispAndLog('Error: BNC2High events occurred out of sequence')
     end
-    if sum(round(diff(BNC2LowTimes)*10000)/10000 == 2*TimerInterval)~=length(BNC2LowTimes)-1 || abs(BNC2LowTimes(1) - (TimerInterval+TimerDelay+CyclePeriod)) > 0.00001
+    if sum(round(diff(bnc2LowTimes)*10000)/10000 == 2*timerInterval)~=length(bnc2LowTimes)-1 ||... 
+                                                    abs(bnc2LowTimes(1) - (timerInterval+timerDelay+cyclePeriod)) > 0.00001
         testPass = 0;
         obj.dispAndLog('Error: BNC2Low events occurred out of sequence')
     end

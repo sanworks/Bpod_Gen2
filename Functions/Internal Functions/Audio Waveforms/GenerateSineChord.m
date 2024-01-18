@@ -18,29 +18,35 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function Waveform = GenerateSineChord(SamplingRate, Frequencies, Duration, varargin)
+% GenerateSineChord() returns a sampled chord waveform, composed of multiple sine waveforms
+%
+% Arguments:
+% samplingRate = sampling rate of the system that will play the sound. Unit = Hz
+% frequencies = a vector of frequency components for the chord (e.g. [800 1000 1200]). Unit = Hz
+% duration = duration of sound. Unit = seconds
+% 
+% Optional Arguments:
+% amplitudes = a vector of fractional amplitudes for each frequency component. 
+% (e.g. [0.5 0.25 0.25]). amplitudes must sum to 1.
+%
+% Returns: A chord waveform
 
-% SamplingRate = sampling rate of the system that will play the sound. Unit = Hz
-% Frequencies = a vector of frequency components for the chord (e.g. [800 1000 1200]). Unit = Hz
-% Duration = duration of sound. Unit = seconds
-% Amplitudes (OPTIONAL ARGUMENT) = a vector of fractional amplitudes for each frequency component. (e.g. [0.5 0.25 0.25]). Amplitudes must sum to 1.
+function waveform = GenerateSineChord(samplingRate, frequencies, duration, varargin)
 
-nSineWaves = length(Frequencies);
-Amplitudes = ones(1,nSineWaves)*(1/nSineWaves);
+nSineWaves = length(frequencies);
+amplitudes = ones(1,nSineWaves)*(1/nSineWaves);
 if nargin > 3
-    Amplitudes = varargin{1};
-    if length(Amplitudes) ~= nSineWaves
+    amplitudes = varargin{1};
+    if length(amplitudes) ~= nSineWaves
         error('Error using GenerateSineChord: One amplitude must be specified for each frequency component of the chord.');
     end
-    if sum(Amplitudes) ~= 1
+    if sum(amplitudes) ~= 1
         error('Error using GenerateSineChord: Vector of amplitudes for each frequency component must sum to 1.');
     end
 end
-
-dt = 1/double(SamplingRate);
-t = dt:dt:Duration;
-Waveform = zeros(1,length(t));
-
+dt = 1/double(samplingRate);
+t = dt:dt:duration;
+waveform = zeros(1,length(t));
 for i = 1:nSineWaves
-    Waveform = Waveform + sin(2*pi*Frequencies(i)*t)*Amplitudes(i);
+    waveform = waveform + sin(2*pi*frequencies(i)*t)*amplitudes(i);
 end
