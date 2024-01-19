@@ -18,30 +18,57 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% For setups where the ambient module is powered by State Machine r2 and is
-% not separately connected via USB, this function will return ambient
-% measures using the state machine as a relay.
-function Measures = readAmbientMetrics(varargin)
-global BpodSystem
-Sensor2Read = 1;
+% readAmbientMetrics() reads temperature, pressure and humidity from the
+% Bpod Ambient module, via its connection to the state machine. This is 
+% ideal for setups where the ambient module is powered by the State Machine 
+% and is not separately connected via USB.
+%
+% Optional Arguments
+% sensor2Read: The index of the sensor to read, if multiple
+% ambient modules are connected. Default = 1.
+%
+% Returns
+% measures: A struct with ambient measurements. Fields are:
+%           Temperature_C: Ambient temperature (Celsius)
+%           Temperature_F: Ambient temperature (Farenheit)
+%           AirPressure_mb: Ambient air pressure (millibars)
+%           RelativeHumidity: Relative humidity %
+
+function measures = readAmbientMetrics(varargin)
+
+global BpodSystem % Import the global BpodSystem object
+
+% Resolve sensor to read
+sensor2Read = 1;
 if nargin > 0
-    Sensor2Read = varargin{1};
-    if Sensor2Read > 3 || Sensor2Read < 1
-        Sensor2Read = 1;
+    sensor2Read = varargin{1};
+    if sensor2Read > 3 || sensor2Read < 1
+        sensor2Read = 1;
     else
-        Sensor2Read = round(Sensor2Read);
+        sensor2Read = round(sensor2Read);
     end
 end
-ModuleName = ['AmbientModule' num2str(Sensor2Read)];
-if sum(strcmp(BpodSystem.Modules.Name, ModuleName)) ~= 1
+
+% Ensure that the ambient module is present
+moduleName = ['AmbientModule' num2str(sensor2Read)];
+if sum(strcmp(BpodSystem.Modules.Name, moduleName)) ~= 1
     error('Error: Could not find an ambient module connected to the Bpod state machine.')
 end
-BpodSystem.StartModuleRelay(ModuleName);
-ModuleWrite(ModuleName, 'R', 'uint8');
-Measures = struct;
-Reply = ModuleRead(ModuleName, 12, 'uint8');
-Measures.Temperature_C  = typecast(Reply(1:4), 'single');
-Measures.Temperature_F = Measures.Temperature_C *(9/5)+32;
-Measures.AirPressure_mb  = typecast(Reply(5:8), 'single')/100;
-Measures.RelativeHumidity  = typecast(Reply(9:12), 'single');
+
+% Start the state machine module relay, to read bytes sent from the module
+% to the state machine
+BpodSystem.StartModuleRelay(moduleName);
+
+% Request measurements
+ModuleWrite(moduleName, 'R', 'uint8');
+
+% Read and format measurements
+measures = struct;
+reply = ModuleRead(moduleName, 12, 'uint8');
+measures.Temperature_C  = typecast(reply(1:4), 'single');
+measures.Temperature_F = measures.Temperature_C *(9/5)+32;
+measures.AirPressure_mb  = typecast(reply(5:8), 'single')/100;
+measures.RelativeHumidity  = typecast(reply(9:12), 'single');
+
+% Stop module relay
 BpodSystem.StopModuleRelay;

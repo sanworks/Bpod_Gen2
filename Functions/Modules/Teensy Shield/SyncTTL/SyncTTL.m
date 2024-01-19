@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% Example code to sync an incoming TTL signal with the state machine.
+% SyncTTL is a class to sync an incoming TTL signal with the state machine.
 % Uses SyncTTL example firmware for Teensy with the Bpod teensy shield.
 % Teensy monitors for TTLs on pins 4-6, and byte codes from the state machine in range 0-254
 % This class captures and formats Teensy's timestamps for both data streams.
@@ -48,9 +48,9 @@ classdef SyncTTL < handle
     methods
         function obj = SyncTTL(portString)
             % Destroy any orphaned timers from previous instances
-            T = timerfindall;
-            for i = 1:length(T)
-                thisTimer = T(i);
+            t = timerfindall;
+            for i = 1:length(t)
+                thisTimer = t(i);
                 thisTimerTag = get(thisTimer, 'tag');
                 if strcmp(thisTimerTag, ['STTL_' portString])
                     warning('off');
@@ -70,6 +70,7 @@ classdef SyncTTL < handle
             obj.SyncData.channels = []; % origin channel of sync message. 0 = state machine byte-code (in range 0-127), 4-6 = Teensy channel 4-6
             obj.SyncData.times = []; % timestamp of sync message
         end
+
         function startAcq(obj)
             obj.SyncData.values = [];
             obj.SyncData.channels = [];
@@ -77,6 +78,7 @@ classdef SyncTTL < handle
             obj.Timer = timer('TimerFcn',@(h,e)obj.readUSBStream(), 'ExecutionMode', 'fixedRate', 'Period', 0.2, 'Tag', ['STTL_' obj.Port.PortName]);
             start(obj.Timer);
         end
+
         function endAcq(obj)
             if ~isempty(obj.Timer)
                 stop(obj.Timer);
@@ -84,11 +86,13 @@ classdef SyncTTL < handle
                 obj.Timer = [];
             end
         end
+
         function delete(obj)
             obj.endAcq;
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
         end
     end
+    
     methods (Access = private)
         function readUSBStream(obj)
             nPackets2Read = floor(obj.Port.bytesAvailable/10); % Sync packet size = 9 bytes; 8 (64-bit timestamp) + 1 (value)

@@ -17,6 +17,17 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% PulsePalModule is a class to interface with the Bpod Analog Output Module
+% via its USB connection to the PC. The Analog Output module must have
+% PulsePalModule firmware installed. Firmware can be swapped with LoadBpodFirmware().
+%
+% User-configurable device parameters are exposed as class properties. Setting
+% the value of a property will trigger its 'set' method to update the device.
+%
+% Docs:
+% https://sanworks.github.io/Bpod_Wiki/module-documentation/pulsepal-module/
+
 classdef PulsePalModule < handle
     properties
         Port % ArCOM Serial port
@@ -37,7 +48,8 @@ classdef PulsePalModule < handle
         customTrainTarget
         customTrainLoop
         rootPath = fileparts(which('PulsePalModule'));
-        autoSync = 'on'; % If 'on', changing parameter fields automatically updates PulsePal device. Otherwise, use 'sync' method.
+        autoSync = 'on'; % If 'on', changing parameter fields automatically updates PulsePal device. 
+                         % Otherwise, use 'sync' method.
         triggerMode
     end
     
@@ -51,9 +63,9 @@ classdef PulsePalModule < handle
         firmwareVersion % Actual firmware version of connected device 
         cycleFrequency = 10000; % Update rate of Pulse Pal hardware timer
         autoSyncOn = true; % logical version of public property autoSync, to avoid strcmp
-        paramNames = {'isBiphasic' 'phase1Voltage' 'phase2Voltage' 'phase1Duration' 'interPhaseInterval' 'phase2Duration'...
-            'interPulseInterval' 'burstDuration' 'interBurstInterval' 'pulseTrainDuration' 'pulseTrainDelay'...
-            '' '' 'customTrainID' 'customTrainTarget' 'customTrainLoop' 'restingVoltage'};
+        paramNames = {'isBiphasic' 'phase1Voltage' 'phase2Voltage' 'phase1Duration' 'interPhaseInterval'... 
+            'phase2Duration' 'interPulseInterval' 'burstDuration' 'interBurstInterval' 'pulseTrainDuration'... 
+            'pulseTrainDelay' '' '' 'customTrainID' 'customTrainTarget' 'customTrainLoop' 'restingVoltage'};
     end
     
     methods
@@ -68,22 +80,25 @@ classdef PulsePalModule < handle
                 try
                     pkg load instrument-control
                 catch
-                    error('Please install the instrument control toolbox first. See http://wiki.octave.org/Instrument_control_package');
+                    error(['Please install the instrument control toolbox first. ' ...
+                           'See http://wiki.octave.org/Instrument_control_package']);
                 end
                 if (exist('serial') ~= 3)
-                    error('Serial port communication is necessary for Pulse Pal, but is not supported in Octave on your platform.');
+                    error(['Serial port communication is necessary for Pulse Pal, ' ...
+                           'but is not supported in Octave on your platform.']);
                 end
                 warning('off', 'Octave:num-to-str');
             end
             obj.Port = ArCOMObject_Bpod(portString, 115200);
             obj.Port.write([obj.opMenuByte 72], 'uint8');
             pause(.1);
-            HandShakeOkByte = obj.Port.read(1, 'uint8');
-            if HandShakeOkByte == 75
+            handShakeOkByte = obj.Port.read(1, 'uint8');
+            if handShakeOkByte == 75
                 obj.firmwareVersion = obj.Port.read(1, 'uint32');
                 if obj.firmwareVersion < obj.currentFirmwareVersion
                     obj.Port.close();
-                    error('Error: Old firmware detected. Please update the PulsePalModule firmware and try again.');
+                    error(['Error: Old firmware detected. ' ...
+                           'Please update the PulsePalModule firmware and try again.']);
                 end
             else
                 disp('Error: PulsePalModule returned an unexpected handshake signature.')
@@ -95,16 +110,16 @@ classdef PulsePalModule < handle
         
         function trigger(obj, channels, varargin) % Soft-trigger output channels
             if ischar(channels)
-                TriggerAddress = bin2dec(channels);
+                triggerAddress = bin2dec(channels);
             else
                 if nargin > 1
                     channels = [channels cell2mat(varargin)];
                 end
-                ChannelsBinary = zeros(1,obj.nChannels);
-                ChannelsBinary(channels) = 1;
-                TriggerAddress = sum(ChannelsBinary .* double(2.^((1:obj.nChannels)-1)));
+                channelsBinary = zeros(1,obj.nChannels);
+                channelsBinary(channels) = 1;
+                triggerAddress = sum(channelsBinary .* double(2.^((1:obj.nChannels)-1)));
             end
-            obj.Port.write([obj.opMenuByte 77 TriggerAddress], 'uint8');
+            obj.Port.write([obj.opMenuByte 77 triggerAddress], 'uint8');
         end
         
         function abort(obj) % Abort all ongoing playback
@@ -290,7 +305,8 @@ classdef PulsePalModule < handle
         function set.customTrainTarget(obj, val)
             units = 'Byte'; paramCode = 15;
             if sum(obj.burstDuration(logical(val)) == 0) > 0
-                error('Error setting custom train target: a burst duration must be defined before custom timestamps can code for burst onsets.')
+                error(['Error setting custom train target: a burst duration must be ' ...
+                       'defined before custom timestamps can code for burst onsets.'])
             end
             obj.setOutputParam(paramCode, val, units);
             obj.customTrainTarget = val;
@@ -331,8 +347,8 @@ classdef PulsePalModule < handle
         end
         
         function checkParamRange(obj, param, type, range, varargin)
-            RangeLow = range(1);
-            RangeHigh = range(2);
+            rangeLow = range(1);
+            rangeHigh = range(2);
             if nargin > 4
                 paramCode = varargin{1};
                 if paramCode < 128
@@ -343,8 +359,8 @@ classdef PulsePalModule < handle
             else
                 paramCodeString = 'A parameter';
             end
-            if (sum(param < RangeLow) > 0) || (sum(param > RangeHigh) > 0)
-                error([paramCodeString ' was out of range: ' num2str(RangeLow) ' to ' num2str(RangeHigh)]);
+            if (sum(param < rangeLow) > 0) || (sum(param > rangeHigh) > 0)
+                error([paramCodeString ' was out of range: ' num2str(rangeLow) ' to ' num2str(rangeHigh)]);
             end
         end
         
@@ -353,12 +369,12 @@ classdef PulsePalModule < handle
         end
         
         function volts = bytes2Volts(obj, bytes)
-            VoltageBits = typecast(uint8(bytes), 'uint16');
-            volts = round((((double(VoltageBits)/65535)*20)-10)*100)/100;
+            voltageBits = typecast(uint8(bytes), 'uint16');
+            volts = round((((double(voltageBits)/65535)*20)-10)*100)/100;
         end
         
-        function seconds = bytes2Seconds(obj, Bytes)
-            seconds = double(typecast(uint8(Bytes), 'uint32'))/obj.cycleFrequency;
+        function seconds = bytes2Seconds(obj, bytes)
+            seconds = double(typecast(uint8(bytes), 'uint32'))/obj.cycleFrequency;
         end
         function confirmWrite(obj)
             confirmed = obj.Port.read(1, 'uint8');
@@ -369,7 +385,8 @@ classdef PulsePalModule < handle
         
         function setOutputParam(obj, paramCode, val, units)
             if length(val) == 1
-                error(['Error: please specify which channels you want to change ' char(13) ' - P.myParameter(channels) = value.'])
+                error(['Error: please specify which channels you want to change '... 
+                       char(13) ' - P.myParameter(channels) = value.'])
             end
             if length(val) ~= obj.nChannels
                 error('Error: there must be exactly one parameter value for each output channel.')
@@ -431,22 +448,24 @@ classdef PulsePalModule < handle
             end
             for i = 1:obj.nChannels
                 if obj.customTrainTarget(i) == 1
-                    BDuration = obj.burstDuration(i);
-                    if BDuration == 0
-                        error(['Error in output channel ' num2str(i) ': When custom train times target burst onsets, a non-zero burst duration must be defined.'])
+                    bDuration = obj.burstDuration(i);
+                    if bDuration == 0
+                        error(['Error in output channel ' num2str(i)... 
+                            ': When custom train times target burst onsets, a non-zero burst duration must be defined.'])
                     end
                 end
             end
-            TimeData = [obj.phase1Duration; obj.interPhaseInterval; obj.phase2Duration;...
+            timeData = [obj.phase1Duration; obj.interPhaseInterval; obj.phase2Duration;...
                 obj.interPulseInterval; obj.burstDuration; obj.interBurstInterval;...
                 obj.pulseTrainDuration; obj.pulseTrainDelay]*obj.cycleFrequency;
-            TimeData = TimeData';
-            VoltageData = [obj.volts2Bits(obj.phase1Voltage); obj.volts2Bits(obj.phase2Voltage); obj.volts2Bits(obj.restingVoltage)];
-            VoltageData = VoltageData';
-            SingleByteOutputParams = [obj.isBiphasic; obj.customTrainID; obj.customTrainTarget; obj.customTrainLoop];
-            SingleByteOutputParams = SingleByteOutputParams';
-            SingleByteParams = [SingleByteOutputParams(1:end) obj.triggerMode];
-            obj.Port.write([obj.opMenuByte 73], 'uint8', TimeData(1:end), 'uint32', VoltageData(1:end), 'uint16', SingleByteParams, 'uint8');
+            timeData = timeData';
+            voltageData = [obj.volts2Bits(obj.phase1Voltage); obj.volts2Bits(obj.phase2Voltage); obj.volts2Bits(obj.restingVoltage)];
+            voltageData = voltageData';
+            singleByteOutputParams = [obj.isBiphasic; obj.customTrainID; obj.customTrainTarget; obj.customTrainLoop];
+            singleByteOutputParams = singleByteOutputParams';
+            singleByteParams = [singleByteOutputParams(1:end) obj.triggerMode];
+            obj.Port.write([obj.opMenuByte 73], 'uint8', timeData(1:end), 'uint32', voltageData(1:end),... 
+                           'uint16', singleByteParams, 'uint8');
             obj.confirmWrite;
         end
         
@@ -461,34 +480,34 @@ classdef PulsePalModule < handle
             if sum(sum(rem(round(pulseTimes*1000000), 100))) > 0
                 error('Non-zero time values for Pulse Pal must be multiples of 100 microseconds.');
             end
-            CandidateTimes = uint32(pulseTimes*obj.cycleFrequency);
-            CandidateVoltages = voltages;
-            if (sum(CandidateTimes < 0) > 0)
+            candidateTimes = uint32(pulseTimes*obj.cycleFrequency);
+            candidateVoltages = voltages;
+            if (sum(candidateTimes < 0) > 0)
                 error('Error: Custom pulse times must be positive');
             end
-            if sum(diff(double(CandidateTimes)) < 0) > 0
+            if sum(diff(double(candidateTimes)) < 0) > 0
                 error('Error: Custom pulse times must always increase');
             end
-            if (CandidateTimes(end) > (3600*obj.cycleFrequency))
+            if (candidateTimes(end) > (3600*obj.cycleFrequency))
                 0; error('Error: Custom pulse times must be < 3600 s');
             end
-            if (sum(abs(CandidateVoltages) > 10) > 0)
+            if (sum(abs(candidateVoltages) > 10) > 0)
                 error('Error: Custom voltage range = -10V to +10V');
             end
-            if (length(CandidateVoltages) ~= length(CandidateTimes))
+            if (length(candidateVoltages) ~= length(candidateTimes))
                 error('Error: There must be a voltage for every timestamp');
             end
-            if (length(unique(CandidateTimes)) ~= length(CandidateTimes))
+            if (length(unique(candidateTimes)) ~= length(candidateTimes))
                 error('Error: Duplicate custom pulse times detected');
             end
-            TimeOutput = CandidateTimes;
-            VoltageOutput = obj.volts2Bits(voltages);
+            timeOutput = candidateTimes;
+            voltageOutput = obj.volts2Bits(voltages);
             
             if (trainID > 4) || (trainID < 1)
                 error('The first argument must be the stimulus train ID (1-4)')
             end
             obj.Port.write([obj.opMenuByte 75 trainID-1], 'uint8',...
-                [nPulses TimeOutput], 'uint32', VoltageOutput, 'uint16');
+                [nPulses timeOutput], 'uint32', voltageOutput, 'uint16');
             obj.confirmWrite;
         end
     end
