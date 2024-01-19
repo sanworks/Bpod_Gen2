@@ -66,7 +66,8 @@ switch Opstring
                 iFolder = 3;
                 while found == 0 && iFolder <= nItems
                     if rootContents(iFolder).isdir
-                        protocolPath = fullfile(BpodSystem.Path.ProtocolFolder, rootContents(iFolder).name, protocolName);
+                        protocolPath = fullfile(BpodSystem.Path.ProtocolFolder,... 
+                                                rootContents(iFolder).name, protocolName);
                         if exist(protocolPath)
                             found = 1;
                         end
@@ -86,7 +87,8 @@ switch Opstring
             % Verify data path
             dataPath = fullfile(BpodSystem.Path.DataFolder,subjectName);
             if ~exist(dataPath)
-                error(['Error starting protocol: Test subject "' subjectName '" must be added first, from the launch manager.'])
+                error(['Error starting protocol: Test subject "' subjectName... 
+                    '" must be added first, from the launch manager.'])
             end
 
             %Make standard folders for this protocol.  This will fail silently if the folders exist
@@ -107,9 +109,11 @@ switch Opstring
                 protocolSettings = struct;
                 save(defaultSettingsFilePath, 'protocolSettings')
             end
-            settingsFileName = fullfile(BpodSystem.Path.DataFolder, subjectName, protocolName, 'Session Settings', [settingsName '.mat']);
+            settingsFileName = fullfile(BpodSystem.Path.DataFolder, subjectName, protocolName,... 
+                'Session Settings', [settingsName '.mat']);
             if ~exist(settingsFileName)
-                error(['Error: Settings file: ' settingsName '.mat does not exist for test subject: ' subjectName ' in protocol: ' protocolName '.'])
+                error(['Error: Settings file: ' settingsName '.mat does not exist for test subject: '... 
+                    subjectName ' in protocol: ' protocolName '.'])
             end
             
             % On Bpod r2+, if FlexIO channels are configured as analog, setup data file
@@ -213,11 +217,13 @@ switch Opstring
             if BpodSystem.Status.Pause == 0
                 disp('Pause requested. The system will pause after the current trial completes.')
                 BpodSystem.Status.Pause = 1;
-                set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseRequestedButton, 'TooltipString', 'Pause scheduled after trial end'); 
+                set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseRequestedButton,... 
+                    'TooltipString', 'Pause scheduled after trial end'); 
             else
                 disp('Session resumed.')
                 BpodSystem.Status.Pause = 0;
-                set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
+                set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton,... 
+                    'TooltipString', 'Press to pause session');
             end
         end
     case 'Stop'
@@ -275,7 +281,8 @@ switch Opstring
             end
         catch
         end
-        set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.GoButton, 'TooltipString', 'Launch behavior session');
+        set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.GoButton,... 
+            'TooltipString', 'Launch behavior session');
         if BpodSystem.Status.Pause == 1
             BpodSystem.Status.Pause = 0;
         end

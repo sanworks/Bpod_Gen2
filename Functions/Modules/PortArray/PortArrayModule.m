@@ -55,7 +55,7 @@ classdef PortArrayModule < handle
             end
             obj.FirmwareVersion = obj.Port.read(1, 'uint32');
             try
-                addpath(fullfile(fileparts(which('Bpod')), 'Functions', 'InternalFunctions'));
+                addpath(fullfile(fileparts(which('Bpod')), 'Functions', 'Internal Functions'));
                 currentFirmware = CurrentFirmwareList;
                 latestFirmware = currentFirmware.AnalogIn;
             catch
