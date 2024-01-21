@@ -17,18 +17,23 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% BpodObject.ProcessAnalogSamples() is called by the analog timer during
+% FlexIO analog data acquisition. It reads and processes any new samples
+% that have arrived in the buffer.
+
 function ProcessAnalogSamples(obj, e)
     if obj.AnalogSerialPort.bytesAvailable() > 0
-        nChannels = sum(obj.HW.FlexIO_ChannelTypes == 2);
+        nChannels = sum(obj.HW.FlexIO_ChannelTypes == 2); % Number of FlexIO configured as analog input
         nBytesAvailable = obj.AnalogSerialPort.bytesAvailable;
         nSamplesToRead = floor(nBytesAvailable/((2*(nChannels+1))));
         if nSamplesToRead > 0
-            Msg = obj.AnalogSerialPort.read((nSamplesToRead*(nChannels+1)), 'uint16');
+            msg = obj.AnalogSerialPort.read((nSamplesToRead*(nChannels+1)), 'uint16');
             if obj.Status.RecordAnalog
-                fwrite(obj.AnalogDataFile, Msg, 'uint16');
+                fwrite(obj.AnalogDataFile, msg, 'uint16');
             end
-            Msg(1:nChannels+1:end) = []; % Remove trial number data
-            newData = reshape(Msg, nChannels, nSamplesToRead);
+            msg(1:nChannels+1:end) = []; % Remove trial number data
+            newData = reshape(msg, nChannels, nSamplesToRead);
             obj.Status.nAnalogSamples = obj.Status.nAnalogSamples + nSamplesToRead;
             obj.Data.Analog.nSamples = obj.Status.nAnalogSamples;
             if obj.Status.AnalogViewer == 1

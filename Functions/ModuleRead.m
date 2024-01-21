@@ -26,8 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % turn the relay off with BpodSystem.StopModuleRelay() before using the state machine!
 %
 % Arguments:
-% -moduleName: The name of the module to read from. Module names are given on the
-%              system info panel, via the mangifying glass icon on the Console GUI.
+% -moduleName: The name of the module to read from. Module names are given
+%              in BpodSystem.Modules.Name
 % -nValues: The number of values to read. By default, these are bytes.
 % -dataType (optional): The data type to read. Default = uint8. 
 %

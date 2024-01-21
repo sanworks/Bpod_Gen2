@@ -17,62 +17,35 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function USBSerialPorts = FindUSBSerialPorts(obj)
-    USBSerialPorts = cell(0,1);
-    if ispc
-        [Status,RawString] = system('powershell.exe -inputformat none "[System.IO.Ports.SerialPort]::getportnames()"');
-        nPortsAdded = 0;
-        if ~isempty(RawString)
-            PortLocations = strsplit(RawString,char(10));
-            PortLocations = PortLocations(1:end-1);
-            nPorts = length(PortLocations);
-            for p = 1:nPorts
-                CandidatePort = PortLocations{p};
-                if ~strcmp(CandidatePort, 'COM1')
-                    novelPort = 1;
-                    if sum(strcmp(CandidatePort, USBSerialPorts)) > 0
-                        novelPort = 0;
-                    end
-                    if novelPort == 1
-                        nPortsAdded = nPortsAdded + 1;
-                        USBSerialPorts{nPortsAdded} = CandidatePort;
-                    end
-                end
-            end
+
+% BpodObject.FindUSBSerialPorts() discovers available usb serial ports using system command line tools
+% Returns: usbSerialPorts, a cell array of strings with available serial port names
+
+function usbSerialPorts = FindUSBSerialPorts(obj)
+usbSerialPorts = {}; % Initialize empty cell array
+
+% Get and split the system's list of available ports
+if ispc
+    % For Windows: Use PowerShell command to list serial ports
+    [~, RawString] = system('powershell.exe -inputformat none "[System.IO.Ports.SerialPort]::getportnames()"');
+    portLocations = strsplit(RawString, {'\r\n', '\n', '\r'}); % Split the output by possible newline characters
+elseif ismac
+    % For macOS: List USB serial devices
+    [~, RawSerialPortList] = system('ls /dev/cu.usbmodem*');
+    portLocations = strsplit(strtrim(RawSerialPortList), '\n');
+else
+    % For Linux: List ACM serial devices
+    [~, RawSerialPortList] = system('ls /dev/ttyACM*');
+    portLocations = strsplit(strtrim(RawSerialPortList), '\n');
+end
+
+% Filter and add ports to usbSerialPorts
+for p = 1:length(portLocations)
+    candidatePort = strtrim(portLocations{p}); % Trim whitespace
+    if ~isempty(candidatePort) && (~ispc || ~strcmp(candidatePort, 'COM1')) % Exclude 'COM1' on Windows
+        if ~any(strcmp(candidatePort, usbSerialPorts))
+            usbSerialPorts{end+1} = candidatePort; % Add new port
         end
-        
-    elseif ismac % Contributed by Thiago Gouvea JUN_9_2016
-        [trash, RawSerialPortList] = system('ls /dev/cu.usbmodem*');
-        string = strtrim(RawSerialPortList);
-        PortStringPositions = strfind(string, '/dev/cu.usbmodem');
-        StringEnds = find(string == 9);
-        nPorts = length(PortStringPositions);
-        CandidatePorts = cell(1,nPorts);
-        nGoodPorts = 0;
-        for x = 1:nPorts
-            if x < nPorts && nPorts > 1
-                CandidatePort = string(PortStringPositions(x):StringEnds(x)-1);
-            elseif x == nPorts
-                CandidatePort = string(PortStringPositions(x):end);
-            end
-            nGoodPorts = nGoodPorts + 1;
-            CandidatePorts{nGoodPorts} = CandidatePort;
-        end
-        USBSerialPorts = CandidatePorts(1:nGoodPorts);
-    else
-        [trash, RawSerialPortList] = system('ls /dev/ttyACM*');
-        string = strtrim(RawSerialPortList);
-        PortStringPositions = strfind(string, '/dev/ttyACM');
-        nPorts = length(PortStringPositions);
-        CandidatePorts = cell(1,nPorts);
-        nGoodPorts = 0;
-        for x = 1:nPorts
-            if PortStringPositions(x)+11 <= length(string)
-                CandidatePort = strtrim(string(PortStringPositions(x):PortStringPositions(x)+11));
-                nGoodPorts = nGoodPorts + 1;
-                CandidatePorts{nGoodPorts} = CandidatePort;
-            end
-        end
-        USBSerialPorts = CandidatePorts(1:nGoodPorts);
     end
+end
 end

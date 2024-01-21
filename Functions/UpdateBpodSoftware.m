@@ -82,7 +82,7 @@ if ~isempty(verPos)
     latestVersion = strtrim(reply(verPos(end)+2:end-2));
 end
 if ~isempty(latestVersion)
-    if compareBpodVersions(currentVersion, latestVersion) == 0
+    if CompareBpodVersions(currentVersion, latestVersion) == 0
         error(['No update required - you already have the latest stable version of Bpod: v' verString]);
     end
 end
