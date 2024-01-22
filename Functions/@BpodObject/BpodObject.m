@@ -272,6 +272,7 @@ classdef BpodObject < handle
 
         function obj = resetSessionClock(obj)
             % Resets the state machine session clock, used for event and state timestamps.
+            
             if obj.EmulatorMode == 0
                 obj.SerialPort.write('*', 'uint8'); % Reset session clock
                 confirmed = obj.SerialPort.read(1,'uint8');
@@ -455,7 +456,7 @@ classdef BpodObject < handle
 
         function obj = SetStatusLED(obj, status)
             % A notice to the user for obsolete protocol syntax
-            error('Capitalization error. setStatusLED needs a lowercase ''s''') % For users on the develop branch
+            error('Case syntax error. setStatusLED needs a lowercase ''s''') % For users on the develop branch
         end
 
         function StartModuleRelay(obj, module)
@@ -675,7 +676,8 @@ classdef BpodObject < handle
         end
 
         function onlineStatus = check4Internet(obj)
-
+            % Check for Internet connectivity
+            % Returns: onlineStatus (double) = 1 if online, 0 if not
             if ispc
                 [~,reply]=system('ping -n 1 -w 1000 www.google.com'); % Check for connection
                 ConnectConfirmString = 'Received = 1';

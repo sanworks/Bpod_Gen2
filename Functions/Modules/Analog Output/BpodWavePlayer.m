@@ -153,10 +153,7 @@ classdef BpodWavePlayer < handle
                     error(['Invalid trigger mode: ' mode '. Valid modes are: Normal, Master, Toggle.'])
             end
             obj.Port.write(['T' modeByte], 'uint8');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting trigger mode. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting trigger mode');
             obj.TriggerMode = mode;
         end
 
@@ -180,10 +177,7 @@ classdef BpodWavePlayer < handle
                 end
             end
             obj.Port.write(['V' bpodEvents], 'uint8');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting Bpod events. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting enable/disable Bpod events');
             obj.BpodEvents = events;
             obj.BpodEventsLogic = bpodEvents;
         end
@@ -207,10 +201,7 @@ classdef BpodWavePlayer < handle
                     end
                 end
                 obj.Port.write(['O' loopModes], 'uint8', obj.LoopDuration*obj.SamplingRate, 'uint32');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting loop mode. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting loop mode');
                 obj.LoopModeLogic = loopModes;
             end
             obj.LoopMode = modes; 
@@ -225,10 +216,7 @@ classdef BpodWavePlayer < handle
                     error('Error setting loop durations - one duration must be set for each channel.')
                 end
                 obj.Port.write(['O' obj.LoopModeLogic], 'uint8', durations*obj.SamplingRate, 'uint32');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting loop duration. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting loop duration');
             end
             obj.LoopDuration = durations;
             
@@ -248,10 +236,7 @@ classdef BpodWavePlayer < handle
                         error(['Invalid value for TriggerProfileEnable: ' triggerProfileState '. Valid values are: Off, On.'])
                 end
                 obj.Port.write(['B' profileEnableByte], 'uint8');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting trigger profile enable. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting trigger profile mode');
             end
             obj.TriggerProfileEnable = triggerProfileState;
             
@@ -276,10 +261,7 @@ classdef BpodWavePlayer < handle
             profileMatrixOut = profileMatrix;
             profileMatrixOut(profileMatrixOut == 0) = 256;
             obj.Port.write(['F' profileMatrixOut(1:end)-1], 'uint8');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting trigger profiles. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting trigger profiles');
             obj.TriggerProfiles = profileMatrix;
         end
 
@@ -323,10 +305,7 @@ classdef BpodWavePlayer < handle
                 error(['Error: Some loaded waves contain voltages out of range. Replace waveform# ' num2str(waveformErrors)]);
             end
             obj.Port.write(['R' rangeIndex-1], 'uint8');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting output range. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting output range');
             obj.OutputRange = range;
 
             % Re-load all waveforms with new bit coding
@@ -366,7 +345,7 @@ classdef BpodWavePlayer < handle
                 end
                 if sum(obj.LoopModeLogic) > 0 % Re-compute loop durations (in units of samples)
                     obj.Port.write(['O' obj.LoopModeLogic], 'uint8', obj.LoopDuration*sf, 'uint32'); % Update loop durations
-                    confirmed = obj.Port.read(1, 'uint8');
+                    obj.confirmTransmission('setting sampling rate');
                 end
             end
             obj.SamplingRate = sf;
@@ -390,17 +369,18 @@ classdef BpodWavePlayer < handle
             % Arguments: 
             % waveIndex: the index to load to (up to 64 waveforms)
             % waveform: a 1xnSamples vector of voltages
-
+            
             nSamples = length(waveform);
             waveBits = obj.volts2Bits(waveform);
             obj.Port.write(['L' waveIndex-1], 'uint8', nSamples, 'uint32', waveBits, 'uint16');
-            confirmed = obj.Port.read(1, 'uint8');
+            obj.confirmTransmission('loading waveform');
             obj.Waveforms{waveIndex} = waveform;
             obj.WaveformsLoaded(waveIndex) = 1;
         end
 
         function bits = volts2Bits(obj, volts)
             % Convert volts to DAC bits
+
             positiveOnly = 0;
             switch obj.OutputRange
                 case '0V:5V'
@@ -432,20 +412,19 @@ classdef BpodWavePlayer < handle
         
         function setupSDCard(obj)
             % Setup the microSD card
+
             disp('Preparing SD card. This may take up to 1 minute. Please wait.')
             obj.Port.write('Y', 'uint8');
             while obj.Port.bytesAvailable == 0
                 pause(.001);
             end
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error clearing data. Confirm code not returned.');
-            end
+            obj.confirmTransmission('clearing data');
             disp('SD Card setup complete.')
         end
 
         function play(obj, varargin) 
             % Play a waveform immediately on specified channel(s)
+
             if strcmpi(obj.TriggerProfileEnable, 'on')
                 profileNum = varargin{1};
                 if sum(obj.TriggerProfiles(profileNum,:)) == 0
@@ -496,6 +475,7 @@ classdef BpodWavePlayer < handle
 
         function stop(obj)
             % Stop all currently playing waveforms
+
             obj.Port.write('X', 'uint8');
         end
 
@@ -505,6 +485,7 @@ classdef BpodWavePlayer < handle
             % Arguments:
             % channels, a list of channels to set. 
             % dacOutputBits range from 0-65535, mapped to current output range
+
             if obj.Info.FirmwareVersion < 5
                 error('Error: Setting a fixed output value now requires firmware v5. All 8 output channels are now supported.')
             end
@@ -513,20 +494,31 @@ classdef BpodWavePlayer < handle
                 channelBits = channelBits + 2^(channels(i)-1);
             end
             obj.Port.write(['!' channelBits], 'uint8', dacOutputBits, 'uint16');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting fixed output voltage(s). Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting fixed output voltage(s)');
         end
 
         function setFixedVoltage(obj, channels, voltage)
             % Set a fixed voltage on output channel(s)
+
             dacOutputBits = obj.volts2Bits(voltage);
             obj.setFixedOutput(channels, dacOutputBits);
         end
 
         function delete(obj)
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
+        end
+    end
+
+    methods (Access = private)
+        function confirmTransmission(obj, opName)
+            % Read op confirmation byte, and throw an error if confirm not returned
+            
+            confirmed = obj.Port.read(1, 'uint8');
+            if confirmed == 0
+                error(['Error ' opName ': the module denied your request.'])
+            elseif confirmed ~= 1
+                error(['Error ' opName ': module did not acknowledge the operation.']);
+            end
         end
     end
 end

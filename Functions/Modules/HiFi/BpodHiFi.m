@@ -147,10 +147,7 @@ classdef BpodHiFi < handle
                         error('Error: Invalid sampling rate.');
                 end
                 obj.Port.write('S', 'uint8', sf, 'uint32');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting sampling rate. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting sampling rate');
             end
             obj.SamplingRate = double(sf);
         end
@@ -171,10 +168,7 @@ classdef BpodHiFi < handle
                 end
                 attenuationBits = attenuation*-2;
                 obj.Port.write(['A' attenuationBits], 'uint8');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting digital attenuation. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting digital attenuation');
             end
             obj.DigitalAttenuation_dB = attenuation;
         end
@@ -187,10 +181,7 @@ classdef BpodHiFi < handle
             end
             amplitudeBits = round(amplitude*obj.maxAmplitudeBits);
             obj.Port.write('N', 'uint8', amplitudeBits, 'uint16');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error setting synth amplitude. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting synth amplitude');
             obj.SynthAmplitude = amplitudeBits;
         end
 
@@ -201,10 +192,7 @@ classdef BpodHiFi < handle
                 error(['Error: Synth frequency must fall in range 0-' num2str(obj.maxSynthFrequency)])
             end
             obj.Port.write('F', 'uint8', newFrequency*1000, 'uint32');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting synth frequency. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting synth frequency');
             obj.SynthFrequency = newFrequency;
         end
 
@@ -216,10 +204,7 @@ classdef BpodHiFi < handle
                 error(['Error: Invalid Waveform name. Valid waveforms are: WhiteNoise, Sine'])
             end
             obj.Port.write(['W' thisWaveform-1], 'uint8');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting synth waveform. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting synth waveform');
             obj.SynthWaveform = newWaveform;
         end
 
@@ -231,10 +216,7 @@ classdef BpodHiFi < handle
                 error(['Error: Amplitude fade must fall in range 0-' num2str(obj.maxAmplitudeFadeSamples) ' samples.'])
             end
             obj.Port.write('Z', 'uint8', nSamples, 'uint32');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting amplitude fade. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting amplitude fade duration');
             obj.SynthAmplitudeFade = nSamples;
         end
 
@@ -246,10 +228,7 @@ classdef BpodHiFi < handle
             state = logical(state);
             if ~obj.isHD
                 obj.Port.write(['H' uint8(state)], 'uint8');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error enabling headphone amp. Confirm code not returned.');
-                end
+                obj.confirmTransmission('enabling headphone amp');
             else
                 if ~obj.headphoneAmpEnableWarned && obj.initialized == 1
                     if obj.VerboseMode
@@ -271,10 +250,7 @@ classdef BpodHiFi < handle
             end
             if ~obj.isHD
                 obj.Port.write(['G' gain], 'uint8');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting headphone amp gain. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting headphone amp gain');
             else
                 if ~obj.headphoneAmpGainWarned && obj.initialized == 1
                     if obj.VerboseMode
@@ -296,7 +272,7 @@ classdef BpodHiFi < handle
             % Parameters: envelope, a 1xn array of doubles, in range 0, 1
             if isempty(envelope)
                 obj.Port.write(['E' 0], 'uint8');
-                confirmed = obj.Port.read(1, 'uint8');
+                obj.confirmTransmission('setting AM envelope');
             else
                 nSamples = length(envelope);
                 if nSamples > obj.maxEnvelopeSamples
@@ -306,7 +282,8 @@ classdef BpodHiFi < handle
                     error('Error: all samples in the envelope must be between 0 and 1.')
                 end
                 obj.Port.write(['E' 1 'M'], 'uint8', nSamples, 'uint16', typecast(single(envelope), 'uint8'), 'uint8');
-                confirmed = obj.Port.read(2, 'uint8');
+                obj.confirmTransmission('setting AM envelope');
+                obj.confirmTransmission('setting AM envelope');
             end
              obj.AMenvelope = envelope;
         end
@@ -411,10 +388,7 @@ classdef BpodHiFi < handle
         function push(obj)
             % Add any newly loaded sounds to the active sound set, overwriting existing sound(s) at the target positions.
             obj.Port.write('*', 'uint8');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error pushing loaded sounds. Confirm code not returned.');
-            end
+            obj.confirmTransmission('pushing loaded sounds');
         end
 
         function stop(obj)
@@ -447,15 +421,25 @@ classdef BpodHiFi < handle
                 error('State machine scan during USB transfer must be equal to 1 (enabled) or 0 (disabled)')
             end
             obj.Port.write(['&' state], 'uint8');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting state of scan during USB transfer. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting state of scan during USB transfer');
         end
 
         function delete(obj)
             % Destructor
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
+        end
+    end
+
+    methods (Access = private)
+        function confirmTransmission(obj, opName)
+            % Read op confirmation byte, and throw an error if confirm not returned
+            
+            confirmed = obj.Port.read(1, 'uint8');
+            if confirmed == 0
+                error(['Error ' opName ': the module denied your request.'])
+            elseif confirmed ~= 1
+                error(['Error ' opName ': module did not acknowledge the operation.']);
+            end
         end
     end
 end

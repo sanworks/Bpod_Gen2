@@ -87,10 +87,7 @@ classdef I2CMessenger < handle
             % Set the I2C slave address
             % Parameters: address, the slave address (0-127)
             obj.Port.write(['A' address], 'uint8');
-            confirm = obj.Port.read(1, 'uint8');
-            if ~confirm
-                error('Error: failed to set slave address')
-            end
+            obj.confirmTransmission('slave address');
         end
 
         function set.TransferSpeed(obj, speed)
@@ -106,10 +103,7 @@ classdef I2CMessenger < handle
                 otherwise
                     error('Error: Invalid transfer speed. Valid speeds are Standard (100Kb/s) and FastMode (400Kb/s)')
             end
-            confirm = obj.Port.read(1, 'uint8');
-            if ~confirm
-                error('Error: failed to set transfer speed.')
-            end
+            obj.confirmTransmission('transfer speed');
             obj.TransferSpeed = transferSpeed;
         end
 
@@ -128,10 +122,7 @@ classdef I2CMessenger < handle
                 slaveAddress = obj.SlaveAddress;
             end
             obj.Port.write(['P' 1 messageIndex slaveAddress length(message) message], 'uint8');
-            confirm = obj.Port.read(1, 'uint8');
-            if ~confirm
-                error('Error: failed to set new message')
-            end
+            obj.confirmTransmission('new message');
             obj.Messages{messageIndex} = message;
             obj.MessageAddress(messageIndex) = slaveAddress;
         end
@@ -161,10 +152,7 @@ classdef I2CMessenger < handle
                     error(['Error: invalid mode ' mode '. Valid modes are: Relay, Message, USBrelay, USBmessage'])
             end
             obj.Port.write(['M' mode], 'uint8');
-            confirm = obj.Port.read(1, 'uint8');
-            if ~confirm
-                error('Error: failed to set mode.')
-            end
+            obj.confirmTransmission('mode');
         end
 
         function bpodWrite(obj, byte)
@@ -205,6 +193,19 @@ classdef I2CMessenger < handle
 
         function delete(obj)
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
+        end
+    end
+
+    methods (Access = private)
+        function confirmTransmission(obj, opName)
+            % Read op confirmation byte, and throw an error if confirm not returned
+            
+            confirmed = obj.Port.read(1, 'uint8');
+            if confirmed == 0
+                error(['Error setting ' opName ': the module denied your request.'])
+            elseif confirmed ~= 1
+                error(['Error setting ' opName ': module did not acknowledge the operation.']);
+            end
         end
     end
 end

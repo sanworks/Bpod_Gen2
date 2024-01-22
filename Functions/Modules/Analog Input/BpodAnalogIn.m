@@ -965,7 +965,7 @@ classdef BpodAnalogIn < handle
             if confirmed == 0
                 error(['Error setting ' paramName ': the module denied your request.'])
             elseif confirmed ~= 1
-                error(['Error setting ' paramName ': module did not acknowledge new value.']);
+                error(['Error setting ' paramName ': module did not acknowledge the new value.']);
             end
         end
 

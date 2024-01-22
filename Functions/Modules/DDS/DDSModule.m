@@ -74,10 +74,7 @@ classdef DDSModule < handle
             % Set the output waveform frequency
             if obj.Initialized
                 obj.Port.write('F', 'uint8', freq*1000, 'uint32');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting frequency. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting frequency');
             end
             obj.Frequency = freq;
         end
@@ -95,10 +92,7 @@ classdef DDSModule < handle
             end
             if obj.Initialized
                 obj.Port.write('B', 'uint8', newRange, 'uint16');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting input bit range. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting input bit range');
             end
             obj.InputBitRange = newRange;
         end
@@ -116,10 +110,7 @@ classdef DDSModule < handle
             end
             if obj.Initialized
                 obj.Port.write('R', 'uint8', newRange, 'uint32');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting output map range. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting output map range');
             end
             obj.OutputMapRange = newRange;
         end
@@ -132,10 +123,7 @@ classdef DDSModule < handle
                 end
                 ampValue = floor(amp*10000);
                 obj.Port.write('A', 'uint8', ampValue, 'uint16');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting amplitude. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting amplitude');
             end
             obj.Amplitude = amp;
         end
@@ -148,10 +136,7 @@ classdef DDSModule < handle
             end
             if obj.Initialized
                 obj.Port.write(['W' waveIndex-1], 'uint8');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting waveform. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting waveform');
             end
             obj.Waveform = waveform;
         end
@@ -164,10 +149,7 @@ classdef DDSModule < handle
             end
             if obj.Initialized
                 obj.Port.write(['N' fcnIndex-1], 'uint8');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting map function. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting map function');
             end
             obj.MapFcn = functionName;
         end
@@ -178,10 +160,7 @@ classdef DDSModule < handle
                 error('Error: value must be in 16-bit range [0 (2^16)-1]')
             end
             obj.Port.write('M', 'uint8', value16Bit, 'uint16');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting mapped frequency. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting mapped frequency');
             obj.Port.write('V', 'uint8'); % Request frequency
             obj.Initialized = 0; % Temporarily disable object -> hardware sync
             obj.Frequency = double(obj.Port.read(1, 'uint32'))/1000;
@@ -191,19 +170,13 @@ classdef DDSModule < handle
         function setAmplitudeBits(obj,bits)
             % Set amplitude using bits instead of a normalized range
             obj.Port.write('D', 'uint8', bits, 'uint16');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting amplitude bits. Confirm byte not returned.');
-            end
+            obj.confirmTransmission('setting amplitude bits');
         end
 
         function setAmplitudeZeroCode(obj,bits)
             % Set the bit level at which p2p amplitude is 0V
             obj.Port.write('C', 'uint8', bits, 'uint16');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting amplitude zero code. Confirm byte not returned.');
-            end
+            obj.confirmTransmission('setting amplitude zero-code');
         end
 
         function GetParams(obj)
@@ -220,6 +193,18 @@ classdef DDSModule < handle
         function delete(obj)
             % Destructor
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
+        end
+    end
+    methods (Access = private)
+        function confirmTransmission(obj, opName)
+            % Read op confirmation byte, and throw an error if confirm not returned
+            
+            confirmed = obj.Port.read(1, 'uint8');
+            if confirmed == 0
+                error(['Error ' opName ': the module denied your request.'])
+            elseif confirmed ~= 1
+                error(['Error ' opName ': module did not acknowledge the operation.']);
+            end
         end
     end
 end

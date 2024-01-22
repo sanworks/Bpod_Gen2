@@ -567,7 +567,7 @@ classdef RotaryEncoderModule < handle
                 obj.Port.write(['S' 0], 'uint8');
                 pause(.05);
                 if obj.Port.bytesAvailable > 0
-                    obj.Port.read(obj.Port.bytesAvailable, 'uint8');
+                    obj.Port.flush;
                 end
                 obj.acquiring = 0;
             end

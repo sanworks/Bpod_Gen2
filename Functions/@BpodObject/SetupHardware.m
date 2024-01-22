@@ -82,10 +82,10 @@ else
             smName = 'r2_Plus';
             firmwareName = 'StateMachine_Bpod2Plus';
             if obj.SerialPort.Interface == 0 % For Teensy 4.1, restart serial port with correct baud rate --> buffer sizes
-                fsmportName = obj.SerialPort.PortName;
+                fsmPortName = obj.SerialPort.PortName;
                 obj.SerialPort = [];
                 pause(.2);
-                obj.SerialPort = ArCOMObject_Bpod(fsmportName, 480000000, [], [], 1000000, 1000000);
+                obj.SerialPort = ArCOMObject_Bpod(fsmPortName, 480000000, [], [], 1000000, 1000000);
             end
     end
     obj.HW.StateMachineModel = smName;

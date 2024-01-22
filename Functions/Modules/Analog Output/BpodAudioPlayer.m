@@ -130,10 +130,7 @@ classdef BpodAudioPlayer < handle
                     error(['Invalid trigger mode: ' mode '. Valid modes are: Normal, Master, Toggle.'])
             end
             obj.Port.write(['T' modeByte], 'uint8');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting trigger mode. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting trigger mode');
             obj.TriggerMode = mode;
         end
 
@@ -163,10 +160,7 @@ classdef BpodAudioPlayer < handle
                 error('Error setting Bpod Events: status must be either ''On'' or ''Off''');
             end
             obj.Port.write(['V' BpodEvents], 'uint8');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error setting Bpod events. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting enable/disable Bpod events');
             obj.BpodEventsLogic = BpodEvents;
             obj.BpodEvents = events;
         end
@@ -182,10 +176,7 @@ classdef BpodAudioPlayer < handle
                     end
                 end
                 obj.Port.write(['O' uint8(loopModes)], 'uint8');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting loop mode. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting loop mode');
             end
             obj.LoopMode = loopModes; 
         end
@@ -196,10 +187,7 @@ classdef BpodAudioPlayer < handle
                     error('Error setting loop durations - a duration must exist for each wave.')
                 end
                 obj.Port.write('-', 'uint8', duration*obj.SamplingRate, 'uint32');
-                confirmed = obj.Port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting loop duration. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting loop duration');
             end
             obj.LoopDuration = duration;
         end
@@ -213,7 +201,7 @@ classdef BpodAudioPlayer < handle
                 obj.Port.write(['S' typecast(single(samplingPeriodMicroseconds), 'uint8')], 'uint8');
                 if sum(obj.LoopMode) > 0 % Re-compute loop durations (in units of samples)
                     obj.Port.write('-', 'uint8', obj.LoopDuration*sf, 'uint32'); % Update loop durations
-                    Confirmed = obj.Port.read(1, 'uint8');
+                    obj.confirmTransmission('setting sampling rate');
                 end
             end
             obj.SamplingRate = sf;
@@ -222,7 +210,7 @@ classdef BpodAudioPlayer < handle
         function set.AMenvelope(obj, envelope)
             if isempty(envelope)
                 obj.Port.write(['E' 0], 'uint8');
-                confirmed = obj.Port.read(1, 'uint8');
+                obj.confirmTransmission('setting AM envelope');
             else
                 nSamples = length(envelope);
                 if nSamples > obj.maxEnvelopeSamples
@@ -232,7 +220,8 @@ classdef BpodAudioPlayer < handle
                     error('Error: all samples in the envelope must be between 0 and 1.')
                 end
                 obj.Port.write(['E' 1 'M'], 'uint8', nSamples, 'uint16', typecast(single(envelope), 'uint8'), 'uint8');
-                confirmed = obj.Port.read(2, 'uint8');
+                obj.confirmTransmission('setting AM envelope');
+                obj.confirmTransmission('setting AM envelope');
             end
              obj.AMenvelope = envelope;
         end
@@ -265,10 +254,7 @@ classdef BpodAudioPlayer < handle
             offset = voltageWidth/2;
             waveBits = ceil(((waveform+offset)/voltageWidth)*65535);
             obj.Port.write([obj.LoadOp soundIndex-1 isStereo], 'uint8', nSamples, 'uint32', waveBits(1:end), 'uint16');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error: Load not confirmed.')
-            end
+            obj.confirmTransmission(['loading sound ' num2str(soundIndex)]);
             obj.Waveforms{soundIndex} = waveform;
             obj.WaveformsLoaded(soundIndex) = 1;
         end
@@ -279,19 +265,13 @@ classdef BpodAudioPlayer < handle
             while obj.Port.bytesAvailable == 0
                 pause(.001);
             end
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error clearing data. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting up microSD card');
             disp('SD Card setup complete.')
         end
 
         function push(obj)
             obj.Port.write('*', 'uint8');
-            confirmed = obj.Port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error pushing loaded sounds. Confirm code not returned.');
-            end
+            obj.confirmTransmission('pushing newly loaded sounds to the active sound set');
         end
 
         function play(obj, waveIndex) % Play a waveform immediately on specified channel(s)
@@ -308,6 +288,19 @@ classdef BpodAudioPlayer < handle
 
         function delete(obj)
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
+        end
+    end
+
+    methods (Access = private)
+        function confirmTransmission(obj, opName)
+            % Read op confirmation byte, and throw an error if confirm not returned
+            
+            confirmed = obj.Port.read(1, 'uint8');
+            if confirmed == 0
+                error(['Error ' opName ': the module denied your request.'])
+            elseif confirmed ~= 1
+                error(['Error ' opName ': module did not acknowledge the operation.']);
+            end
         end
     end
 end
