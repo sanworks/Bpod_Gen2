@@ -445,7 +445,8 @@ classdef LoadBpodFirmware < handle
                     if ispc
                         system(['@mode ' targetPort ':1200,N,8,1']);
                         system('PING -n 3 127.0.0.1>NUL');
-                        programPath = fullfile(thisFolder, ['bossac -i -d -U true -e -w -v -b "' firmwarePath '" -R']);
+                        bossacPath = fullfile(thisFolder, 'bossac.exe');
+                        programPath = ['"' bossacPath '"' ' -i -d -U true -e -w -v -b "' firmwarePath '" -R'];
                     elseif isunix
                         if system('command -v bossac &> /dev/null')
                             error('Cannot find bossac. Please install bossa-cli using your system''s package management system.')

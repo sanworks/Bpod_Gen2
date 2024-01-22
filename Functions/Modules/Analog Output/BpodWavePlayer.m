@@ -265,38 +265,38 @@ classdef BpodWavePlayer < handle
             obj.TriggerProfiles = profileMatrix;
         end
 
-        function set.OutputRange(obj, range)
+        function set.OutputRange(obj, newRange)
             % Set the output range for the device (affects all channels)
             % Arguments: range, a char array indicating the selected range.
 
-            rangeIndex = find(strcmp(range, obj.ValidRanges));
+            rangeIndex = find(strcmp(newRange, obj.ValidRanges));
             if isempty(rangeIndex)
                 vr = [];
                 for i = 1:length(obj.ValidRanges)
                     vr = [vr obj.ValidRanges{i} ' '];
                 end
-                error(['Invalid range specified: ' range '. Valid ranges are: ' vr]);
+                error(['Invalid range specified: ' newRange '. Valid ranges are: ' vr]);
             end
             % Check to make sure all waves in "Waveforms" are within range
             switch rangeIndex
                 case 1
-                    min = 0; max = 5;
+                    minRange = 0; maxRange = 5;
                 case 2
-                    min = 0; max = 10;
+                    minRange = 0; maxRange = 10;
                 case 3
-                    min = 0; max = 12;
+                    minRange = 0; maxRange = 12;
                 case 4
-                    min = -5; max = 5;
+                    minRange = -5; maxRange = 5;
                 case 5
-                    min = -10; max = 10;
+                    minRange = -10; maxRange = 10;
                 case 6
-                    min = -12; max = 12;
+                    minRange = -12; maxRange = 12;
             end
             nWaveforms = length(obj.Waveforms);
             waveformErrors = [];
             for i = 1:nWaveforms
                 if ~isempty(obj.Waveforms{i})
-                    if (min(obj.Waveforms{i}) < min) || (max(obj.Waveforms{i}) > max)
+                    if (min(obj.Waveforms{i}) < minRange) || (max(obj.Waveforms{i}) > maxRange)
                         waveformErrors = [waveformErrors i];
                     end
                 end
@@ -306,7 +306,7 @@ classdef BpodWavePlayer < handle
             end
             obj.Port.write(['R' rangeIndex-1], 'uint8');
             obj.confirmTransmission('setting output range');
-            obj.OutputRange = range;
+            obj.OutputRange = newRange;
 
             % Re-load all waveforms with new bit coding
             if sum(cellfun(@isempty, obj.Waveforms)) ~= length(obj.Waveforms)
