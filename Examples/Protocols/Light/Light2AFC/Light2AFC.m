@@ -60,16 +60,28 @@ BpodParameterGUI('init', S); % Initialize parameter GUI plugin
 
 %% Main trial loop
 for currentTrial = 1:maxTrials
-    S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
+    % Sync parameters with BpodParameterGUI plugin
+    S = BpodParameterGUI('sync', S); 
+
+    % Update reward amounts
+    vt = GetValveTimes(S.GUI.RewardAmount, [1 3]); 
+    leftValveTime = vt(1); 
+    rightValveTime = vt(2); 
     
-    vt = GetValveTimes(S.GUI.RewardAmount, [1 3]); leftValveTime = vt(1); rightValveTime = vt(2); % Update reward amounts
-    switch trialTypes(currentTrial) % Determine trial-specific state matrix fields
+    % Determine trial-specific state matrix fields
+    switch trialTypes(currentTrial) 
         case 1
-            leftPokeAction = 'LeftRewardDelay'; rightPokeAction = 'Punish'; stimulusOutput = {'PWM1', 255};
+            leftPokeAction = 'LeftRewardDelay'; 
+            rightPokeAction = 'Punish'; 
+            stimulusOutput = {'PWM1', 255}; % PWM1 controls the LED light intensity of port 1 (0-255)
         case 2
-            leftPokeAction = 'Punish'; rightPokeAction = 'RightRewardDelay'; stimulusOutput = {'PWM3', 255};
+            leftPokeAction = 'Punish'; 
+            rightPokeAction = 'RightRewardDelay'; 
+            stimulusOutput = {'PWM3', 255}; % PWM3 controls the LED light intensity of port 3 (0-255)
     end
-    sma = NewStateMachine(); % Initialize new state machine description
+
+    % Build new state machine description
+    sma = NewStateMachine(); 
     sma = AddState(sma, 'Name', 'WaitForPoke', ...
         'Timer', 0,...
         'StateChangeConditions', {'Port2In', 'CueDelay'},...
@@ -118,7 +130,11 @@ for currentTrial = 1:maxTrials
         'Timer', 0,...
         'StateChangeConditions', {'Tup', 'exit'},...
         'OutputActions', {});
+
+    % Send description to the Bpod State Machine device
     SendStateMachine(sma);
+
+    % Run the trial
     RawEvents = RunStateMachine;
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
@@ -129,6 +145,8 @@ for currentTrial = 1:maxTrials
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
     end
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
+
+    % Exit the session if the user has pressed the end button
     if BpodSystem.Status.BeingUsed == 0
         return
     end

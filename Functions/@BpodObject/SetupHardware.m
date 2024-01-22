@@ -373,26 +373,26 @@ if obj.MachineType == 4
         load(obj.Path.FlexConfig)
     else
         % Load defaults
-        flexIOConfig = struct;
-        flexIOConfig.about = struct;
-        flexIOConfig.channelTypes = ones(1,nFlexIOChannels)*4; % ChannelTypes: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC, 4 = Disabled (Tri-State / High Z)
-        flexIOConfig.analogSamplingRate = 1000; % Hz
-        flexIOConfig.nReadsPerSample = 3; % ADC measurements per sample (averaged)
-        flexIOConfig.threshold1 = ones(1,nFlexIOChannels)*5;
-        flexIOConfig.threshold2 = ones(1,nFlexIOChannels)*5;
-        flexIOConfig.polarity1 = zeros(1,nFlexIOChannels);
-        flexIOConfig.polarity2 = zeros(1,nFlexIOChannels);
-        flexIOConfig.thresholdMode = zeros(1,nFlexIOChannels);
+        FlexIOConfig = struct;
+        FlexIOConfig.about = struct;
+        FlexIOConfig.channelTypes = ones(1,nFlexIOChannels)*4; % ChannelTypes: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC, 4 = Disabled (Tri-State / High Z)
+        FlexIOConfig.analogSamplingRate = 1000; % Hz
+        FlexIOConfig.nReadsPerSample = 3; % ADC measurements per sample (averaged)
+        FlexIOConfig.threshold1 = ones(1,nFlexIOChannels)*5;
+        FlexIOConfig.threshold2 = ones(1,nFlexIOChannels)*5;
+        FlexIOConfig.polarity1 = zeros(1,nFlexIOChannels);
+        FlexIOConfig.polarity2 = zeros(1,nFlexIOChannels);
+        FlexIOConfig.thresholdMode = zeros(1,nFlexIOChannels);
         
         % Add human-readable info about units, etc
-        flexIOConfig.about.channelTypes = 'Values: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC 4 = OFF (Tri-State / High Z)';
-        flexIOConfig.about.analogSamplingRate = 'Sampling rate for channels configured as ADC. Units = Hz';
-        flexIOConfig.about.nReadsPerSample = 'Number of ADC reads per sample.';
-        flexIOConfig.about.threshold = 'Event thresholds for channels configured as ADC. Two thresholds exist per channel. Units = Volts';
-        flexIOConfig.about.polarity = 'Threshold polarity for channels configured as ADC. 0 = rising (low -> high, 1 = falling (high -> low)';
-        flexIOConfig.about.thresholdMode = '0 = thresholds manually re-enabled, 1 = thresholds re-enable each other';
+        FlexIOConfig.about.channelTypes = 'Values: 0 = DI, 1 = DO, 2 = ADC, 3 = DAC 4 = OFF (Tri-State / High Z)';
+        FlexIOConfig.about.analogSamplingRate = 'Sampling rate for channels configured as ADC. Units = Hz';
+        FlexIOConfig.about.nReadsPerSample = 'Number of ADC reads per sample.';
+        FlexIOConfig.about.threshold = 'Event thresholds for channels configured as ADC. Two thresholds exist per channel. Units = Volts';
+        FlexIOConfig.about.polarity = 'Threshold polarity for channels configured as ADC. 0 = rising (low -> high, 1 = falling (high -> low)';
+        FlexIOConfig.about.thresholdMode = '0 = thresholds manually re-enabled, 1 = thresholds re-enable each other';
     end
-    obj.FlexIOConfig = flexIOConfig;
+    obj.FlexIOConfig = FlexIOConfig;
 end
 
 % Advance splash screen

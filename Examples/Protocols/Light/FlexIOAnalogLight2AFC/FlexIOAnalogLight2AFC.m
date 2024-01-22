@@ -73,22 +73,36 @@ BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 
                                                        'MenuBar', 'none', 'Resize', 'off');
 BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .3 .89 .6]);
 SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-trialTypes);
-BpodNotebook('init');
+BpodNotebook('init'); % Initialize Bpod Notebook plugin
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin
 BpodSystem.startAnalogViewer; % Initialize analog viewer GUI (optional)
 
 %% Main trial loop
 for currentTrial = 1:maxTrials
-    S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
+    % Sync parameters with BpodParameterGUI plugin
+    S = BpodParameterGUI('sync', S); 
     
-    vt = GetValveTimes(S.GUI.RewardAmount, [1 3]); leftValveTime = vt(1); rightValveTime = vt(2); % Update reward amounts
-    switch trialTypes(currentTrial) % Determine trial-specific state matrix fields
+    % Update reward amounts
+    vt = GetValveTimes(S.GUI.RewardAmount, [1 3]); 
+    leftValveTime = vt(1); 
+    rightValveTime = vt(2); 
+
+    % Determine trial-specific state machine fields
+    switch trialTypes(currentTrial) 
         case 1
-            leftPokeAction = 'LeftRewardDelay'; rightPokeAction = 'Punish'; stimulusOutput = {'PWM1', 255};
+            leftPokeAction = 'LeftRewardDelay'; 
+            rightPokeAction = 'Punish'; 
+            stimulusOutput = {'PWM1', 255}; % PWM1 controls the LED light intensity of port 1 (0-255)
         case 2
-            leftPokeAction = 'Punish'; rightPokeAction = 'RightRewardDelay'; stimulusOutput = {'PWM3', 255};
+            leftPokeAction = 'Punish'; 
+            rightPokeAction = 'RightRewardDelay'; 
+            stimulusOutput = {'PWM3', 255}; % PWM3 controls the LED light intensity of port 3 (0-255)
     end
-    sma = NewStateMatrix(); % Assemble state matrix
+
+    % Build new state machine description
+    sma = NewStateMachine();
+    sma = SetCondition(sma, 1, 'Port1', 0); % Condition 1: Port 1 low (is out)
+    sma = SetCondition(sma, 2, 'Port3', 0); % Condition 2: Port 3 low (is out)
     sma = AddState(sma, 'Name', 'WaitForPoke1', ...
         'Timer', 0,...
         'StateChangeConditions', {'Port2In', 'CueDelay'},...
@@ -115,19 +129,23 @@ for currentTrial = 1:maxTrials
         'OutputActions', {}); 
     sma = AddState(sma, 'Name', 'LeftReward', ...
         'Timer', leftValveTime,...
-        'StateChangeConditions', {'Tup', 'Drinking'},...
+        'StateChangeConditions', {'Tup', 'DrinkingLeft'},...
         'OutputActions', {'ValveState', 1}); 
     sma = AddState(sma, 'Name', 'RightReward', ...
         'Timer', rightValveTime,...
-        'StateChangeConditions', {'Tup', 'Drinking'},...
+        'StateChangeConditions', {'Tup', 'DrinkingRight'},...
         'OutputActions', {'ValveState', 4}); 
-    sma = AddState(sma, 'Name', 'Drinking', ...
+    sma = AddState(sma, 'Name', 'DrinkingLeft', ...
         'Timer', 0,...
-        'StateChangeConditions', {'Port1Out', 'DrinkingGrace', 'Port3Out', 'DrinkingGrace'},...
+        'StateChangeConditions', {'Condition1', 'DrinkingGrace'},...
+        'OutputActions', {});
+    sma = AddState(sma, 'Name', 'DrinkingRight', ...
+        'Timer', 0,...
+        'StateChangeConditions', {'Condition2', 'DrinkingGrace'},...
         'OutputActions', {});
     sma = AddState(sma, 'Name', 'DrinkingGrace', ...
         'Timer', .5,...
-        'StateChangeConditions', {'Tup', 'exit', 'Port1In', 'Drinking', 'Port3In', 'Drinking'},...
+        'StateChangeConditions', {'Tup', 'exit', 'Port1In', '>back', 'Port3In', '>back'},...
         'OutputActions', {});
     sma = AddState(sma, 'Name', 'Punish', ...
         'Timer', S.GUI.PunishDelay,...
@@ -137,7 +155,11 @@ for currentTrial = 1:maxTrials
         'Timer', 0,...
         'StateChangeConditions', {'Tup', 'exit'},...
         'OutputActions', {});
+
+    % Send description to the Bpod State Machine device
     SendStateMachine(sma);
+
+    % Run the trial
     RawEvents = RunStateMachine;
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
@@ -148,6 +170,8 @@ for currentTrial = 1:maxTrials
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
     end
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
+
+    % Exit the session if the user has pressed the end button
     if BpodSystem.Status.BeingUsed == 0
         cleanup;
         return
@@ -168,7 +192,9 @@ function update_outcome_plot(TrialTypes, Data)
 global BpodSystem
 outcomes = zeros(1,Data.nTrials);
 for x = 1:Data.nTrials
-    if ~isnan(Data.RawEvents.Trial{x}.States.Drinking(1))
+    if ~isnan(Data.RawEvents.Trial{x}.States.LeftReward(1))
+        outcomes(x) = 1;
+    elseif ~isnan(Data.RawEvents.Trial{x}.States.RightReward(1))
         outcomes(x) = 1;
     elseif ~isnan(Data.RawEvents.Trial{x}.States.Punish(1))
         outcomes(x) = 0;

@@ -162,13 +162,17 @@ for currentTrial = 1:maxTrials
     currentTrialEvents = trialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimedOut', 'Error'}); 
                                        % Hangs here until Bpod enters one of the listed trigger states, 
                                        % then returns current trial's states visited + events captured to this point
+
+    % Exit the session if the user has pressed the end button
     if BpodSystem.Status.BeingUsed == 0
         H.stop; % Stop any ongoing sounds
         H.SynthAmplitude = 0; % Turn off white noise
         R.stopUSBStream; % Stop streaming positions from rotary encoder module
         return
     end
+
     [sma, S] = PrepareStateMachine(S, trialTypes, currentTrial+1, currentTrialEvents); % Prepare next state machine.
+    
     % Since PrepareStateMachine is a function with a separate workspace, pass any local variables needed to make 
     % the state machine as fields of settings struct S e.g. S.learningRate = 0.2.
     SendStateMachine(sma, 'RunASAP'); % With TrialManager, you can send the next trial's state machine while the current trial is ongoing
@@ -181,6 +185,8 @@ for currentTrial = 1:maxTrials
         [0 0 S.GUI.InitDelay]); % Syntax: setAdvancedThresholds(thresholds, thresholdTypes, thresholdTimes)
     
     RawEvents = trialManager.getTrialData; % Hangs here until trial is over, then retrieves full trial's raw data
+
+    % Exit the session if the user has pressed the end button
     if BpodSystem.Status.BeingUsed == 0
         H.stop; % Stop any ongoing sounds
         H.SynthAmplitude = 0; % Turn off white noise
@@ -232,7 +238,9 @@ function update_outcome_plot(trialTypes, data)
 global BpodSystem
 outcomes = zeros(1,data.nTrials);
 for x = 1:data.nTrials % Encode user data for side outcome plot plugin
-    if ~isnan(data.RawEvents.Trial{x}.States.Drinking(1))
+    if ~isnan(data.RawEvents.Trial{x}.States.LeftReward(1))
+        outcomes(x) = 1;
+    elseif ~isnan(data.RawEvents.Trial{x}.States.RightReward(1))
         outcomes(x) = 1;
     elseif ~isnan(data.RawEvents.Trial{x}.States.Error(1))
         outcomes(x) = 0;
@@ -283,7 +291,7 @@ function [sma, S] = PrepareStateMachine(S, trialTypes, currentTrial, currentTria
         'OutputActions', {'Valve1', 1, 'HiFi1', ['P' 1]});
     sma = AddState(sma, 'Name', 'Drinking', ...
         'Timer', 0,...
-        'StateChangeConditions', {'Condition1', 'DrinkingGrace', 'Condition2', 'DrinkingGrace'},...
+        'StateChangeConditions', {'Condition1', 'DrinkingGrace'},...
         'OutputActions', {});
     sma = AddState(sma, 'Name', 'DrinkingGrace', ...
         'Timer', 0.5,...

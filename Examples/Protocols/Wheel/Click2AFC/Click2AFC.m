@@ -152,7 +152,7 @@ for currentTrial = 1:maxTrials
             leftChoiceAction = 'Error'; rightChoiceAction = 'RightReward'; 
     end
     sma = NewStateMachine(); % Assemble new state machine description
-    sma = SetCondition(sma, 1, 'Port1', 0); % Condition 1: Port 1 low (is out)
+    sma = SetCondition(sma, 1, 'Port1', 0); % Condition 1: Port 1 low (test subject is out)
     sma = AddState(sma, 'Name', 'TrialStart', ...
         'Timer', 0,...
         'StateChangeConditions', {'Tup', 'ZeroEncoder'},...
@@ -184,7 +184,7 @@ for currentTrial = 1:maxTrials
         'OutputActions', {'Valve1', 1, 'HiFi1', ['P' 1]});
     sma = AddState(sma, 'Name', 'Drinking', ...
         'Timer', 0,...
-        'StateChangeConditions', {'Condition1', 'DrinkingGrace', 'Condition2', 'DrinkingGrace'},...
+        'StateChangeConditions', {'Condition1', 'DrinkingGrace'},...
         'OutputActions', {});
     sma = AddState(sma, 'Name', 'DrinkingGrace', ...
         'Timer', 0.5,...
@@ -222,6 +222,8 @@ for currentTrial = 1:maxTrials
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
     end
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
+
+    % Exit the session if the user has pressed the end button
     if BpodSystem.Status.BeingUsed == 0
         H.stop; % Stop any ongoing sounds
         H.SynthAmplitude = 0; % Turn off white noise
@@ -235,7 +237,9 @@ function update_outcome_plot(trialTypes, data)
 global BpodSystem
 outcomes = zeros(1,data.nTrials);
 for x = 1:data.nTrials % Encode user data for side outcome plot plugin
-    if ~isnan(data.RawEvents.Trial{x}.States.Drinking(1))
+    if ~isnan(data.RawEvents.Trial{x}.States.LeftReward(1))
+        outcomes(x) = 1;
+    elseif ~isnan(data.RawEvents.Trial{x}.States.RightReward(1))
         outcomes(x) = 1;
     elseif ~isnan(data.RawEvents.Trial{x}.States.Error(1))
         outcomes(x) = 0;
