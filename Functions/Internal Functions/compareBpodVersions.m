@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
 % Returns: result (double). -1 if local is behind, 0 if equal, 1 if ahead
 
-function result = CompareBpodVersions(localVersion, remoteVersion)
+function result = compareBpodVersions(localVersion, remoteVersion)
 
     % Split the version strings into their components
     parts1 = split(localVersion, '.');

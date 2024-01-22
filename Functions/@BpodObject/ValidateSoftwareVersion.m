@@ -38,7 +38,7 @@ end
 
 % Compare and display update notice if necessary
 if ~isempty(latestVersion)
-    verDiff = CompareBpodVersions(ver, latestVersion);
+    verDiff = compareBpodVersions(ver, latestVersion);
     if verDiff < 0  
         disp( '***********************************************************')
         disp(['UPDATE NOTICE: Bpod Console v' latestVersion ' is available to download!'])
