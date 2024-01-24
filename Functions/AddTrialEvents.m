@@ -60,7 +60,7 @@ else
     % This is the first pass to AddTrialEvents. Add session metadata.
     trialNum = 1;
     sd.Info = struct;
-    sd.Info.SoftwareVersion = BpodSoftwareVersion_Semantic;
+    sd.Info.BpodSoftwareVersion = BpodSoftwareVersion_Semantic;
     if BpodSystem.EmulatorMode == 1
         sd.Info.StateMachineVersion = 'Bpod 0.7-1.0 EMULATOR';
     else
@@ -81,6 +81,9 @@ else
         end
         sd.Info.Modules = BpodSystem.Modules;
     end
+    sd.Info.PCsetup = struct;
+    sd.Info.PCsetup.OS = BpodSystem.HostOS;
+    sd.Info.PCsetup.MATLABver = version('-release');
     sd.Info.SessionDate = datestr(now, 1);
     if ~isempty(BpodSystem.ProtocolStartTime)
         theTime = BpodSystem.ProtocolStartTime/100000;
