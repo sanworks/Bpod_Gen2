@@ -67,12 +67,25 @@ trialTypes = ceil(rand(1,maxTrials)*2);
 BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
 
 %% Initialize plots
-BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 250],'name','Outcome plot',...
-                                                       'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
-BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .35 .89 .6]);
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-trialTypes);
-BpodNotebook('init');
-BpodParameterGUI('init', S); % Initialize parameter GUI plugin   
+
+% Initialize the outcome plot 
+outcomePlot = LiveOutcomePlot([1 2], {'Left', 'Right'}, trialTypes, 90); % Create an instance of the LiveOutcomePlot GUI
+              % Arg1 = trialTypeManifest, a list of possible trial types (even if not yet in trialTypes).
+              % Arg2 = trialTypeNames, a list of names for each trial type in trialTypeManifest
+              % Arg3 = trialTypes, a list of integers denoting precomputed trial types in the session
+              % Arg4 = nTrialsToShow, the number of trials to show
+outcomePlot.CorrectStateNames = {'LeftRewardDelay', 'RightRewardDelay'}; % List of state names where choice was correct
+                                                                         % State names are set when states are defined below.
+outcomePlot.RewardStateNames = {'LeftReward', 'RightReward'}; % List of state names where reward was delivered
+outcomePlot.PunishStateNames = {'PunishTimeout'}; % List of state names where choice was incorrect and negatively reinforced
+
+% Initialize Bpod notebook (for manual data annotation)                                                          
+BpodNotebook('init'); 
+
+% Initialize parameter GUI plugin
+BpodParameterGUI('init', S); 
+
+
 PokesPlot('init', getStateColors, getPokeColors);
 useStateTiming = false;
 if ~verLessThan('matlab','9.5') % StateTiming plot requires MATLAB r2018b or newer
@@ -117,7 +130,7 @@ for currentTrial = 1:maxTrials
     S = BpodParameterGUI('sync', S); 
     % getCurrentEvents() Idles here until Bpod enters one of the listed trigger states, 
     % then returns current trial's states visited + events captured up to this point
-    currentTrialEvents = trialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimeOutState', 'Error', 'EarlyWithdrawal'}); 
+    currentTrialEvents = trialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimeOutState', 'PunishTimeout', 'EarlyWithdrawal'}); 
                                        
     if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session 
 
@@ -157,7 +170,7 @@ for currentTrial = 1:maxTrials
         if useStateTiming
             StateTiming();
         end
-        update_outcome_plot(trialTypes, BpodSystem.Data); % Update side outcome plot
+        outcomePlot.update(trialTypes, BpodSystem.Data); % Update the outcome plot
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
     end
 end
@@ -170,10 +183,10 @@ vt = GetValveTimes(S.GUI.RewardAmount, [1 3]); leftValveTime = vt(1); rightValve
 switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
     case 1
         leftPokeAction = 'LeftRewardDelay'; 
-        rightPokeAction = 'Error'; 
+        rightPokeAction = 'PunishTimeout'; 
         stimulusOutput = {'HiFi1', ['P' 0], 'BNC1', 1};
     case 2
-        leftPokeAction = 'Error'; 
+        leftPokeAction = 'PunishTimeout'; 
         rightPokeAction = 'RightRewardDelay'; 
         stimulusOutput = {'HiFi1', ['P' 1], 'BNC1', 1};
 end
@@ -226,7 +239,7 @@ sma = AddState(sma, 'Name', 'DrinkingGrace', ...
     'Timer', 0.5,...
     'StateChangeConditions', {'Tup', 'TimeOutState', 'Port1In', '>back', 'Port3In', '>back'},...
     'OutputActions', {});
-sma = AddState(sma, 'Name', 'Error', ...
+sma = AddState(sma, 'Name', 'PunishTimeout', ...
     'Timer', S.GUI.ErrorDelay,...
     'StateChangeConditions', {'Tup', '>exit'},...
     'OutputActions', {'HiFi1', ['P' 2]});
@@ -243,23 +256,6 @@ sma = AddState(sma, 'Name', 'TimeOutState', ... % Record events while next trial
     'StateChangeConditions', {'Tup', '>exit'},...
     'OutputActions', {});
 
-function update_outcome_plot(trialTypes, data)
-global BpodSystem
-outcomes = zeros(1,data.nTrials);
-for x = 1:data.nTrials
-    if ~isnan(data.RawEvents.Trial{x}.States.LeftReward(1))
-        outcomes(x) = 1;
-    elseif ~isnan(data.RawEvents.Trial{x}.States.RightReward(1))
-        outcomes(x) = 1;
-    elseif ~isnan(data.RawEvents.Trial{x}.States.Error(1))
-        outcomes(x) = 0;
-    elseif ~isnan(data.RawEvents.Trial{x}.States.CorrectEarlyWithdrawal(1))
-        outcomes(x) = 2;
-    else
-        outcomes(x) = 3;
-    end
-end
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'update',data.nTrials+1,2-trialTypes,outcomes);
 
 function state_colors = getStateColors
 state_colors = struct( ...
@@ -274,7 +270,7 @@ state_colors = struct( ...
     'DrinkingLeft',[1,0,0],...
     'DrinkingRight',[1,0,0],...
     'DrinkingGrace',[1,0.3,0],...
-    'Error',[1,0,0],...
+    'PunishTimeout',[1,0,0],...
     'CorrectEarlyWithdrawal',0.75*[0,1,1],...
     'EarlyWithdrawal',0.75*[0,1,0],...
     'TimeOutState',[1,0,0]);

@@ -101,17 +101,21 @@ correctDirection = trialTypes; correctDirection(correctDirection == 0) = -1; % C
 BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
 
 %% Initialize plots
-%-- Side outcome plot (a plugin included in the Bpod_Gen2 repository)
-BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1100 250],'name','Outcome plot',...
-                                                       'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
-BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.08 .3 .89 .6]);
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',trialTypes);
+
+% Initialize the outcome plot
+outcomePlot = LiveOutcomePlot([1 2], {'Left', 'Right'}, trialTypes+1, 90); % Create an instance of the LiveOutcomePlot GUI
+              % Arg1 = trialTypeManifest, a list of possible trial types (even if not yet in trialTypes).
+              % Arg2 = trialTypeNames, a list of names for each trial type in trialTypeManifest
+              % Arg3 = trialTypes, a list of positive integers denoting precomputed trial types in the session
+              % Arg4 = nTrialsToShow, the number of trials to show
+outcomePlot.RewardStateNames = {'LeftReward', 'RightReward'}; % List of state names where reward was delivered
+outcomePlot.PunishStateNames = {'PunishTimeout'}; % List of state names where choice was incorrect and negatively reinforced
 
 %-- Last Trial encoder plot (an online plot included in the protocol folder)
 BpodSystem.ProtocolFigures.EncoderPlotFig = figure('Position', [500 200 350 350],'name','Encoder plot',...
                                                    'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 BpodSystem.GUIHandles.EncoderAxes = axes('Position', [.15 .15 .8 .8]);
-LastTrialEncoderPlot(BpodSystem.GUIHandles.EncoderAxes, 'init', S.GUI.ChoiceThreshold);
+last_trial_encoder_plot(BpodSystem.GUIHandles.EncoderAxes, 'init', S.GUI.ChoiceThreshold);
 
 %-- Start parameter GUI
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin
@@ -127,7 +131,7 @@ H.SynthAmplitude = S.GUI.NoiseMaskIntensity; % Set synth waveform intensity. The
 H.AMenvelope = 1/(H.SamplingRate*0.001):1/(H.SamplingRate*0.001):1; % Define 1ms linear envelope of amplitude coefficients, applied at sound onset 
                                                                     % + in reverse at sound offset. This helps avoid speaker 'pop'
 % Generate stimulus for first trial (this reappears in the main loop for each subsequent trial)
-[waveform, waveParams] = PoissonClickWaveform(evidenceStrength(1)*correctDirection(1),... 
+[waveform, waveParams] = poisson_click_waveform(evidenceStrength(1)*correctDirection(1),... 
                          S.GUI.StimTotalClickFreq, S.GUI.ResponseTime,...% First arg is the signed balance between click speed for L+R channels
                          H.SamplingRate, S.GUI.StimSoundIntensity, S.GUI.NoiseMaskIntensity); % Second arg: total click rate (Hz) to divide between L+R channels    
 
@@ -159,7 +163,7 @@ trialManager.startTrial(sma); % Sends & starts running first trial's state machi
 %% Main trial loop
 for currentTrial = 1:maxTrials
     S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
-    currentTrialEvents = trialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimedOut', 'Error'}); 
+    currentTrialEvents = trialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimedOut', 'PunishTimeout'}); 
                                        % Hangs here until Bpod enters one of the listed trigger states, 
                                        % then returns current trial's states visited + events captured to this point
 
@@ -208,7 +212,7 @@ for currentTrial = 1:maxTrials
         BpodSystem.Data.ClickWaveformParams{currentTrial} = waveParams;
         BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)
         BpodSystem.Data.TrialTypes(currentTrial) = trialTypes(currentTrial); % Adds the trial type of the current trial to data
-        update_outcome_plot(trialTypes, BpodSystem.Data);
+        outcomePlot.update(trialTypes+1, BpodSystem.Data); % Update the outcome plot
         
         % Align this trial's rotary encoder timestamps to state machine trial-start 
         % (timestamp of '#' command sent from state machine to encoder module in 'TrialStart' state)
@@ -234,31 +238,13 @@ for currentTrial = 1:maxTrials
 end
 R.stopUSBStream;
 
-function update_outcome_plot(trialTypes, data) 
-global BpodSystem
-outcomes = zeros(1,data.nTrials);
-for x = 1:data.nTrials % Encode user data for side outcome plot plugin
-    if ~isnan(data.RawEvents.Trial{x}.States.LeftReward(1))
-        outcomes(x) = 1;
-    elseif ~isnan(data.RawEvents.Trial{x}.States.RightReward(1))
-        outcomes(x) = 1;
-    elseif ~isnan(data.RawEvents.Trial{x}.States.Error(1))
-        outcomes(x) = 0;
-    elseif ~isnan(data.RawEvents.Trial{x}.States.TimedOut(1))
-        outcomes(x) = 2;
-    else
-        outcomes(x) = 3;
-    end
-end
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'update',data.nTrials+1,trialTypes,outcomes);
-
 function [sma, S] = PrepareStateMachine(S, trialTypes, currentTrial, currentTrialEvents)
     valveTime = GetValveTimes(S.GUI.RewardAmount, 1); % Update reward amount
     switch trialTypes(currentTrial) % Determine trial-specific state matrix fields
         case 0
-            leftChoiceAction = 'LeftReward'; rightChoiceAction = 'Error'; 
+            leftChoiceAction = 'LeftReward'; rightChoiceAction = 'PunishTimeout'; 
         case 1
-            leftChoiceAction = 'Error'; rightChoiceAction = 'RightReward'; 
+            leftChoiceAction = 'PunishTimeout'; rightChoiceAction = 'RightReward'; 
     end
     sma = NewStateMachine(); % Assemble new state machine description
     sma = SetCondition(sma, 1, 'Port1', 0); % Condition 1: Port 1 low (is out)
@@ -297,7 +283,7 @@ function [sma, S] = PrepareStateMachine(S, trialTypes, currentTrial, currentTria
         'Timer', 0.5,...
         'StateChangeConditions', {'Tup', 'InterTrialInterval', 'Port1In', 'Drinking'},...
         'OutputActions', {});
-    sma = AddState(sma, 'Name', 'Error', ...
+    sma = AddState(sma, 'Name', 'PunishTimeout', ...
         'Timer', S.GUI.ErrorDelay,...
         'StateChangeConditions', {'Tup', 'InterTrialInterval'},...
         'OutputActions', {'HiFi1', ['P' 2]});

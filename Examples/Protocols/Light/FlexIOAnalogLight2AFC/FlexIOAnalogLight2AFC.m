@@ -40,19 +40,21 @@ function FlexIOAnalogLight2AFC
 
 global BpodSystem % Imports the BpodSystem object to the function workspace
 
-%% Verify state machine model
+%% Session Setup
+
+% Verify state machine model
 if BpodSystem.MachineType < 4
     error('The FlexIOAnalogLight2AFC protocol requires a state machine with Flex I/O channels (e.g. State Machine 2+).')
 end
 
-%% Define parameters
+% Define parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
 if isempty(fieldnames(S))  % If settings file was an empty struct, populate struct with default settings
     S.GUI.RewardAmount = 3; %ul
     S.GUI.CueDelay = 0.2; % How long the test subject must poke in the center to activate the goal port
     S.GUI.ResponseTime = 5; % How long until the test subject must make a choice, or forefeit the trial
     S.GUI.RewardDelay = 0; % How long the test subject must wait in the goal port for reward to be delivered
-    S.GUI.PunishDelay = 3; % How long the test subject must wait in the goal port for reward to be delivered
+    S.GUI.PunishTimeout = 3; % How long the test subject must wait in the goal port for reward to be delivered
 end
 
 % Configure Flex I/O Channels
@@ -63,21 +65,34 @@ BpodSystem.FlexIOConfig.threshold2 = ones(1,4)*1; % In range 0-5
 BpodSystem.FlexIOConfig.polarity2 = ones(1,4); % Polarity 1: Threshold activated when analog is < thresh
 BpodSystem.FlexIOConfig.thresholdMode = ones(1,4); % Mode 1: Crossing threshold 1 enables threshold 2, crossing 2 enables 1
 
-%% Define trials
+% Define trials
 maxTrials = 1000;
 trialTypes = ceil(rand(1,1000)*2);
 BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
 
 %% Initialize plots
-BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 250],'name','Outcome plot','numbertitle','off',... 
-                                                       'MenuBar', 'none', 'Resize', 'off');
-BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .3 .89 .6]);
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-trialTypes);
-BpodNotebook('init'); % Initialize Bpod Notebook plugin
-BpodParameterGUI('init', S); % Initialize parameter GUI plugin
-BpodSystem.startAnalogViewer; % Initialize analog viewer GUI (optional)
 
-%% Main trial loop
+% Initialize the outcome plot 
+outcomePlot = LiveOutcomePlot([1 2], {'Left', 'Right'}, trialTypes, 90); % Create an instance of the LiveOutcomePlot GUI
+              % Arg1 = trialTypeManifest, a list of possible trial types (even if not yet in trialTypes).
+              % Arg2 = trialTypeNames, a list of names for each trial type in trialTypeManifest
+              % Arg3 = trialTypes, a list of integers denoting precomputed trial types in the session
+              % Arg4 = nTrialsToShow, the number of trials to show
+outcomePlot.CorrectStateNames = {'LeftRewardDelay', 'RightRewardDelay'}; % List of state names where choice was correct
+                                                                         % State names are set when states are defined below.
+outcomePlot.RewardStateNames = {'LeftReward', 'RightReward'}; % List of state names where reward was delivered
+outcomePlot.PunishStateNames = {'PunishTimeout'}; % List of state names where choice was incorrect and negatively reinforced
+
+% Initialize Bpod notebook (for manual data annotation)                                                          
+BpodNotebook('init'); 
+
+% Initialize parameter GUI plugin
+BpodParameterGUI('init', S); 
+
+% Initialize analog viewer GUI (online monitor of FlexIO analog inputs, not necessary for data logging)
+BpodSystem.startAnalogViewer; 
+
+%% Main loop, runs once per trial
 for currentTrial = 1:maxTrials
     % Sync parameters with BpodParameterGUI plugin
     S = BpodParameterGUI('sync', S); 
@@ -91,10 +106,10 @@ for currentTrial = 1:maxTrials
     switch trialTypes(currentTrial) 
         case 1
             leftPokeAction = 'LeftRewardDelay'; 
-            rightPokeAction = 'Punish'; 
+            rightPokeAction = 'PunishTimeout'; 
             stimulusOutput = {'PWM1', 255}; % PWM1 controls the LED light intensity of port 1 (0-255)
         case 2
-            leftPokeAction = 'Punish'; 
+            leftPokeAction = 'PunishTimeout'; 
             rightPokeAction = 'RightRewardDelay'; 
             stimulusOutput = {'PWM3', 255}; % PWM3 controls the LED light intensity of port 3 (0-255)
     end
@@ -147,8 +162,8 @@ for currentTrial = 1:maxTrials
         'Timer', .5,...
         'StateChangeConditions', {'Tup', 'exit', 'Port1In', '>back', 'Port3In', '>back'},...
         'OutputActions', {});
-    sma = AddState(sma, 'Name', 'Punish', ...
-        'Timer', S.GUI.PunishDelay,...
+    sma = AddState(sma, 'Name', 'PunishTimeout', ...
+        'Timer', S.GUI.PunishTimeout,...
         'StateChangeConditions', {'Tup', 'exit'},...
         'OutputActions', {});
     sma = AddState(sma, 'Name', 'CorrectEarlyWithdrawal', ...
@@ -166,7 +181,7 @@ for currentTrial = 1:maxTrials
         BpodSystem.Data = BpodNotebook('sync', BpodSystem.Data); % Sync with Bpod notebook plugin
         BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct
         BpodSystem.Data.TrialTypes(currentTrial) = trialTypes(currentTrial); % Adds the trial type of the current trial to data
-        update_outcome_plot(trialTypes, BpodSystem.Data);
+        outcomePlot.update(trialTypes, BpodSystem.Data); % Update the outcome plot
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
     end
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
@@ -187,21 +202,3 @@ BpodSystem.Data = AddFlexIOAnalogData(BpodSystem.Data, 'Volts', 1); % Adds all d
                   % The second argument may be set to '1' to add a trial-aligned copy of the analog data: 
                   % a cell array with one cell of data per trial.
 SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
-
-function update_outcome_plot(TrialTypes, Data)
-global BpodSystem
-outcomes = zeros(1,Data.nTrials);
-for x = 1:Data.nTrials
-    if ~isnan(Data.RawEvents.Trial{x}.States.LeftReward(1))
-        outcomes(x) = 1;
-    elseif ~isnan(Data.RawEvents.Trial{x}.States.RightReward(1))
-        outcomes(x) = 1;
-    elseif ~isnan(Data.RawEvents.Trial{x}.States.Punish(1))
-        outcomes(x) = 0;
-    elseif ~isnan(Data.RawEvents.Trial{x}.States.CorrectEarlyWithdrawal(1))
-        outcomes(x) = 2;
-    else
-        outcomes(x) = 3;
-    end
-end
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'update',Data.nTrials+1,2-TrialTypes,outcomes);

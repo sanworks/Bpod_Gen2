@@ -77,13 +77,21 @@ trialTypes = ceil(rand(1,maxTrials)*2);
 BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
 
 %% Initialize plots
-% Side Outcome Plot
-BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 220],'name','Outcome plot',...
-                                                       'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
-BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .35 .89 .55]);
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-trialTypes);
-TotalRewardDisplay('init'); % Total Reward display (online display of the total amount of liquid reward earned)
-BpodParameterGUI('init', S); % Initialize parameter GUI plugin
+
+% Initialize the outcome plot
+outcomePlot = LiveOutcomePlot([1 2], {'Left', 'Right'}, trialTypes, 90); % Create an instance of the LiveOutcomePlot GUI
+              % Arg1 = trialTypeManifest, a list of possible trial types (even if not yet in trialTypes).
+              % Arg2 = trialTypeNames, a list of names for each trial type in trialTypeManifest
+              % Arg3 = trialTypes, a list of integers denoting precomputed trial types in the session
+              % Arg4 = nTrialsToShow, the number of trials to show
+outcomePlot.RewardStateNames = {'RewardLeft', 'RewardRight'}; % List of state names where reward was delivered
+outcomePlot.PunishStateNames = {'PunishTimeout'}; % List of state names where choice was incorrect and negatively reinforced
+
+% Total Reward display (online display of the total amount of liquid reward earned)
+TotalRewardDisplay('init'); 
+
+% Initialize parameter GUI plugin
+BpodParameterGUI('init', S); 
 
 %% Setup HiFi module
 maxAmplitude_Bits = 32767;
@@ -117,10 +125,10 @@ for currentTrial = 1:maxTrials
             % Frequency*1000 is sent to the device to encode Frequency
             frequencyBytes = typecast(uint32(S.GUI.SinWaveFreqLeft*1000), 'uint8'); 
             leftActionState = 'RewardLeft';  
-            rightActionState = 'ErrorSetup'; 
+            rightActionState = 'PunishSetup'; 
         case 2
             frequencyBytes = typecast(uint32(S.GUI.SinWaveFreqRight*1000), 'uint8');
-            leftActionState = 'ErrorSetup'; 
+            leftActionState = 'PunishSetup'; 
             rightActionState = 'RewardRight';
     end
     outputActionArgument1 = {'HiFi1', ['F' frequencyBytes(1:2)]}; 
@@ -179,11 +187,11 @@ for currentTrial = 1:maxTrials
         'Timer', 0.5,...
         'StateChangeConditions', {'Tup', 'ITI', 'Port1In', '>back', 'Port3In', '>back'},...
         'OutputActions', {});
-    sma = AddState(sma, 'Name', 'ErrorSetup', ...
+    sma = AddState(sma, 'Name', 'PunishSetup', ...
         'Timer', 0,...
-        'StateChangeConditions', {'Tup', 'Error'},...
+        'StateChangeConditions', {'Tup', 'PunishTimeout'},...
         'OutputActions', {'HiFi1',['W' 0]}); % Set white noise waveform
-    sma = AddState(sma, 'Name', 'Error', ...
+    sma = AddState(sma, 'Name', 'PunishTimeout', ...
         'Timer', S.GUI.ErrorTimeoutDuration,...
         'StateChangeConditions', {'Tup', 'ITI'},...
         'OutputActions', errorOutputAction);
@@ -207,8 +215,11 @@ for currentTrial = 1:maxTrials
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
         BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct
         BpodSystem.Data.TrialTypes(currentTrial) = trialTypes(currentTrial); % Adds the trial type of the current trial to data
-        update_outcome_plot(trialTypes, BpodSystem.Data);
-        update_reward_display(S.GUI.RewardAmount, currentTrial);
+        outcomePlot.update(trialTypes, BpodSystem.Data); % Update the outcome plot
+        if ~isnan(BpodSystem.Data.RawEvents.Trial{currentTrial}.States.RewardLeft(1)) || ...
+           ~isnan(BpodSystem.Data.RawEvents.Trial{currentTrial}.States.RewardRight(1))     
+            TotalRewardDisplay('add', S.GUI.RewardAmount);
+        end
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
     end
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
@@ -216,28 +227,3 @@ for currentTrial = 1:maxTrials
         return
     end
 end
-
-function update_outcome_plot(trialTypes, data)
-% Determine outcomes from state data and score as the SideOutcomePlot plugin expects
-global BpodSystem
-outcomes = zeros(1,data.nTrials);
-for x = 1:data.nTrials
-    if ~isnan(data.RawEvents.Trial{x}.States.RewardLeft(1))
-        outcomes(x) = 1;
-    elseif ~isnan(data.RawEvents.Trial{x}.States.RewardRight(1))
-        outcomes(x) = 1;
-    elseif ~isnan(data.RawEvents.Trial{x}.States.Error(1))
-        outcomes(x) = 0;
-    else
-        outcomes(x) = 3;
-    end
-end
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'update',data.nTrials+1,2-trialTypes,outcomes);
-
-function update_reward_display(rewardAmount, currentTrial)
-% If rewarded based on the state data, update the TotalRewardDisplay
-global BpodSystem
-    if ~isnan(BpodSystem.Data.RawEvents.Trial{currentTrial}.States.RewardLeft(1)) ||...
-       ~isnan(BpodSystem.Data.RawEvents.Trial{currentTrial}.States.RewardRight(1))
-        TotalRewardDisplay('add', rewardAmount);
-    end

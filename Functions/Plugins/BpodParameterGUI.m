@@ -98,7 +98,7 @@ switch op
             thisPanelParamNames = panels.(panelNames{p});
             thisPanelParamNames = thisPanelParamNames(end:-1:1);
             nParams = length(thisPanelParamNames);
-            thisPanelHeight = (45*nParams)+5;
+            thisPanelHeight = (40*nParams)+15;
             uipanel('title', panelNames{p},'FontSize',12, 'FontWeight', 'Bold', 'BackgroundColor', 'white',...
                 'Units', 'Pixels', 'Position',[hPos vPos 430 thisPanelHeight]);
             inPanelPos = 10;

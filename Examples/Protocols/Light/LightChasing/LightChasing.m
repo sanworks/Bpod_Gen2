@@ -54,13 +54,13 @@ for currentTrial = 1:maxTrials
     switch trialTypes(currentTrial) % Determine trial-specific state matrix fields
         case 1
             leftAction = 'Reward'; 
-            rightAction = 'Punish'; 
+            rightAction = 'PunishTimeout'; 
             stimulusOutputActions = {'LED', 1}; 
             rewardOutputActions = {'Valve', 1}; 
             ValveTime = vt(1); 
         case 2
             rightAction = 'Reward'; 
-            leftAction = 'Punish'; 
+            leftAction = 'PunishTimeout'; 
             stimulusOutputActions = {'LED', 3}; 
             rewardOutputActions = {'Valve', 3}; 
             ValveTime = vt(2);
@@ -82,7 +82,7 @@ for currentTrial = 1:maxTrials
         'Timer', ValveTime,...
         'StateChangeConditions', {'Tup', 'exit'},...
         'OutputActions', rewardOutputActions); 
-    sma = AddState(sma, 'Name', 'Punish', ...
+    sma = AddState(sma, 'Name', 'PunishTimeout', ...
         'Timer', 5,...
         'StateChangeConditions', {'Tup', 'exit'},...
         'OutputActions', {}); 
