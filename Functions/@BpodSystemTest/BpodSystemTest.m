@@ -74,7 +74,9 @@ classdef BpodSystemTest < handle
             obj.FSM_Model = BpodSystem.HW.StateMachineModel;
             obj.SoftwareVersion = BpodSoftwareVersion_Semantic;
             obj.FirmwareVersion = BpodSystem.FirmwareVersion;
-            [~,systemview] = memory;
+            if ispc
+                [~,systemview] = memory;
+            end
             ptbInstalled = false;
             try
                 [~, ptbVersionStructure] = PsychtoolboxVersion;
@@ -101,17 +103,25 @@ classdef BpodSystemTest < handle
             obj.dispAndLog('HOST PC INFO:')
             obj.dispAndLog(['PC Architecture: ' computer('arch')])
             obj.dispAndLog(['Operating System: ' BpodSystem.HostOS])
-            obj.dispAndLog(['Free System RAM: ' num2str(systemview.PhysicalMemory.Available/1000000000) 'GB'])
-            obj.dispAndLog(['Number of CPU Cores: ' getenv('NUMBER_OF_PROCESSORS')])
+            if ispc
+                obj.dispAndLog(['Free System RAM: ' num2str(systemview.PhysicalMemory.Available/1000000000) 'GB'])
+            end
+            if ispc || ismac
+                nCores = getenv('NUMBER_OF_PROCESSORS');
+            else
+                [~,nCores] = system('grep ^cpu\\scores /proc/cpuinfo | uniq |  awk ''{print $4}''');
+                nCores = nCores(1:end-1); % Strip off newline
+            end
+            obj.dispAndLog(['Number of CPU Cores: ' nCores])
             obj.dispAndLog(' ');
 
             % Print instructions
             disp('INSTRUCTIONS:')
-            disp('Init with: B = BpodSystemTest;')
-            disp('Use B.testAll; to run the complete suite of tests.')
-            disp('Use B.showTests; to view a list of all tests.')
-            disp('Run individual tests with B.myTestName;')
-            disp('Use clear B; to end.')
+            disp('Init with: BST = BpodSystemTest;')
+            disp('Use BST.testAll; to run the complete suite of tests.')
+            disp('Use BST.showTests; to view a list of all tests.')
+            disp('Run individual tests with BST.myTestName;')
+            disp('Use clear BST; to end.')
             disp(' ');
             input('Connect BNCOut1 --> BNCIn1, BNCOut2 --> BNCIn2 and press enter to continue >', 's');
         end

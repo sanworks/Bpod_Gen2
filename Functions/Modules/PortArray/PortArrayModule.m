@@ -57,14 +57,14 @@ classdef PortArrayModule < handle
             try
                 addpath(fullfile(fileparts(which('Bpod')), 'Functions', 'Internal Functions'));
                 currentFirmware = CurrentFirmwareList;
-                latestFirmware = currentFirmware.AnalogIn;
+                latestFirmware = currentFirmware.PA;
             catch
                 % Stand-alone configuration (Bpod not installed); assume latest firmware
                 latestFirmware = obj.CurrentFirmwareVersion;
             end
             if obj.FirmwareVersion < latestFirmware
-                error(['Error: old firmware detected - v' obj.FirmwareVersion '. The current version is: '... 
-                    latestFirmware '. Please update the I2C messenger firmware using LoadBpodFirmware().'])
+                error(['Error: old firmware detected - v' num2str(obj.FirmwareVersion) '. The current version is: '... 
+                    num2str(latestFirmware) '. Please update the Port Array Module using LoadBpodFirmware().'])
             end
             obj.timeByteMask = repmat(logical([1 1 1 1 1 1 1 1 0 0 0 0]), 1, 1000);
             obj.eventByteMask = repmat(logical([0 0 0 0 0 0 0 0 1 1 1 1]), 1, 1000);

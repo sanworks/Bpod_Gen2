@@ -32,11 +32,11 @@ if ispc
 elseif ismac
     % For macOS: List USB serial devices
     [~, RawSerialPortList] = system('ls /dev/cu.usbmodem*');
-    portLocations = strsplit(strtrim(RawSerialPortList), '\n');
+    portLocations = strsplit(strtrim(RawSerialPortList), '  ');
 else
     % For Linux: List ACM serial devices
     [~, RawSerialPortList] = system('ls /dev/ttyACM*');
-    portLocations = strsplit(strtrim(RawSerialPortList), '\n');
+    portLocations = strsplit(strtrim(RawSerialPortList), '  ');
 end
 
 % Filter and add ports to usbSerialPorts
