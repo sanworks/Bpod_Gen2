@@ -420,7 +420,7 @@ classdef BpodObject < handle
             if ispc || ismac
                 web ('https://sanworks.github.io/Bpod_Wiki/', '-browser');
             else
-                disp(['**NOTE** If MATLAB is running as root, your browser may fail to open. '
+                disp(['**NOTE** If MATLAB is running as root, your browser may fail to open. '...
                     'The wiki is at: https://sanworks.github.io/Bpod_Wiki/']);
                 web ('https://sanworks.github.io/Bpod_Wiki/');
             end

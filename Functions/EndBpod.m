@@ -82,7 +82,10 @@ if ~isempty(BpodSystem)
         end
 
         % Close remaining figures
-        delete(BpodSystem.GUIHandles.MainFig);
+        try
+            delete(BpodSystem.GUIHandles.MainFig);
+        catch
+        end
         try
             close(BpodSystem.GUIHandles.ConfigureBonsaiFig)
         catch

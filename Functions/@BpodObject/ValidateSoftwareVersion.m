@@ -42,9 +42,9 @@ if ~isempty(latestVersion)
     if verDiff < 0  
         disp( '***********************************************************')
         disp(['UPDATE NOTICE: Bpod Console v' latestVersion ' is available to download!'])
-        disp(['                 View release notes '
+        disp(['                 View release notes '...
               '<a href="matlab:web(''https://github.com/sanworks/Bpod_Gen2/blob/master/Release%20Notes.txt'',''-browser'')">here</a>'])
-        disp(['To update run UpdateBpodSoftware() OR see instructions' 
+        disp(['To update run UpdateBpodSoftware() OR see instructions'... 
              '<a href="matlab:web(''https://sanworks.github.io/Bpod_Wiki/install-and-update/software-update/'',''-browser'')">here</a>'])
         disp( '***********************************************************')
     elseif verDiff > 0

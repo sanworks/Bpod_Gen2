@@ -557,7 +557,9 @@ classdef RotaryEncoderModule < handle
         function stopUSBStream(obj)
             % Stop the USB position data stream
             if obj.usbCaptureEnabled == 1
-                stop(obj.Timer);
+                if ~isempty(obj.Timer)
+                    stop(obj.Timer);
+                end
                 delete(obj.Timer);
                 obj.Timer = [];
                 obj.usbCaptureEnabled = 0;
@@ -687,7 +689,9 @@ classdef RotaryEncoderModule < handle
     end
     methods (Access = private)
         function endAcq(obj)
-            stop(obj.Timer);
+            if ~isempty(obj.Timer)
+                stop(obj.Timer);
+            end
             delete(obj.Timer);
             obj.Timer = [];
             obj.stopUSBStream();

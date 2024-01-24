@@ -38,12 +38,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 function Bpod(varargin)
 
-% Ensure that Bpod is not open, and clear partially initialized instances.
 global BpodSystem
+
+% Ensure that Bpod is not open, and clear partially initialized instances.
+isInitialized = false;
 if ~isempty(BpodSystem)
-    if BpodSystem.Status.Initialized
-        error('Bpod is already open. Please close the Bpod console and try again.');
+    if isprop(BpodSystem, 'Status') && isprop(BpodSystem, 'GUIHandles')
+        if BpodSystem.Status.Initialized && isgraphics(BpodSystem.GUIHandles.MainFig)
+            isInitialized = true;
+        end
+    end
+end
+if isInitialized
+    error('Bpod is already open. Please close the Bpod console and try again.');
+else
+    if isprop(BpodSystem, 'SerialPort')
+        EndBpod; % Hardware was initialized. EndBpod() disconnects gracefully.
+        Bpod; % EndBpod() clears the global. Bpod must be called to reinitialize it.
+        return
     else
+        if ~isempty(BpodSystem)
+        warning(['A partially initialized BpodSystem variable was cleared.' char(10)...
+                 'This may happen if a previous startup attempt crashed, or if user' char(10)... 
+                 'startup code created a global BpodSystem variable before calling Bpod()'])
+        end
         BpodSystem = []; % Clear partially initialized object
     end
 end
@@ -95,7 +113,7 @@ bpod_setup;
 function bpod_setup
 % Runs BpodSystem's hardware and GUI setup methods.
 global BpodSystem
-BpodSystem.SetupHardware;
+BpodSystem.SetupHardware();
 BpodSystem.InitializeGUI();
 BpodSystem.Status.Initialized = true;
 evalin('base', 'global BpodSystem')
