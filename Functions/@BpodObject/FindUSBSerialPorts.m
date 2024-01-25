@@ -22,10 +22,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % Returns: usbSerialPorts, a cell array of strings with available serial port names
 
 function usbSerialPorts = FindUSBSerialPorts(obj)
+
 usbSerialPorts = {}; % Initialize empty cell array
 
-if verLessThan('matlab', '9.7')
-    % On MATLAB prior to r2019b, use a system call to return the list of ports.
+if exist('serialportlist','file')
+    portLocations = sort(serialportlist('available'));
+elseif exist('seriallist','file')
+    portLocations = sort(seriallist('available'));
+else % Likely MATLAB pre r2017a. Fall back to system call.
     % Get and split the system's list of available ports
     if ispc
         % For Windows: Use PowerShell command to list serial ports
@@ -40,9 +44,6 @@ if verLessThan('matlab', '9.7')
         [~, rawSerialPortList] = system('ls /dev/ttyACM*');
         portLocations = strsplit(strtrim(rawSerialPortList), {'  ', '\n'});
     end
-else
-    % On MATLAB r2019b or newer, use serialportlist()
-    portLocations = cellstr(serialportlist("available"));
 end
 
 % Filter and add ports to usbSerialPorts
@@ -53,5 +54,4 @@ for p = 1:length(portLocations)
             usbSerialPorts{end+1} = candidatePort; % Add new port
         end
     end
-end
 end
