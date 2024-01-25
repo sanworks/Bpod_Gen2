@@ -17,40 +17,74 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function Confirmed = SendStateMachine(sma, varargin)
-global BpodSystem
-runASAP = 0; % Byte (set to 0 or 1) indicating whether to auto-run the state matrix as soon as the current one finishes
+
+% SendStateMachine() transfers a state machine description to the Bpod
+% Finite State Machine device. The most recent state machine sent can then
+% be run with RunStateMachine() or TrialManager.startTrial().
+%
+% Arguments:
+% sma, a state machine description created with NewStateMachine() and
+% populated with the other functions in /Functions/State Machine Assembler/
+%
+% runASAP (optional). If while running a trial the state machine
+% receives a state machine description sent with SendStateMachine, if
+% runASAP = 1 the new state machine will begin running immediately
+% following the end of the current trial. If runASAP = 0 (default), the state machine
+% will wait for the 'R' command. runASAP is only required if using TrialManager.
+%
+% Returns:
+% confirmed (depricated). To preserve compatibility with existing user code, a 1
+% is returned. This does not indicate successful transmission of the state
+% machine description. Successful transmission is verified later, in
+% RunStateMachine() or BpodTrialManager.startTrial()
+%
+% Example usage: SendStateMachine(sma);
+
+function confirmed = SendStateMachine(sma, varargin)
+
+global BpodSystem % Import the global BpodSystem object
+
+% Determine runASAP, a flag indicating whether to auto-run the state matrix when the current one exits
+runASAP = 0; 
 if nargin > 1
-    runImmediately = varargin{1};
-    if strcmp(runImmediately, 'RunASAP')
+    argin = varargin{1};
+    if strcmp(argin, 'RunASAP')
         runASAP = 1;
     else
-        error(['Error: ' runImmediately ' is not a valid argument for SendStateMachine.'])
+        error(['Error: ' argin ' is not a valid argument for SendStateMachine.'])
     end
 end
+
+% If '>back' operator was provided by the user in AddState(), going to
+% state 255 returns the system back to the previous state
 use255BackSignal = sma.meta.use255BackSignal;
+
+% Shut down any active module relays
 if sum(BpodSystem.Modules.RelayActive) > 0
     BpodSystem.StopModuleRelay();
 end
-nStates = length(sma.StateNames);
-%% Check to make sure the Placeholder state was replaced
+
+nStates = length(sma.StateNames); % Determine number of states
+
+% Check to make sure the Placeholder state was replaced
 if strcmp(sma.StateNames{1},'Placeholder')
     error('Error: could not send an empty matrix. You must define at least one state first.')
 end
 
-%% Check to make sure the State Machine doesn't have undefined states
+% Check to make sure the state machine description doesn't have undefined states
 if sum(sma.StatesDefined == 0) > 0
     disp('Error: The state machine contains references to the following undefined states: ');
-    UndefinedStates = find(sma.StatesDefined == 0);
-    nUndefinedStates = length(UndefinedStates);
+    undefinedStates = find(sma.StatesDefined == 0);
+    nUndefinedStates = length(undefinedStates);
     undefinedStateNames = cell(1,nUndefinedStates);
     for x = 1:nUndefinedStates
-        undefinedStateNames{x} = [sma.StateNames{UndefinedStates(x)} ' '];
+        undefinedStateNames{x} = [sma.StateNames{undefinedStates(x)} ' '];
     end
-    error(['Please define the following states using the AddState function before sending the state machine: ' cell2mat(undefinedStateNames)])
+    error(['Please define the following states using the AddState function before sending the state machine: '... 
+          cell2mat(undefinedStateNames)])
 end
 
-%% Check to make sure the state matrix does not exceed the maximum number of states
+% Ensure that the state machine description does not exceed the maximum number of states
 MaxStates = BpodSystem.StateMachineInfo.MaxStates;
 if sma.meta.use255BackSignal
     MaxStates = MaxStates - 1;
@@ -59,13 +93,14 @@ if nStates > MaxStates
     error(['Error: the current state matrix can have a maximum of ' num2str(MaxStates) ' states.'])
 end
 
-%% Check to make sure sync line is not used
+% Check to make sure the sync channel is not used as a state output. The sync
+% channel can be configured from the settings menu in the Bpod Console GUI.
 if BpodSystem.SyncConfig.Channel ~= 255
     SyncChanOutputStates = sma.OutputMatrix(:,BpodSystem.SyncConfig.Channel+1) > 0;
     if (sum(SyncChanOutputStates) > 0) > 0
         ProblemStateNames = sma.StateNames(SyncChanOutputStates);
         nProblemStates = length(ProblemStateNames);
-        ErrorMessage = ('Error: The sync channel cannot simultaneously be used as a state machine output.');
+        ErrorMessage = ('Error: The sync channel cannot simultaneously be used as a state output.');
         ErrorMessage = [ErrorMessage char(13) 'Check the following states:'];
         for i = 1:nProblemStates
             ErrorMessage = [ErrorMessage char(13) ProblemStateNames{i}];
@@ -79,7 +114,9 @@ if BpodSystem.SyncConfig.Channel ~= 255
             char(10) 'OR change the sync channel from the Bpod console.'])
     end
 end
-%% Rearrange states to reflect order they were added (not referenced)
+
+% Rearrange states to reflect order they were added 
+% (by default, they are numbered as referenced by name in iterative calls to AddState()).
 sma.Manifest = sma.Manifest(1:sma.nStatesInManifest);
 StateOrder = zeros(1,sma.nStatesInManifest);
 OriginalInputMatrix = sma.InputMatrix;
@@ -109,23 +146,24 @@ sma.ConditionMatrix = sma.ConditionMatrix(StateOrder,:);
 sma.StateNames = sma.StateNames(StateOrder);
 sma.StateTimers = sma.StateTimers(StateOrder);
 
-%% Add >exit and >back state codes to transition matrices
-ExitState = nStates+1; % nStates+1 is the state machine's op code for the exit state
-BackState = 256; % IF >back is used in the SM, 255 (as 256 here) is the state machine's op code for returning to the previous state
-sma.InputMatrix(sma.InputMatrix == 65537) = ExitState; % 65537 is the assembler's op code for the >exit op
-sma.StateTimerMatrix(sma.StateTimerMatrix == 65537) = ExitState;
-sma.GlobalTimerStartMatrix(sma.GlobalTimerStartMatrix == 65537) = ExitState;
-sma.GlobalTimerEndMatrix(sma.GlobalTimerEndMatrix == 65537) = ExitState;
-sma.GlobalCounterMatrix(sma.GlobalCounterMatrix == 65537) = ExitState;
-sma.ConditionMatrix(sma.ConditionMatrix == 65537) = ExitState;
-sma.InputMatrix(sma.InputMatrix == 65538) = BackState; % 65538 is the assembler's op code for the >back op
-sma.StateTimerMatrix(sma.StateTimerMatrix == 65538) = BackState;
-sma.GlobalTimerStartMatrix(sma.GlobalTimerStartMatrix == 65538) = BackState;
-sma.GlobalTimerEndMatrix(sma.GlobalTimerEndMatrix == 65538) = BackState;
-sma.GlobalCounterMatrix(sma.GlobalCounterMatrix == 65538) = BackState;
-sma.ConditionMatrix(sma.ConditionMatrix == 65538) = BackState;
+% Add >exit and >back state codes to transition matrices
+exitState = nStates+1; % nStates+1 is the state machine's op code for the exit state
+backState = 256; % IF >back is used in the SM, 255 (256 here due to indexing) is the state machine's 
+                 % op code for returning to the previous state
+sma.InputMatrix(sma.InputMatrix == 65537) = exitState; % 65537 is the assembler's op code for the >exit op
+sma.StateTimerMatrix(sma.StateTimerMatrix == 65537) = exitState;
+sma.GlobalTimerStartMatrix(sma.GlobalTimerStartMatrix == 65537) = exitState;
+sma.GlobalTimerEndMatrix(sma.GlobalTimerEndMatrix == 65537) = exitState;
+sma.GlobalCounterMatrix(sma.GlobalCounterMatrix == 65537) = exitState;
+sma.ConditionMatrix(sma.ConditionMatrix == 65537) = exitState;
+sma.InputMatrix(sma.InputMatrix == 65538) = backState; % 65538 is the assembler's op code for the >back op
+sma.StateTimerMatrix(sma.StateTimerMatrix == 65538) = backState;
+sma.GlobalTimerStartMatrix(sma.GlobalTimerStartMatrix == 65538) = backState;
+sma.GlobalTimerEndMatrix(sma.GlobalTimerEndMatrix == 65538) = backState;
+sma.GlobalCounterMatrix(sma.GlobalCounterMatrix == 65538) = backState;
+sma.ConditionMatrix(sma.ConditionMatrix == 65538) = backState;
 
-%% Determine number of global timers, global counters and conditions used
+% Determine number of global timers, global counters and conditions used
 nGlobalTimersUsed = find(sma.GlobalTimers.IsSet, 1, 'last');
 nGlobalCountersUsed = find(sma.GlobalCounterSet, 1, 'last');
 nConditionsUsed = find(sma.ConditionSet, 1, 'last');
@@ -133,303 +171,314 @@ if isempty(nGlobalTimersUsed); nGlobalTimersUsed = 0; end
 if isempty(nGlobalCountersUsed); nGlobalCountersUsed = 0; end
 if isempty(nConditionsUsed); nConditionsUsed = 0; end
 
-%% Format input, output and wave matrices into linear byte vectors for transfer
-DefaultInputMatrix = repmat((1:nStates)', 1, sma.meta.InputMatrixSize);
-DefaultExtensionMatrix_GT = DefaultInputMatrix(1:nStates, 1:nGlobalTimersUsed);
-DefaultExtensionMatrix_GC = DefaultInputMatrix(1:nStates, 1:nGlobalCountersUsed);
-DefaultExtensionMatrix_C = DefaultInputMatrix(1:nStates, 1:nConditionsUsed);
+% Next, format input, output, timer, counter and condition matrices into linear
+% byte vectors for transfer. This employs a compression scheme where only
+% differences from the default matrix are sent.
 
-DifferenceMatrix = (sma.InputMatrix ~= DefaultInputMatrix)';
-nDifferences = sum(DifferenceMatrix);
+% First, set up default matrices with 'same state' for every event
+defaultInputMatrix = repmat((1:nStates)', 1, sma.meta.InputMatrixSize);
+defaultExtensionMatrix_GT = defaultInputMatrix(1:nStates, 1:nGlobalTimersUsed);
+defaultExtensionMatrix_GC = defaultInputMatrix(1:nStates, 1:nGlobalCountersUsed);
+defaultExtensionMatrix_C = defaultInputMatrix(1:nStates, 1:nConditionsUsed);
+
+% Compute compressed input matrix
+differenceMatrix = (sma.InputMatrix ~= defaultInputMatrix)';
+nDifferences = sum(differenceMatrix);
 msgLength = sum(nDifferences>0)*2 + nStates;
-InputMatrix = zeros(1,msgLength); Pos = 1;
+inputMatrix = zeros(1,msgLength); pos = 1;
 for i = 1:nStates
-    InputMatrix(Pos) = nDifferences(i); Pos = Pos + 1;
+    inputMatrix(pos) = nDifferences(i); pos = pos + 1;
     if nDifferences(i) > 0
-        ThisState = DifferenceMatrix(:,i)';
-        Positions = find(ThisState)-1;
-        Values = sma.InputMatrix(i,ThisState)-1;
-        PosVal = [Positions; Values];
-        PosVal = PosVal(1:end);
-        InputMatrix(Pos:Pos+(nDifferences(i)*2)-1) = PosVal;
-        Pos = Pos + nDifferences(i)*2;
+        thisState = differenceMatrix(:,i)';
+        positions = find(thisState)-1;
+        values = sma.InputMatrix(i,thisState)-1;
+        posVal = [positions; values];
+        posVal = posVal(1:end);
+        inputMatrix(pos:pos+(nDifferences(i)*2)-1) = posVal;
+        pos = pos + nDifferences(i)*2;
     end
 end
-InputMatrix = uint8(InputMatrix);
+inputMatrix = uint8(inputMatrix);
 
-OutputMatrixRaw = sma.OutputMatrix(:, 1:BpodSystem.HW.Pos.GlobalTimerTrig-1); % All physical channels. Virtual outputs are handled separately
-
-DifferenceMatrix = (OutputMatrixRaw ~= 0)';
-nDifferences = sum(DifferenceMatrix, 1);
+% Compute compressed output matrix
+outputMatrixRaw = sma.OutputMatrix(:, 1:BpodSystem.HW.Pos.GlobalTimerTrig-1); % All physical channels. 
+                                                                              % Virtual outputs are handled separately
+differenceMatrix = (outputMatrixRaw ~= 0)';
+nDifferences = sum(differenceMatrix, 1);
 msgLength = sum(nDifferences>0)*2 + nStates;
-OutputMatrix = zeros(1,msgLength); Pos = 1;
+outputMatrix = zeros(1,msgLength); pos = 1;
 for i = 1:nStates
-    OutputMatrix(Pos) = nDifferences(i); Pos = Pos + 1;
+    outputMatrix(pos) = nDifferences(i); pos = pos + 1;
     if nDifferences(i) > 0
-        ThisState = DifferenceMatrix(:,i)';
-        Positions = find(ThisState)-1;
-        Values = OutputMatrixRaw(i,ThisState);
-        PosVal = [Positions; Values];
-        PosVal = PosVal(1:end);
-        OutputMatrix(Pos:Pos+(nDifferences(i)*2)-1) = PosVal;
-        Pos = Pos + nDifferences(i)*2;
+        thisState = differenceMatrix(:,i)';
+        positions = find(thisState)-1;
+        values = outputMatrixRaw(i,thisState);
+        posVal = [positions; values];
+        posVal = posVal(1:end);
+        outputMatrix(pos:pos+(nDifferences(i)*2)-1) = posVal;
+        pos = pos + nDifferences(i)*2;
     end
 end
 if BpodSystem.MachineType == 4
-    OutputMatrix = typecast(uint16(OutputMatrix), 'uint8');
+    outputMatrix = typecast(uint16(outputMatrix), 'uint8');
 else
-    OutputMatrix = uint8(OutputMatrix);
+    outputMatrix = uint8(outputMatrix);
 end
 
-DifferenceMatrix = (sma.GlobalTimerStartMatrix(:,1:nGlobalTimersUsed) ~= DefaultExtensionMatrix_GT)';
-nDifferences = sum(DifferenceMatrix, 1);
+% Compute compressed global timer start matrix
+differenceMatrix = (sma.GlobalTimerStartMatrix(:,1:nGlobalTimersUsed) ~= defaultExtensionMatrix_GT)';
+nDifferences = sum(differenceMatrix, 1);
 msgLength = sum(nDifferences>0)*2 + nStates;
-GlobalTimerStartMatrix = zeros(1,msgLength); Pos = 1;
+globalTimerStartMatrix = zeros(1,msgLength); pos = 1;
 for i = 1:nStates
-    GlobalTimerStartMatrix(Pos) = nDifferences(i); Pos = Pos + 1;
+    globalTimerStartMatrix(pos) = nDifferences(i); pos = pos + 1;
     if nDifferences(i) > 0
-        ThisState = DifferenceMatrix(:,i)';
-        Positions = find(ThisState)-1;
-        Values = sma.GlobalTimerStartMatrix(i,ThisState)-1;
-        PosVal = [Positions; Values];
-        PosVal = PosVal(1:end);
-        GlobalTimerStartMatrix(Pos:Pos+(nDifferences(i)*2)-1) = PosVal;
-        Pos = Pos + nDifferences(i)*2;
+        thisState = differenceMatrix(:,i)';
+        positions = find(thisState)-1;
+        values = sma.GlobalTimerStartMatrix(i,thisState)-1;
+        posVal = [positions; values];
+        posVal = posVal(1:end);
+        globalTimerStartMatrix(pos:pos+(nDifferences(i)*2)-1) = posVal;
+        pos = pos + nDifferences(i)*2;
     end
 end
-GlobalTimerStartMatrix = uint8(GlobalTimerStartMatrix);
+globalTimerStartMatrix = uint8(globalTimerStartMatrix);
 
-DifferenceMatrix = (sma.GlobalTimerEndMatrix(:,1:nGlobalTimersUsed) ~= DefaultExtensionMatrix_GT)';
-nDifferences = sum(DifferenceMatrix, 1);
+% Compute compressed global timer end matrix
+differenceMatrix = (sma.GlobalTimerEndMatrix(:,1:nGlobalTimersUsed) ~= defaultExtensionMatrix_GT)';
+nDifferences = sum(differenceMatrix, 1);
 msgLength = sum(nDifferences>0)*2 + nStates;
-GlobalTimerEndMatrix = zeros(1,msgLength); Pos = 1;
+globalTimerEndMatrix = zeros(1,msgLength); pos = 1;
 for i = 1:nStates
-    GlobalTimerEndMatrix(Pos) = nDifferences(i); Pos = Pos + 1;
+    globalTimerEndMatrix(pos) = nDifferences(i); pos = pos + 1;
     if nDifferences(i) > 0
-        ThisState = DifferenceMatrix(:,i)';
-        Positions = find(ThisState)-1;
-        Values = sma.GlobalTimerEndMatrix(i,ThisState)-1;
-        PosVal = [Positions; Values];
-        PosVal = PosVal(1:end);
-        GlobalTimerEndMatrix(Pos:Pos+(nDifferences(i)*2)-1) = PosVal;
-        Pos = Pos + nDifferences(i)*2;
+        thisState = differenceMatrix(:,i)';
+        positions = find(thisState)-1;
+        values = sma.GlobalTimerEndMatrix(i,thisState)-1;
+        posVal = [positions; values];
+        posVal = posVal(1:end);
+        globalTimerEndMatrix(pos:pos+(nDifferences(i)*2)-1) = posVal;
+        pos = pos + nDifferences(i)*2;
     end
 end
-GlobalTimerEndMatrix = uint8(GlobalTimerEndMatrix);
+globalTimerEndMatrix = uint8(globalTimerEndMatrix);
 
-DifferenceMatrix = (sma.GlobalCounterMatrix(:,1:nGlobalCountersUsed) ~= DefaultExtensionMatrix_GC)';
-nDifferences = sum(DifferenceMatrix, 1);
+% Compute compressed global counter matrix
+differenceMatrix = (sma.GlobalCounterMatrix(:,1:nGlobalCountersUsed) ~= defaultExtensionMatrix_GC)';
+nDifferences = sum(differenceMatrix, 1);
 msgLength = sum(nDifferences>0)*2 + nStates;
-GlobalCounterMatrix = zeros(1,msgLength); Pos = 1;
+globalCounterMatrix = zeros(1,msgLength); pos = 1;
 for i = 1:nStates
-    GlobalCounterMatrix(Pos) = nDifferences(i); Pos = Pos + 1;
+    globalCounterMatrix(pos) = nDifferences(i); pos = pos + 1;
     if nDifferences(i) > 0
-        ThisState = DifferenceMatrix(:,i)';
-        Positions = find(ThisState)-1;
-        Values = sma.GlobalCounterMatrix(i,ThisState)-1;
-        PosVal = [Positions; Values];
-        PosVal = PosVal(1:end);
-        GlobalCounterMatrix(Pos:Pos+(nDifferences(i)*2)-1) = PosVal;
-        Pos = Pos + nDifferences(i)*2;
+        thisState = differenceMatrix(:,i)';
+        positions = find(thisState)-1;
+        values = sma.GlobalCounterMatrix(i,thisState)-1;
+        posVal = [positions; values];
+        posVal = posVal(1:end);
+        globalCounterMatrix(pos:pos+(nDifferences(i)*2)-1) = posVal;
+        pos = pos + nDifferences(i)*2;
     end
 end
-GlobalCounterMatrix = uint8(GlobalCounterMatrix);
+globalCounterMatrix = uint8(globalCounterMatrix);
 
-DifferenceMatrix = (sma.ConditionMatrix(:,1:nConditionsUsed) ~= DefaultExtensionMatrix_C)';
-nDifferences = sum(DifferenceMatrix,1);
+% Compute compressed condition matrix
+differenceMatrix = (sma.ConditionMatrix(:,1:nConditionsUsed) ~= defaultExtensionMatrix_C)';
+nDifferences = sum(differenceMatrix,1);
 msgLength = sum(nDifferences>0)*2 + nStates;
-ConditionMatrix = zeros(1,msgLength); Pos = 1;
+conditionMatrix = zeros(1,msgLength); pos = 1;
 for i = 1:nStates
-    ConditionMatrix(Pos) = nDifferences(i); Pos = Pos + 1;
+    conditionMatrix(pos) = nDifferences(i); pos = pos + 1;
     if nDifferences(i) > 0
-        ThisState = DifferenceMatrix(:,i)';
-        Positions = find(ThisState)-1;
-        Values = sma.ConditionMatrix(i,ThisState)-1;
-        PosVal = [Positions; Values];
-        PosVal = PosVal(1:end);
-        ConditionMatrix(Pos:Pos+(nDifferences(i)*2)-1) = PosVal;
-        Pos = Pos + nDifferences(i)*2;
+        thisState = differenceMatrix(:,i)';
+        positions = find(thisState)-1;
+        values = sma.ConditionMatrix(i,thisState)-1;
+        posVal = [positions; values];
+        posVal = posVal(1:end);
+        conditionMatrix(pos:pos+(nDifferences(i)*2)-1) = posVal;
+        pos = pos + nDifferences(i)*2;
     end
 end
-ConditionMatrix = uint8(ConditionMatrix);
-StateTimerMatrix = uint8(sma.StateTimerMatrix-1);
-ConditionChannels = uint8(sma.ConditionChannels(1:nConditionsUsed)-1);
-ConditionValues = uint8(sma.ConditionValues(1:nConditionsUsed));
-GlobalTimerChannels = uint8(sma.GlobalTimers.OutputChannel(1:nGlobalTimersUsed)-1);
-UARTChannels = GlobalTimerChannels < BpodSystem.HW.Pos.Input_USB-1;
-GlobalTimerOnMessages = sma.GlobalTimers.OnMessage(1:nGlobalTimersUsed);
-GlobalTimerOnMessages(GlobalTimerOnMessages==0 & UARTChannels) = 255;
-GlobalTimerOffMessages = sma.GlobalTimers.OffMessage(1:nGlobalTimersUsed);
-GlobalTimerOffMessages(GlobalTimerOffMessages==0 & UARTChannels) = 255;
-GlobalTimerLoopMode = uint8(sma.GlobalTimers.LoopMode(1:nGlobalTimersUsed));
-SendGlobalTimerEvents = uint8(sma.GlobalTimers.SendEvents(1:nGlobalTimersUsed));
-GlobalCounterAttachedEvents = uint8(sma.GlobalCounterEvents(1:nGlobalCountersUsed)-1);
-GlobalCounterThresholds = uint32(sma.GlobalCounterThresholds(1:nGlobalCountersUsed));
+conditionMatrix = uint8(conditionMatrix);
 
+% Format state timer matrix
+stateTimerMatrix = uint8(sma.StateTimerMatrix-1);
+
+% Format global timer, counter and condition properties
+conditionChannels = uint8(sma.ConditionChannels(1:nConditionsUsed)-1);
+conditionValues = uint8(sma.ConditionValues(1:nConditionsUsed));
+globalTimerChannels = uint8(sma.GlobalTimers.OutputChannel(1:nGlobalTimersUsed)-1);
+uartChannels = globalTimerChannels < BpodSystem.HW.Pos.Input_USB-1;
+globalTimerOnMessages = sma.GlobalTimers.OnMessage(1:nGlobalTimersUsed);
+globalTimerOnMessages(globalTimerOnMessages==0 & uartChannels) = 255;
+globalTimerOffMessages = sma.GlobalTimers.OffMessage(1:nGlobalTimersUsed);
+globalTimerOffMessages(globalTimerOffMessages==0 & uartChannels) = 255;
+globalTimerLoopMode = uint8(sma.GlobalTimers.LoopMode(1:nGlobalTimersUsed));
+sendGlobalTimerEvents = uint8(sma.GlobalTimers.SendEvents(1:nGlobalTimersUsed));
+globalCounterAttachedEvents = uint8(sma.GlobalCounterEvents(1:nGlobalCountersUsed)-1);
+globalCounterThresholds = uint32(sma.GlobalCounterThresholds(1:nGlobalCountersUsed));
 if BpodSystem.MachineType == 4 % Global timer on/off messages are 16-bit on state machine 2+
-    GlobalTimerOnMessages = typecast(uint16(GlobalTimerOnMessages), 'uint8');
-    GlobalTimerOffMessages = typecast(uint16(GlobalTimerOffMessages), 'uint8');
+    globalTimerOnMessages = typecast(uint16(globalTimerOnMessages), 'uint8');
+    globalTimerOffMessages = typecast(uint16(globalTimerOffMessages), 'uint8');
 else
-    GlobalTimerOnMessages = uint8(GlobalTimerOnMessages);
-    GlobalTimerOffMessages = uint8(GlobalTimerOffMessages);
+    globalTimerOnMessages = uint8(globalTimerOnMessages);
+    globalTimerOffMessages = uint8(globalTimerOffMessages);
 end
 
-%% Extract and format virtual outputs (global timer trig + cancel, global counter reset)
+% Extract and format virtual outputs (global timer trig + cancel, global counter reset)
 maxGlobalTimers = BpodSystem.HW.n.GlobalTimers;
 if maxGlobalTimers > 16
-    GlobalTimerOnset_Trigger = uint32(sma.GlobalTimers.TimerOn_Trigger(1:nGlobalTimersUsed));
-    GlobalTimerTrigs = uint32(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalTimerTrig))';
-    GlobalTimerCancels = uint32(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalTimerCancel))';
-    GTbytes = 4;
+    globalTimerOnset_Trigger = uint32(sma.GlobalTimers.TimerOn_Trigger(1:nGlobalTimersUsed));
+    globalTimerTrigs = uint32(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalTimerTrig))';
+    globalTimerCancels = uint32(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalTimerCancel))';
 elseif maxGlobalTimers > 8
-    GlobalTimerOnset_Trigger = uint16(sma.GlobalTimers.TimerOn_Trigger(1:nGlobalTimersUsed));
-    GlobalTimerTrigs = uint16(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalTimerTrig))';
-    GlobalTimerCancels = uint16(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalTimerCancel))';
-    GTbytes = 2;
+    globalTimerOnset_Trigger = uint16(sma.GlobalTimers.TimerOn_Trigger(1:nGlobalTimersUsed));
+    globalTimerTrigs = uint16(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalTimerTrig))';
+    globalTimerCancels = uint16(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalTimerCancel))';
 else
-    GlobalTimerOnset_Trigger = uint8(sma.GlobalTimers.TimerOn_Trigger(1:nGlobalTimersUsed));
-    GlobalTimerTrigs = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalTimerTrig))';
-    GlobalTimerCancels = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalTimerCancel))';
-    GTbytes = 1;
+    globalTimerOnset_Trigger = uint8(sma.GlobalTimers.TimerOn_Trigger(1:nGlobalTimersUsed));
+    globalTimerTrigs = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalTimerTrig))';
+    globalTimerCancels = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalTimerCancel))';
 end
-
 if BpodSystem.FirmwareVersion < 23
-    GlobalCounterResets = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalCounterReset))';
+    globalCounterResets = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalCounterReset))';
 else
-    GCResets = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalCounterReset))';
-    GCoverrides = find(GCResets ~= 0);
-    nOverrides = length(GCoverrides);
-    OutMatrix = [];
+    gcResets = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.GlobalCounterReset))';
+    gcOverrides = find(gcResets ~= 0);
+    nOverrides = length(gcOverrides);
+    outMatrix = [];
     if nOverrides > 0 
-        OutMatrix = [GCoverrides-1; GCResets(GCoverrides)];
+        outMatrix = [gcOverrides-1; gcResets(gcOverrides)];
     end
     if nOverrides == 1
-        GlobalCounterResets = [nOverrides OutMatrix'];
+        globalCounterResets = [nOverrides outMatrix'];
     else 
-        GlobalCounterResets = [nOverrides OutMatrix(1:end)];
+        globalCounterResets = [nOverrides outMatrix(1:end)];
     end
 end
 
-AnalogThreshEnable = [];
-AnalogThreshDisable = [];
+% Extract and format Flex I/O analog input event matrix and threshold configuration
+analogThreshEnable = [];
+analogThreshDisable = [];
 if BpodSystem.MachineType == 4
-    ATEnable = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.AnalogThreshEnable))'; % Bits indicate thresholds to enable (zeros are not disabled)
-    AToverrides = find(ATEnable ~= 0);
-    nOverrides = length(AToverrides);
-    OutMatrix = [];
+    atEnable = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.AnalogThreshEnable))'; 
+               % Bits indicate thresholds to enable (zeros are not disabled)
+    atOverrides = find(atEnable ~= 0);
+    nOverrides = length(atOverrides);
+    outMatrix = [];
     if nOverrides > 0 
-        OutMatrix = [AToverrides-1; ATEnable(AToverrides)];
+        outMatrix = [atOverrides-1; atEnable(atOverrides)];
     end
-    if length(OutMatrix) == 2
-        OutMatrix = OutMatrix';
+    if length(outMatrix) == 2
+        outMatrix = outMatrix';
     end
-    AnalogThreshEnable = [nOverrides OutMatrix(1:end)]; 
+    analogThreshEnable = [nOverrides outMatrix(1:end)]; 
     
-    ATDisable = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.AnalogThreshDisable))'; % Bits indicate thresholds to disable (zeros are not enabled)
-    AToverrides = find(ATDisable ~= 0);
-    nOverrides = length(AToverrides);
-    OutMatrix = [];
+    atDisable = uint8(sma.OutputMatrix(:,BpodSystem.HW.Pos.AnalogThreshDisable))'; 
+                % Bits indicate thresholds to disable (zeros are not enabled)
+    atOverrides = find(atDisable ~= 0);
+    nOverrides = length(atOverrides);
+    outMatrix = [];
     if nOverrides > 0 
-        OutMatrix = [AToverrides-1; ATDisable(AToverrides)];
+        outMatrix = [atOverrides-1; atDisable(atOverrides)];
     end
-    if length(OutMatrix) == 2
-        OutMatrix = OutMatrix';
+    if length(outMatrix) == 2
+        outMatrix = outMatrix';
     end
-    AnalogThreshDisable = [nOverrides OutMatrix(1:end)];
+    analogThreshDisable = [nOverrides outMatrix(1:end)];
 end
 
-%% Format timers (doubles in seconds) into 32 bit int vectors
-StateTimers = uint32(sma.StateTimers*BpodSystem.HW.CycleFrequency);
-GlobalTimers = uint32(sma.GlobalTimers.Duration(1:nGlobalTimersUsed)*BpodSystem.HW.CycleFrequency);
-GlobalTimerDelays = uint32(sma.GlobalTimers.OnsetDelay(1:nGlobalTimersUsed)*BpodSystem.HW.CycleFrequency);
-GlobalTimerLoopIntervals = uint32(sma.GlobalTimers.LoopInterval(1:nGlobalTimersUsed)*BpodSystem.HW.CycleFrequency);
-%% Add input channel configuration
-%InputChannelConfig = [BpodSystem.InputsEnabled.PortsEnabled];
+% Format timers (initially double type, unit=seconds) into 32 bit int, unit = multiple of the state machine cycle period
+stateTimers = uint32(sma.StateTimers*BpodSystem.HW.CycleFrequency);
+globalTimers = uint32(sma.GlobalTimers.Duration(1:nGlobalTimersUsed)*BpodSystem.HW.CycleFrequency);
+globalTimerDelays = uint32(sma.GlobalTimers.OnsetDelay(1:nGlobalTimersUsed)*BpodSystem.HW.CycleFrequency);
+globalTimerLoopIntervals = uint32(sma.GlobalTimers.LoopInterval(1:nGlobalTimersUsed)*BpodSystem.HW.CycleFrequency);
 
-%% Create vectors of 8-bit, 16-bit and 32-bit data
+% Assemble vectors of 8-bit, 16-bit and 32-bit data
+eightBitMatrix = [nStates nGlobalTimersUsed nGlobalCountersUsed nConditionsUsed...
+    stateTimerMatrix inputMatrix outputMatrix globalTimerStartMatrix globalTimerEndMatrix...
+    globalCounterMatrix conditionMatrix globalTimerChannels globalTimerOnMessages...
+    globalTimerOffMessages globalTimerLoopMode sendGlobalTimerEvents...
+    globalCounterAttachedEvents conditionChannels conditionValues globalCounterResets analogThreshEnable analogThreshDisable];
+globalTimerMatrix = [globalTimerTrigs globalTimerCancels globalTimerOnset_Trigger];
+thirtyTwoBitMatrix = [stateTimers globalTimers globalTimerDelays globalTimerLoopIntervals globalCounterThresholds];
 
-EightBitMatrix = [nStates nGlobalTimersUsed nGlobalCountersUsed nConditionsUsed...
-    StateTimerMatrix InputMatrix OutputMatrix GlobalTimerStartMatrix GlobalTimerEndMatrix...
-    GlobalCounterMatrix ConditionMatrix GlobalTimerChannels GlobalTimerOnMessages...
-    GlobalTimerOffMessages GlobalTimerLoopMode SendGlobalTimerEvents...
-    GlobalCounterAttachedEvents ConditionChannels ConditionValues GlobalCounterResets AnalogThreshEnable AnalogThreshDisable];
-GlobalTimerMatrix = [GlobalTimerTrigs GlobalTimerCancels GlobalTimerOnset_Trigger];
-ThirtyTwoBitMatrix = [StateTimers GlobalTimers GlobalTimerDelays GlobalTimerLoopIntervals GlobalCounterThresholds];
-%nBytes = uint16(length(EightBitMatrix) + GTbytes*length(GlobalTimerMatrix) + 4*length(ThirtyTwoBitMatrix)); % Number of bytes in state matrix (excluding nStates byte)
-
-%% Create serial message vector (if using implicit serial messages)
-SerialMessageVector = []; nModulesLoaded = 0;
+% Set additional ops packaged with state machine description (e.g. programming serial message library)
 containsAdditionalOps = [];
 finalAdditionalOps = [];
-if BpodSystem.FirmwareVersion > 22 % Additional ops can be packaged with state machine description (e.g. programming serial message library)
+if BpodSystem.FirmwareVersion > 22 
     containsAdditionalOps = uint8(1);
     finalAdditionalOps = uint8(0);
 end
+
 % This section can be optimized for speed (currently should take ~0.5ms per module for most tasks)
+% Create serial message vector (if using implicit serial messages)
+serialMessageVector = []; nModulesLoaded = 0;
 if sma.SerialMessageMode == 1
     for i = 1:BpodSystem.HW.n.UartSerialChannels
         if sma.nSerialMessages(i) > 0
-            SerialMessageVector = [SerialMessageVector containsAdditionalOps 'L' i-1 sma.nSerialMessages(i)];
+            serialMessageVector = [serialMessageVector containsAdditionalOps 'L' i-1 sma.nSerialMessages(i)];
             for j = 1:sma.nSerialMessages(i)
-                ThisMessage = sma.SerialMessages{i,j};
-                SerialMessageVector = [SerialMessageVector j length(ThisMessage) ThisMessage];
+                thisMessage = sma.SerialMessages{i,j};
+                serialMessageVector = [serialMessageVector j length(thisMessage) thisMessage];
             end
             nModulesLoaded = nModulesLoaded + 1;
         end
     end
-    SerialMessageVector = uint8(SerialMessageVector);
+    serialMessageVector = uint8(serialMessageVector);
 end
 
+% Send state machine description to Bpod State Machine device
 if BpodSystem.EmulatorMode == 0
-    %% Send state matrix to Bpod device
-    
-    
     if BpodSystem.FirmwareVersion > 22 % Package ops with byte string
-        ByteString = [EightBitMatrix typecast(GlobalTimerMatrix, 'uint8') typecast(ThirtyTwoBitMatrix, 'uint8') SerialMessageVector finalAdditionalOps];
+        byteString = [eightBitMatrix typecast(globalTimerMatrix, 'uint8') typecast(thirtyTwoBitMatrix, 'uint8')... 
+                      serialMessageVector finalAdditionalOps];
     else
-        ByteString = [EightBitMatrix typecast(GlobalTimerMatrix, 'uint8') typecast(ThirtyTwoBitMatrix, 'uint8')];
+        byteString = [eightBitMatrix typecast(globalTimerMatrix, 'uint8') typecast(thirtyTwoBitMatrix, 'uint8')];
     end
-    nBytes = uint16(length(ByteString));
+    nBytes = uint16(length(byteString));
     if BpodSystem.Status.InStateMatrix == 1 % If loading during a trial
         if sma.SerialMessageMode == 0 || BpodSystem.FirmwareVersion > 22
             switch BpodSystem.MachineType
                 case 1
-                    error('Error: Bpod 0.5 cannot send a state machine while a trial is in progress. If you need this functionality, consider switching to Bpod 0.7+')
+                    error(['Error: Bpod 0.5 cannot send a state machine while a trial is in progress. '...
+                           'If you need this functionality, consider switching to Bpod 0.7+'])
                 case 2
                     BpodSystem.SerialPort.write(['C' runASAP use255BackSignal], 'uint8', nBytes, 'uint16');
-                    for i = 1:length(ByteString)
-                        BpodSystem.SerialPort.write(ByteString(i), 'uint8'); % send byte-wise, to avoid HW timer overrun
+                    for i = 1:length(byteString)
+                        BpodSystem.SerialPort.write(byteString(i), 'uint8'); % send byte-wise, to avoid HW timer overrun
                     end
                 case 3
-                    BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
+                    BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') byteString], 'uint8');
                 case 4
-                    BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
+                    BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') byteString], 'uint8');
             end
         else
-            error(['Error: On state machine firmware v22 and older, TrialManager does not support state machine descriptions that' char(10)...
-                'use implicit serial messages (e.g. {''MyModule1'', [''A'' 1 2]}.' char(10)...
-                'Use LoadSerialMessages() to program them explicitly, rewrite your protocol without using TrialManager, or upgrade to firmware v23+.'])
+            error(['Error: On state machine firmware v22 and older, TrialManager does not support state machine descriptions that' ...
+                   char(10) 'use implicit serial messages (e.g. {''MyModule1'', [''A'' 1 2]}.' char(10)...
+                   'Use LoadSerialMessages() to program them explicitly, or upgrade to firmware v23+.'])
         end
     else
-        BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') ByteString], 'uint8');
+        BpodSystem.SerialPort.write(['C' runASAP use255BackSignal typecast(nBytes, 'uint8') byteString], 'uint8');
         if BpodSystem.FirmwareVersion < 23
             if sma.SerialMessageMode == 1 % If SerialMessage Library was updated due to implicit programming
                 % in state machine syntax, current firmware returns an acknowledgement byte which must be read here
                 % to avoid conflicts with subsequent commands. A future firmware update will read this byte after
                 % the next trial starts, to avoid the speed penalty of a read during dead-time (see comment below)
-                BpodSystem.SerialPort.write(SerialMessageVector, 'uint8');
-                Ack = BpodSystem.SerialPort.read(nModulesLoaded, 'uint8');
+                BpodSystem.SerialPort.write(serialMessageVector, 'uint8');
+                ack = BpodSystem.SerialPort.read(nModulesLoaded, 'uint8');
             end
         end
     end
     
-    %% Confirm send. Note: To reduce dead time when SerialMessageMode = 0, transmission is confirmed from
-    %  state machine after next call to RunStateMachine()
+    
     BpodSystem.Status.NewStateMachineSent = 1; % On next run, a byte is returned confirming that the state machine was received.
     BpodSystem.Status.SM2runASAP = runASAP;
-    Confirmed = 1;
-else
-    Confirmed = 1;
+    % Note: depricated confirmation. To reduce dead time when SerialMessageMode = 0, 
+    %       transmission is confirmed on next call to RunStateMachine()
+    confirmed = 1;
+else % In emulator mode, the state machine is not actually sent to a device.
+    confirmed = 1;
 end
-%% Update State Machine Object
+
 BpodSystem.StateMatrixSent = sma;

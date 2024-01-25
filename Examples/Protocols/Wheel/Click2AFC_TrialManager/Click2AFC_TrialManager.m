@@ -18,7 +18,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function Click2AFC_TrialManager
 % This protocol is a starting point for a stationary auditory 2AFC task, 
 % using a wheel attached to a rotary encoder as the choice response interface.
 % This version uses the TrialManager class to achieve zero dead-time acquisition.
@@ -49,21 +48,27 @@ function Click2AFC_TrialManager
 %   calibration curves with several points surrounding 3ul.
 % > From the console, pair the HiFi and Rotary Encoder modules with their USB ports
 
-global BpodSystem
+function Click2AFC_TrialManager
+
+global BpodSystem % Imports the BpodSystem object to the function workspace
 
 %% Assert HiFi + Rotary Encoder modules are present + USB-paired (via USB button on console GUI)
-BpodSystem.assertModule({'HiFi','RotaryEncoder'}, [1 1]); % The second argument [1 1] indicates that both HiFi and RotaryEncoder must be paired with its USB serial ports
+BpodSystem.assertModule({'HiFi','RotaryEncoder'}, [1 1]); 
+% The second argument [1 1] indicates that both HiFi and RotaryEncoder must be paired with its USB serial ports
+
 % Create an instance of the HiFi module
 H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1); % The argument is the name of the HiFi module's USB serial port (e.g. COM3)
+
 % Create an instance of the RotaryEncoder module
 R = RotaryEncoderModule(BpodSystem.ModuleUSB.RotaryEncoder1); 
+
 % Ensure Rotary Encoder module is version 2
 if BpodSystem.Modules.HWVersion_Major(strcmp(BpodSystem.Modules.Name, 'RotaryEncoder1')) < 2
     error('Error: This protocol requires rotary encoder module v2 or newer');
 end
 
 %% Create trial manager object
-TrialManager = BpodTrialManager;
+trialManager = BpodTrialManager;
 
 %% Define task parameters
 S = BpodSystem.ProtocolSettings; % Load settings chosen in launch manager into current workspace as a struct called S
@@ -87,84 +92,105 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
 end
 
 %% Define trials
-MaxTrials = 1000; % Maximum number of trials in the session. Session can be manually ended before MaxTrials from the console GUI.
-TrialTypes = round(rand(1,MaxTrials)); % TrialType 0 = left correct, TrialType 1 = rightCorrect
-EvidenceStrength = rand(1,MaxTrials); % Balance of underlying click rates favoring correct side. 0 = totally random, 
+maxTrials = 1000; % Maximum number of trials in the session. Session can be manually ended before MaxTrials from the console GUI.
+trialTypes = round(rand(1,maxTrials)); % TrialType 0 = left correct, TrialType 1 = rightCorrect
+evidenceStrength = rand(1,maxTrials); % Balance of underlying click rates favoring correct side. 0 = totally random, 
 %                                       0.5 = 3x as many clicks on correct side, 1 = all clicks on correct side
 %                                       Note: In production a uniform distrubution of EvidenceStrength results in too many easy trials.
-CorrectDirection = TrialTypes; CorrectDirection(CorrectDirection == 0) = -1; % Correct response direction for each trial (-1 for left, 1 for right)
+correctDirection = trialTypes; correctDirection(correctDirection == 0) = -1; % Correct response direction for each trial (-1 for left, 1 for right)
 BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
 
 %% Initialize plots
-%-- Side outcome plot (a plugin included in the Bpod_Gen2 repository)
-BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1100 250],'name','Outcome plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
-BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.08 .3 .89 .6]);
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',TrialTypes);
+
+% Initialize the outcome plot
+outcomePlot = LiveOutcomePlot([1 2], {'Left', 'Right'}, trialTypes+1, 90); % Create an instance of the LiveOutcomePlot GUI
+              % Arg1 = trialTypeManifest, a list of possible trial types (even if not yet in trialTypes).
+              % Arg2 = trialTypeNames, a list of names for each trial type in trialTypeManifest
+              % Arg3 = trialTypes, a list of positive integers denoting precomputed trial types in the session
+              % Arg4 = nTrialsToShow, the number of trials to show
+outcomePlot.RewardStateNames = {'LeftReward', 'RightReward'}; % List of state names where reward was delivered
+outcomePlot.PunishStateNames = {'PunishTimeout'}; % List of state names where choice was incorrect and negatively reinforced
+
 %-- Last Trial encoder plot (an online plot included in the protocol folder)
-BpodSystem.ProtocolFigures.EncoderPlotFig = figure('Position', [500 200 350 350],'name','Encoder plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+BpodSystem.ProtocolFigures.EncoderPlotFig = figure('Position', [500 200 350 350],'name','Encoder plot',...
+                                                   'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 BpodSystem.GUIHandles.EncoderAxes = axes('Position', [.15 .15 .8 .8]);
-LastTrialEncoderPlot(BpodSystem.GUIHandles.EncoderAxes, 'init', S.GUI.ChoiceThreshold);
-%-- Parameter GUI
+last_trial_encoder_plot(BpodSystem.GUIHandles.EncoderAxes, 'init', S.GUI.ChoiceThreshold);
+
+%-- Start parameter GUI
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin
 
 %% Setup sound
 % Configure HiFi module
 H.SamplingRate = S.StimSamplingRate;
-H.DigitalAttenuation_dB = -25; % Attenuate output (for headphones, for best results set to 0 in production and attenuate with speaker amp gain)
-H.HeadphoneAmpEnabled = true; H.HeadphoneAmpGain = 25; % Configure headphone amplifier if using SD model
+H.DigitalAttenuation_dB = 0; % Set a negative value here if necessary for digital volume control.
+H.HeadphoneAmpEnabled = true; H.HeadphoneAmpGain = 10; % Configure headphone amplifier if using SD model
 H.SynthWaveform = 'WhiteNoise'; % A synth waveform will be played continuously when other sounds are not playing
 H.SynthAmplitude = S.GUI.NoiseMaskIntensity; % Set synth waveform intensity. The stimulus waveforms will have white noise added at this intensity 
                                              % for a seamless background noise mask
 H.AMenvelope = 1/(H.SamplingRate*0.001):1/(H.SamplingRate*0.001):1; % Define 1ms linear envelope of amplitude coefficients, applied at sound onset 
                                                                     % + in reverse at sound offset. This helps avoid speaker 'pop'
 % Generate stimulus for first trial (this reappears in the main loop for each subsequent trial)
-[Waveform, WaveParams] = PoissonClickWaveform(EvidenceStrength(1)*CorrectDirection(1), S.GUI.StimTotalClickFreq, S.GUI.ResponseTime,...% First arg is the signed balance between click speed for L+R channels
-                    H.SamplingRate, S.GUI.StimSoundIntensity, S.GUI.NoiseMaskIntensity); % Second arg: total click rate (Hz) to divide between L+R channels    
+[waveform, waveParams] = poisson_click_waveform(evidenceStrength(1)*correctDirection(1),... 
+                         S.GUI.StimTotalClickFreq, S.GUI.ResponseTime,...% First arg is the signed balance between click speed for L+R channels
+                         H.SamplingRate, S.GUI.StimSoundIntensity, S.GUI.NoiseMaskIntensity); % Second arg: total click rate (Hz) to divide between L+R channels    
+
 % Generate feedback sounds for correct and error 
-Background = GenerateWhiteNoise(H.SamplingRate, 0.3, S.GUI.NoiseMaskIntensity, 2);
-CorrectSound = Background + [GenerateSineWave(H.SamplingRate, 1000, 0.1) GenerateSineWave(H.SamplingRate, 2000, 0.1) GenerateSineWave(H.SamplingRate, 3000, 0.1)];
-ErrorSound = GenerateWhiteNoise(H.SamplingRate, S.GUI.ErrorDelay, S.GUI.ErrorSoundIntensity, 2);
-% Load feedback sounds to the HiFi module
-H.load(1, Waveform); % Load first trial's Poisson click stream
-H.load(2, CorrectSound);
-H.load(3, ErrorSound);
+background = GenerateWhiteNoise(H.SamplingRate, 0.3, S.GUI.NoiseMaskIntensity, 2);
+correctSound = background + [GenerateSineWave(H.SamplingRate, 1000, 0.1) GenerateSineWave(H.SamplingRate, 2000, 0.1)... 
+                             GenerateSineWave(H.SamplingRate, 3000, 0.1)];
+errorSound = GenerateWhiteNoise(H.SamplingRate, S.GUI.ErrorDelay, S.GUI.ErrorSoundIntensity, 2);
+
+% Load sounds to the HiFi module
+H.load(1, waveform); % Load first trial's Poisson click stream
+H.load(2, correctSound);
+H.load(3, errorSound);
 H.push; % Add any recently loaded sounds to the current sound set
 
 %% Setup rotary encoder module
 R.useAdvancedThresholds = 'on'; % Advanced thresholds are available on rotary encoder module r2.0 or newer.
                                 % See notes in setAdvancedThresholds() function in /Modules/RotaryEncoderModule.m for parameters and usage
-R.setAdvancedThresholds([-S.GUI.ChoiceThreshold S.GUI.ChoiceThreshold S.GUI.InitThreshold], [0 0 1], [0 0 S.GUI.InitDelay]); % Syntax: setAdvancedThresholds(thresholds, thresholdTypes, thresholdTimes)
+R.setAdvancedThresholds([-S.GUI.ChoiceThreshold S.GUI.ChoiceThreshold S.GUI.InitThreshold],... 
+    [0 0 1], [0 0 S.GUI.InitDelay]); % Syntax: setAdvancedThresholds(thresholds, thresholdTypes, thresholdTimes)
 R.sendThresholdEvents = 'on'; % Enable sending threshold crossing events to state machine
 R.startUSBStream; % Begin streaming position data to PC via USB
 
 %% Prepare and start first trial
-sma = PrepareStateMachine(S, TrialTypes, 1, []); % Prepare state machine for trial 1 with empty "current events" variable
-TrialManager.startTrial(sma); % Sends & starts running first trial's state machine. A MATLAB timer object updates the 
+sma = PrepareStateMachine(S, trialTypes, 1, []); % Prepare state machine for trial 1 with empty "current events" variable
+trialManager.startTrial(sma); % Sends & starts running first trial's state machine. A MATLAB timer object updates the 
                               % console UI, while code below proceeds in parallel.
 
 %% Main trial loop
-for currentTrial = 1:MaxTrials
+for currentTrial = 1:maxTrials
     S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
-    currentTrialEvents = TrialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimedOut', 'Error'}); 
+    currentTrialEvents = trialManager.getCurrentEvents({'LeftReward', 'RightReward', 'TimedOut', 'PunishTimeout'}); 
                                        % Hangs here until Bpod enters one of the listed trigger states, 
                                        % then returns current trial's states visited + events captured to this point
+
+    % Exit the session if the user has pressed the end button
     if BpodSystem.Status.BeingUsed == 0
         H.stop; % Stop any ongoing sounds
         H.SynthAmplitude = 0; % Turn off white noise
         R.stopUSBStream; % Stop streaming positions from rotary encoder module
         return
     end
-    [sma, S] = PrepareStateMachine(S, TrialTypes, currentTrial+1, currentTrialEvents); % Prepare next state machine.
+
+    [sma, S] = PrepareStateMachine(S, trialTypes, currentTrial+1, currentTrialEvents); % Prepare next state machine.
+    
     % Since PrepareStateMachine is a function with a separate workspace, pass any local variables needed to make 
     % the state machine as fields of settings struct S e.g. S.learningRate = 0.2.
     SendStateMachine(sma, 'RunASAP'); % With TrialManager, you can send the next trial's state machine while the current trial is ongoing
-    [Waveform, WaveParams] = PoissonClickWaveform(EvidenceStrength(currentTrial+1)*CorrectDirection(currentTrial+1), S.GUI.StimTotalClickFreq, S.GUI.ResponseTime,...% First arg is the signed balance between click speed for L+R channels
+    [waveform, waveParams] = poisson_click_waveform(evidenceStrength(currentTrial+1)*correctDirection(currentTrial+1),... 
+                    S.GUI.StimTotalClickFreq, S.GUI.ResponseTime,...% First arg is the signed balance between click speed for L+R channels
                     H.SamplingRate, S.GUI.StimSoundIntensity, S.GUI.NoiseMaskIntensity); % Second arg: total click rate (Hz) to divide between L+R channels    
     
-    H.load(1, Waveform); % Load next trial's Poisson click stream
-    R.setAdvancedThresholds([-S.GUI.ChoiceThreshold S.GUI.ChoiceThreshold S.GUI.InitThreshold], [0 0 1], [0 0 S.GUI.InitDelay]); % Syntax: setAdvancedThresholds(thresholds, thresholdTypes, thresholdTimes)
+    H.load(1, waveform); % Load next trial's Poisson click stream
+    R.setAdvancedThresholds([-S.GUI.ChoiceThreshold S.GUI.ChoiceThreshold S.GUI.InitThreshold], [0 0 1],... 
+        [0 0 S.GUI.InitDelay]); % Syntax: setAdvancedThresholds(thresholds, thresholdTypes, thresholdTimes)
     
-    RawEvents = TrialManager.getTrialData; % Hangs here until trial is over, then retrieves full trial's raw data
+    RawEvents = trialManager.getTrialData; % Hangs here until trial is over, then retrieves full trial's raw data
+
+    % Exit the session if the user has pressed the end button
     if BpodSystem.Status.BeingUsed == 0
         H.stop; % Stop any ongoing sounds
         H.SynthAmplitude = 0; % Turn off white noise
@@ -172,21 +198,24 @@ for currentTrial = 1:MaxTrials
         return
     end
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
-    TrialManager.startTrial(); % Start processing the next trial's events (call with no argument since SM was already sent)
+    trialManager.startTrial(); % Start processing the next trial's events (call with no argument since SM was already sent)
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned
         if currentTrial == 1
-            EventData = R.readUSBStream(0); % Read and dump any REM data captured before first trial start. Subsequent REM data will be saved. 
-            TrialStartTime = EventData.EventTimestamps(1); % First trial start time on REM clock is taken from this initial read
+            eventData = R.readUSBStream(0); % Read and dump any REM data captured before first trial start. Subsequent REM data will be saved. 
+            TrialStartTime = eventData.EventTimestamps(1); % First trial start time on REM clock is taken from this initial read
         end
-        BpodSystem.Data.EncoderData{currentTrial} = R.readUSBStream(0); % Returns REM data up to event '0', see {'RotaryEncoder1', ['#' 0]} in output actions of first state 
+        BpodSystem.Data.EncoderData{currentTrial} = R.readUSBStream(0); % Returns REM data up to event '0'
+                                                                        % see {'RotaryEncoder1', ['#' 0]} in output actions of first state 
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
-        BpodSystem.Data.EvidenceStrength(currentTrial) = EvidenceStrength(currentTrial);
-        BpodSystem.Data.CorrectDirection(currentTrial) = CorrectDirection(currentTrial);
-        BpodSystem.Data.ClickWaveformParams{currentTrial} = WaveParams;
+        BpodSystem.Data.EvidenceStrength(currentTrial) = evidenceStrength(currentTrial);
+        BpodSystem.Data.CorrectDirection(currentTrial) = correctDirection(currentTrial);
+        BpodSystem.Data.ClickWaveformParams{currentTrial} = waveParams;
         BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)
-        BpodSystem.Data.TrialTypes(currentTrial) = TrialTypes(currentTrial); % Adds the trial type of the current trial to data
-        UpdateSideOutcomePlot(TrialTypes, BpodSystem.Data);
-        % Align this trial's rotary encoder timestamps to state machine trial-start (timestamp of '#' command sent from state machine to encoder module in 'TrialStart' state)
+        BpodSystem.Data.TrialTypes(currentTrial) = trialTypes(currentTrial); % Adds the trial type of the current trial to data
+        outcomePlot.update(trialTypes+1, BpodSystem.Data); % Update the outcome plot
+        
+        % Align this trial's rotary encoder timestamps to state machine trial-start 
+        % (timestamp of '#' command sent from state machine to encoder module in 'TrialStart' state)
         if currentTrial == 1 % Only on the first trial, the first and second trial's trial-start timestamps will be retrieved in the rotary encoder data
                              % On all subsequent trials, only the next trial's start timestamp will be returned (because data is retrieved mid-trial)
             % For first trial, TrialStartTime is computed above
@@ -196,38 +225,26 @@ for currentTrial = 1:MaxTrials
             NextTrialStartTime = BpodSystem.Data.EncoderData{currentTrial}.EventTimestamps(1);
         end
         BpodSystem.Data.EncoderData{currentTrial}.Times = BpodSystem.Data.EncoderData{currentTrial}.Times - TrialStartTime; % Align timestamps to state machine's trial time 0
-        BpodSystem.Data.EncoderData{currentTrial}.EventTimestamps = BpodSystem.Data.EncoderData{currentTrial}.EventTimestamps - TrialStartTime; % Align event timestamps to state machine's trial time 0
+        BpodSystem.Data.EncoderData{currentTrial}.EventTimestamps = ...
+            BpodSystem.Data.EncoderData{currentTrial}.EventTimestamps - TrialStartTime; % Align event timestamps to state machine's trial time 0
+        
         % Update rotary encoder plot
         TrialDuration = BpodSystem.Data.TrialEndTimestamp(currentTrial)-BpodSystem.Data.TrialStartTimestamp(currentTrial);
-        LastTrialEncoderPlot(BpodSystem.GUIHandles.EncoderAxes, 'update', S.GUI.ChoiceThreshold, BpodSystem.Data.EncoderData{currentTrial},TrialDuration);
-        SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
+        last_trial_encoder_plot(BpodSystem.GUIHandles.EncoderAxes, 'update', S.GUI.ChoiceThreshold, BpodSystem.Data.EncoderData{currentTrial},TrialDuration);
+        
+        % Save the field BpodSystem.Data to the current data file
+        SaveBpodSessionData; 
     end
 end
 R.stopUSBStream;
 
-function UpdateSideOutcomePlot(TrialTypes, Data) 
-global BpodSystem
-Outcomes = zeros(1,Data.nTrials);
-for x = 1:Data.nTrials % Encode user data for side outcome plot plugin
-    if ~isnan(Data.RawEvents.Trial{x}.States.Drinking(1))
-        Outcomes(x) = 1;
-    elseif ~isnan(Data.RawEvents.Trial{x}.States.Error(1))
-        Outcomes(x) = 0;
-    elseif ~isnan(Data.RawEvents.Trial{x}.States.TimedOut(1))
-        Outcomes(x) = 2;
-    else
-        Outcomes(x) = 3;
-    end
-end
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'update',Data.nTrials+1,TrialTypes,Outcomes);
-
-function [sma, S] = PrepareStateMachine(S, TrialTypes, currentTrial, currentTrialEvents)
-    ValveTime = GetValveTimes(S.GUI.RewardAmount, 1); % Update reward amount
-    switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
+function [sma, S] = PrepareStateMachine(S, trialTypes, currentTrial, currentTrialEvents)
+    valveTime = GetValveTimes(S.GUI.RewardAmount, 1); % Update reward amount
+    switch trialTypes(currentTrial) % Determine trial-specific state matrix fields
         case 0
-            LeftChoiceAction = 'LeftReward'; RightChoiceAction = 'Error'; 
+            leftChoiceAction = 'LeftReward'; rightChoiceAction = 'PunishTimeout'; 
         case 1
-            LeftChoiceAction = 'Error'; RightChoiceAction = 'RightReward'; 
+            leftChoiceAction = 'PunishTimeout'; rightChoiceAction = 'RightReward'; 
     end
     sma = NewStateMachine(); % Assemble new state machine description
     sma = SetCondition(sma, 1, 'Port1', 0); % Condition 1: Port 1 low (is out)
@@ -248,25 +265,25 @@ function [sma, S] = PrepareStateMachine(S, TrialTypes, currentTrial, currentTria
         'OutputActions', {'LED', 1, 'RotaryEncoder1', [';' 4]}); % ';' = enable thresholds specified by bits of a byte. 4 = binary 100 (enable threshold# 3)                                      
     sma = AddState(sma, 'Name', 'DeliverStimulus', ...
         'Timer', S.GUI.ResponseTime,...
-        'StateChangeConditions', {'RotaryEncoder1_1', LeftChoiceAction, 'RotaryEncoder1_2', RightChoiceAction, 'Tup', 'TimedOut'},...
+        'StateChangeConditions', {'RotaryEncoder1_1', leftChoiceAction, 'RotaryEncoder1_2', rightChoiceAction, 'Tup', 'TimedOut'},...
         'OutputActions', {'RotaryEncoder1', ['Z;' 3], 'HiFi1', ['P' 0]}); % 'P' plays a sound, 0 is the sound index (sound 0 in Arduino is known in MATLAB as sound 1)
     sma = AddState(sma, 'Name', 'LeftReward', ...
-        'Timer', ValveTime,...
+        'Timer', valveTime,...
         'StateChangeConditions', {'Tup', 'Drinking'},...
         'OutputActions', {'Valve1', 1, 'HiFi1', ['P' 1]}); % Sound 1 is reward feedback. Valve 1 is open during this state.
     sma = AddState(sma, 'Name', 'RightReward', ...
-        'Timer', ValveTime,...
+        'Timer', valveTime,...
         'StateChangeConditions', {'Tup', 'Drinking'},...
         'OutputActions', {'Valve1', 1, 'HiFi1', ['P' 1]});
     sma = AddState(sma, 'Name', 'Drinking', ...
         'Timer', 0,...
-        'StateChangeConditions', {'Condition1', 'DrinkingGrace', 'Condition2', 'DrinkingGrace'},...
+        'StateChangeConditions', {'Condition1', 'DrinkingGrace'},...
         'OutputActions', {});
     sma = AddState(sma, 'Name', 'DrinkingGrace', ...
         'Timer', 0.5,...
         'StateChangeConditions', {'Tup', 'InterTrialInterval', 'Port1In', 'Drinking'},...
         'OutputActions', {});
-    sma = AddState(sma, 'Name', 'Error', ...
+    sma = AddState(sma, 'Name', 'PunishTimeout', ...
         'Timer', S.GUI.ErrorDelay,...
         'StateChangeConditions', {'Tup', 'InterTrialInterval'},...
         'OutputActions', {'HiFi1', ['P' 2]});

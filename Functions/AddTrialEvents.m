@@ -18,98 +18,143 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% Adds trial events to human-readable trial event struct.
+% AddTrialEvents formats trial events returned by RunStateMachine() or BpodTrialManager() 
+% and adds them to a human-readable session data struct. 
+% 
+% Arguments:
+% -sd: A MATLAB struct to store session data. This can be empty (e.g. on the first trial of 
+%      the session) or a data struct previously passed to AddTrialEvents on earlier trials. 
+%      Certain fields of te will be updated with the new data in rawTrialEvents. Additional
+%      user-added fields of sd will be ignored, and must be manually updated by the user.
+%      Hint: If BpodSystem.Data is passed in as sd, it can be stored later to the
+%      current data file with SaveBpodSessionData();
+% -rawTrialEvents: A raw trial events struct returned by RunStateMachine() or BpodTrialManager.
+%
+% Returns:
+% -updatedSD: A session data structure with added data from rawTrialEvents.
+% Fields of updatedTE added/updated by AddTrialEvents are:
+% -Info: A struct with information about the system hardware, software and experimental protocol
+% -nTrials: The number of trials completed
+% -RawData: An unformatted copy of the data in rawTrialEvents
+% -RawEvents: A human-readable copy of the data in rawTrialEvents,
+%             organized by trial.
+% -TrialStartTimestamp: The trial start time of each trial in the dataset. Units = seconds
+% -TrialEndTimestamp: The trial end time of each trial in the dataset. Units = seconds
+% -StateMachineErrorCodes: Error codes returned by the system on each trial. 0 = no error.
+% -SettingsFile: The settings struct selected by the user on starting the session
+%
+% Example usage: sd = AddTrialEvents(sd, rawTrialEvents);
+% Note: If BpodSystem.Data is passed as sd, it can be saved to the current data file with SaveBpodSessionData();
+% BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents);
 
-% An optional third argument is the state matrix of the trial to be
-% processed (this must be passed explicitly if using TrialManager)
+function updatedSD = AddTrialEvents(sd, rawTrialEvents)
 
-function newTE = AddTrialEvents(TE, RawTrialEvents)
-global BpodSystem
-StateNames = BpodSystem.LastStateMatrix.StateNames;
-if isfield(TE, 'RawEvents')
-    TrialNum = length(TE.RawEvents.Trial) + 1;
+global BpodSystem % Import the global BpodSystem object
+
+stateNames = BpodSystem.LastStateMatrix.StateNames;
+
+% Add system, experiment and settings metadata if this is the first trial in the dataset
+if isfield(sd, 'RawEvents')
+    trialNum = length(sd.RawEvents.Trial) + 1;
 else
-    TrialNum = 1;
-    TE.Info = struct;
-    TE.Info.SoftwareVersion = BpodSoftwareVersion_Semantic;
+    % This is the first pass to AddTrialEvents. Add session metadata.
+    trialNum = 1;
+    sd.Info = struct;
+    sd.Info.BpodSoftwareVersion = BpodSoftwareVersion_Semantic;
     if BpodSystem.EmulatorMode == 1
-        TE.Info.StateMachineVersion = 'Bpod 0.7-1.0 EMULATOR';
+        sd.Info.StateMachineVersion = 'Bpod 0.7-1.0 EMULATOR';
     else
-        switch BpodSystem.MachineType
-            case 1
-                TE.Info.StateMachineVersion = 'Bpod r0.5';
-            case 2
-                TE.Info.StateMachineVersion = 'Bpod r0.7-1.0';
-            case 3
-                TE.Info.StateMachineVersion = 'Bpod r2';
-            case 4
-                TE.Info.StateMachineVersion = 'Bpod r2+';
-        end
-        TE.Info.Firmware = struct;
-        TE.Info.Firmware.StateMachine = BpodSystem.FirmwareVersion;
+        sd.Info.StateMachineVersion = ['Bpod ' BpodSystem.HW.StateMachineModel];
+        sd.Info.Firmware = struct;
+        sd.Info.Firmware.StateMachine = BpodSystem.FirmwareVersion;
         if BpodSystem.FirmwareVersion > 22
-            TE.Info.Firmware.StateMachine_Minor = BpodSystem.HW.minorFirmwareVersion;
+            sd.Info.Firmware.StateMachine_Minor = BpodSystem.HW.minorFirmwareVersion;
         end
         for i = 1:BpodSystem.Modules.nModules
             if BpodSystem.Modules.Connected(i)
-                TE.Info.Firmware.(BpodSystem.Modules.Name{i}) = BpodSystem.Modules.FirmwareVersion(i);
+                sd.Info.Firmware.(BpodSystem.Modules.Name{i}) = BpodSystem.Modules.FirmwareVersion(i);
             end
         end
         if BpodSystem.FirmwareVersion > 22
-            TE.Info.CircuitRevision = struct;
-            TE.Info.CircuitRevision = BpodSystem.HW.CircuitRevision;
+            sd.Info.CircuitRevision = struct;
+            sd.Info.CircuitRevision = BpodSystem.HW.CircuitRevision;
         end
-        TE.Info.Modules = BpodSystem.Modules;
+        sd.Info.Modules = BpodSystem.Modules;
     end
-    TE.Info.SessionDate = datestr(now, 1);
-    TheTime = now;
-    TE.Info.SessionStartTime_UTC = datestr(TheTime, 13);
-    TE.Info.SessionStartTime_MATLAB = TheTime;
+    sd.Info.PCsetup = struct;
+    sd.Info.PCsetup.OS = BpodSystem.HostOS;
+    sd.Info.PCsetup.MATLABver = version('-release');
+    sd.Info.SessionDate = datestr(now, 1);
+    if ~isempty(BpodSystem.ProtocolStartTime)
+        theTime = BpodSystem.ProtocolStartTime/100000;
+    else % The function is called outside the context of a session. Use current time.
+        theTime = now;
+    end
+    sd.Info.SessionStartTime_UTC = datestr(theTime, 13);
+    sd.Info.SessionStartTime_MATLAB = theTime;
+
+    % Add settings struct selected for the session in the launch manager
+    sd.SettingsFile = BpodSystem.ProtocolSettings;
 end
-TE.nTrials = TrialNum;
-%% Parse and add raw events for this trial
-States = RawTrialEvents.States;
-nPossibleStates = length(StateNames);
-VisitedStates = zeros(1,nPossibleStates);
+
+% Update number of trials
+sd.nTrials = trialNum;
+
+% Parse and add raw events for this trial
+states = rawTrialEvents.States;
+nPossibleStates = length(stateNames);
+visitedStates = zeros(1,nPossibleStates);
+
 % determine unique states while preserving visited order
-UniqueStates = zeros(1,nPossibleStates);
+uniqueStates = zeros(1,nPossibleStates);
 nUniqueStates = 0;
-UniqueStateIndexes = zeros(1,length(States));
-for x = 1:length(States)
-    if sum(UniqueStates == States(x)) == 0
+uniqueStateIndexes = zeros(1,length(states));
+for x = 1:length(states)
+    if sum(uniqueStates == states(x)) == 0
         nUniqueStates = nUniqueStates + 1;
-        UniqueStates(nUniqueStates) = States(x);
-        VisitedStates(States(x)) = 1;
-        UniqueStateIndexes(x) = nUniqueStates;
+        uniqueStates(nUniqueStates) = states(x);
+        visitedStates(states(x)) = 1;
+        uniqueStateIndexes(x) = nUniqueStates;
     else
-        UniqueStateIndexes(x) = find(UniqueStates == States(x));
+        uniqueStateIndexes(x) = find(uniqueStates == states(x));
     end
 end
-UniqueStates = UniqueStates(1:nUniqueStates);
-UniqueStateDataMatrices = cell(1,nUniqueStates);
-% Create a 2-d matrix for each state in a cell array
-for x = 1:length(States)
-    UniqueStateDataMatrices{UniqueStateIndexes(x)} = [UniqueStateDataMatrices{UniqueStateIndexes(x)}; [RawTrialEvents.StateTimestamps(x) RawTrialEvents.StateTimestamps(x+1)]];
+uniqueStates = uniqueStates(1:nUniqueStates);
+uniqueStateDataMatrices = cell(1,nUniqueStates);
+
+% Create a 2-d matrix for each state with entry and exit timestamps for each visit
+for x = 1:length(states)
+    uniqueStateDataMatrices{uniqueStateIndexes(x)} = [uniqueStateDataMatrices{uniqueStateIndexes(x)};... 
+        [rawTrialEvents.StateTimestamps(x) rawTrialEvents.StateTimestamps(x+1)]];
 end
 for x = 1:nUniqueStates
-    TE.RawEvents.Trial{TrialNum}.States.(StateNames{UniqueStates(x)}) = UniqueStateDataMatrices{x};
+    sd.RawEvents.Trial{trialNum}.States.(stateNames{uniqueStates(x)}) = uniqueStateDataMatrices{x};
 end
 for x = 1:nPossibleStates
-    if VisitedStates(x) == 0
-        TE.RawEvents.Trial{TrialNum}.States.(StateNames{x}) = [NaN NaN];
+    if visitedStates(x) == 0
+        sd.RawEvents.Trial{trialNum}.States.(stateNames{x}) = [NaN NaN];
     end
 end
-Events = RawTrialEvents.Events;
-for x = 1:length(Events)
-    TE.RawEvents.Trial{TrialNum}.Events.(BpodSystem.StateMachineInfo.EventNames{Events(x)}) = RawTrialEvents.EventTimestamps(Events == Events(x));
+
+% Create a 2-d matrix for each event with timestamps for each occurance
+events = rawTrialEvents.Events;
+for x = 1:length(events)
+    sd.RawEvents.Trial{trialNum}.Events.(BpodSystem.StateMachineInfo.EventNames{events(x)}) =... 
+        rawTrialEvents.EventTimestamps(events == events(x));
 end
-TE.RawData.OriginalStateNamesByNumber{TrialNum} = StateNames;
-TE.RawData.OriginalStateData{TrialNum} = RawTrialEvents.States;
-TE.RawData.OriginalEventData{TrialNum} = RawTrialEvents.Events;
-TE.RawData.OriginalStateTimestamps{TrialNum} = RawTrialEvents.StateTimestamps;
-TE.RawData.OriginalEventTimestamps{TrialNum} = RawTrialEvents.EventTimestamps;
-TE.TrialStartTimestamp(TrialNum) = RawTrialEvents.TrialStartTimestamp;
-TE.TrialEndTimestamp(TrialNum) = RawTrialEvents.TrialEndTimestamp;
-TE.RawData.StateMachineErrorCodes{TrialNum} = RawTrialEvents.ErrorCodes;
-TE.SettingsFile = BpodSystem.ProtocolSettings;
-newTE = TE;
+
+% Add an unformatted copy of rawTrialEvents to sd
+sd.RawData.OriginalStateNamesByNumber{trialNum} = stateNames;
+sd.RawData.OriginalStateData{trialNum} = rawTrialEvents.States;
+sd.RawData.OriginalEventData{trialNum} = rawTrialEvents.Events;
+sd.RawData.OriginalStateTimestamps{trialNum} = rawTrialEvents.StateTimestamps;
+sd.RawData.OriginalEventTimestamps{trialNum} = rawTrialEvents.EventTimestamps;
+
+% Add trial start/end timestamps
+sd.TrialStartTimestamp(trialNum) = rawTrialEvents.TrialStartTimestamp;
+sd.TrialEndTimestamp(trialNum) = rawTrialEvents.TrialEndTimestamp;
+
+% Add error codes
+sd.RawData.StateMachineErrorCodes{trialNum} = rawTrialEvents.ErrorCodes;
+
+updatedSD = sd;

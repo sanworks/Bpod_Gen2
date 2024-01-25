@@ -1,5 +1,6 @@
 % Example state matrix: A condition (GlobalTimer1, On), triggered by entry into port 1 during state 1,
 % causes the second state (the pause before port 3 light) to be skipped.
+% Requires: behavior ports or lickometers with visible LEDs connected to Ch1, Ch2 and Ch3
 
 sma = NewStateMachine;
 sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', 1.5, 'OnsetDelay', 0, 'Channel', 'PWM1', 'PulseWidthByte', 255); 

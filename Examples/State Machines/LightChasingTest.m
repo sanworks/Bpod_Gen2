@@ -1,4 +1,5 @@
-% Example state matrix: light chasing.
+% Example state matrix: light chasing. Follow the LED to proceed to the next state.
+% Requires: behavior ports or lickometers with visible LEDs connected to Ch1, Ch2 and Ch3
 
 sma = NewStateMachine;
                 

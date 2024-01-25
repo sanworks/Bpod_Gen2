@@ -17,6 +17,27 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% BpodWavePlayer is a class to interface with the Bpod Analog Output Module
+% via its USB connection to the PC. The Analog Output module must have
+% WavePlayer firmware installed. Firmware can be swapped with LoadBpodFirmware().
+%
+% User-configurable device parameters are exposed as class properties. Setting
+% the value of a property will trigger its 'set' method to update the device.
+%
+% Docs:
+% https://sanworks.github.io/Bpod_Wiki/module-documentation/waveplayer/
+% Additional documentation of properties and methods is given in-line below.
+%
+% Example usage:
+% W = BpodWavePlayer('COM3'); % Create an instance of BpodWavePlayer,
+%                         connecting to the Analog Output Module on port COM3
+% W.SamplingRate = 100000; % Set the sampling rate to 100kHz
+% myWaveform = GenerateSineWave(100000, 1000, 1); % Generate a 1-second 1kHz pure tone sampled at 100kHz
+% W.loadWaverform(2, myWaveform); % Load myWaveform to the WavePlayer module at position 2
+% W.play([1 3], 2); % Play waveform 2 on output channels 1 and 3
+% clear W; % clear the object from the workspace, releasing the USB serial port
+
 classdef BpodWavePlayer < handle
     properties
         Port % ArCOM Serial port
@@ -54,21 +75,26 @@ classdef BpodWavePlayer < handle
     end
     methods
         function obj = BpodWavePlayer(portString, varargin)
-            ShowWarnings = 1;
+            % Constructor
+            showWarnings = 1;
             if nargin > 1
                 if strcmp(varargin{1}, 'NoWarnings')
-                    ShowWarnings = 0;
+                    showWarnings = 0;
                 end
             end
+
+            % Connect to USB Serial port
             obj.Port = ArCOMObject_Bpod(portString, 115200);
             obj.Port.write(227, 'uint8');
             response = obj.Port.read(1, 'uint8');
             if response ~= 228
                 error('Could not connect =( ')
             end
+
+            % Read and verify firmware version
             obj.Info.FirmwareVersion = obj.Port.read(1, 'uint32');
             if obj.Info.FirmwareVersion < obj.CurrentFirmwareVersion  
-                if ShowWarnings == 1
+                if showWarnings == 1
                     disp('*********************************************************************');
                     disp(['Warning: Old firmware detected: v' num2str(obj.Info.FirmwareVersion) ...
                         '. The current version is: v' num2str(obj.CurrentFirmwareVersion) char(13)...
@@ -76,6 +102,8 @@ classdef BpodWavePlayer < handle
                     disp('*********************************************************************');
                 end
             end
+
+            % Read hardware information
             obj.Info.HardwareVersion = NaN;
             obj.Info.CircuitRevision = NaN;
             if obj.Info.FirmwareVersion > 4
@@ -89,25 +117,31 @@ classdef BpodWavePlayer < handle
             triggerModeIndex = obj.Port.read(1, 'uint8')+1;
             obj.TriggerProfileLogic = obj.Port.read(1, 'uint8');
             obj.nTriggerProfiles = obj.Port.read(1, 'uint8');
-            RangeIndex = obj.Port.read(1, 'uint8')+1;
-            SamplingPeriodMicroseconds = typecast(obj.Port.read(4, 'uint8'), 'single');
+            rangeIndex = obj.Port.read(1, 'uint8')+1;
+            samplingPeriodMicroseconds = typecast(obj.Port.read(4, 'uint8'), 'single');
             obj.BpodEventsLogic = obj.Port.read(obj.nChannels, 'uint8');
             obj.LoopModeLogic = obj.Port.read(obj.nChannels, 'uint8');
             loopDurationSamples =  obj.Port.read(obj.nChannels, 'uint32');
+
+            % Setup parameters
             obj.Waveforms = cell(1,obj.maxWaves); % Local copy of currently loaded waveforms
             obj.maxSimultaneousChannels = obj.nChannels;
             obj.TriggerProfiles = zeros(obj.nTriggerProfiles, obj.nChannels);
             obj.TriggerProfileEnable = obj.ValidBinaryStates{obj.TriggerProfileLogic+1};
             obj.TriggerMode = obj.TriggerModeStrings{triggerModeIndex};
-            obj.OutputRange = obj.ValidRanges{RangeIndex};
-            obj.SamplingRate = 1/(SamplingPeriodMicroseconds/1000000);
+            obj.OutputRange = obj.ValidRanges{rangeIndex};
+            obj.SamplingRate = 1/(samplingPeriodMicroseconds/1000000);
             obj.LoopDuration = single(loopDurationSamples)/single(obj.SamplingRate);
             obj.LoopMode = obj.ValidBinaryStates(obj.LoopModeLogic+1);
             obj.BpodEvents = obj.ValidBinaryStates(obj.BpodEventsLogic+1);
             obj.Initialized = 1;
             obj.set2Defaults;
         end
+
         function set.TriggerMode(obj, mode)
+            % Set trigger mode
+            % Parameters = mode (char array), 'normal', 'master' or 'toggle'
+
             switch lower(mode)
                 case 'normal'
                     modeByte = 0;
@@ -119,74 +153,79 @@ classdef BpodWavePlayer < handle
                     error(['Invalid trigger mode: ' mode '. Valid modes are: Normal, Master, Toggle.'])
             end
             obj.Port.write(['T' modeByte], 'uint8');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error setting trigger mode. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting trigger mode');
             obj.TriggerMode = mode;
         end
-        function set.BpodEvents(obj,Events)
-            nEvents = length(Events);
+
+        function set.BpodEvents(obj, events)
+            % Enable/Disable behavior events indicating when waveforms are played on each channel
+            % Arguments: events, a 1xnChannels cell array of strings indicating 'on' or 'off' for each analog output channel.
+
+            nEvents = length(events);
             if nEvents ~= obj.nChannels
-                error('Error setting Bpod Events: one status must be given for each channel - i.e. if 4 channels, {''Off'', ''On'', ''Off'', ''Off''}');
+                error(['Error setting Bpod Events: one status must be given for each channel - ' ...
+                       'i.e. if 4 channels, {''Off'', ''On'', ''Off'', ''Off''}']);
             end
-            BpodEvents = zeros(1,nEvents);
+            bpodEvents = zeros(1,nEvents);
             for i = 1:nEvents
-                if strcmp(lower(Events{i}), 'on')
-                    BpodEvents(i) = 1;
-                elseif strcmp(lower(Events{i}), 'off')
-                    BpodEvents(i) = 0;
+                if strcmp(lower(events{i}), 'on')
+                    bpodEvents(i) = 1;
+                elseif strcmp(lower(events{i}), 'off')
+                    bpodEvents(i) = 0;
                 else
                     error('Error setting Bpod Events: status of each channel must be either ''On'' or ''Off''');
                 end
             end
-            obj.Port.write(['V' BpodEvents], 'uint8');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error setting Bpod events. Confirm code not returned.');
-            end
-            obj.BpodEvents = Events;
-            obj.BpodEventsLogic = BpodEvents;
+            obj.Port.write(['V' bpodEvents], 'uint8');
+            obj.confirmTransmission('setting enable/disable Bpod events');
+            obj.BpodEvents = events;
+            obj.BpodEventsLogic = bpodEvents;
         end
-        function set.LoopMode(obj, Modes)
+
+        function set.LoopMode(obj, modes)
+            % Set loop mode on or off
+            % Arguments: modes, a 1xnChannels cell array of strings indicating 'on' or 'off' for each analog output channel.
+
             if obj.Initialized
-                LoopModes = zeros(1,obj.nChannels);
+                loopModes = zeros(1,obj.nChannels);
                 for i = 1:obj.nChannels
-                    if strcmp(lower(Modes{i}), 'on')
+                    if strcmp(lower(modes{i}), 'on')
                         if obj.LoopDuration(i) == 0
                             error('Error: before enabling loop mode, each enabled channel must have a valid loop duration.')
                         end
-                        LoopModes(i) = 1;
-                    elseif strcmp(lower(Modes{i}), 'off')
-                        LoopModes(i) = 0;
+                        loopModes(i) = 1;
+                    elseif strcmp(lower(modes{i}), 'off')
+                        loopModes(i) = 0;
                     else
                         error('Error setting loop mode: status of each channel must be either ''On'' or ''Off''');
                     end
                 end
-                obj.Port.write(['O' LoopModes], 'uint8', obj.LoopDuration*obj.SamplingRate, 'uint32');
-                Confirmed = obj.Port.read(1, 'uint8');
-                if Confirmed ~= 1
-                    error('Error setting loop mode. Confirm code not returned.');
-                end
-                obj.LoopModeLogic = LoopModes;
+                obj.Port.write(['O' loopModes], 'uint8', obj.LoopDuration*obj.SamplingRate, 'uint32');
+                obj.confirmTransmission('setting loop mode');
+                obj.LoopModeLogic = loopModes;
             end
-            obj.LoopMode = Modes; 
+            obj.LoopMode = modes; 
         end
-        function set.LoopDuration(obj, Durations)
+
+        function set.LoopDuration(obj, durations)
+            % For loop mode, set the loop duration
+            % Arguments: Durations (s) for which to loop the loaded waveform on trigger.
+
             if obj.Initialized
-                if length(Durations) ~= obj.nChannels
+                if length(durations) ~= obj.nChannels
                     error('Error setting loop durations - one duration must be set for each channel.')
                 end
-                obj.Port.write(['O' obj.LoopModeLogic], 'uint8', Durations*obj.SamplingRate, 'uint32');
-                Confirmed = obj.Port.read(1, 'uint8');
-                if Confirmed ~= 1
-                    error('Error setting loop duration. Confirm code not returned.');
-                end
+                obj.Port.write(['O' obj.LoopModeLogic], 'uint8', durations*obj.SamplingRate, 'uint32');
+                obj.confirmTransmission('setting loop duration');
             end
-            obj.LoopDuration = Durations;
+            obj.LoopDuration = durations;
             
         end
+
         function set.TriggerProfileEnable(obj, triggerProfileState)
+            % Enable/Disable trigger profile mode
+            % Arguments: triggerProfileState, a 1xnChannels cell array of strings indicating 'on' or 'off' for each analog output channel.
+
             if obj.Initialized
                 switch lower(triggerProfileState)
                     case 'off'
@@ -197,60 +236,67 @@ classdef BpodWavePlayer < handle
                         error(['Invalid value for TriggerProfileEnable: ' triggerProfileState '. Valid values are: Off, On.'])
                 end
                 obj.Port.write(['B' profileEnableByte], 'uint8');
-                Confirmed = obj.Port.read(1, 'uint8');
-                if Confirmed ~= 1
-                    error('Error setting trigger profile enable. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting trigger profile mode');
             end
             obj.TriggerProfileEnable = triggerProfileState;
             
         end
+
         function set.TriggerProfiles(obj, profileMatrix)
+            % Set up trigger profiles. Each profile is a list of waveforms to play on each channel 
+            % when the profile index is triggered with the 'P' command.
+            % Arguments: profileMatrix, a nTriggerProfiles x nChannels matrix. Each row is a trigger profile, specifying which
+            % waveform to play on each channel.
+
             [length, width] = size(profileMatrix);
             if (length ~= obj.nTriggerProfiles) || (width ~= obj.nChannels)
-                error(['Error setting trigger profiles: matrix of trigger profiles must be ' num2str(obj.nTriggerProfiles) ' profiles X ' num2str(obj.nChannels) ' channels.'])
+                error(['Error setting trigger profiles: matrix of trigger profiles must be ' num2str(obj.nTriggerProfiles)... 
+                       ' profiles X ' num2str(obj.nChannels) ' channels.'])
             end
             if sum(sum((profileMatrix > 0)') > obj.maxSimultaneousChannels) > 0
-                error(['Error setting trigger profiles: the current sampling rate only allows ' num2str(obj.maxSimultaneousChannels) ' channels to be triggered simultaneously. Your profile matrix contains at least 1 profile with too many channels.']);
+                error(['Error setting trigger profiles: the current sampling rate only allows '... 
+                    num2str(obj.maxSimultaneousChannels)... 
+                    ' channels to be triggered simultaneously. Your profile matrix has at least 1 profile with too many channels.']);
             end
             profileMatrixOut = profileMatrix;
             profileMatrixOut(profileMatrixOut == 0) = 256;
             obj.Port.write(['F' profileMatrixOut(1:end)-1], 'uint8');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error setting trigger profiles. Confirm code not returned.');
-            end
+            obj.confirmTransmission('setting trigger profiles');
             obj.TriggerProfiles = profileMatrix;
         end
-        function set.OutputRange(obj, range)
-            RangeIndex = find(strcmp(range, obj.ValidRanges));
-            if isempty(RangeIndex)
-                VR = [];
+
+        function set.OutputRange(obj, newRange)
+            % Set the output range for the device (affects all channels)
+            % Arguments: range, a char array indicating the selected range.
+
+            rangeIndex = find(strcmp(newRange, obj.ValidRanges));
+            if isempty(rangeIndex)
+                vr = [];
                 for i = 1:length(obj.ValidRanges)
-                    VR = [VR obj.ValidRanges{i} ' '];
+                    vr = [vr obj.ValidRanges{i} ' '];
                 end
-                error(['Invalid range specified: ' range '. Valid ranges are: ' VR]);
+                error(['Invalid range specified: ' newRange '. Valid ranges are: ' vr]);
             end
             % Check to make sure all waves in "Waveforms" are within range
-            switch RangeIndex
+            switch rangeIndex
                 case 1
-                    Min = 0; Max = 5;
+                    minRange = 0; maxRange = 5;
                 case 2
-                    Min = 0; Max = 10;
+                    minRange = 0; maxRange = 10;
                 case 3
-                    Min = 0; Max = 12;
+                    minRange = 0; maxRange = 12;
                 case 4
-                    Min = -5; Max = 5;
+                    minRange = -5; maxRange = 5;
                 case 5
-                    Min = -10; Max = 10;
+                    minRange = -10; maxRange = 10;
                 case 6
-                    Min = -12; Max = 12;
+                    minRange = -12; maxRange = 12;
             end
             nWaveforms = length(obj.Waveforms);
             waveformErrors = [];
             for i = 1:nWaveforms
                 if ~isempty(obj.Waveforms{i})
-                    if (min(obj.Waveforms{i}) < Min) || (max(obj.Waveforms{i}) > Max)
+                    if (min(obj.Waveforms{i}) < minRange) || (max(obj.Waveforms{i}) > maxRange)
                         waveformErrors = [waveformErrors i];
                     end
                 end
@@ -258,12 +304,10 @@ classdef BpodWavePlayer < handle
             if ~isempty(waveformErrors)
                 error(['Error: Some loaded waves contain voltages out of range. Replace waveform# ' num2str(waveformErrors)]);
             end
-            obj.Port.write(['R' RangeIndex-1], 'uint8');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error setting output range. Confirm code not returned.');
-            end
-            obj.OutputRange = range;
+            obj.Port.write(['R' rangeIndex-1], 'uint8');
+            obj.confirmTransmission('setting output range');
+            obj.OutputRange = newRange;
+
             % Re-load all waveforms with new bit coding
             if sum(cellfun(@isempty, obj.Waveforms)) ~= length(obj.Waveforms)
                 disp('Updating all waveforms on output device, coded for new range. Please wait.')
@@ -275,13 +319,17 @@ classdef BpodWavePlayer < handle
                 disp('Waveforms updated.')
             end
         end
+
         function set.SamplingRate(obj, sf)
+            % Set the sampling rate (affects all channels)
+            % Arguments: sf, the sampling rate (Hz)
+
             if obj.Initialized
                 if sf < obj.ValidSamplingRates(1) || sf > obj.ValidSamplingRates(2)
                     error(['Error setting sampling rate: valid rates are in range: [' num2str(obj.ValidSamplingRates) '] Hz'])
                 end
-                SamplingPeriodMicroseconds = (1/sf)*1000000;
-                obj.Port.write(['S' typecast(single(SamplingPeriodMicroseconds), 'uint8')], 'uint8');
+                samplingPeriodMicroseconds = (1/sf)*1000000;
+                obj.Port.write(['S' typecast(single(samplingPeriodMicroseconds), 'uint8')], 'uint8');
                 if obj.Info.HardwareVersion < 2
                     if sf > 100000
                         obj.maxSimultaneousChannels = 1;
@@ -297,12 +345,15 @@ classdef BpodWavePlayer < handle
                 end
                 if sum(obj.LoopModeLogic) > 0 % Re-compute loop durations (in units of samples)
                     obj.Port.write(['O' obj.LoopModeLogic], 'uint8', obj.LoopDuration*sf, 'uint32'); % Update loop durations
-                    Confirmed = obj.Port.read(1, 'uint8');
+                    obj.confirmTransmission('setting sampling rate');
                 end
             end
             obj.SamplingRate = sf;
         end
+
         function set2Defaults(obj)
+            % Return all user parameters to default
+
             obj.SamplingRate = 10000;
             obj.OutputRange = '-5V:5V';
             obj.TriggerMode = 'Normal';
@@ -312,122 +363,162 @@ classdef BpodWavePlayer < handle
             obj.LoopDuration = zeros(1, obj.nChannels);
             obj.BpodEvents = repmat({'Off'}, 1, obj.nChannels);
         end
-        function loadWaveform(obj, WaveIndex, Waveform)
-            nSamples = length(Waveform);
-            WaveBits = obj.volts2Bits(Waveform);
-            obj.Port.write(['L' WaveIndex-1], 'uint8', nSamples, 'uint32', WaveBits, 'uint16');
-            Confirmed = obj.Port.read(1, 'uint8');
-            obj.Waveforms{WaveIndex} = Waveform;
-            obj.WaveformsLoaded(WaveIndex) = 1;
+
+        function loadWaveform(obj, waveIndex, waveform)
+            % Load a waveform to the device at a specified index
+            % Arguments: 
+            % waveIndex: the index to load to (up to 64 waveforms)
+            % waveform: a 1xnSamples vector of voltages
+            
+            nSamples = length(waveform);
+            waveBits = obj.volts2Bits(waveform);
+            obj.Port.write(['L' waveIndex-1], 'uint8', nSamples, 'uint32', waveBits, 'uint16');
+            obj.confirmTransmission('loading waveform');
+            obj.Waveforms{waveIndex} = waveform;
+            obj.WaveformsLoaded(waveIndex) = 1;
         end
-        function Bits = volts2Bits(obj, volts)
-            PositiveOnly = 0;
+
+        function bits = volts2Bits(obj, volts)
+            % Convert volts to DAC bits
+
+            positiveOnly = 0;
             switch obj.OutputRange
                 case '0V:5V'
-                    PositiveOnly = 1;
-                    VoltageWidth = 5;
+                    positiveOnly = 1;
+                    voltageWidth = 5;
                 case '0V:10V'
-                    PositiveOnly = 1;
-                    VoltageWidth = 10;
+                    positiveOnly = 1;
+                    voltageWidth = 10;
                 case '0V:12V'
-                    PositiveOnly = 1;
-                    VoltageWidth = 12;
+                    positiveOnly = 1;
+                    voltageWidth = 12;
                 case '-5V:5V'
-                    VoltageWidth = 10;
+                    voltageWidth = 10;
                 case '-10V:10V'
-                    VoltageWidth = 20;
+                    voltageWidth = 20;
                 case '-12V:12V'
-                    VoltageWidth = 24;
+                    voltageWidth = 24;
             end
             minVolts = min(volts);
             maxVolts = max(volts);
-            maxRange = (VoltageWidth/2)+(PositiveOnly*(VoltageWidth/2));
-            minRange = ((VoltageWidth/2)*-1) * (1-PositiveOnly);
+            maxRange = (voltageWidth/2)+(positiveOnly*(voltageWidth/2));
+            minRange = ((voltageWidth/2)*-1) * (1-positiveOnly);
             if ((minVolts < minRange) || (maxVolts > maxRange))
                 error(['Error converting volts to bits: All voltages must be within the current range: ' obj.OutputRange '.'])
             end
-            Offset = (VoltageWidth/2)*(1-PositiveOnly);
-            Bits = ceil(((volts+Offset)/VoltageWidth)*(2^(16)-1));
+            offset = (voltageWidth/2)*(1-positiveOnly);
+            bits = ceil(((volts+offset)/voltageWidth)*(2^(16)-1));
         end
+        
         function setupSDCard(obj)
+            % Setup the microSD card
+
             disp('Preparing SD card. This may take up to 1 minute. Please wait.')
             obj.Port.write('Y', 'uint8');
             while obj.Port.bytesAvailable == 0
                 pause(.001);
             end
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error clearing data. Confirm code not returned.');
-            end
+            obj.confirmTransmission('clearing data');
             disp('SD Card setup complete.')
         end
-        function play(obj, varargin) % Play a waveform immediately on specified channel(s)
+
+        function play(obj, varargin) 
+            % Play a waveform immediately on specified channel(s)
+
             if strcmpi(obj.TriggerProfileEnable, 'on')
-                ProfileNum = varargin{1};
-                if sum(obj.TriggerProfiles(ProfileNum,:)) == 0
-                    error(['Error: Trigger profile# ' num2str(ProfileNum) ' not defined.'])
+                profileNum = varargin{1};
+                if sum(obj.TriggerProfiles(profileNum,:)) == 0
+                    error(['Error: Trigger profile# ' num2str(profileNum) ' not defined.'])
                 end
-                obj.Port.write(['P' ProfileNum-1], 'uint8');
+                obj.Port.write(['P' profileNum-1], 'uint8');
             else
                 if nargin > 2
-                    Channels = varargin{1};
-                    WaveIndex = varargin{2};
-                    if ~obj.WaveformsLoaded(WaveIndex)
-                        error(['Error: waveform #' num2str(WaveIndex) ' must be loaded with loadWaveform() before it can be triggered.'])
+                    channels = varargin{1};
+                    waveIndex = varargin{2};
+                    if ~obj.WaveformsLoaded(waveIndex)
+                        error(['Error: waveform #' num2str(waveIndex) ' must be loaded with loadWaveform() before it can be triggered.'])
                     end
-                    if length(Channels) > obj.maxSimultaneousChannels
-                        error(['Error: cannot trigger more than ' num2str(obj.maxSimultaneousChannels) ' simultaneous channel(s) at the current sampling rate.'])
+                    if length(channels) > obj.maxSimultaneousChannels
+                        error(['Error: cannot trigger more than ' num2str(obj.maxSimultaneousChannels)... 
+                            ' simultaneous channel(s) at the current sampling rate.'])
                     end
-                    ChannelBits = 0; % Channels to trigger are read as bits
-                    for i = 1:length(Channels)
-                        ChannelBits = ChannelBits + 2^(Channels(i)-1);
+                    channelBits = 0; % Channels to trigger are read as bits
+                    for i = 1:length(channels)
+                        channelBits = channelBits + 2^(channels(i)-1);
                     end
-                    obj.Port.write(['P' ChannelBits WaveIndex-1], 'uint8');
+                    obj.Port.write(['P' channelBits waveIndex-1], 'uint8');
                 else
                     if obj.Info.FirmwareVersion > 4
-                        WaveList = varargin{1};
-                        if length(WaveList) ~= obj.nChannels
-                            error('When using syntax W.play([List of waveform indexes]) the list must include one waveform for each channel. Use 0 for no waveform.')
+                        waveList = varargin{1};
+                        if length(waveList) ~= obj.nChannels
+                            error(['When using syntax W.play([List of waveform indexes]) the list must ' ...
+                                   'include one waveform for each channel. Use 0 for no waveform.'])
                         end
-                        Waves2Trigger = WaveList(WaveList > 0);
-                        if sum(obj.WaveformsLoaded(Waves2Trigger) == 0) > 0
-                            firstWaveNotLoaded = find(obj.WaveformsLoaded(Waves2Trigger) == 0, 1);
-                            error(['Waveform #' num2str(Waves2Trigger(firstWaveNotLoaded)) ' must be loaded with loadWaveform() before it can be triggered.'])
+                        waves2Trigger = waveList(waveList > 0);
+                        if sum(obj.WaveformsLoaded(waves2Trigger) == 0) > 0
+                            firstWaveNotLoaded = find(obj.WaveformsLoaded(waves2Trigger) == 0, 1);
+                            error(['Waveform #' num2str(waves2Trigger(firstWaveNotLoaded))... 
+                                ' must be loaded with loadWaveform() before it can be triggered.'])
                         end
-                        if length(Waves2Trigger) > obj.maxSimultaneousChannels
-                            error(['Cannot trigger more than ' num2str(obj.maxSimultaneousChannels) ' simultaneous channel(s) at the current sampling rate.'])
+                        if length(waves2Trigger) > obj.maxSimultaneousChannels
+                            error(['Cannot trigger more than ' num2str(obj.maxSimultaneousChannels)... 
+                                ' simultaneous channel(s) at the current sampling rate.'])
                         end
-                        WaveList(WaveList == 0) = 255;
-                        obj.Port.write(['>' WaveList-1], 'uint8');
+                        waveList(waveList == 0) = 255;
+                        obj.Port.write(['>' waveList-1], 'uint8');
                     else
                         error('WavePlayer must have firmware v5 or newer to trigger multiple channels without using trigger profile mode.')
                     end
                 end
             end
         end
+
         function stop(obj)
+            % Stop all currently playing waveforms
+
             obj.Port.write('X', 'uint8');
         end
-        function setFixedOutput(obj, Channels, DACOutputBits) % Channels are a list of channels to set. DACOutputBits range from 0-65535, mapped to current output range
+
+        function setFixedOutput(obj, channels, dacOutputBits) 
+            % Set a fixed voltage on a channel by setting DAC bits. See setFixedVoltage() below for a more straightforward
+            % implementation
+            % Arguments:
+            % channels, a list of channels to set. 
+            % dacOutputBits range from 0-65535, mapped to current output range
+
             if obj.Info.FirmwareVersion < 5
                 error('Error: Setting a fixed output value now requires firmware v5. All 8 output channels are now supported.')
             end
-            ChannelBits = 0;
-            for i = 1:length(Channels)
-                ChannelBits = ChannelBits + 2^(Channels(i)-1);
+            channelBits = 0;
+            for i = 1:length(channels)
+                channelBits = channelBits + 2^(channels(i)-1);
             end
-            obj.Port.write(['!' ChannelBits], 'uint8', DACOutputBits, 'uint16');
-            Confirmed = obj.Port.read(1, 'uint8');
-            if Confirmed ~= 1
-                error('Error setting fixed output voltage(s). Confirm code not returned.');
-            end
+            obj.Port.write(['!' channelBits], 'uint8', dacOutputBits, 'uint16');
+            obj.confirmTransmission('setting fixed output voltage(s)');
         end
-        function setFixedVoltage(obj, Channels, Voltage)
-            DACOutputBits = obj.volts2Bits(Voltage);
-            obj.setFixedOutput(Channels, DACOutputBits);
+
+        function setFixedVoltage(obj, channels, voltage)
+            % Set a fixed voltage on output channel(s)
+
+            dacOutputBits = obj.volts2Bits(voltage);
+            obj.setFixedOutput(channels, dacOutputBits);
         end
+
         function delete(obj)
             obj.Port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
+        end
+    end
+
+    methods (Access = private)
+        function confirmTransmission(obj, opName)
+            % Read op confirmation byte, and throw an error if confirm not returned
+            
+            confirmed = obj.Port.read(1, 'uint8');
+            if confirmed == 0
+                error(['Error ' opName ': the module denied your request.'])
+            elseif confirmed ~= 1
+                error(['Error ' opName ': module did not acknowledge the operation.']);
+            end
         end
     end
 end

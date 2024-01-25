@@ -14,21 +14,21 @@ function IP = GetMyIP(varargin)
 % JS January 2014
 
 if nargin > 0
-    Format = varargin{1};
+    format = varargin{1};
 else
-    Format = 'S';
+    format = 'S';
 end
 
 address = java.net.InetAddress.getLocalHost;
-IPaddress = char(address.getHostAddress);
-if Format == 'I'
-    Dots = find(IPaddress == uint8('.'));
-    IP(1) = uint8(str2double(IPaddress(1:Dots(1)-1)));
-    IP(2) = uint8(str2double(IPaddress(Dots(1)+1:Dots(2)-1)));
-    IP(3) = uint8(str2double(IPaddress(Dots(2)+1:Dots(3)-1)));
-    IP(4) = uint8(str2double(IPaddress(Dots(3)+1:end)));
-elseif Format == 'S'
-    IP = IPaddress;
+ipAddress = char(address.getHostAddress);
+if format == 'I'
+    Dots = find(ipAddress == uint8('.'));
+    IP(1) = uint8(str2double(ipAddress(1:Dots(1)-1)));
+    IP(2) = uint8(str2double(ipAddress(Dots(1)+1:Dots(2)-1)));
+    IP(3) = uint8(str2double(ipAddress(Dots(2)+1:Dots(3)-1)));
+    IP(4) = uint8(str2double(ipAddress(Dots(3)+1:end)));
+elseif format == 'S'
+    IP = ipAddress;
 else
     error('Error: Invalid format specified for IP address. Valid formats are: ''I'' (Integer array) or ''S'' (String)')
 end

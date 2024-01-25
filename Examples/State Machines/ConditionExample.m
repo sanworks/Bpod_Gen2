@@ -1,4 +1,5 @@
 % Example state matrix: A condition (Port2, In) causes the second state to be skipped
+% Requires: behavior ports or lickometers with visible LEDs connected to Ch1, Ch2 and Ch3
 
 sma = NewStateMachine;
 sma = SetCondition(sma, 2, 'Port2', 1); %Arguments: (sma, ConditionNumber, ConditionChannel, ConditionValue; 1 = high/in, 0 = low/out)

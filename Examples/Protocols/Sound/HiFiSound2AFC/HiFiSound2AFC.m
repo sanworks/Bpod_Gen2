@@ -17,7 +17,7 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function HiFiSound2AFC
+
 % This protocol demonstrates a 2AFC task using the HiFi module to generate sound stimuli.
 % Subjects initialize each trial with a poke into port 2. After a delay, a tone plays.
 % If subjects exit the port before the tone is finished playing, a dissonant error sound is played.
@@ -29,19 +29,21 @@ function HiFiSound2AFC
 % (even when offset is triggered by the test subject). See 'H.AMenvelope'
 % below to configure a custom envelope, or to disable it by setting to [].
 
-global BpodSystem
-
-%
 % SETUP
 % You will need:
-% - A Bpod state machine v0.7+
+% - A Bpod state machine v0.7 or newer
 % - A Bpod HiFi module, loaded with BpodHiFiPlayer firmware.
 % - Connect the HiFi module's State Machine port to the Bpod state machine
 % - From the Bpod console, pair the HiFi module with its USB serial port.
 % - Connect channel 1 (or ch1+2) of the hifi module to an amplified speaker(s).
 
+function HiFiSound2AFC
+
+global BpodSystem % Imports the BpodSystem object to the function workspace
+
 %% Assert HiFi module is present + USB-paired (via USB button on console GUI)
 BpodSystem.assertModule('HiFi', 1); % The second argument (1) indicates that the HiFi module must be paired with its USB serial port
+
 % Create an instance of the HiFi module
 H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1); % The argument is the name of the HiFi module's USB serial port (e.g. COM3)
 
@@ -66,84 +68,110 @@ if isempty(fieldnames(S))  % If settings file was an empty struct, populate stru
 end
 
 %% Define trials
-MaxTrials = 5000;
-TrialTypes = ceil(rand(1,MaxTrials)*2);
+maxTrials = 5000;
+trialTypes = ceil(rand(1,maxTrials)*2);
 BpodSystem.Data.TrialTypes = []; % The trial type of each trial completed will be added here.
 
 %% Initialize plots
-% Side Outcome Plot
-BpodSystem.ProtocolFigures.SideOutcomePlotFig = figure('Position', [50 540 1000 220],'name','Outcome plot','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
-BpodSystem.GUIHandles.SideOutcomePlot = axes('Position', [.075 .35 .89 .55]);
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'init',2-TrialTypes);
-TotalRewardDisplay('init'); % Total Reward display (online display of the total amount of liquid reward earned)
-BpodParameterGUI('init', S); % Initialize parameter GUI plugin
 
-%% Define stimuli and send to analog module
-SF = 192000; % Use max supported sampling rate
-H.SamplingRate = SF;
-LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration)*.9; % Sampling freq (hz), Sine frequency (hz), duration (s)
-RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration)*.9; % Sampling freq (hz), Sine frequency (hz), duration (s)
-ErrorSound = GenerateWhiteNoise(SF, S.GUI.ErrorTimeoutDuration, 1, 2);
+% Initialize the outcome plot
+outcomePlot = LiveOutcomePlot([1 2], {'Left', 'Right'}, trialTypes, 90); % Create an instance of the LiveOutcomePlot GUI
+              % Arg1 = trialTypeManifest, a list of possible trial types (even if not yet in trialTypes).
+              % Arg2 = trialTypeNames, a list of names for each trial type in trialTypeManifest
+              % Arg3 = trialTypes, a list of integers denoting precomputed trial types in the session
+              % Arg4 = nTrialsToShow, the number of trials to show
+outcomePlot.RewardStateNames = {'RewardLeft', 'RewardRight'}; % List of state names where reward was delivered
+outcomePlot.PunishStateNames = {'PunishTimeout'}; % List of state names where choice was incorrect and negatively reinforced
+
+% Total Reward display (online display of the total amount of liquid reward earned)
+TotalRewardDisplay('init'); 
+
+% Initialize parameter GUI plugin
+BpodParameterGUI('init', S); 
+
+%% Define stimuli and send to sound module
+sf = 192000; % Use max supported sampling rate
+H.SamplingRate = sf;
+leftSound = GenerateSineWave(sf, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration)*.9; 
+                             % Sampling freq (hz), Sine frequency (hz), duration (s)
+rightSound = GenerateSineWave(sf, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration)*.9;
+errorSound = GenerateWhiteNoise(sf, S.GUI.ErrorTimeoutDuration, 1, 2);
 
 % Generate early withdrawal sound
-W1 = GenerateSineWave(SF, 1000, .5)*.5; W2 = GenerateSineWave(SF, 1200, .5)*.5; EarlyWithdrawalSound = W1+W2;
-P = SF/100;
-GateVector = repmat([ones(1,P) zeros(1,P)], 1, 25);
-EarlyWithdrawalSound = EarlyWithdrawalSound.*GateVector; % Gate waveform to create aversive pulses
+w1 = GenerateSineWave(sf, 1000, .5)*.5; w2 = GenerateSineWave(sf, 1200, .5)*.5; earlyWithdrawalSound = w1+w2;
+p = sf/100;
+gateVector = repmat([ones(1,p) zeros(1,p)], 1, 25);
+earlyWithdrawalSound = earlyWithdrawalSound.*gateVector; % Gate waveform to create aversive pulses
 
-H.HeadphoneAmpEnabled = true; H.HeadphoneAmpGain = 15; % Ignored if using HD version of the HiFi module
-H.DigitalAttenuation_dB = -20; % Set a comfortable listening level for most headphones (useful during protocol dev).
-H.load(1, LeftSound);
-H.load(2, RightSound);
-H.load(3, ErrorSound);
-H.load(4, EarlyWithdrawalSound);
-Envelope = 1/(SF*0.001):1/(SF*0.001):1; % Define 1ms linear ramp envelope of amplitude coefficients, to apply at sound onset + in reverse at sound offset
-%Envelope = [];
-H.AMenvelope = Envelope;
+% Setup HiFi module
+H.HeadphoneAmpEnabled = true; H.HeadphoneAmpGain = 10; % Ignored if using HD version of the HiFi module
+H.DigitalAttenuation_dB = 0; % Set a negative value here if necessary for digital volume control.
+H.load(1, leftSound);
+H.load(2, rightSound);
+H.load(3, errorSound);
+H.load(4, earlyWithdrawalSound);
+
+% Define 1ms linear ramp envelope of amplitude coefficients, to apply at sound onset + in reverse at sound offset
+envelope = 1/(sf*0.001):1/(sf*0.001):1; 
+H.AMenvelope = envelope;
 
 % Remember values of left and right frequencies & durations, so a new one only gets uploaded if it was changed
-LastLeftFrequency = S.GUI.SinWaveFreqLeft; 
-LastRightFrequency = S.GUI.SinWaveFreqRight;
-LastSoundDuration = S.GUI.SoundDuration;
+lastLeftFrequency = S.GUI.SinWaveFreqLeft; 
+lastRightFrequency = S.GUI.SinWaveFreqRight;
+lastSoundDuration = S.GUI.SoundDuration;
 
 %% Main trial loop
-for currentTrial = 1:MaxTrials
-    S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
+for currentTrial = 1:maxTrials
+    % Sync parameters with BpodParameterGUI plugin
+    S = BpodParameterGUI('sync', S); 
+
+    % Setup error sound if enabled
     if S.GUI.ErrorSound
-        ErrorOutputAction = {'HiFi1', ['P' 2]};
+        errorOutputAction = {'HiFi1', ['P' 2]};
     else
-        ErrorOutputAction = {};
+        errorOutputAction = {};
     end
-    if S.GUI.SinWaveFreqLeft ~= LastLeftFrequency
-        LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-        H.load(1, [LeftSound;LeftSound]);
-        LastLeftFrequency = S.GUI.SinWaveFreqLeft;
+
+    % Update HiFi module if tone frequency or duration was changed by the user
+    if S.GUI.SinWaveFreqLeft ~= lastLeftFrequency
+        leftSound = GenerateSineWave(sf, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); 
+                                     % Sampling freq (hz), Sine frequency (hz), duration (s)
+        H.load(1, [leftSound;leftSound]);
+        lastLeftFrequency = S.GUI.SinWaveFreqLeft;
     end
-    if S.GUI.SinWaveFreqRight ~= LastRightFrequency
-        RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-        H.load(2, [RightSound; RightSound]);
-        LastRightFrequency = S.GUI.SinWaveFreqRight;
+    if S.GUI.SinWaveFreqRight ~= lastRightFrequency
+        rightSound = GenerateSineWave(sf, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration);
+        H.load(2, [rightSound; rightSound]);
+        lastRightFrequency = S.GUI.SinWaveFreqRight;
     end
-    if S.GUI.SoundDuration ~= LastSoundDuration
-        LeftSound = GenerateSineWave(SF, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-        RightSound = GenerateSineWave(SF, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration); % Sampling freq (hz), Sine frequency (hz), duration (s)
-        H.load(1, LeftSound); H.load(2, RightSound);
-        LastSoundDuration = S.GUI.SoundDuration;
+    if S.GUI.SoundDuration ~= lastSoundDuration
+        leftSound = GenerateSineWave(sf, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration);
+        rightSound = GenerateSineWave(sf, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration);
+        H.load(1, leftSound); H.load(2, rightSound);
+        lastSoundDuration = S.GUI.SoundDuration;
     end
-    R = GetValveTimes(S.GUI.RewardAmount, [1 3]); LeftValveTime = R(1); RightValveTime = R(2); % Update reward amounts
-    switch TrialTypes(currentTrial) % Determine trial-specific state matrix fields
+
+    % Update reward amounts
+    vt = GetValveTimes(S.GUI.RewardAmount, [1 3]); leftValveTime = vt(1); rightValveTime = vt(2); 
+
+    % Determine trial-specific state machine variables
+    switch trialTypes(currentTrial) 
         case 1
-            OutputActionArgument = {'HiFi1', ['P' 0], 'BNCState', 1}; 
-            LeftActionState = 'Reward';  RightActionState = 'Error'; CorrectWithdrawalEvent = 'Port1Out';
-            ValveCode = 1; ValveTime = LeftValveTime;
+            outputActionArgument = {'HiFi1', ['P' 0], 'BNCState', 1}; 
+            leftActionState = 'RewardLeft';  
+            rightActionState = 'PunishTimeout';
         case 2
-            OutputActionArgument = {'HiFi1', ['P' 1], 'BNCState', 1};
-            LeftActionState = 'Error'; RightActionState = 'Reward'; CorrectWithdrawalEvent = 'Port3Out';
-            ValveCode = 4; ValveTime = RightValveTime;
+            outputActionArgument = {'HiFi1', ['P' 1], 'BNCState', 1};
+            leftActionState = 'PunishTimeout'; 
+            rightActionState = 'RewardRight';
     end
+    
+    % Process training level
     if S.GUI.TrainingLevel == 1 % Reward both sides (overriding switch/case above)
-        RightActionState = 'Reward'; LeftActionState = 'Reward';
+        rightActionState = 'RewardRight'; leftActionState = 'RewardLeft';
     end
+
+    % Assemble state machine description
     sma = NewStateMatrix(); % Assemble state matrix
     sma = SetCondition(sma, 1, 'Port1', 0); % Condition 1: Port 1 low (is out)
     sma = SetCondition(sma, 2, 'Port3', 0); % Condition 2: Port 3 low (is out)
@@ -158,43 +186,56 @@ for currentTrial = 1:MaxTrials
     sma = AddState(sma, 'Name', 'DeliverStimulus', ...
         'Timer', S.GUI.SoundDuration,...
         'StateChangeConditions', {'Tup', 'WaitForResponse', 'Port2Out', 'ResetBNC'},...
-        'OutputActions', OutputActionArgument);
+        'OutputActions', outputActionArgument);
     sma = AddState(sma, 'Name', 'ResetBNC', ...
         'Timer', 0.001,...
         'StateChangeConditions', {'Tup', 'EarlyWithdrawal'},...
         'OutputActions', {});
     sma = AddState(sma, 'Name', 'WaitForResponse', ...
         'Timer', S.GUI.TimeForResponse,...
-        'StateChangeConditions', {'Tup', '>exit', 'Port1In', LeftActionState, 'Port3In', RightActionState},...
+        'StateChangeConditions', {'Tup', '>exit', 'Port1In', leftActionState, 'Port3In', rightActionState},...
         'OutputActions', {'PWM1', 255, 'PWM3', 255});
-    sma = AddState(sma, 'Name', 'Reward', ...
-        'Timer', ValveTime,...
-        'StateChangeConditions', {'Tup', 'Drinking'},...
-        'OutputActions', {'ValveState', ValveCode});
-    sma = AddState(sma, 'Name', 'Drinking', ...
+    sma = AddState(sma, 'Name', 'RewardLeft', ...
+        'Timer', leftValveTime,...
+        'StateChangeConditions', {'Tup', 'DrinkingLeft'},...
+        'OutputActions', {'ValveState', 1});
+    sma = AddState(sma, 'Name', 'RewardRight', ...
+        'Timer', rightValveTime,...
+        'StateChangeConditions', {'Tup', 'DrinkingRight'},...
+        'OutputActions', {'ValveState', 4});
+    sma = AddState(sma, 'Name', 'DrinkingLeft', ...
         'Timer', 0,...
-        'StateChangeConditions', {'Condition1', 'DrinkingGrace', 'Condition2', 'DrinkingGrace'},...
+        'StateChangeConditions', {'Condition1', 'DrinkingGrace'},...
+        'OutputActions', {});
+    sma = AddState(sma, 'Name', 'DrinkingRight', ...
+        'Timer', 0,...
+        'StateChangeConditions', {'Condition2', 'DrinkingGrace'},...
         'OutputActions', {});
     sma = AddState(sma, 'Name', 'DrinkingGrace', ...
         'Timer', 0.5,...
-        'StateChangeConditions', {'Tup', '>exit', 'Port1In', 'Drinking', 'Port3In', 'Drinking'},...
+        'StateChangeConditions', {'Tup', '>exit', 'Port1In', '>back', 'Port3In', '>back'},...
         'OutputActions', {});
-    sma = AddState(sma, 'Name', 'Error', ...
+    sma = AddState(sma, 'Name', 'PunishTimeout', ...
         'Timer', S.GUI.ErrorTimeoutDuration,...
         'StateChangeConditions', {'Tup', '>exit'},...
-        'OutputActions', ErrorOutputAction);
+        'OutputActions', errorOutputAction);
     sma = AddState(sma, 'Name', 'EarlyWithdrawal', ...
         'Timer', S.GUI.ErrorTimeoutDuration,...
         'StateChangeConditions', {'Tup', '>exit'},...
         'OutputActions', {'HiFi1', ['P' 3], 'BNCState', 1});
+
+    % Run the trial and process data returned
     SendStateMachine(sma); % Send the state matrix to the Bpod device
     RawEvents = RunStateMachine; % Run the trial and return events
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned (i.e. if not final trial, interrupted by user)
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
-        BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)
-        BpodSystem.Data.TrialTypes(currentTrial) = TrialTypes(currentTrial); % Adds the trial type of the current trial to data
-        UpdateSideOutcomePlot(TrialTypes, BpodSystem.Data);
-        UpdateTotalRewardDisplay(S.GUI.RewardAmount, currentTrial);
+        BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct
+        BpodSystem.Data.TrialTypes(currentTrial) = trialTypes(currentTrial); % Adds the trial type of the current trial to data
+        outcomePlot.update(trialTypes, BpodSystem.Data); % Update the outcome plot
+        if ~isnan(BpodSystem.Data.RawEvents.Trial{currentTrial}.States.RewardLeft(1)) || ...
+           ~isnan(BpodSystem.Data.RawEvents.Trial{currentTrial}.States.RewardRight(1))     
+            TotalRewardDisplay('add', S.GUI.RewardAmount);
+        end
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
     end
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
@@ -202,25 +243,3 @@ for currentTrial = 1:MaxTrials
         return
     end
 end
-
-function UpdateSideOutcomePlot(TrialTypes, Data)
-% Determine outcomes from state data and score as the SideOutcomePlot plugin expects
-global BpodSystem
-Outcomes = zeros(1,Data.nTrials);
-for x = 1:Data.nTrials
-    if ~isnan(Data.RawEvents.Trial{x}.States.Reward(1))
-        Outcomes(x) = 1;
-    elseif ~isnan(Data.RawEvents.Trial{x}.States.Error(1))
-        Outcomes(x) = 0;
-    else
-        Outcomes(x) = 3;
-    end
-end
-SideOutcomePlot(BpodSystem.GUIHandles.SideOutcomePlot,'update',Data.nTrials+1,2-TrialTypes,Outcomes);
-
-function UpdateTotalRewardDisplay(RewardAmount, currentTrial)
-% If rewarded based on the state data, update the TotalRewardDisplay
-global BpodSystem
-    if ~isnan(BpodSystem.Data.RawEvents.Trial{currentTrial}.States.Reward(1))
-        TotalRewardDisplay('add', RewardAmount);
-    end

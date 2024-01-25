@@ -17,10 +17,12 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function sma_out = SetState2Default(sma, StateName, ParameterName)
-% Sets a single state's state change conditions, output actions or both to defaults.
+
+% SetState2Default() Sets a single state's state change conditions, output actions or both to defaults.
 %
-% ParameterName can be ONE of the following:
+% Arguments:
+% stateName: The name of the state to modify
+% parameterName: The name of the parameter to modify. It can be ONE of the following:
 % 1. 'StateChangeConditions'
 % 2. 'OutputActions'
 % 3. 'All'
@@ -32,20 +34,26 @@ function sma_out = SetState2Default(sma, StateName, ParameterName)
 %  This example sets all events in the state Deliver_Stimulus to do nothing, AND sets OutputActions to {} (i.e. no output actions);
 %  sma = SetState2Default(sma, 'Deliver_Stimulus', 'All');
 %
-global BpodSystem
-TargetStateNumber = find(strcmp(StateName,sma.StateNames));
-if isempty(TargetStateNumber)
-    error(['Error: no state called "' StateName '" was found in the state matrix.'])
+
+function sma_out = SetState2Default(sma, stateName, parameterName)
+
+global BpodSystem % Import the global BpodSystem object
+
+% Verify target state name
+targetStateNumber = find(strcmp(stateName,sma.StateNames));
+if isempty(targetStateNumber)
+    error(['Error: no state called "' stateName '" was found in the state matrix.'])
 end
 
-switch ParameterName
+% Set the target field(s) of the state to default
+switch parameterName
     case 'StateChangeConditions'
-         sma.InputMatrix(TargetStateNumber,:)= ones(1,BpodSystem.BlankStateMachine.meta.InputMatrixSize)*TargetStateNumber;
+         sma.InputMatrix(targetStateNumber,:)= ones(1,BpodSystem.BlankStateMachine.meta.InputMatrixSize)*targetStateNumber;
     case 'OutputActions'
-        sma.OutputMatrix(TargetStateNumber,:) = zeros(1,BpodSystem.BlankStateMachine.meta.OutputMatrixSize);
+        sma.OutputMatrix(targetStateNumber,:) = zeros(1,BpodSystem.BlankStateMachine.meta.OutputMatrixSize);
     case 'All'
-        sma.InputMatrix(TargetStateNumber,:)= ones(1,BpodSystem.BlankStateMachine.meta.InputMatrixSize)*TargetStateNumber;
-        sma.OutputMatrix(TargetStateNumber,:) = zeros(1,BpodSystem.BlankStateMachine.meta.OutputMatrixSize);
+        sma.InputMatrix(targetStateNumber,:)= ones(1,BpodSystem.BlankStateMachine.meta.InputMatrixSize)*targetStateNumber;
+        sma.OutputMatrix(targetStateNumber,:) = zeros(1,BpodSystem.BlankStateMachine.meta.OutputMatrixSize);
     otherwise
         error('ParameterName must be one of the following: ''StateChangeConditions'', ''OutputActions'', ''All''')
 end

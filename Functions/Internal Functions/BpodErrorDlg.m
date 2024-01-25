@@ -17,8 +17,13 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% BpodErrorDlg launches a GUI to show the user an error message
+
 function BpodErrorDlg(Message, varargin)
-global BpodSystem
+
+global BpodSystem % Import the global BpodSystem object
+
 generateError = 1;
 if nargin > 1
     generateError = varargin{1};
@@ -32,27 +37,27 @@ BpodSystem.GUIHandles.BpodErrorFig = figure('Position', [650 480 397 150],...
     'name','Bpod Error','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 ha = axes('units','normalized', 'position',[0 0 1 1]);
 uistack(ha,'bottom');
-BG = imread('ErrorDlgBG.bmp');
-image(BG); axis off; drawnow;
+bg = imread('ErrorDlgBG.bmp');
+image(bg); axis off; drawnow;
 text(128, 20,'ERROR', 'FontName', 'OCRAStd', 'FontSize', 16, 'Color', [1 0 0]);
-NewLinePos = find(Message == 10);
+newLinePos = find(Message == 10);
 nSegments = 1;
-if isempty(NewLinePos)
+if isempty(newLinePos)
     messageLines = {Message};
 else
-    nSegments = length(NewLinePos)+1;
-    NewLinePos = [NewLinePos length(Message)];
+    nSegments = length(newLinePos)+1;
+    newLinePos = [newLinePos length(Message)];
     Pos = 1;
-    for i = 1:length(NewLinePos)
-        messageLines{i} = Message(Pos:NewLinePos(i)-1);
-        Pos = Pos + NewLinePos(i);
+    for i = 1:length(newLinePos)
+        messageLines{i} = Message(Pos:newLinePos(i)-1);
+        Pos = Pos + newLinePos(i);
     end
 end
-Xpos = 45;
+xPos = 45;
 for i = 1:nSegments
-    Ypos = 190-(length(messageLines{i})*4);
-    text(Ypos, Xpos, messageLines{i}, 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 0 0]);
-    Xpos = Xpos + 18;
+    yPos = 190-(length(messageLines{i})*4);
+    text(yPos, xPos, messageLines{i}, 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 0 0]);
+    xPos = xPos + 18;
 end
 BpodSystem.GUIHandles.BpodErrorBtn = uicontrol('Style', 'pushbutton', 'String', 'Ok',...
     'Position', [170 10 60 40], 'Callback', 'evalin(''base'', ''close(BpodSystem.GUIHandles.BpodErrorFig)'')',...

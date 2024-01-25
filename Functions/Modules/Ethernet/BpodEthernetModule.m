@@ -17,6 +17,11 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% BpodEthernetModule is a class to interface with the Bpod Ethernet Module
+% via its USB connection to the PC. It allows the user to configure a
+% library of outgoing messages, and trigger them by index.
+
 classdef BpodEthernetModule < handle
     properties
         Port % ArCOM Serial port

@@ -1,7 +1,7 @@
-function SoftCodeHandler_PlaySound(SoundID)
+function SoftCodeHandler_PlaySound(soundID)
 global BpodSystem
-if SoundID ~= 255
-    BpodSystem.PluginObjects.Sound.play(SoundID);
+if soundID ~= 255
+    BpodSystem.PluginObjects.Sound.play(soundID);
 else
     BpodSystem.PluginObjects.Sound.stopAll;
 end

@@ -17,8 +17,13 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function ConfigureModuleUSB(junk, morejunk)
-global BpodSystem
+
+% ConfigureModuleUSB() opens a GUI to pair USB serial ports with their
+% associated Bpod modules.
+
+function ConfigureModuleUSB
+
+global BpodSystem % Import the global BpodSystem object
 
 if isfield(BpodSystem.GUIHandles, 'ModuleUSBFig') && ~verLessThan('MATLAB', '8.4')
     if isgraphics(BpodSystem.GUIHandles.ModuleUSBFig)
@@ -32,26 +37,31 @@ if ~ismac && ~ispc
     FontName = 'DejaVu Sans Mono';
 end
 if BpodSystem.EmulatorMode == 0
-    BpodSystem.GUIHandles.ModuleUSBFig = figure('Position',[600 400 600 250],'name','Module USB config.','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
+    BpodSystem.GUIHandles.ModuleUSBFig = figure('Position',[600 400 600 250],'name','Module USB config.',...
+        'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
     ha = axes('units','normalized', 'position',[0 0 1 1]);
     uistack(ha,'bottom');
-    BG = imread('InputChannelConfig2.bmp');
-    image(BG); axis off;
+    bg = imread('InputChannelConfig2.bmp');
+    image(bg); axis off;
     text(130, 15, 'Module USB config', 'FontName', FontName, 'FontSize', 15, 'Color', [0.8 0.8 0.8]);
     text(15, 35, 'Module', 'FontName', FontName, 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
     text(140, 35, 'USB Port', 'FontName', FontName, 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
     text(265, 35, 'USB Available', 'FontName', FontName, 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
-    BpodSystem.GUIHandles.ModuleList = uicontrol('Position', [20 75 180 100], 'Style', 'listbox', 'String', BpodSystem.Modules.Name, 'FontSize', 12,...
-        'FontName', 'Courier', 'FontWeight', 'Bold', 'Callback', @selectFromModuleList);
+    BpodSystem.GUIHandles.ModuleList = uicontrol('Position', [20 75 180 100], 'Style', 'listbox',... 
+        'String', BpodSystem.Modules.Name, 'FontSize', 12,...
+        'FontName', 'Courier', 'FontWeight', 'Bold', 'Callback', @select_from_module_list);
     BpodSystem.GUIHandles.PairedUSBList = uicontrol('Position', [210 75 180 100], 'Style', 'listbox', 'String', {''},...
-        'FontSize', 12, 'FontName', 'Courier', 'FontWeight', 'Bold', 'Callback', @selectFromPairedList);
+        'FontSize', 12, 'FontName', 'Courier', 'FontWeight', 'Bold', 'Callback', @select_from_paired_list);
     BpodSystem.GUIHandles.FreeUSBList = uicontrol('Position', [400 75 180 100], 'Style', 'listbox', 'String', {''},...
         'FontSize', 12, 'FontName', 'Courier', 'FontWeight', 'Bold');
-    BpodSystem.GUIHandles.ModuleUSBPairButton = uicontrol('Position', [130 20 150 30], 'Style', 'pushbutton', 'String', '-->Pair<--', 'FontSize', 12, 'FontName', 'Courier', 'Callback', @pair);
-    BpodSystem.GUIHandles.ModuleUSBUnpairButton = uicontrol('Position', [320 20 150 30], 'Style', 'pushbutton', 'String', '<--Unpair-->', 'FontSize', 12, 'FontName', 'Courier', 'Callback', @unpair);
-    refreshFreeUSBPorts;
+    BpodSystem.GUIHandles.ModuleUSBPairButton = uicontrol('Position', [130 20 150 30], 'Style', 'pushbutton',... 
+        'String', '-->Pair<--', 'FontSize', 12, 'FontName', 'Courier', 'Callback', @pair);
+    BpodSystem.GUIHandles.ModuleUSBUnpairButton = uicontrol('Position', [320 20 150 30], 'Style', 'pushbutton',... 
+        'String', '<--Unpair-->', 'FontSize', 12, 'FontName', 'Courier', 'Callback', @unpair);
+    refresh_free_usb_ports;
 end
-function pair(junk, moreJunk)
+
+function pair(~,~)
 global BpodSystem
 selectedModule = get(BpodSystem.GUIHandles.ModuleList, 'Value');
 moduleNames = get(BpodSystem.GUIHandles.ModuleList, 'String');
@@ -71,31 +81,31 @@ if (~isempty(selectedfreeUSB))
         BpodSystem.ModuleUSB.(selectedModuleName) = selectedUSBName;
     end
 end
-SaveModuleUSBConfig;
+save_module_usb_config;
 
-function unpair(junk, moreJunk)
+function unpair(~,~)
 global BpodSystem
 selectedModule = get(BpodSystem.GUIHandles.ModuleList, 'Value');
 moduleNames = get(BpodSystem.GUIHandles.ModuleList, 'String');
 selectedModuleName = moduleNames{selectedModule};
 BpodSystem.Modules.USBport{selectedModule} = [];
-refreshFreeUSBPorts;
+refresh_free_usb_ports;
 if isfield(BpodSystem.ModuleUSB, selectedModuleName)
     BpodSystem.ModuleUSB = rmfield(BpodSystem.ModuleUSB, selectedModuleName);
 end
-SaveModuleUSBConfig;
+save_module_usb_config;
 
-function selectFromModuleList(junk, moreJunk)
+function select_from_module_list(~,~)
 global BpodSystem
 selectedModule = get(BpodSystem.GUIHandles.ModuleList, 'Value');
 set(BpodSystem.GUIHandles.PairedUSBList, 'Value', selectedModule);
 
-function selectFromPairedList(junk, moreJunk)
+function select_from_paired_list(~,~)
 global BpodSystem
 selectedModule = get(BpodSystem.GUIHandles.PairedUSBList, 'Value');
 set(BpodSystem.GUIHandles.ModuleList, 'Value', selectedModule);
 
-function refreshFreeUSBPorts
+function refresh_free_usb_ports
 global BpodSystem
 USBPorts = BpodSystem.FindUSBSerialPorts;
 USBPorts = USBPorts(logical(1-strcmp(USBPorts, BpodSystem.SerialPort.PortName)));
@@ -122,7 +132,7 @@ end
 set(BpodSystem.GUIHandles.PairedUSBList, 'String', BpodSystem.Modules.USBport);
 set(BpodSystem.GUIHandles.FreeUSBList, 'String', USBPorts);
 
-function SaveModuleUSBConfig
+function save_module_usb_config
 global BpodSystem
 load(BpodSystem.Path.ModuleUSBConfig);
 for i = 1:BpodSystem.Modules.nModules

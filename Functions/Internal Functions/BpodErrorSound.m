@@ -1,6 +1,6 @@
 function BpodErrorSound() 
-Err = load('BpodErrorSound.mat');
+err = load('BpodErrorSound.mat');
 try
-    sound(Err.BpodErrorSound, 44100);
+    sound(err.BpodErrorSound, 44100);
 catch
 end

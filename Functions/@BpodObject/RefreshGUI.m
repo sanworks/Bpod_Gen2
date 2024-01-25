@@ -17,7 +17,15 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% BpodObject.RefreshGUI() is called during behavior measurement to update
+% the Bpod Console GUI's state and event display fields, and to color the 
+% override buttons indicating channel status. 
+% The GUI elements are updated to match the current status in BpodObject.Status
+% Calling functions are RunStateMachine() and BpodTrialManager()
+
 function obj = RefreshGUI(obj)
+    % Update most recent state and event names
     if ~isempty(obj.StateMatrix)
         set(obj.GUIHandles.PreviousStateDisplay, 'String', obj.Status.LastStateName);
         set(obj.GUIHandles.CurrentStateDisplay, 'String', obj.Status.CurrentStateName);
@@ -27,10 +35,12 @@ function obj = RefreshGUI(obj)
             end
         end
     end
+
+    % Update output channel override button colors
     startPos = obj.HW.n.SerialChannels;
-    ChangedOutputChannels = find(obj.HardwareState.OutputState ~= obj.LastHardwareState.OutputState);
-    ChangedOutputChannels = ChangedOutputChannels(ChangedOutputChannels>startPos);
-    for i = ChangedOutputChannels
+    changedOutputChannels = find(obj.HardwareState.OutputState ~= obj.LastHardwareState.OutputState);
+    changedOutputChannels = changedOutputChannels(changedOutputChannels>startPos);
+    for i = changedOutputChannels
         thisChannelType = obj.HardwareState.OutputType(i);
         thisChannelState = obj.HardwareState.OutputState(i);
         lastChannelState = obj.LastHardwareState.OutputState(i);
@@ -83,8 +93,10 @@ function obj = RefreshGUI(obj)
                 end
         end
     end
-    ChangedInputChannels = find(obj.HardwareState.InputState ~= obj.LastHardwareState.InputState);
-    for i = ChangedInputChannels
+
+    % Update input channel override button colors
+    changedInputChannels = find(obj.HardwareState.InputState ~= obj.LastHardwareState.InputState);
+    for i = changedInputChannels
         thisChannelType = obj.HardwareState.InputType(i);
         thisChannelState = obj.HardwareState.InputState(i);
         if obj.GUIData.CurrentPanel == 1

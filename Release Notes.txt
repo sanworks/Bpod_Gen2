@@ -1,3 +1,13 @@
+--v1.7.9---
+-Code quality: Improved comments, case conventions and line width across the repository. User-facing names were preserved.
+-Firmware: Added binary for firmware v22 on State Machine r2.5
+-Added LiveOutcomePlot, a new class that replaces SideOutcomePlot and TrialTypeOutcomePlot.
+-Example protocols: Updated all protocols to use LiveOutcomePlot.
+-Bpod.m: Added handling of case where a global BpodSystem variable already exists on startup
+-USB Serial port discovery: updated routine to look for and use MATLAB built-ins before resorting to system calls
+-Folder structure: Simplified repository structure with minor reorganization.
+-AddTrialEvents: Added OS and MATLAB version information to the data structure returned by AddTrialEvents.
+
 ---v1.7.8---
 -Switched to semantic versioning. Previously Github release tags used semantic, but software displayed version as X.XX
 -Automatic Sound Calibration: Fixed support for Measurement Computing USB1608G
@@ -10,7 +20,6 @@
 -ArCOM: Fixed baud rate crash on Ubuntu 20.04
 -AddTrialEvents: Bpod software version is now included in data Info field.
 -Updated copyright notices
-
 
 ---v1.77---
 -EndBpod: Fixed bug introduced in v1.76 affecting MATLAB r2016a or older that could cause a crash on application close. 

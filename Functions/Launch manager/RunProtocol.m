@@ -18,6 +18,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
+% RunProtocol() is the starting point for running a Bpod experimental session.
+
 % Usage:
 % RunProtocol('Start') - Loads the launch manager
 % RunProtocol('Start', 'protocolName', 'subjectName', ['settingsName']) - Runs
@@ -30,15 +32,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %     partially completed trial is discarded.
 
 function RunProtocol(Opstring, varargin)
-global BpodSystem
+
+global BpodSystem % Import the global BpodSystem object
+
+% Verify that Bpod is running
 if isempty(BpodSystem)
     error('You must run Bpod() before launching a protocol.')
 end
+
 switch Opstring
     case 'Start'
+        % Starts a new behavior session
         if nargin == 1
             NewLaunchManager;
         else
+            % Read user variables
             protocolName = varargin{1};
             subjectName = varargin{2};
             if nargin > 3
@@ -46,92 +54,111 @@ switch Opstring
             else
                 settingsName = 'DefaultSettings';
             end
+
+            % Resolve target protocol file
             BpodSystem.Path.ProtocolFolder = BpodSystem.SystemSettings.ProtocolFolder;
-            ProtocolPath = fullfile(BpodSystem.Path.ProtocolFolder, protocolName);
-            if ~exist(ProtocolPath)
+            protocolPath = fullfile(BpodSystem.Path.ProtocolFolder, protocolName);
+            if ~exist(protocolPath)
                 % Look 1 level deeper
-                RootContents = dir(BpodSystem.Path.ProtocolFolder);
-                nItems = length(RootContents);
-                Found = 0;
-                y = 3;
-                while Found == 0 && y <= nItems
-                    if RootContents(y).isdir
-                        ProtocolPath = fullfile(BpodSystem.Path.ProtocolFolder, RootContents(y).name, protocolName);
-                        if exist(ProtocolPath)
-                            Found = 1;
+                rootContents = dir(BpodSystem.Path.ProtocolFolder);
+                nItems = length(rootContents);
+                found = 0;
+                iFolder = 3;
+                while found == 0 && iFolder <= nItems
+                    if rootContents(iFolder).isdir
+                        protocolPath = fullfile(BpodSystem.Path.ProtocolFolder,... 
+                                                rootContents(iFolder).name, protocolName);
+                        if exist(protocolPath)
+                            found = 1;
                         end
                     end
-                    y = y + 1;
+                    iFolder = iFolder + 1;
                 end
             end
-            if ~exist(ProtocolPath)
+
+            % Throw an error if not found
+            if ~exist(protocolPath)
                 error(['Error: Protocol "' protocolName '" not found.'])
             end
-            ProtocolRunFile = fullfile(ProtocolPath, [protocolName '.m']);
-            DataPath = fullfile(BpodSystem.Path.DataFolder,subjectName);
-            if ~exist(DataPath)
-                error(['Error starting protocol: Test subject "' subjectName '" must be added first, from the launch manager.'])
+
+            % Generate path to protocol file
+            protocolRunFile = fullfile(protocolPath, [protocolName '.m']);
+
+            % Verify data path
+            dataPath = fullfile(BpodSystem.Path.DataFolder,subjectName);
+            if ~exist(dataPath)
+                error(['Error starting protocol: Test subject "' subjectName... 
+                    '" must be added first, from the launch manager.'])
             end
 
             %Make standard folders for this protocol.  This will fail silently if the folders exist
-            mkdir(DataPath, protocolName);
-            mkdir(fullfile(DataPath,protocolName,'Session Data'))
-            mkdir(fullfile(DataPath,protocolName,'Session Settings'))
-            DateInfo = datestr(now, 30); 
-            DateInfo(DateInfo == 'T') = '_';
-            FileName = [subjectName '_' protocolName '_' DateInfo '.mat'];
-            DataFolder = fullfile(BpodSystem.Path.DataFolder,subjectName,protocolName,'Session Data');
-            if ~exist(DataFolder)
-                mkdir(DataFolder);
+            mkdir(dataPath, protocolName);
+            mkdir(fullfile(dataPath,protocolName,'Session Data'))
+            mkdir(fullfile(dataPath,protocolName,'Session Settings'))
+            dateInfo = datestr(now, 30); 
+            dateInfo(dateInfo == 'T') = '_';
+            fileName = [subjectName '_' protocolName '_' dateInfo '.mat'];
+            dataFolder = fullfile(BpodSystem.Path.DataFolder,subjectName,protocolName,'Session Data');
+            if ~exist(dataFolder)
+                mkdir(dataFolder);
             end
             
             % Ensure that a default settings file exists
-            DefaultSettingsFilePath = fullfile(DataPath,protocolName,'Session Settings', 'DefaultSettings.mat');
-            if ~exist(DefaultSettingsFilePath)
-                ProtocolSettings = struct;
-                save(DefaultSettingsFilePath, 'ProtocolSettings')
+            defaultSettingsFilePath = fullfile(dataPath,protocolName,'Session Settings', 'DefaultSettings.mat');
+            if ~exist(defaultSettingsFilePath)
+                protocolSettings = struct;
+                save(defaultSettingsFilePath, 'protocolSettings')
             end
-            SettingsFileName = fullfile(BpodSystem.Path.DataFolder, subjectName, protocolName, 'Session Settings', [settingsName '.mat']);
-            if ~exist(SettingsFileName)
-                error(['Error: Settings file: ' settingsName '.mat does not exist for test subject: ' subjectName ' in protocol: ' protocolName '.'])
+            settingsFileName = fullfile(BpodSystem.Path.DataFolder, subjectName, protocolName,... 
+                'Session Settings', [settingsName '.mat']);
+            if ~exist(settingsFileName)
+                error(['Error: Settings file: ' settingsName '.mat does not exist for test subject: '... 
+                    subjectName ' in protocol: ' protocolName '.'])
             end
             
             % On Bpod r2+, if FlexIO channels are configured as analog, setup data file
             nAnalogChannels = sum(BpodSystem.HW.FlexIO_ChannelTypes == 2);
             if nAnalogChannels > 0
-                AnalogFilename = [subjectName '_' protocolName '_' DateInfo '_ANLG.dat'];
+                analogFilename = [subjectName '_' protocolName '_' dateInfo '_ANLG.dat'];
                 if BpodSystem.Status.RecordAnalog == 1
-                    BpodSystem.AnalogDataFile = fopen(AnalogFilename,'w');
+                    BpodSystem.AnalogDataFile = fopen(analogFilename,'w');
                     if BpodSystem.AnalogDataFile == -1
-                        error(['Error: Could not open the analog data file: ' AnalogFilename])
+                        error(['Error: Could not open the analog data file: ' analogFilename])
                     end
                 end
                 BpodSystem.Status.nAnalogSamples = 0;
             end
             
+            % Set BpodSystem status, protocol and path fields for new session
             BpodSystem.Status.Live = 1;
             BpodSystem.Status.LastEvent = 0;
             BpodSystem.GUIData.ProtocolName = protocolName;
             BpodSystem.GUIData.SubjectName = subjectName;
-            BpodSystem.GUIData.SettingsFileName = SettingsFileName;
-            BpodSystem.Path.Settings = SettingsFileName;
-            BpodSystem.Path.CurrentDataFile = fullfile(DataFolder, FileName);
+            BpodSystem.GUIData.SettingsFileName = settingsFileName;
+            BpodSystem.Path.Settings = settingsFileName;
+            BpodSystem.Path.CurrentDataFile = fullfile(dataFolder, fileName);
             BpodSystem.Status.CurrentProtocolName = protocolName;
             BpodSystem.Status.CurrentSubjectName = subjectName;
             SettingStruct = load(BpodSystem.Path.Settings);
-            F = fieldnames(SettingStruct);
-            FieldName = F{1};
-            BpodSystem.ProtocolSettings = eval(['SettingStruct.' FieldName]);
+            f = fieldnames(SettingStruct);
+            fieldName = f{1};
+            BpodSystem.ProtocolSettings = eval(['SettingStruct.' fieldName]);
+
+            % Clear BpodSystem.Data
             BpodSystem.Data = struct;
+            
+            % Setup Flex I/O Analog Input data fields
             if BpodSystem.MachineType > 3
                 if nAnalogChannels > 0
+                    % Setup analog data struct
                     BpodSystem.Data.Analog = struct;
                     BpodSystem.Data.Analog.info = struct;
-                    BpodSystem.Data.Analog.FileName = AnalogFilename;
+                    BpodSystem.Data.Analog.FileName = analogFilename;
                     BpodSystem.Data.Analog.nChannels = nAnalogChannels;
                     BpodSystem.Data.Analog.channelNumbers = find(BpodSystem.HW.FlexIO_ChannelTypes == 2);
                     BpodSystem.Data.Analog.SamplingRate = BpodSystem.HW.FlexIO_SamplingRate;
                     BpodSystem.Data.Analog.nSamples = 0;
+
                     % Add human-readable info about data fields to 'info struct
                     BpodSystem.Data.Analog.info.FileName = 'Complete path and filename of the binary file to which the raw data was logged';
                     BpodSystem.Data.Analog.info.nChannels = 'The number of Flex I/O channels configured as analog input';
@@ -144,44 +171,63 @@ switch Opstring
                     BpodSystem.Data.Analog.info.TrialData = 'A cell array of Samples. Each cell contains samples captured during a single trial.';
                 end
             end
-            addpath(ProtocolRunFile);
+
+            % Add protocol folder to the path
+            addpath(protocolRunFile);
+
+            % Set console GUI run button
             set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
-            IsOnline = BpodSystem.check4Internet();
-            if (IsOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
+            
+            % Send metadata to Bpod Phone Home program (disabled pending a more stable server)
+            % isOnline = BpodSystem.check4Internet();
+            % if (isOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
                 %BpodSystem.BpodPhoneHome(1); % Disabled until server migration. -JS July 2018
-            end
+            % end
+
+            % Disable analog viewer record button (fixed for session)
             if BpodSystem.Status.AnalogViewer
                 set(BpodSystem.GUIHandles.RecordButton, 'Enable', 'off')
             end
-            BpodSystem.Status.BeingUsed = 1;
-            BpodSystem.Status.SessionStartFlag = 1;
-            BpodSystem.ProtocolStartTime = now*100000;
+
+            % Clear console GUI fields
             set(BpodSystem.GUIHandles.CurrentStateDisplay, 'String', '---');
             set(BpodSystem.GUIHandles.PreviousStateDisplay, 'String', '---');
             set(BpodSystem.GUIHandles.LastEventDisplay, 'String', '---');
             set(BpodSystem.GUIHandles.TimeDisplay, 'String', '0:00:00');
-            
+
+            % Set BpodSystem status flags
+            BpodSystem.Status.BeingUsed = 1;
+            BpodSystem.Status.SessionStartFlag = 1;
+
+            % Record session start time
+            BpodSystem.ProtocolStartTime = now*100000;
+
+            % Push console GUI to top and run protocol file
             figure(BpodSystem.GUIHandles.MainFig);
-            run(ProtocolRunFile);
+            run(protocolRunFile);
         end
     case 'StartPause'
+        % Toggles to start or pause the session
         if BpodSystem.Status.BeingUsed == 0
             if BpodSystem.EmulatorMode == 0
                 BpodSystem.StopModuleRelay;
             end
-            NewLaunchManager;
+            LaunchManager;
         else
             if BpodSystem.Status.Pause == 0
                 disp('Pause requested. The system will pause after the current trial completes.')
                 BpodSystem.Status.Pause = 1;
-                set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseRequestedButton, 'TooltipString', 'Pause scheduled after trial end'); 
+                set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseRequestedButton,... 
+                    'TooltipString', 'Pause scheduled after trial end'); 
             else
                 disp('Session resumed.')
                 BpodSystem.Status.Pause = 0;
-                set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
+                set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton,... 
+                    'TooltipString', 'Press to pause session');
             end
         end
     case 'Stop'
+        % Manually ends the session. The partially completed trial is not saved with the data.
         if ~isempty(BpodSystem.Status.CurrentProtocolName)
             disp(' ')
             disp([BpodSystem.Status.CurrentProtocolName ' ended'])
@@ -213,7 +259,8 @@ switch Opstring
         end
         BpodSystem.Status.RecordAnalog = 1;
         BpodSystem.Status.InStateMatrix = 0;
-        % Shut down protocol and plugin figures (should be made more general)
+
+        % Close protocol and plugin figures
         try
             Figs = fields(BpodSystem.ProtocolFigures);
             nFigs = length(Figs);
@@ -234,7 +281,8 @@ switch Opstring
             end
         catch
         end
-        set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.GoButton, 'TooltipString', 'Launch behavior session');
+        set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.GoButton,... 
+            'TooltipString', 'Launch behavior session');
         if BpodSystem.Status.Pause == 1
             BpodSystem.Status.Pause = 0;
         end

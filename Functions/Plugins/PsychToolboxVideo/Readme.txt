@@ -1,1 +1,0 @@
-Note: PsychToolboxVideoServer is now depricated. Please use PsychToolboxVideoPlayer for new applications.

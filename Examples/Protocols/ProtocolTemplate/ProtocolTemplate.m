@@ -1,8 +1,9 @@
 function ProtocolTemplate
-global BpodSystem
+
+global BpodSystem % Imports the BpodSystem object to the function workspace
 
 %% Setup (runs once before the first trial)
-MaxTrials = 10000; % Set to some sane value, for preallocation
+maxTrials = 10000; % Set to some sane value, for preallocation
 
 %--- Define parameters and trial structure
 S = BpodSystem.ProtocolSettings; % Loads settings file chosen in launch manager into current workspace as a struct called 'S'
@@ -17,7 +18,7 @@ end
 BpodParameterGUI('init', S); % Initialize parameter GUI plugin
 
 %% Main loop (runs once per trial)
-for currentTrial = 1:MaxTrials
+for currentTrial = 1:maxTrials
     S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
     
     %--- Typically, a block of code here will compute variables for assembling this trial's state machine
@@ -35,7 +36,7 @@ for currentTrial = 1:MaxTrials
     %--- Package and save the trial's data, update plots
     if ~isempty(fieldnames(RawEvents)) % If you didn't stop the session manually mid-trial
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Adds raw events to a human-readable data struct
-        BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct (to be saved after the trial ends)
+        BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct
         SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
         
         %--- Typically a block of code here will update online plots using the newly updated BpodSystem.Data

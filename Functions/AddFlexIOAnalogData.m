@@ -18,38 +18,60 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% This function is intended to be run after a behavior session is complete.
+% AddFlexIOAnalogData() is intended to be run on the Bpod computer after a session is complete.
 % It reads the current Flex I/O analog data file and combines it into BpodSystem.Data
-
-function SessionData = AddFlexIOAnalogData(SessionData, varargin)
+%
+% Arguments:
+% -sessionData: A Bpod session data structure
 %
 % Optional arguments must be provided in order, up to the argument required.
-% Arg 1: Data format. Default = 'Volts'. Use 'Bits' for a smaller data file.
-% In 'Bits' mode, samples are 12-bit values (0-4095), spanning the 0-5V range
+% -Arg 1: targetDataFormat. Default = 'Volts'. Use 'Bits' for a smaller data file.
+%         In 'Bits' mode, samples are 12-bit values (0-4095), spanning the 0-5V range
 %
-% Arg 2: Include trial-aligned data. This includes a cell array with cells containing
-% a copy of the analog data captured on each trial. This makes your data file larger.
-% Values: 1 to include, 0 if not.
+% -Arg 2: Include trial-aligned data. This includes a cell array with cells containing
+%         a copy of the analog data captured on each trial. This makes your data file larger.
+%         Values: 1 to include, 0 if not.
+%
+% Return: sessionData, the Bpod session data struct, with an added field: Analog. 
+% sessionData.Analog has fields:
+% nChannels: The number of channels acquired
+% Samples: The raw samples acquired. Units = volts or bits, depending on
+%          optional targetDataFormat argument
+% Timestamps: A timestamp for each sample. Units = seconds
+% TrialNumber: The experimental trial number during which each sample was acquired
+% TrialData (optional): A cell array containing a cell for each trial's analog data
+% info: A struct containing human-readable information about .Analog's fields
 %
 % Example usage:
-% AddFlexIOAnalogData('Bits', 1) imports data in bits, and adds a trial-aligned copy of the data.
+% sessionData = AddFlexIOAnalogData(sessionData, 'Bits', 1);
+% This example imports data in bits, and adds a trial-aligned copy of the data to sessionData
 
-global BpodSystem
+
+function sessionData = AddFlexIOAnalogData(sessionData, varargin)
+
+global BpodSystem % Import the global BpodSystem object
+
+% Constants
+VOLTAGE_RANGE_MAX = 5; % Flex I/O ADC maximum input voltage
+BIT_MAX = 4095;        % Flex I/O ADC bit depth
+
 if BpodSystem.MachineType > 3
     % Default params
-    VoltageRangeMax = 5; % Hard-coded
-    TargetDataFormat = 0; % 0 = Volts, 1 = bits (0-4095 encoding voltage in range 0-5V)
-    IncludeTrialAlignedData = 0; % If set to
-    % Check for overrides
+    targetDataFormat = 0; % 0 = Volts, 1 = bits (0-4095 encoding voltage in range 0-5V)
+    includeTrialAlignedData = 0; % If set to
+
+    % Process optional arguments
     if nargin > 1
-        TargetDataString = varargin{1};
-        if strcmpi(TargetDataString, 'bits')
-            TargetDataFormat = 1;
+        targetDataString = varargin{1};
+        if strcmpi(targetDataString, 'bits')
+            targetDataFormat = 1;
         end
     end
     if nargin > 2
-        IncludeTrialAlignedData = varargin{1};
+        includeTrialAlignedData = varargin{1};
     end
+    
+    % Ensure that analog acquisition is stopped
     if ~isempty(BpodSystem)
         if BpodSystem.MachineType > 3
             stop(BpodSystem.Timers.AnalogTimer); % Stop acquisition + data logging
@@ -58,39 +80,46 @@ if BpodSystem.MachineType > 3
     else
         clear global BpodSystem
     end
-    if isfield(SessionData, 'Analog')
+
+    % Format and add analog data to the sessionData structure
+    if isfield(sessionData, 'Analog')
         disp('Importing Flex I/O analog data to primary behavior data file. Please wait...')
-        AnalogMeta = SessionData.Analog;
-        myFile = fopen(AnalogMeta.FileName, 'r');
+        analogMeta = sessionData.Analog;
+        myFile = fopen(analogMeta.FileName, 'r');
         if myFile == -1
-            warning(['AddFlexIOAnalogData was called but could not open the analog data file: ' AnalogMeta.FileName ' No data was added to the primary data file.'])
+            warning(['AddFlexIOAnalogData was called but could not open the analog data file: ' ... 
+                analogMeta.FileName ' No data was added to the primary data file.'])
         else
-            Data = fread(myFile, (AnalogMeta.nSamples*AnalogMeta.nChannels)+AnalogMeta.nSamples, 'uint16');
-            if TargetDataFormat == 0
-                FormattedData = (double(Data)/4095)*VoltageRangeMax; % Convert to volts
-                SessionData.Analog.info.Samples = 'Analog measurements captured. Rows are separate analog input channels. Units = Volts';
+            Data = fread(myFile, (analogMeta.nSamples*analogMeta.nChannels)+analogMeta.nSamples, 'uint16');
+            if targetDataFormat == 0
+                formattedData = (double(Data)/BIT_MAX)*VOLTAGE_RANGE_MAX; % Convert to volts
+                sessionData.Analog.info.Samples = 'Analog measurements. Rows are separate analog input channels. Units = Volts';
             else
-                FormattedData = Data;
-                SessionData.Analog.info.Samples = 'Analog measurements captured. Rows are separate analog input channels. Units = Bits (0-4095) encoding volts (0-5V)';
+                formattedData = Data;
+                sessionData.Analog.info.Samples = ['Analog measurements. Rows are separate analog input channels. ' ...
+                                                   'Units = Bits (0-4095) encoding volts (0-5V)'];
             end
             fclose(myFile);
             clear myFile;
-            SessionData.Analog.Samples = [];
-            for i = 1:SessionData.Analog.nChannels
-                SessionData.Analog.Samples(i,:) = FormattedData(i+1:AnalogMeta.nChannels+1:end)';
+            sessionData.Analog.Samples = [];
+            for i = 1:sessionData.Analog.nChannels
+                sessionData.Analog.Samples(i,:) = formattedData(i+1:analogMeta.nChannels+1:end)';
             end
-            oneTrialCompleted = isfield(SessionData, 'TrialStartTimestamp');
+            oneTrialCompleted = isfield(sessionData, 'TrialStartTimestamp');
             if oneTrialCompleted
-                SessionData.Analog.Timestamps = SessionData.TrialStartTimestamp:(1/AnalogMeta.SamplingRate):SessionData.TrialStartTimestamp+((1/AnalogMeta.SamplingRate)*(AnalogMeta.nSamples-1));
-                SessionData.Analog.TrialNumber = Data(1:AnalogMeta.nChannels+1:end)';
-                if IncludeTrialAlignedData
-                    SessionData.Analog.TrialData = cell(1,SessionData.nTrials);
-                    for i = 1:SessionData.nTrials
-                        SessionData.Analog.TrialData{i} = SessionData.Analog.Samples(:,SessionData.Analog.TrialNumber == i);
+                sessionData.Analog.Timestamps =... 
+                                  sessionData.TrialStartTimestamp:(1/analogMeta.SamplingRate):sessionData.TrialStartTimestamp + ... 
+                                  ((1/analogMeta.SamplingRate)*(analogMeta.nSamples-1));
+                sessionData.Analog.TrialNumber = Data(1:analogMeta.nChannels+1:end)';
+                if includeTrialAlignedData
+                    sessionData.Analog.TrialData = cell(1,sessionData.nTrials);
+                    for i = 1:sessionData.nTrials
+                        sessionData.Analog.TrialData{i} = sessionData.Analog.Samples(:,sessionData.Analog.TrialNumber == i);
                     end
                 end
             else
-                warning('Flex I/O analog data NOT saved; the state machine must reach the exit state to complete at least 1 trial before data can be properly aligned.')
+                warning(['Flex I/O analog data NOT saved; the state machine must reach the exit state to complete at least 1 trial ' ...
+                         'before data can be properly aligned.'])
             end
         end
         disp('Data import complete.')

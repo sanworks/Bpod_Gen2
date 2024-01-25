@@ -3,6 +3,7 @@
 % after a 1.5s onset delay. When the timer begins measuring, it sets the PWM channel of port2
 % to 25% duty cycle (64/256). When the timer's 3 second duration elapses, the PWM channel is returned low, 
 % and a GlobalTimer1_End event occurs (handled in both cases by exiting the state machine).
+% Requires: behavior ports or lickometers with visible LEDs connected to Ch1, Ch2 and Ch3
 
 sma = NewStateMachine;
 sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', 3, 'OnsetDelay', 1.5, 'Channel', 'PWM2', 'PulseWidthByte', 64); 

@@ -4,6 +4,7 @@
 % where it waits for two events:
 % 1. Port1In momentarily enters a state that stops the global timer. Port 2 will stop blinking.
 % 2. Exits the state machine.
+% Requires: behavior ports or lickometers with visible LEDs connected to Ch1, Ch2 and Ch3
 
 sma = NewStateMachine;
 sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', 0.5, 'OnsetDelay', 0.5,...

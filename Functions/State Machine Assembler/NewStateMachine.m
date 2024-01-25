@@ -17,8 +17,14 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% NewStateMachine() returns a blank state machine description that can be
+% passed to AddState().
+
 function sma = NewStateMachine
-global BpodSystem
+
+global BpodSystem % Import the global BpodSystem object
+
 if isempty(BpodSystem)
     error('You must run Bpod() before assembling a state machine.')
 end

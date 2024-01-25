@@ -1,3 +1,3 @@
 function Ver = BpodSoftwareVersion_Semantic
 
-Ver = '1.7.8';
+Ver = '1.7.9';

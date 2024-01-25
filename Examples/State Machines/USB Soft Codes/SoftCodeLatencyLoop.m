@@ -1,6 +1,6 @@
 % Example state matrix: Drives a BNC line high and sends a soft code to the PC, then
 % drives the other BNC line high when the PC sends a
-% response. Measure both BNC lines with an oscilloscope to see the latency.
+% response. Measure both BNC lines with an oscilloscope to observe the latency.
 
 sma = NewStateMatrix();
 

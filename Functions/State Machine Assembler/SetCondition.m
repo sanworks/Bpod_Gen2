@@ -17,36 +17,53 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function sma = SetCondition(sma, ConditionNumber, ConditionChannel, ConditionValue)
+
+% SetCondition() configures a Condition that can be used to direct state
+% flow. A condition is an assertion about the logic state of a state machine 
+% I/O channel or global timer.
+%
 % Arguments:
-% ConditionNumber = 1 to n, for conditions 1 to n
-% ConditionChannel = Port or input line (e.g. Port1, Wire1, BNC1); see BpodSystem.StateMachineInfo.InputChannelNames
-% ConditionValue = 1 (in/high) or 0 (out/low)]
+% sma = a state machine description that will be modified with the new condition
+% conditionNumber = The index of the condition to configure, begining with 1
+% conditionChannel = Port or input line (e.g. Port1, Wire1, BNC1); see BpodSystem.StateMachineInfo.InputChannelNames
+% conditionValue = 1 (in/high) or 0 (out/low). For global timers, 1 = running, 0 = not running
+%
+% Returns: sma, the state machine description
 
 % Example usage:
 % sma = SetCondition(sma, 1, 'Port1', 1);
-global BpodSystem
-if ischar(ConditionValue)
+
+function sma = SetCondition(sma, conditionNumber, conditionChannel, conditionValue)
+
+global BpodSystem % Import the global BpodSystem object
+
+% Verify that conditionValue is not char
+if ischar(conditionValue)
     error('Condition values must be either 0 or 1, for out/low or in/high respectively.')
 end
+
+% Ensure that conditionNumber does not exceed the maximum number of conditions supported
 nConditions = length(sma.ConditionChannels);
-if ConditionNumber > nConditions
+if conditionNumber > nConditions
     error(['Only ' num2str(nConditions) ' conditions are available with your state machine firmware.']);
 end
-Channel = find(strcmp(ConditionChannel,BpodSystem.StateMachineInfo.InputChannelNames));
-if isempty(Channel)
-    if strcmp(ConditionChannel(1:11), 'GlobalTimer')
-        Channel = str2double(ConditionChannel(12:end));
-        if Channel <= BpodSystem.HW.n.GlobalTimers
-            sma.ConditionChannels(ConditionNumber) = BpodSystem.HW.n.Inputs + Channel;
+
+% Add the condition
+channel = find(strcmp(conditionChannel,BpodSystem.StateMachineInfo.InputChannelNames));
+if isempty(channel)
+    if strcmp(conditionChannel(1:11), 'GlobalTimer')
+        channel = str2double(conditionChannel(12:end));
+        if channel <= BpodSystem.HW.n.GlobalTimers
+            sma.ConditionChannels(conditionNumber) = BpodSystem.HW.n.Inputs + channel;
         else
-            error(['Error: A condition tried to access Global Timer ' num2str(Channel) ' but only ' num2str(BpodSystem.HW.n.GlobalTimers) ' global timers exist.'])
+            error(['Error: A condition tried to access Global Timer ' num2str(channel)... 
+                ' but only ' num2str(BpodSystem.HW.n.GlobalTimers) ' global timers exist.'])
         end
     else
         error('Error: Condition channel must be a valid channel or global timer. See BpodSystem.StateMachineInfo.InputChannelNames')
     end
 else
-    sma.ConditionChannels(ConditionNumber) = find(strcmp(ConditionChannel,BpodSystem.StateMachineInfo.InputChannelNames));
+    sma.ConditionChannels(conditionNumber) = find(strcmp(conditionChannel, BpodSystem.StateMachineInfo.InputChannelNames));
 end
-sma.ConditionValues(ConditionNumber) = ConditionValue;
-sma.ConditionSet(ConditionNumber) = 1;
+sma.ConditionValues(conditionNumber) = conditionValue;
+sma.ConditionSet(conditionNumber) = 1;

@@ -1,7 +1,8 @@
 % Example state matrix: Runs through 20 states of 1ms each.
 % Sends a pulse train on BNC output channel 2, where alternating states
 % are high and low.
-pulseWidth = 0.0001; %(s)
+
+pulseWidth = 0.001; %(s)
 sma = NewStateMachine;
 i = 1;
 for x = 1:20

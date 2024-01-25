@@ -17,6 +17,26 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+
+% AmbientModule is a class to interface with the Bpod Ambient Module via USB.
+%
+% Fields: 
+% Port, an ArCOM object to interface with the USB serial port
+%
+% Methods:
+% measures = getMeasurements()  
+%                Returns a struct with the following fields:
+%                Temperature_C: Ambient temperature (Celsius)
+%                Temperature_F: Ambient temperature (Farenheit)
+%                AirPressure_mb: Ambient air pressure (millibars)
+%                RelativeHumidity: Relative humidity %
+% calibration = getCalibration() Returns the calibration offset for each measurement
+%
+% setCalibration(tempOffsetCelsius, pressureOffset, humidityOffset)
+%                Sets the calibration, given as a signed integer to offset each
+%                measurement. Calibration is loaded into non-volatile memory, and will
+%                persist across power cycles.
+
 classdef AmbientModule < handle
     properties
         Port % ArCOM Serial port
@@ -25,23 +45,23 @@ classdef AmbientModule < handle
         function obj = AmbientModule(portString)
             obj.Port = ArCOMObject_Bpod(portString, 115200);
         end
-        function Data = getMeasurements(obj)
+        function data = getMeasurements(obj)
             obj.Port.write('R', 'uint8');
-            RawBytes = obj.Port.read(12, 'uint8');
-            Measurements = typecast(RawBytes, 'single');
-            Data = struct;
-            Data.Temperature_C = Measurements(1);
-            Data.Temperature_F = Measurements(1)*(9/5)+32;
-            Data.AirPressure_mb = Measurements(2)/100;
-            Data.RelativeHumidity = Measurements(3);
+            rawBytes = obj.Port.read(12, 'uint8');
+            measurements = typecast(rawBytes, 'single');
+            data = struct;
+            data.Temperature_C = measurements(1);
+            data.Temperature_F = measurements(1)*(9/5)+32;
+            data.AirPressure_mb = measurements(2)/100;
+            data.RelativeHumidity = measurements(3);
         end
-        function Calibration = getCalibration(obj)
-            Calibration = struct;
+        function calibration = getCalibration(obj)
+            calibration = struct;
             obj.Port.write('G', 'uint8');
-            Cal = typecast(obj.Port.read(12, 'uint8'), 'single');
-            Calibration.Temperature_C = Cal(1);
-            Calibration.AirPressure_mb = Cal(2);
-            Calibration.RelativeHumidity = Cal(3);
+            cal = typecast(obj.Port.read(12, 'uint8'), 'single');
+            calibration.Temperature_C = cal(1);
+            calibration.AirPressure_mb = cal(2);
+            calibration.RelativeHumidity = cal(3);
         end
         function setCalibration(obj, tempOffsetCelsius, pressureOffset, humidityOffset)
             obj.Port.write('C', 'uint8', [tempOffsetCelsius*1000 pressureOffset humidityOffset*1000], 'int32');

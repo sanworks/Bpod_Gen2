@@ -38,12 +38,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 function Bpod(varargin)
 
-% Ensure that Bpod is not open, and clear partially initialized instances.
 global BpodSystem
+
+% Ensure that Bpod is not open, and clear partially initialized instances.
+isInitialized = false;
 if ~isempty(BpodSystem)
-    if BpodSystem.Status.Initialized
-        error('Bpod is already open. Please close the Bpod console and try again.');
+    if isprop(BpodSystem, 'Status') && isprop(BpodSystem, 'GUIHandles')
+        if BpodSystem.Status.Initialized && isgraphics(BpodSystem.GUIHandles.MainFig)
+            isInitialized = true;
+        end
+    end
+end
+if isInitialized
+    error('Bpod is already open. Please close the Bpod console and try again.');
+else
+    if isprop(BpodSystem, 'SerialPort')
+        EndBpod; % Hardware was initialized. EndBpod() disconnects gracefully.
+        Bpod; % EndBpod() clears the global. Bpod must be called to reinitialize it.
+        return
     else
+        if ~isempty(BpodSystem)
+        warning(['A partially initialized BpodSystem variable was cleared.' char(10)...
+                 'This may happen if a previous startup attempt crashed, or if user' char(10)... 
+                 'startup code created a global BpodSystem variable before calling Bpod()'])
+        end
         BpodSystem = []; % Clear partially initialized object
     end
 end
@@ -58,20 +76,20 @@ BpodSystem = BpodObject;
 % Try to find hardware. If none, prompt to run emulation mode.
 if nargin > 0
     if strcmp(varargin{1}, 'EMU')
-        emulatorSetup;
+        emulator_setup;
     else
         if nargin > 1
-            ForceJava = varargin{2};
-            BpodSystem.Connect2BpodSM(varargin{1}, ForceJava);
+            forceJava = varargin{2};
+            BpodSystem.Connect2BpodSM(varargin{1}, forceJava);
         else
             BpodSystem.Connect2BpodSM(varargin{1});
         end
-        bpodSetup;
+        bpod_setup;
     end
 else
     try
         BpodSystem.Connect2BpodSM('AUTO');
-        bpodSetup;
+        bpod_setup;
     catch ME
         BpodSystem.GUIData.LaunchError = ME;
         if isfield(BpodSystem.GUIData, 'FutureFirmwareFlag')
@@ -79,28 +97,28 @@ else
             clear global BpodSystem
             rethrow(ME)
         else
-            emulatorDialog;
+            emulator_dialog;
         end
     end
 end
 
-function emulatorSetup(varargin)
+function emulator_setup(varargin)
 % Runs setup with emulator mode flag set to 'true'.
 % Two optional arguments are automatically passed when called from the GUI.
 % These args are ignored.
 global BpodSystem
 BpodSystem.EmulatorMode = true;
-bpodSetup;
+bpod_setup;
 
-function bpodSetup
+function bpod_setup
 % Runs BpodSystem's hardware and GUI setup methods.
 global BpodSystem
-BpodSystem.SetupHardware;
+BpodSystem.SetupHardware();
 BpodSystem.InitializeGUI();
 BpodSystem.Status.Initialized = true;
 evalin('base', 'global BpodSystem')
 
-function emulatorDialog
+function emulator_dialog
 % Launches a GUI indicating that hardware connection has failed.
 % Prompts the user to start emulator mode or close the program.
 global BpodSystem
@@ -112,14 +130,14 @@ uistack(ha,'bottom'); BG = imread('DeviceNotFound.bmp'); image(BG); axis off;
 BpodSystem.GUIData.CloseBpodButton = imread('CloseBpod.bmp');
 BpodSystem.GUIData.LaunchEMUButton = imread('StartInEmuMode.bmp');
 BpodSystem.GUIHandles.LaunchEmuModeButton = uicontrol('Style', 'pushbutton',... 
-    'String', '', 'Position', [15 55 277 32], 'Callback', @emulatorSetup,... 
+    'String', '', 'Position', [15 55 277 32], 'Callback', @emulator_setup,... 
     'CData', BpodSystem.GUIData.LaunchEMUButton, 'TooltipString',... 
     'Start Bpod in emulation mode');
 BpodSystem.GUIHandles.CloseBpodButton = uicontrol('Style', 'pushbutton',... 
-    'String', '', 'Position', [15 15 277 32], 'Callback', @closeBpodHWNotFound,... 
+    'String', '', 'Position', [15 15 277 32], 'Callback', @close_bpod,... 
     'CData', BpodSystem.GUIData.CloseBpodButton,'TooltipString', 'Close Bpod');
 
-function closeBpodHWNotFound(varargin)
+function close_bpod(varargin)
 % Closes the program when prompted by the user from the emulatorDialog GUI.
 % Two optional arguments are automatically passed when called from the GUI.
 % These args are ignored.
@@ -127,10 +145,10 @@ global BpodSystem
 close(BpodSystem.GUIHandles.LaunchEmuFig);
 close(BpodSystem.GUIHandles.SplashFig);
 disp('Error: Bpod State Machine not found.')
-GUIData = BpodSystem.GUIData;
+guiData = BpodSystem.GUIData;
 clear global BpodSystem
-if isfield(GUIData, 'LaunchError')
-    rethrow(GUIData.LaunchError)
+if isfield(guiData, 'LaunchError')
+    rethrow(guiData.LaunchError)
 else
     lasterr
 end

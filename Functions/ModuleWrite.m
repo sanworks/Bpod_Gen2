@@ -17,25 +17,39 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function ModuleWrite(ModuleName, Message, varargin)
-% Note: This function is designed to send short byte messages to modules 
-% (1-3 bytes typical, though up to 64 is permitted).
-% Be sure that your module firmware can process data as fast as you send
-% it with this function. If you send too much data too quickly, you may cause a buffer overflow, and
-% some bytes may be dropped.
-% Message is a value or a vector of values.
-% An optional argument can specify a data type - uint8, uint16, uint32,
-% int8, int16, int32, char
-global BpodSystem
-ModuleNumber = find(strcmp(ModuleName, BpodSystem.Modules.Name));
-if isempty(ModuleNumber)
-    error(['Error: ' ModuleName ' is not connected. See valid modules by running BpodSystem.Modules.']);
+
+% ModuleWrite() allows you to send messages from the state machine to its
+% connected modules.
+%
+% Arguments:
+% -moduleName: The name of the module to read from. Module names are given on the
+%              system info panel, via the mangifying glass icon on the Console GUI.
+% -message: The message to write to the module. This is a 1xn array of values.
+% -dataType (optional): The data type to write. Default = uint8. 
+%
+% Returns: None
+%
+% Example usage: ModuleWrite('HiFi1', ['P' 0]);
+% Sends bytes 'P' and 0 from the state machine to the HiFi module.
+
+function ModuleWrite(moduleName, message, varargin)
+
+global BpodSystem % Import the global BpodSystem object
+
+% Resolve module index from moduleName
+moduleIndex = find(strcmp(moduleName, BpodSystem.Modules.Name));
+if isempty(moduleIndex)
+    error(['Error: ' moduleName ' is not connected. See valid modules by running BpodSystem.Modules.']);
 end
-nValues = length(Message);
+
+% Resolve data type to write
 dataType = 'uint8';
 if nargin > 2
     dataType = varargin{1};
 end
+
+% Resolve message length in bytes
+nValues = length(message);
 nBytes = nValues;
 switch dataType
     case 'uint16'
@@ -47,7 +61,11 @@ switch dataType
     case 'int32'
         nBytes = nValues*4;
 end
+
+% Sanity check message length to ensure it will fit in the module serial buffer
 if nBytes > 64
-    error('Error: ModuleWrite can only send messages of up to 64 bytes. See comments in ModuleWrite.m')
+    error('Error: ModuleWrite can only send messages of up to 64 bytes.')
 end
-BpodSystem.SerialPort.write(['T' ModuleNumber nBytes], 'uint8', Message, dataType);
+
+% Send the message
+BpodSystem.SerialPort.write(['T' moduleIndex nBytes], 'uint8', message, dataType);
