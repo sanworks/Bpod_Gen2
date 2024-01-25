@@ -24,19 +24,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 function usbSerialPorts = FindUSBSerialPorts(obj)
 usbSerialPorts = {}; % Initialize empty cell array
 
-% Get and split the system's list of available ports
-if ispc
-    % For Windows: Use PowerShell command to list serial ports
-    [~, RawString] = system('powershell.exe -inputformat none "[System.IO.Ports.SerialPort]::getportnames()"');
-    portLocations = strsplit(RawString, {'\r\n', '\n', '\r'}); % Split the output by possible newline characters
-elseif ismac
-    % For macOS: List USB serial devices
-    [~, RawSerialPortList] = system('ls /dev/cu.usbmodem*');
-    portLocations = strsplit(strtrim(RawSerialPortList), '  ');
+if verLessThan('matlab', '9.7')
+    % On MATLAB prior to r2019b, use a system call to return the list of ports.
+    % Get and split the system's list of available ports
+    if ispc
+        % For Windows: Use PowerShell command to list serial ports
+        [~, RawString] = system('powershell.exe -inputformat none "[System.IO.Ports.SerialPort]::getportnames()"');
+        portLocations = strsplit(RawString, {'\r\n', '\n', '\r'}); % Split the output by possible newline characters
+    elseif ismac
+        % For macOS: List USB serial devices
+        [~, rawSerialPortList] = system('ls /dev/cu.usbmodem*');
+        portLocations = strsplit(strtrim(rawSerialPortList), '\n');
+    else
+        % For Linux: List ACM serial devices
+        [~, rawSerialPortList] = system('ls /dev/ttyACM*');
+        portLocations = strsplit(strtrim(rawSerialPortList), {'  ', '\n'});
+    end
 else
-    % For Linux: List ACM serial devices
-    [~, RawSerialPortList] = system('ls /dev/ttyACM*');
-    portLocations = strsplit(strtrim(RawSerialPortList), '  ');
+    % On MATLAB r2019b or newer, use serialportlist()
+    portLocations = cellstr(serialportlist("available"));
 end
 
 % Filter and add ports to usbSerialPorts
