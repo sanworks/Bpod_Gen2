@@ -107,7 +107,7 @@ classdef RotaryEncoderModule < handle
                 error('Rotary encoder module returned an incorrect handshake byte.')
             end
 
-            % Check for firmware version 2
+            % Check for hardware version 2
             obj.Port.write('IM', 'uint8');
             reply = obj.Port.read(1, 'uint8');
             obj.hardwareVersion = 1;

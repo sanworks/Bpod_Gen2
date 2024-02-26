@@ -236,21 +236,23 @@ classdef LiveOutcomePlot < handle
 
             % Recompute xlim
             [mn, mx] = obj.rescale_x(currentTrial, obj.nTrialsToShow);
-
-            % Plot future trials
             offset = mn-1;
-            futureTrialsIndx = currentTrial:mx;
-            xdata = futureTrialsIndx; ydata = trialTypeList(xdata);
-            displayXdata = xdata-offset;
-            set(obj.GUIHandles.FutureTrialLine, 'xdata', [displayXdata,displayXdata],... 
-                                                       'ydata', [ydata,ydata]);
+                      
+            if currentTrial <= length(trialTypeList)
+                % Plot future trials
+                futureTrialsIndx = currentTrial:mx;
+                xdata = futureTrialsIndx; ydata = trialTypeList(xdata);
+                displayXdata = xdata-offset;
+                set(obj.GUIHandles.FutureTrialLine, 'xdata', [displayXdata,displayXdata],...
+                    'ydata', [ydata,ydata]);
 
-            % Plot current trial
-            displayCurrentTrial = currentTrial-offset;
-            set(obj.GUIHandles.CurrentTrialCircle, 'xdata', [displayCurrentTrial,displayCurrentTrial],...
-                                                          'ydata', [trialTypeList(currentTrial),trialTypeList(currentTrial)]);
-            set(obj.GUIHandles.CurrentTrialCross, 'xdata', [displayCurrentTrial,displayCurrentTrial],...
-                                                         'ydata', [trialTypeList(currentTrial),trialTypeList(currentTrial)]);
+                % Plot current trial
+                displayCurrentTrial = currentTrial-offset;
+                set(obj.GUIHandles.CurrentTrialCircle, 'xdata', [displayCurrentTrial,displayCurrentTrial],...
+                    'ydata', [trialTypeList(currentTrial),trialTypeList(currentTrial)]);
+                set(obj.GUIHandles.CurrentTrialCross, 'xdata', [displayCurrentTrial,displayCurrentTrial],...
+                    'ydata', [trialTypeList(currentTrial),trialTypeList(currentTrial)]);
+            end
 
             % Plot past trials
             if ~isempty(outcomes)
