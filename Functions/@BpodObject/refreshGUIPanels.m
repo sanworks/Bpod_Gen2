@@ -60,6 +60,7 @@ if obj.Status.BeingUsed == 0
         % Clear panel contents
         set(obj.GUIHandles.OverridePanel(i), 'Visible', 'on');
         uistack(obj.GUIHandles.OverridePanel(i),'top');
+        drawnow;
         axes(obj.GUIHandles.OverridePanelAxes(i)); % Make correct panel axes the current axes
         panelChildren = get(obj.GUIHandles.OverridePanel(i), 'Children');
         nChildren = length(panelChildren);
