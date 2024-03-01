@@ -134,20 +134,22 @@ for currentTrial = 1:maxTrials
                                        
     if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session 
 
-    % Since PrepareStateMachine is a function with a separate workspace, pass any local variables needed to make 
-    % the state machine as fields of settings struct S e.g. S.learningRate = 0.2.
-    [sma, S] = PrepareStateMachine(S, trialTypes, currentTrial+1, currentTrialEvents); % Prepare next state machine.
-    
-    % Send the next trial's state machine description
-    SendStateMachine(sma, 'RunASAP'); % With TrialManager, you can send the next trial's state machine during the trial.
-    
-    % Update sounds
-    leftSound = GenerateSineWave(sf, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); 
-                                 % Sampling freq (hz), Sine frequency (hz), duration (s)
-    rightSound = GenerateSineWave(sf, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration);
-    pause(rand*0.75);
-    H.load(1, leftSound);
-    H.load(2, rightSound);
+    if currentTrial < maxTrials
+        % Since PrepareStateMachine is a function with a separate workspace, pass any local variables needed to make 
+        % the state machine as fields of settings struct S e.g. S.learningRate = 0.2.
+        [sma, S] = PrepareStateMachine(S, trialTypes, currentTrial+1, currentTrialEvents); % Prepare next state machine.
+        
+        % Send the next trial's state machine description
+        SendStateMachine(sma, 'RunASAP'); % With TrialManager, you can send the next trial's state machine during the trial.
+        
+        % Update sounds
+        leftSound = GenerateSineWave(sf, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); 
+                                     % Sampling freq (hz), Sine frequency (hz), duration (s)
+        rightSound = GenerateSineWave(sf, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration);
+        pause(rand*0.75);
+        H.load(1, leftSound);
+        H.load(2, rightSound);
+    end
     
     % getTrialData() idles here until trial is over, then returns full trial's raw data
     RawEvents = trialManager.getTrialData;
@@ -157,8 +159,10 @@ for currentTrial = 1:maxTrials
     % Check to see if the protocol is paused. If so, idle here until user resumes.
     HandlePauseCondition; 
 
-    % Start processing the next trial's events (call with no argument since SM was already sent)
-    trialManager.startTrial(); 
+    if currentTrial < maxTrials
+        % Start processing the next trial's events (call with no argument since SM was already sent)
+        trialManager.startTrial(); 
+    end
     
     % Process trial data returned
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned from last trial, update plots and save data
@@ -209,7 +213,7 @@ sma = AddState(sma, 'Name', 'DeliverStimulus', ...
     'OutputActions', stimulusOutput);
 sma = AddState(sma, 'Name', 'WaitForResponse', ...
     'Timer', S.GUI.ResponseTime,...
-    'StateChangeConditions', {'Port1In', leftPokeAction, 'Port3In', rightPokeAction, 'Tup', 'TimeOutState'},...
+    'StateChangeConditions', {'Port1In', leftPokeAction, 'Port3In', rightPokeAction, 'Tup', 'exit'},...
     'OutputActions', {}); 
 sma = AddState(sma, 'Name', 'LeftRewardDelay', ...
     'Timer', S.GUI.RewardDelay,...

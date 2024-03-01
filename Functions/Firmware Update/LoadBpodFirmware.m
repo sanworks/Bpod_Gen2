@@ -261,9 +261,23 @@ classdef LoadBpodFirmware < handle
                 if strcmp(set2Device, 'PA') % Special handling of port array module for backwards compatability
                     set2Device = 'PortArray';
                 end
-                pos = strfind(firmwareNames,set2Device);
+
+                % If a hardware version was provided, extract firmware name and HW version
+                deviceName = set2Device;
+                hwVersionPos = find(set2Device == '&');
+                if ~isempty(hwVersionPos)
+                    deviceName = set2Device(1:hwVersionPos-1);
+                    hwVersion = set2Device(hwVersionPos+1:end);
+                    posHW = strfind(firmwareNames,hwVersion);
+                    posHW = find(~cellfun(@isempty,posHW));
+                end
+                pos = strfind(firmwareNames,deviceName);
                 pos = find(~cellfun(@isempty,pos));
-                posExact = find(strcmp(firmwareNames, set2Device));
+                if ~isempty(hwVersionPos)
+                    pos = intersect(pos, posHW);
+                end
+                posExact = find(strcmp(firmwareNames, deviceName));
+
                 % Make the exact match rank first
                 if ~isempty(posExact)
                     pos = [posExact pos(pos ~= posExact)];

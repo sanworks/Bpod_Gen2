@@ -58,7 +58,7 @@ classdef BpodWavePlayer < handle
         BpodEvents % 'On' sends byte 0x(channel) when starting playback, and 0x(channel+4) when playback finishes.
     end
     properties (Access = private)
-        CurrentFirmwareVersion = 1;
+        CurrentFirmwareVersion = 6;
         ValidRanges = {'0V:5V', '0V:10V', '0V:12V', '-5V:5V', '-10V:10V', '-12V:12V'};
         TriggerModeStrings = {'Normal', 'Master', 'Toggle'};
         ValidBinaryStates = {'Off', 'On'};
@@ -98,7 +98,7 @@ classdef BpodWavePlayer < handle
                     disp('*********************************************************************');
                     disp(['Warning: Old firmware detected: v' num2str(obj.Info.FirmwareVersion) ...
                         '. The current version is: v' num2str(obj.CurrentFirmwareVersion) char(13)...
-                        'Please update using the firmware update tool: UpdateBpodFirmware().'])
+                        'Please clear the BpodWavePlayer and update with: LoadBpodFirmware().'])
                     disp('*********************************************************************');
                 end
             end
@@ -111,29 +111,28 @@ classdef BpodWavePlayer < handle
                 obj.Info.HardwareVersion = obj.Port.read(1, 'uint8');
                 obj.Info.CircuitRevision = obj.Port.read(1, 'uint8');
             end
+            
             obj.Port.write('N', 'uint8');
             obj.nChannels = obj.Port.read(1, 'uint8');
             obj.maxWaves = obj.Port.read(1, 'uint16');
-            triggerModeIndex = obj.Port.read(1, 'uint8')+1;
-            obj.TriggerProfileLogic = obj.Port.read(1, 'uint8');
+            if obj.Info.FirmwareVersion < 6
+                obj.Port.read(2,'uint8'); % Older firmware returned parameters here, which will
+                                          % be overwritten in the call to set2Defaults() below
+            end
             obj.nTriggerProfiles = obj.Port.read(1, 'uint8');
-            rangeIndex = obj.Port.read(1, 'uint8')+1;
-            samplingPeriodMicroseconds = typecast(obj.Port.read(4, 'uint8'), 'single');
-            obj.BpodEventsLogic = obj.Port.read(obj.nChannels, 'uint8');
-            obj.LoopModeLogic = obj.Port.read(obj.nChannels, 'uint8');
-            loopDurationSamples =  obj.Port.read(obj.nChannels, 'uint32');
+
+            if obj.Info.FirmwareVersion < 6
+                pause(.2);
+                obj.Port.flush(); % Older firmware returned parameters here, which will
+                                  % be overwritten in the call to set2Defaults() below
+                obj.LoopModeLogic = zeros(1, obj.nChannels); % Older firmware required initial 
+                                                        % values for LoopModeLogic and LoopDuration
+                obj.LoopDuration = zeros(1, obj.nChannels);
+            end
 
             % Setup parameters
             obj.Waveforms = cell(1,obj.maxWaves); % Local copy of currently loaded waveforms
             obj.maxSimultaneousChannels = obj.nChannels;
-            obj.TriggerProfiles = zeros(obj.nTriggerProfiles, obj.nChannels);
-            obj.TriggerProfileEnable = obj.ValidBinaryStates{obj.TriggerProfileLogic+1};
-            obj.TriggerMode = obj.TriggerModeStrings{triggerModeIndex};
-            obj.OutputRange = obj.ValidRanges{rangeIndex};
-            obj.SamplingRate = 1/(samplingPeriodMicroseconds/1000000);
-            obj.LoopDuration = single(loopDurationSamples)/single(obj.SamplingRate);
-            obj.LoopMode = obj.ValidBinaryStates(obj.LoopModeLogic+1);
-            obj.BpodEvents = obj.ValidBinaryStates(obj.BpodEventsLogic+1);
             obj.Initialized = 1;
             obj.set2Defaults;
         end
@@ -200,7 +199,11 @@ classdef BpodWavePlayer < handle
                         error('Error setting loop mode: status of each channel must be either ''On'' or ''Off''');
                     end
                 end
-                obj.Port.write(['O' loopModes], 'uint8', obj.LoopDuration*obj.SamplingRate, 'uint32');
+                if obj.Info.FirmwareVersion > 5
+                    obj.Port.write(['O' loopModes], 'uint8');
+                else
+                    obj.Port.write(['O' loopModes], 'uint8', obj.LoopDuration*obj.SamplingRate, 'uint32');
+                end
                 obj.confirmTransmission('setting loop mode');
                 obj.LoopModeLogic = loopModes;
             end
@@ -215,7 +218,11 @@ classdef BpodWavePlayer < handle
                 if length(durations) ~= obj.nChannels
                     error('Error setting loop durations - one duration must be set for each channel.')
                 end
-                obj.Port.write(['O' obj.LoopModeLogic], 'uint8', durations*obj.SamplingRate, 'uint32');
+                if obj.Info.FirmwareVersion > 5
+                    obj.Port.write('D', 'uint8', durations*obj.SamplingRate, 'uint32');
+                else
+                    obj.Port.write(['O' obj.LoopModeLogic], 'uint8', durations*obj.SamplingRate, 'uint32');
+                end
                 obj.confirmTransmission('setting loop duration');
             end
             obj.LoopDuration = durations;
@@ -330,6 +337,9 @@ classdef BpodWavePlayer < handle
                 end
                 samplingPeriodMicroseconds = (1/sf)*1000000;
                 obj.Port.write(['S' typecast(single(samplingPeriodMicroseconds), 'uint8')], 'uint8');
+                if obj.Info.FirmwareVersion > 5
+                    obj.confirmTransmission('setting sampling rate');
+                end
                 if obj.Info.HardwareVersion < 2
                     if sf > 100000
                         obj.maxSimultaneousChannels = 1;
@@ -344,7 +354,7 @@ classdef BpodWavePlayer < handle
                     end
                 end
                 if sum(obj.LoopModeLogic) > 0 % Re-compute loop durations (in units of samples)
-                    obj.Port.write(['O' obj.LoopModeLogic], 'uint8', obj.LoopDuration*sf, 'uint32'); % Update loop durations
+                    obj.Port.write('D', 'uint8', obj.LoopDuration*sf, 'uint32'); % Update loop durations
                     obj.confirmTransmission('setting sampling rate');
                 end
             end

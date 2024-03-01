@@ -50,6 +50,7 @@ classdef BpodAnalogIn < handle
         Port % ArCOM wrapper to simplify data transactions on the USB serial port
         Timer % MATLAB timer object
         Status % Struct containing status of ongoing ops (logging, streaming, etc)
+        DIOconfig % 1x2 array indicating DIO channel config. 0 = disabled, 1 = output
         nActiveChannels % Number of channels to sample (consecutive, beginning with channel 1)
         SamplingRate % 1Hz-10kHz on v1, 1Hz-50kHz on v2, affects all channels
         InputRange % A cell array of strings indicating voltage range for 12-bit conversion. 
@@ -125,7 +126,7 @@ classdef BpodAnalogIn < handle
                         disp('*********************************************************************');
                     end
                 elseif obj.Info.FirmwareVersion > latestFirmware
-                    error(['Analog Input Module with future firmware found.' ...
+                    error(['Analog Input Module with future firmware found. ' ...
                            'Please update your Bpod software from the Bpod_Gen2 repository.']);
                 end
                 obj.Info.HardwareVersion = 1;
@@ -185,6 +186,13 @@ classdef BpodAnalogIn < handle
             obj.Stream2Module = zeros(1,obj.nPhysicalChannels);
             obj.StreamPrefix = 'R';
             obj.InputRange  = repmat(obj.Info.InputVoltageRanges(obj.RangeIndex(1)), 1, obj.nPhysicalChannels);
+            if obj.Info.HardwareVersion == 1 % HW v1 has DIO Ch1 set output high by default, 
+                                             % as a voltage source for resistive sensors
+                obj.DIOconfig = [1 0]; % 0 = disabled, 1 = output
+                obj.setDIO(1, 1);
+            else
+                obj.DIOconfig = [0 0]; % 0 = disabled, 1 = output
+            end
             
             obj.About.Port = 'ArCOM USB serial port wrapper. See https://github.com/sanworks/ArCOM';
             obj.About.GUIhandles = 'A struct containing handles of the UI';
@@ -275,6 +283,15 @@ classdef BpodAnalogIn < handle
                 obj.USBstreamFile.SyncEventTimes = []; % Indexes of the sample during which each sync event was captured
                 obj.USBStreamFile = fileName;
             end
+        end
+
+        function set.DIOconfig(obj, config)
+            if length(config) ~= 2 || max(config) > 1 || min(config) < 0
+                error('DIO Config must be a 1x2 array of values encoded as: 0 = disabled, 1 = output')
+            end
+            obj.Port.write([obj.opMenuByte '-' config], 'uint8');
+            obj.confirmTransmission('DIOconfig');
+            obj.DIOconfig = config;
         end
         
         function set.nActiveChannels(obj, nChannels)
@@ -678,13 +695,26 @@ classdef BpodAnalogIn < handle
             period = 1/obj.SamplingRate;
             data.x = 0:period:(period*double(nSamples)-period);
         end
+
+        function setDIO(obj, chan, value)
+            if ~ismember(chan, [1 2])
+                error('DIO Channel must be either 1 or 2')
+            end
+            if ~ismember(value, [0 1])
+                error('DIO value must be either 0 or 1')
+            end
+            if obj.DIOconfig(chan) ~= 1
+                error('To use setDIO, target DIO channel must be configured as output.')
+            end
+            obj.Port.write([obj.opMenuByte '=' chan-1 value], 'uint8');
+        end
         
         function setZero(obj)
             % To compensate for the ADC zero-code offset, attach Ch1 to its
             % ground and run setZero. The offset is stored to the device in
             % non-volatile memory, so setZero only needs to be run once. 
             % Note: All Sanworks-built modules are zeroed during production.
-            obj.Port.write([213 'Z'], 'uint8');
+            obj.Port.write([obj.opMenuByte 'Z'], 'uint8');
         end
         
         function Scope(obj)

@@ -92,10 +92,9 @@ yPos = 25; xPos = 15;
 if ~ispc % Unix USB serial port names are longer
     eventOffset = eventOffset + 20;
 end
-MachineTypes = {'v0.5', 'v0.7-1.0', 'v2', 'v2-plus'};
 text(xPos, 10,'State Machine', 'FontName', fontName, 'FontSize', med, 'Color', labelFontColor, 'FontWeight', 'Bold'); 
 text(xPos, yPos,['Firmware Version: ' num2str(BpodSystem.FirmwareVersion)], 'FontSize', 11, 'FontWeight', 'Bold'); yPos = yPos + 15;
-text(xPos, yPos,['Hardware: ' MachineTypes{BpodSystem.MachineType}], 'FontSize', med); yPos = yPos + 15;
+text(xPos, yPos,['Hardware: ' BpodSystem.HW.StateMachineModel], 'FontSize', med); yPos = yPos + 15;
 text(xPos, yPos,['RefreshRate: ' num2str(BpodSystem.HW.CycleFrequency) 'Hz'], 'FontSize', med); yPos = yPos + 15;
 text(xPos, yPos,['nModules: ' num2str(length(BpodSystem.Modules.Connected))], 'FontSize', med); yPos = yPos + 15;
 text(xPos, yPos,['nBehaviorPorts: ' num2str(BpodSystem.HW.n.Ports)], 'FontSize', med); yPos = yPos + 15;

@@ -95,14 +95,18 @@ for currentTrial = 1:maxTrials
                                        % Hangs here until Bpod enters one of the listed trigger states, 
                                        % then returns current trial's states visited + events captured to this point
     if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session 
-    [sma, S] = PrepareStateMachine(S, trialTypes, currentTrial+1, currentTrialEvents); % Prepare next state machine.
-    % Since PrepareStateMachine is a function with a separate workspace, pass any local variables needed to make 
-    % the state machine as fields of settings struct S e.g. S.learningRate = 0.2.
-    SendStateMachine(sma, 'RunASAP'); % With TrialManager, you can send the next trial's state machine during the current trial
+    if currentTrial < maxTrials
+        [sma, S] = PrepareStateMachine(S, trialTypes, currentTrial+1, currentTrialEvents); % Prepare next state machine.
+        % Since PrepareStateMachine is a function with a separate workspace, pass any local variables needed to make 
+        % the state machine as fields of settings struct S e.g. S.learningRate = 0.2.
+        SendStateMachine(sma, 'RunASAP'); % With TrialManager, you can send the next trial's state machine during the current trial
+    end
     RawEvents = trialManager.getTrialData; % Hangs here until trial is over, then retrieves full trial's raw data
     if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session 
     HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
-    trialManager.startTrial(); % Start processing the next trial's events (call with no argument since SM was already sent)
+    if currentTrial < maxTrials
+        trialManager.startTrial(); % Start processing the next trial's events (call with no argument since SM was already sent)
+    end
     if ~isempty(fieldnames(RawEvents)) % If trial data was returned from last trial, update plots and save data
         BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
         BpodSystem.Data = BpodNotebook('sync', BpodSystem.Data); % Sync with Bpod notebook plugin

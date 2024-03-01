@@ -226,12 +226,31 @@ for i = 1:nModules
                 if strcmp(thisModuleName, 'I2C')
                     autoUpdatable = 0;
                 end
+                moduleNameMotif = thisModuleName;
+                if obj.Modules.HWVersion_Major(i) > 1
+                    moduleNameMotif = [moduleNameMotif '&HW' num2str(obj.Modules.HWVersion_Major(i))];
+                end
+                if strcmp(thisModuleName, 'HiFi')
+                    try % Try to determine if HD or SD model
+                        A = ArCOMObject_Bpod(obj.Modules.USBport{i});
+                        A.write('I', 'uint8');
+                        isHD = A.read(1, 'uint8');
+                        A.flush;
+                        pause(.001);
+                        clear A
+                        versionName = 'SD';
+                        if isHD
+                            versionName = 'HD';
+                        end
+                        moduleNameMotif = [moduleNameMotif '&' versionName];
+                    end
+                end
                 disp([char(13) 'WARNING: ' thisModuleName ' module with old firmware detected, v'...
                     num2str(thisModuleFirmware) '. ' char(13)...
                     'Please update its firmware to v' num2str(expectedFirmwareVersion) ', restart Bpod and try again.']);
                 if autoUpdatable
                     disp(['1. From the Bpod console, pair the ' thisModuleName ' module with its USB port.' char(13)...
-                        '2. While Bpod is still open, click <a href="matlab:LoadBpodFirmware(''' thisModuleName, ...
+                        '2. While Bpod is still open, click <a href="matlab:LoadBpodFirmware(''' moduleNameMotif, ...
                         ''', 1);">here</a> to start the update tool, LoadBpodFirmware().' char(13)...
                         '3. Select the correct firmware and USB port.' char(13)...
                         '   NOTE: If updating the analog output module, use the correct version (4ch or 8ch).' char(13) ...

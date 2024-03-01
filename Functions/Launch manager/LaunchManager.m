@@ -161,12 +161,21 @@ else
             selectedProtocol = iName+1;
         end
     end
+
+    if selectedProtocol > length(protocolNames)
+        % If somehow our counter is higher than the number of protocols
+        % The last thing in the list must have been a folder
+        % Reset to first item in list
+        selectedProtocol = 1;
+        set(BpodSystem.GUIHandles.ProtocolSelector, 'Value', selectedProtocol);
+        return;
+    end
+
     set(BpodSystem.GUIHandles.ProtocolSelector, 'Value', selectedProtocol);
     selectedProtocolName = protocolNames{selectedProtocol};
     BpodSystem.Status.CurrentProtocolName = selectedProtocolName;
     dataPath = fullfile(BpodSystem.Path.DataFolder,BpodSystem.GUIData.DummySubjectString);
     protocolName = BpodSystem.Status.CurrentProtocolName;
-
     %Make standard folders for this protocol.  This will fail silently if the folders exist
     warning off % Suppress warning that directory already exists
     mkdir(dataPath, protocolName);
@@ -805,10 +814,12 @@ protocolFolderPath = fullfile(BpodSystem.Path.ProtocolFolder,protocolName);
 protocolPath = fullfile(BpodSystem.Path.ProtocolFolder,protocolName,[protocolName '.m']);
 addpath(protocolFolderPath);
 set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
-isOnline = BpodSystem.check4Internet();
-if (isOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
-    BpodSystem.BpodPhoneHome(1);
-end
+
+% % Send metadata to Bpod Phone Home program (disabled pending a more stable server)
+% isOnline = BpodSystem.check4Internet();
+% if (isOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
+%     BpodSystem.BpodPhoneHome(1);
+% end
 
 if BpodSystem.Status.AnalogViewer
     set(BpodSystem.GUIHandles.RecordButton, 'Enable', 'off')
