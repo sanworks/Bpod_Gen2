@@ -1,4 +1,15 @@
---v1.7.9---
+---v1.8.0---
+-Analog Input Module: Added control of DIO channels as outputs (requires firmware update)
+-Analog Output Module: Revised serial interface to disentangle two parameters (requires firmware update)
+-Added BpodFormatMidroSD.m, an in-situ formatting tool for microSD cards on Bpod modules
+-LaunchManager: A Bpod protcol folder can now contain only folders (bug fix contributed by Austin Pauley @ FSU)
+-LiveOutcomePlot: Fixed a bug where plot would crash on final trial of session if not ended by the user
+-BpodPhoneHome: Disabled returning metadata to Sanworks on rigs that have opted in for sessions started with LaunchManager
+-LoadBpodFirmware: Added support for filtering firmware list by hardware version
+-LoadModules: Added hardware version filter to LoadBpodFirmware link in command window
+-BpodSystemInfo (GUI panel via mangifying glass icon): Fixed display of state machine model for r2.5
+
+---v1.7.9---
 -Code quality: Improved comments, case conventions and line width across the repository. User-facing names were preserved.
 -Firmware: Added binary for firmware v22 on State Machine r2.5
 -Added LiveOutcomePlot, a new class that replaces SideOutcomePlot and TrialTypeOutcomePlot.
