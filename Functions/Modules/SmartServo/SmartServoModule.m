@@ -46,13 +46,27 @@ classdef SmartServoModule < handle
         port % ArCOM Serial port
     end
 
+    properties (Access = private)
+        modelNumbers = [1200 1190 1090 1060 1070 1080 1220 1210 1240 1230 1160 1120 1130 1020 1030 ...
+                        1100 1110 1010 1000];
+        modelNames = {'XL330-M288', 'XL330-M077', '2XL430-W250', 'XL430-W250',...
+                      'XC430-T150/W150', 'XC430-T240/W240', 'XC330-T288', 'XC330-T181',...
+                      'XC330-M288', 'XC330-M181', '2XC430-W250', 'XM540-W270', 'XM540-W150',...
+                      'XM430-W350', 'XM430-W210', 'XH540-W270', 'XH540-W150', 'XH430-W210', 'XH430-W350'};
+        isActive = zeros(3, 253);
+        isConnected = zeros(3, 253);
+        detectedModelName = cell(3, 253);
+    end
+
     methods
         function obj = SmartServoModule(portString)
             % Constructor
 
             % Open the USB Serial Port
             obj.port = ArCOMObject_Bpod(portString, 480000000);
+            obj.detectMotors;
         end
+
         function smartServo = newSmartServo(obj, channel, address)
             % Create a new smart servo object, addressing a single motor on the module
             % Arguments:
@@ -61,8 +75,57 @@ classdef SmartServoModule < handle
             %
             % Returns:
             % smartServo, an instance of SmartServoInterface.m connected addressing the target servo
-                smartServo = SmartServoInterface(obj.port, channel, address);
+                if obj.isConnected(channel, address)
+                    smartServo = SmartServoInterface(obj.port, channel, address, obj.detectedModelName{channel, address});
+                    obj.isActive(channel, address) = 1;
+                else
+                    error(['No motor registered on channel ' num2str(channel) ' at address ' num2str(address) '.' ...
+                           char(10) 'If a new servo was recently connected, run detectMotors().'])
+                end
         end
+
+        function detectMotors(obj)
+            disp('Detecting motors...');
+            obj.port.write('D', 'uint8');
+            pause(3);
+            nMotorsFound = floor(obj.port.bytesAvailable/6);
+            for i = 1:nMotorsFound
+                motorChannel = obj.port.read(1, 'uint8');
+                motorAddress = obj.port.read(1, 'uint8');
+                motorModel = obj.port.read(1, 'uint32');
+                modelName = 'Unknown model';
+                modelNamePos = find(motorModel == obj.modelNumbers);
+                if ~isempty(modelNamePos)
+                    modelName = obj.modelNames{modelNamePos};
+                end
+                obj.isConnected(motorChannel, motorAddress) = 1;
+                obj.detectedModelName{motorChannel, motorAddress} = modelName;
+                disp(['Found: Ch: ' num2str(motorChannel) ' Address: ' num2str(motorAddress) ' Model: ' modelName]);
+            end
+        end
+
+        function setMotorAddress(obj, motorChannel, currentAddress, newAddress)
+            % Set the motor address on a given channel. Useful for
+            % setting up a daisy-chain configuration.
+            if obj.isActive(motorChannel, currentAddress)
+                error(['setMotorAddress() cannot be used if an object to control the target motor has ' ...
+                       char(10) 'already been created with newSmartServo().'])
+            end
+            if ~obj.isConnected(motorChannel, currentAddress)
+                error(['No motor registered on channel ' num2str(motorChannel) ' at address ' num2str(currentAddress) '.' ...
+                           char(10) 'If a new servo was recently connected, run detectMotors().'])
+            end
+            % Sets the network address of a motor on a given channel
+            obj.port.write(['I' motorChannel currentAddress newAddress], 'uint8');
+            confirmed = obj.port.read(1, 'uint8');
+            if confirmed ~= 1
+                error('Error setting motor address. Confirm code not returned.');
+            end
+            obj.isConnected(motorChannel, currentAddress) = 0;
+            disp('Address changed.')
+            obj.detectMotors;
+        end
+
         function bytes = param2Bytes(paramValue)
             % Convenience function for state machine control. Position,
             % velocity, acceleration, current and RPM values must be
