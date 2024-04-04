@@ -30,6 +30,7 @@ classdef SmartServoInterface < handle
 
     properties (Access = private)
         ctrlTable % Control table listing addresses of registers in motor controller
+        opMenuByte = 212; % Byte code to access op menu via USB
     end
 
     methods
@@ -48,7 +49,7 @@ classdef SmartServoInterface < handle
 
         function set.motorMode(obj, newMode)
             % Mode 1 = Position. 2 = Extended Position. 3 = Current-limited position 4 = RPM
-            obj.port.write(['M' obj.channel obj.address newMode], 'uint8');
+            obj.port.write([obj.opMenuByte 'M' obj.channel obj.address newMode], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
                 error('Error setting mode. Confirm code not returned.');
@@ -82,9 +83,9 @@ classdef SmartServoInterface < handle
                 accBytes = typecast(single(maxAccel), 'uint8');
             end
             if isPositionOnly
-                obj.port.write(['P' obj.channel obj.address posBytes], 'uint8');
+                obj.port.write([obj.opMenuByte 'P' obj.channel obj.address posBytes], 'uint8');
             else
-                obj.port.write(['G' obj.channel obj.address posBytes velBytes accBytes], 'uint8');
+                obj.port.write([obj.opMenuByte 'G' obj.channel obj.address posBytes velBytes accBytes], 'uint8');
             end
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
@@ -101,7 +102,7 @@ classdef SmartServoInterface < handle
             end
             posBytes = typecast(single(newPosition), 'uint8');
             currentLimitBytes = typecast(single(currentPercent), 'uint8');
-            obj.port.write(['C' obj.channel obj.address posBytes currentLimitBytes], 'uint8');
+            obj.port.write([obj.opMenuByte 'C' obj.channel obj.address posBytes currentLimitBytes], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
                 error('Error setting position. Confirm code not returned.');
@@ -110,7 +111,7 @@ classdef SmartServoInterface < handle
 
         function setMaxVelocity(obj, maxVelocity)
             maxVelocityBytes = typecast(single(maxVelocity), 'uint8');
-            obj.port.write(['[' obj.channel obj.address maxVelocityBytes], 'uint8');
+            obj.port.write([obj.opMenuByte '[' obj.channel obj.address maxVelocityBytes], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
                 error('Error setting position. Confirm code not returned.');
@@ -119,7 +120,7 @@ classdef SmartServoInterface < handle
 
         function setMaxAcceleration(obj, maxAcceleration)
             maxAccBytes = typecast(single(maxAcceleration), 'uint8');
-            obj.port.write([']' obj.channel obj.address maxAccBytes], 'uint8');
+            obj.port.write([obj.opMenuByte ']' obj.channel obj.address maxAccBytes], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
                 error('Error setting position. Confirm code not returned.');
@@ -133,7 +134,7 @@ classdef SmartServoInterface < handle
                        ' must be in RPM mode (mode 4) before calling setRPM().'])
             end
             rpmBytes = typecast(single(newRPM), 'uint8');
-            obj.port.write(['V' obj.channel obj.address rpmBytes], 'uint8');
+            obj.port.write([obj.opMenuByte 'V' obj.channel obj.address rpmBytes], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
                 error('Error setting RPM. Confirm code not returned.');
@@ -141,7 +142,7 @@ classdef SmartServoInterface < handle
         end
 
         function pos = getPosition(obj)
-            obj.port.write(['R' obj.channel obj.address], 'uint8');
+            obj.port.write([obj.opMenuByte '+' obj.channel obj.address], 'uint8');
             posBytes = obj.port.read(4, 'uint8');
             pos = typecast(posBytes, 'single');
         end
@@ -151,7 +152,7 @@ classdef SmartServoInterface < handle
         end
 
         function value = readControlTable(obj, tableAddress)
-            obj.port.write(['T' obj.channel obj.address tableAddress], 'uint8');
+            obj.port.write([obj.opMenuByte 'T' obj.channel obj.address tableAddress], 'uint8');
             valBytes = obj.port.read(4, 'uint8');
             value = typecast(valBytes, 'single');
         end

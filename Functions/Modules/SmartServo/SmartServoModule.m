@@ -44,6 +44,8 @@ classdef SmartServoModule < handle
 
     properties
         port % ArCOM Serial port
+        firmwareVersion
+        hardwareVersion
     end
 
     properties (Access = private)
@@ -56,6 +58,10 @@ classdef SmartServoModule < handle
         isActive = zeros(3, 253);
         isConnected = zeros(3, 253);
         detectedModelName = cell(3, 253);
+        opMenuByte = 212; % Byte code to access op menu via USB
+        maxPrograms % Maximium number of motor programs that can be stored on the device
+        maxSteps % Maximum number of steps per motor program
+        programLoaded % Indicates whether programs are loaded
     end
 
     methods
@@ -64,7 +70,19 @@ classdef SmartServoModule < handle
 
             % Open the USB Serial Port
             obj.port = ArCOMObject_Bpod(portString, 480000000);
+            obj.port.write([obj.opMenuByte 249], 'uint8'); % Handshake
+            reply = obj.port.read(1, 'uint8');
+            if reply ~= 250
+                error(['Error connecting to smart servo module. The device at port ' portString... 
+                       ' returned an incorrect handshake.'])
+            end
+            obj.port.write([obj.opMenuByte '?'], 'uint8'); % Get module information
+            obj.firmwareVersion = obj.port.read(1, 'uint32');
+            obj.hardwareVersion = obj.port.read(1, 'uint32');
+            obj.maxPrograms = double(obj.port.read(1, 'uint32'));
+            obj.maxSteps = double(obj.port.read(1, 'uint32'));
             obj.detectMotors;
+            obj.programLoaded = zeros(1, obj.maxPrograms);
         end
 
         function smartServo = newSmartServo(obj, channel, address)
@@ -85,10 +103,13 @@ classdef SmartServoModule < handle
         end
 
         function detectMotors(obj)
+            % Detects motors connected to the smart servo module
             disp('Detecting motors...');
-            obj.port.write('D', 'uint8');
+            obj.port.write([obj.opMenuByte 'D'], 'uint8');
             pause(3);
             nMotorsFound = floor(obj.port.bytesAvailable/6);
+            detectedChannel = [];
+            detectedAddress = [];
             for i = 1:nMotorsFound
                 motorChannel = obj.port.read(1, 'uint8');
                 motorAddress = obj.port.read(1, 'uint8');
@@ -101,6 +122,17 @@ classdef SmartServoModule < handle
                 obj.isConnected(motorChannel, motorAddress) = 1;
                 obj.detectedModelName{motorChannel, motorAddress} = modelName;
                 disp(['Found: Ch: ' num2str(motorChannel) ' Address: ' num2str(motorAddress) ' Model: ' modelName]);
+                detectedChannel = [detectedChannel motorChannel];
+                detectedAddress = [detectedAddress motorAddress];
+            end
+            
+            % Set detected motors to default instruction mode
+            for i = 1:nMotorsFound
+                obj.port.write([obj.opMenuByte 'M' detectedChannel(i) detectedAddress(i) 1], 'uint8');
+                confirmed = obj.port.read(1, 'uint8');
+                if confirmed ~= 1
+                    error('Error setting default mode. Confirm code not returned.');
+                end
             end
         end
 
@@ -116,7 +148,7 @@ classdef SmartServoModule < handle
                            char(10) 'If a new servo was recently connected, run detectMotors().'])
             end
             % Sets the network address of a motor on a given channel
-            obj.port.write(['I' motorChannel currentAddress newAddress], 'uint8');
+            obj.port.write([obj.opMenuByte 'I' motorChannel currentAddress newAddress], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
                 error('Error setting motor address. Confirm code not returned.');
@@ -126,7 +158,7 @@ classdef SmartServoModule < handle
             obj.detectMotors;
         end
 
-        function bytes = param2Bytes(paramValue)
+        function bytes = param2Bytes(obj, paramValue)
             % Convenience function for state machine control. Position,
             % velocity, acceleration, current and RPM values must be
             % converted to bytes for use with the state machine serial interface.
@@ -137,6 +169,73 @@ classdef SmartServoModule < handle
             % bytes, a 1x4 vector of bytes (type = uint8)
             bytes = typecast(single(paramValue), 'uint8');
         end
+
+        function program = newProgram(obj)
+            % Creates a struct for a new motor program
+                program = struct;
+                program.nSteps = 0;
+                program.loopDuration = 0;
+                program.channel = zeros(1, obj.maxSteps);
+                program.address = zeros(1, obj.maxSteps);
+                program.goalPosition = zeros(1, obj.maxSteps);
+                program.velocity = zeros(1, obj.maxSteps);
+                program.acceleration = zeros(1, obj.maxSteps);
+                program.stepTime = zeros(1, obj.maxSteps);
+        end
+
+        function program = addStep(obj, program, channel, address, goalPosition,... 
+                              velocity, acceleration, stepTime)
+            % Add a step to an existing motor program
+            nSteps = program.nSteps + 1;
+            program.nSteps = nSteps;
+            program.channel(nSteps) = channel;
+            program.address(nSteps) = address;
+            program.goalPosition(nSteps) = goalPosition;
+            program.velocity(nSteps) = velocity;
+            program.acceleration(nSteps) = acceleration;
+            program.stepTime(nSteps) = stepTime;
+        end
+
+        function program = setLoopDuration(obj, program, loopDuration)
+            program.loopDuration = loopDuration;
+        end
+
+        function loadProgram(obj, programIndex, program)
+            % Todo: Sort moves by timestamps
+            nSteps = program.nSteps;
+            channel = program.channel(1:nSteps);
+            address = program.address(1:nSteps);
+            goalPosition = program.goalPosition(1:nSteps);
+            velocity = program.velocity(1:nSteps);
+            acceleration = program.acceleration(1:nSteps);
+            stepTime = program.stepTime(1:nSteps)*10000;
+            loopDuration = program.loopDuration*10000;
+
+            programBytes = [obj.opMenuByte 'L' programIndex nSteps...
+                            typecast(uint32(loopDuration), 'uint8')...
+                            uint8(channel) uint8(address)...
+                            typecast(single(goalPosition), 'uint8')...
+                            typecast(single(velocity), 'uint8')...
+                            typecast(single(acceleration), 'uint8')...
+                            typecast(uint32(stepTime), 'uint8')];
+            obj.port.write(programBytes, 'uint8');
+            confirmed = obj.port.read(1, 'uint8');
+            if confirmed ~= 1
+                error('Error loading motor program. Confirm code not returned.');
+            end
+            obj.programLoaded(programIndex) = 1;
+        end
+
+        function runProgram(obj, programIndex)
+            % Run a motor program by index
+            if obj.programLoaded(programIndex) == 0
+                error(['Cannot run motor program ' num2str(programIndex)... 
+                       '. It must be loaded to the device first.'])
+            end
+            obj.port.write([obj.opMenuByte 'R' programIndex], 'uint8');
+        end
+
+
         function delete(obj)
             obj.port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
         end
