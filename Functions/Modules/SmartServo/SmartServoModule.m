@@ -106,7 +106,7 @@ classdef SmartServoModule < handle
             % Detects motors connected to the smart servo module
             disp('Detecting motors...');
             obj.port.write([obj.opMenuByte 'D'], 'uint8');
-            pause(3);
+            pause(2);
             nMotorsFound = floor(obj.port.bytesAvailable/6);
             detectedChannel = [];
             detectedAddress = [];

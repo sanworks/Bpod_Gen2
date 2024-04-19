@@ -145,7 +145,7 @@ classdef SmartServoInterface < handle
 
         function setRPM(obj, newRPM)
             % Units = rev/min
-            if obj.motorMode(obj.channel, obj.address) ~= 4
+            if obj.motorMode ~= 4
                 error(['Motor ' num2str(obj.address) ' on channel ' num2str(obj.channel)... 
                        ' must be in RPM mode (mode 4) before calling setRPM().'])
             end
