@@ -217,52 +217,79 @@ classdef SmartServoModule < handle
         end
 
         function program = newProgram(obj)
-            % Returns a blank motor program for use with addStep(), setLoopDuration()
-            % and sendMotorProgram().
+            % Returns a blank motor program for use with addMovement(), setLoopDuration()
+            % setMoveType() and sendMotorProgram().
             % Arguments: None
             % Return: program, a struct containing a blank motor program
                 program = struct;
                 program.nSteps = 0;
+                program.moveType = 0;
                 program.loopDuration = 0;
                 program.channel = zeros(1, obj.maxSteps);
                 program.address = zeros(1, obj.maxSteps);
                 program.goalPosition = zeros(1, obj.maxSteps);
                 program.velocity = zeros(1, obj.maxSteps);
                 program.acceleration = zeros(1, obj.maxSteps);
+                program.maxCurrent = zeros(1, obj.maxSteps);
                 program.stepTime = zeros(1, obj.maxSteps);
         end
 
-        function program = addStep(obj, program, chanStr, channel, addStr, address,...
-                                   goalStr, goalPosition, velStr, velocity,... 
-                                   accStr, acceleration, stepStr, stepTime)
-            % addStep() adds a step to an existing motor program.
+        function program = addMovement(obj, program, varargin)
+            % addMovement() adds a movement to an existing motor program.
             %
             % Arguments:
-            % program: The program struct to be modified with the new step
+            % program: The program struct to be extended with a new step
             % channel: The target motor's channel on the Smart Stepper Module (integer in range 1-3)
             % address: The target motor's address on the target channel (integer in range 1-8)
             % goalPosition: The position the motor will move to on this step (units = degrees)
-            %               velocity: The maximum velocity of the movement (units = RPM).
+            % ***Pass only if program.moveType = 0:
+            %          velocity: The maximum velocity of the movement (units = RPM).
             %               Use 0 for max velocity.
-            % acceleration: The maximum acceleration/deceleration of the movement start
+            %          acceleration: The maximum acceleration/deceleration of the movement start
             %               and end (units = rev/min^2). Use 0 for max acceleration
+            % ***Pass only if program.moveType = 1:
+            %          maxCurrent: The maximum current for the move (unit = % of max current)
+            % ***
             % stepTime: The time when this step will begin with respect to motor
             %           program start (units = seconds)
             %
-            % chanStr, addStr, goalStr, velStr, accStr and stepStr are
-            % strings used to make the function calls human-readable (see
-            % example in comments at the top of this file)
+            % Variable arguments must be given as alternating string/value
+            % pairs, e.g. ...'maxVelocity', 100... Strings are ignored, but required to make the 
+            % function calls human-readable (see example in comments at the top of this file)
             %
             % Returns:
             % program, the original program struct modified with the added step
+
+            % Extract args
+            channel = varargin{2};
+            address = varargin{4};
+            goalPosition = varargin{6};
+            if program.moveType == 0
+                if nargin ~= 14
+                    error('Incorrect number of arguments');
+                end
+                velocity = varargin{8};
+                acceleration = varargin{10};
+                stepTime = varargin{12};
+            else
+                if nargin ~= 12
+                    error('Incorrect number of arguments');
+                end
+                maxCurrent = varargin{8};
+                stepTime = varargin{10};
+            end
 
             nSteps = program.nSteps + 1;
             program.nSteps = nSteps;
             program.channel(nSteps) = channel;
             program.address(nSteps) = address;
             program.goalPosition(nSteps) = goalPosition;
-            program.velocity(nSteps) = velocity;
-            program.acceleration(nSteps) = acceleration;
+            if program.moveType == 0
+                program.velocity(nSteps) = velocity;
+                program.acceleration(nSteps) = acceleration;
+            else
+                program.maxCurrent(nSteps) = maxCurrent;
+            end
             program.stepTime(nSteps) = stepTime;
         end
 
@@ -282,6 +309,22 @@ classdef SmartServoModule < handle
             program.loopDuration = loopDuration;
         end
 
+        function program = setMoveType(obj, program, moveType)
+            % setMoveType sets the type of move contained in the program.
+            %
+            % Arguments:
+            % moveType, the type of move contained in the program. moveType must be either:
+            % 0 = moves defined by goal position, max velocity and max acceleration
+            % 1 = moves defined by goal position and max current (torque)
+            if ~(moveType == 0 || moveType == 1)
+                error('moveType must be either 0 or 1')
+            end
+            if program.nSteps > 0
+                error('moveType must be set before steps are added to a program')
+            end
+            program.moveType = moveType;
+        end
+
         function loadProgram(obj, programIndex, program)
             % loadProgram() loads a motor program to the Smart Servo Module's memory.
             % The Smart Servo Module can store up to 100 programs of up to 256 steps each.
@@ -291,11 +334,13 @@ classdef SmartServoModule < handle
             % program: The program struct to load to the device at position programIndex
 
             nSteps = program.nSteps;
+            moveType = program.moveType;
             channel = program.channel(1:nSteps);
             address = program.address(1:nSteps);
             goalPosition = program.goalPosition(1:nSteps);
             velocity = program.velocity(1:nSteps);
             acceleration = program.acceleration(1:nSteps);
+            maxCurrent = program.maxCurrent(1:nSteps);
             stepTime = program.stepTime(1:nSteps)*10000;
             loopDuration = program.loopDuration*10000;
 
@@ -307,15 +352,21 @@ classdef SmartServoModule < handle
                 goalPosition = goalPosition(sIndexes);
                 velocity = velocity(sIndexes);
                 acceleration = acceleration(sIndexes);
+                maxCurrent = maxCurrent(sIndexes);
                 stepTime = stepTime(sIndexes);
+            end
+            if moveType == 0
+                current_or_velocity = velocity;
+            else
+                current_or_velocity = maxCurrent;
             end
 
             % Convert the program to a byte string
-            programBytes = [obj.opMenuByte 'L' programIndex nSteps...
+            programBytes = [obj.opMenuByte 'L' programIndex moveType nSteps...
                             typecast(uint32(loopDuration), 'uint8')...
                             uint8(channel) uint8(address)...
                             typecast(single(goalPosition), 'uint8')...
-                            typecast(single(velocity), 'uint8')...
+                            typecast(single(current_or_velocity), 'uint8')...
                             typecast(single(acceleration), 'uint8')...
                             typecast(uint32(stepTime), 'uint8')];
 
