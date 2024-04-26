@@ -26,11 +26,13 @@ classdef SmartServoInterface < handle
         motorInfo % Struct with info about  the motor (detected model name within Dynamixel X series, etc)
         channel % Channel on the SmartServoModule device
         address % Index of the target motor on the selected channel
-        motorMode % Mode 1 = Position. 2 = Extended Position. 3 = Current-limited position 4 = RPM
+        motorMode % Mode 1 = Position. 2 = Extended Position. 3 = Current-limited position 4 = RPM 5 = Step
     end
 
     properties (Access = private)
         opMenuByte = 212; % Byte code to access op menu via USB
+        motorModeRanges = {[0 360], [-91800 91800], [0, 360], [0, 0], [-91800 91800]}
+        selectedModeRange = [];
     end
 
     methods
@@ -48,64 +50,90 @@ classdef SmartServoInterface < handle
         end
 
         function set.motorMode(obj, newMode)
-            % Mode 1 = Position. 2 = Extended Position. 3 = Current-limited position 4 = RPM
+            % Mode 1 = Position. 2 = Extended Position. 3 = Current-limited position 4 = RPM 5 = Step
             obj.port.write([obj.opMenuByte 'M' obj.channel obj.address newMode], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
                 error('Error setting mode. Confirm code not returned.');
             end
             obj.motorMode = newMode;
+            obj.selectedModeRange = obj.motorModeRanges{newMode};
+        end
+
+        function setMaxVelocity(obj, maxVelocity)
+            % Sets the maximum velocity for all subsequent movements with setPosition(). Units = RPM
+            maxVelocityBytes = typecast(single(maxVelocity), 'uint8');
+            obj.port.write([obj.opMenuByte '[' obj.channel obj.address maxVelocityBytes], 'uint8');
+            confirmed = obj.port.read(1, 'uint8');
+            if confirmed ~= 1
+                error('Error setting position. Confirm code not returned.');
+            end
+        end
+
+        function setMaxAcceleration(obj, maxAcceleration)
+            % Sets the acceleration for all subsequent movements with setPosition(). Units = rev/min^2
+            maxAccBytes = typecast(single(maxAcceleration), 'uint8');
+            obj.port.write([obj.opMenuByte ']' obj.channel obj.address maxAccBytes], 'uint8');
+            confirmed = obj.port.read(1, 'uint8');
+            if confirmed ~= 1
+                error('Error setting position. Confirm code not returned.');
+            end
         end
 
         function setPosition(obj, newPosition, varargin)
             % setPosition() sets the position of the motor shaft, in
             % degrees of rotation.
             % Required Arguments: 
-            % channel: The motor's channel on the smart servo module (1-3)
-            % address: The motor's position on the selected channel's (1-8)
             % newPosition: The target position (units = degrees, range = 0-360)
             % Optional Arguments (must both be passed in the following order):
             % maxVelocity: Maximum velocity enroute to target position (units = rev/min, 0 = Max)
             % maxAccel: Maximum acceleration enroute to target position (units = rev/min^2, 0 = Max)
             % blocking: 1: Block the MATLAB command prompt until move is complete. 0: Don't.
-            % Note: Max velocity and acceleration become the new settings for future movements.
+            % Note: If provided, max velocity and acceleration become the new settings for future movements.
 
             if ~(obj.motorMode == 1 || obj.motorMode == 2)
                 error(['Motor ' num2str(obj.address) ' on channel ' num2str(obj.channel)... 
                        ' must be in a position mode (modes 1 or 2) before calling setPosition().'])
             end
+            if newPosition < obj.selectedModeRange(1) || newPosition > obj.selectedModeRange(2)
+                error(['Position goal out of range. The target motor is in mode ' num2str(obj.motorMode)... 
+                      ', with a position range of ' num2str(obj.selectedModeRange(1)) ' to '... 
+                      num2str(obj.selectedModeRange(2)) ' degrees.'])
+            end
             posBytes = typecast(single(newPosition), 'uint8');
             isPositionOnly = true;
             maxVelocity = 0;
-            maxAccel = 0;
-            blocking = 0;
             if nargin > 2
                 isPositionOnly = false;
                 maxVelocity = varargin{1};
                 velBytes = typecast(single(maxVelocity), 'uint8');
             end
+            maxAccel = 0;
             if nargin > 3
                 maxAccel = varargin{2};
                 accBytes = typecast(single(maxAccel), 'uint8');
             end
+            blocking = 0;
             if nargin > 4
                 blocking = varargin{3};
-            end
-
-                
+            end   
             if isPositionOnly
                 obj.port.write([obj.opMenuByte 'P' obj.channel obj.address posBytes], 'uint8');
             else
                 obj.port.write([obj.opMenuByte 'G' obj.channel obj.address blocking posBytes velBytes accBytes], 'uint8');
             end
+            confirmed = obj.port.read(1, 'uint8');
+            if confirmed ~= 1
+                error('Error setting position. Confirm code not returned.');
+            end
             if blocking
                 while obj.port.bytesAvailable == 0
                     pause(.0001);
                 end
-            end
-            confirmed = obj.port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting position. Confirm code not returned.');
+                movementComplete = obj.port.read(1, 'uint8');
+                if movementComplete ~= 1
+                    error('Error setting position. Movement end acknowledgement not returned.');
+                end
             end
         end
 
@@ -125,26 +153,10 @@ classdef SmartServoInterface < handle
             end
         end
 
-        function setMaxVelocity(obj, maxVelocity)
-            maxVelocityBytes = typecast(single(maxVelocity), 'uint8');
-            obj.port.write([obj.opMenuByte '[' obj.channel obj.address maxVelocityBytes], 'uint8');
-            confirmed = obj.port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting position. Confirm code not returned.');
-            end
-        end
-
-        function setMaxAcceleration(obj, maxAcceleration)
-            maxAccBytes = typecast(single(maxAcceleration), 'uint8');
-            obj.port.write([obj.opMenuByte ']' obj.channel obj.address maxAccBytes], 'uint8');
-            confirmed = obj.port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error setting position. Confirm code not returned.');
-            end
-        end
-
         function setRPM(obj, newRPM)
-            % Units = rev/min
+            % Sets the rotational velocity of the motor shaft in RPM mode (motorMode 4). 
+            % Arguments: newRPM, the new velocity. Units = rev/min
+            %            Sign encodes direction (negative = clockwise, positive = counterclockwise)
             if obj.motorMode ~= 4
                 error(['Motor ' num2str(obj.address) ' on channel ' num2str(obj.channel)... 
                        ' must be in RPM mode (mode 4) before calling setRPM().'])
@@ -157,17 +169,42 @@ classdef SmartServoInterface < handle
             end
         end
 
+        function step(obj, stepSize_Degrees)
+            % Rotate by a fixed distance in degrees (+/-) relative to current shaft position
+            % motorMode must be set to 5 (Step mode) to use this function.
+            % Arguments: stepSize_Degrees, the amount to rotate (units = degrees)
+            if obj.motorMode ~= 5
+                error(['Motor ' num2str(obj.address) ' on channel ' num2str(obj.channel)... 
+                       ' must be in step mode (mode 5) before calling step().'])
+            end
+            stepBytes = typecast(single(stepSize_Degrees), 'uint8');
+            obj.port.write([obj.opMenuByte 'S' obj.channel obj.address stepBytes], 'uint8');
+            confirmed = obj.port.read(1, 'uint8');
+            if confirmed ~= 1
+                error('Error setting RPM. Confirm code not returned.');
+            end
+        end
+
         function pos = getPosition(obj)
+            % getPosition() returns the current shaft position
+            % Arguments: None
+            % Returns: pos, the current position (units = degrees)
             obj.port.write([obj.opMenuByte '+' obj.channel obj.address], 'uint8');
             posBytes = obj.port.read(4, 'uint8');
             pos = typecast(posBytes, 'single');
         end
 
         function temp = getTemperature(obj)
-            temp = obj.readControlTable(obj.ctrlTable.currentTemperature);
+            % getTemperature() returns the current motor temperature
+            % Arguments: None
+            % Returns: temp, the motor temperature in degrees celsius
+            temp = obj.readControlTable(obj.ctrlTable.PRESENT_TEMPERATURE);
         end
 
         function value = readControlTable(obj, tableAddress)
+            % readControlTable() reads and returns a value from the motor's control
+            % table. The control table is stored in obj.ctrlTable, and is populated by 
+            % the setupControlTable() method below.  
             obj.port.write([obj.opMenuByte 'T' obj.channel obj.address tableAddress], 'uint8');
             valBytes = obj.port.read(4, 'uint8');
             value = typecast(valBytes, 'int32');

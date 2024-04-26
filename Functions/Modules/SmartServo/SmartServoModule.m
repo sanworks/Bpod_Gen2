@@ -31,14 +31,37 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
 % S = SmartServoModule('COM3'); % Create an instance of SmartServoModule,
 %                               connecting to the Bpod Smart Servo Module on port COM3
-% myServo = S.newSmartServo(2, 1); % Create myServo, an object to control
-%                                    the servo on channel 2 at position 1
+%
+% ---SmartServoInterface---
+% myServo = S.newSmartServo(2, 1); % Create myServo, a SmartServoInterface object to control
+%                                    the servo on channel 2 at address 1
 % myServo.setPosition(90); % Move servo shaft to 90 degrees using default velocity and acceleration
 % myServo.setPosition(0, 100, 200); % Return shaft to 0 degrees at 100RPM with 200RPM^2 acceleration
 % myServo.setMode(4); % Set servo to continuous rotation mode with velocity control
 % myServo.setVelocity(-10); % Start rotating clockwise at 10RPM
 % myServo.setVelocity(0); % Stop rotating
-% clear myServo; clear S; % clear the objects from the workspace, releasing the USB serial port
+% clear myServo; 
+% 
+% ---Motor Programs---
+% prog1 = S.newProgram; % Create a new motor program
+% prog1.addStep(prog1, 'Channel', 2,...             % Target motor channel (1-3)
+%                      'Address', 1,...             % Target motor address (1-8)
+%                      'GoalPosition', 90,...       % degrees
+%                      'MaxVelocity', 100,...       % RPM
+%                      'MaxAcceleration', 100,...   % rev/min^2
+%                      'OnsetTime', 1.520);         % seconds after program start
+% --Note: Add as many steps to prog1 as necessary with additional calls to addStep()
+% S.loadProgram(2, prog1); % Load prog1 to the device at index 2
+% S.runProgram(2); % Run program 2
+%
+% ---Motor Address Change---
+% S.setMotorAddress(1, 2, 4); % Change a motor's address on channel 1 from
+%                               2 to 4. This is a necessary step for
+%                               setting up multiple daisy-chained motors
+%                               per channel. The new address is stored in 
+%                               the motor EEPROM and persists across power cycles.
+% 
+% clear S; % clear the objects from the workspace, releasing the USB serial port
 
 classdef SmartServoModule < handle
 
@@ -50,14 +73,16 @@ classdef SmartServoModule < handle
 
     properties (Access = private)
         modelNumbers = [1200 1190 1090 1060 1070 1080 1220 1210 1240 1230 1160 1120 1130 1020 1030 ...
-                        1100 1110 1010 1000];
+                        1100 1110 1010 1000]; % Numeric code for Dynamixel X-series models
         modelNames = {'XL330-M288', 'XL330-M077', '2XL430-W250', 'XL430-W250',...
                       'XC430-T150/W150', 'XC430-T240/W240', 'XC330-T288', 'XC330-T181',...
                       'XC330-M288', 'XC330-M181', '2XC430-W250', 'XM540-W270', 'XM540-W150',...
                       'XM430-W350', 'XM430-W210', 'XH540-W270', 'XH540-W150', 'XH430-W210', 'XH430-W350'};
-        isActive = zeros(3, 253);
-        isConnected = zeros(3, 253);
-        detectedModelName = cell(3, 253);
+        isActive = zeros(3, 253); % Indicates motors that have been initialized as SmartServoInterface objects
+                                  % 0 = not active, 1 = active. See newSmartServo() below
+        isConnected = zeros(3, 253); % Indicates whether a servo was detected at (channel, address)
+                                     % 0 = not detected, 1 = detected
+        detectedModelName = cell(3, 253); % Stores the model name for each detected motor
         opMenuByte = 212; % Byte code to access op menu via USB
         maxPrograms % Maximium number of motor programs that can be stored on the device
         maxSteps % Maximum number of steps per motor program
@@ -66,21 +91,27 @@ classdef SmartServoModule < handle
 
     methods
         function obj = SmartServoModule(portString)
-            % Constructor
+            % Constructor, called when a new SmartServoModule object is created
 
             % Open the USB Serial Port
             obj.port = ArCOMObject_Bpod(portString, 480000000);
+
+            % Handshake
             obj.port.write([obj.opMenuByte 249], 'uint8'); % Handshake
             reply = obj.port.read(1, 'uint8');
             if reply ~= 250
                 error(['Error connecting to smart servo module. The device at port ' portString... 
                        ' returned an incorrect handshake.'])
             end
-            obj.port.write([obj.opMenuByte '?'], 'uint8'); % Get module information
+
+            % Get module information
+            obj.port.write([obj.opMenuByte '?'], 'uint8'); 
             obj.firmwareVersion = obj.port.read(1, 'uint32');
             obj.hardwareVersion = obj.port.read(1, 'uint32');
             obj.maxPrograms = double(obj.port.read(1, 'uint32'));
             obj.maxSteps = double(obj.port.read(1, 'uint32'));
+
+            % Detect connected motors
             obj.detectMotors;
             obj.programLoaded = zeros(1, obj.maxPrograms);
         end
@@ -103,7 +134,10 @@ classdef SmartServoModule < handle
         end
 
         function detectMotors(obj)
-            % Detects motors connected to the smart servo module
+            % detectMotors() detects motors connected to the smart servo module.
+            % detectMotors() is run on creating a new SmartServoModule object.
+            % This function must be run manually after attaching a new motor.
+
             disp('Detecting motors...');
             obj.port.write([obj.opMenuByte 'D'], 'uint8');
             pause(2);
@@ -137,8 +171,18 @@ classdef SmartServoModule < handle
         end
 
         function setMotorAddress(obj, motorChannel, currentAddress, newAddress)
-            % Set the motor address on a given channel. Useful for
-            % setting up a daisy-chain configuration.
+            % setMotorAddress() sets a new motor address for a motor on a given channel, 
+            % e.g. for daisy-chain configuration.
+            % The new address is written to the motor's EEPROM, and will persist across power cycles.
+            %
+            % Arguments:
+            % motorChannel: The target motor's channel on the smart servo module (integer in range 1-3)
+            % currentAddress: The target motor's current address on the target channel (integer in range 1-8)
+            % newAddress: The new address of the target motor
+            %
+            % Returns:
+            % None
+            
             if obj.isActive(motorChannel, currentAddress)
                 error(['setMotorAddress() cannot be used if an object to control the target motor has ' ...
                        char(10) 'already been created with newSmartServo().'])
@@ -150,8 +194,10 @@ classdef SmartServoModule < handle
             % Sets the network address of a motor on a given channel
             obj.port.write([obj.opMenuByte 'I' motorChannel currentAddress newAddress], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
-            if confirmed ~= 1
+            if isempty(confirmed)
                 error('Error setting motor address. Confirm code not returned.');
+            elseif confirmed == 0
+                error('Error setting motor address. The target motor did not acknowledge the instruction.')
             end
             obj.isConnected(motorChannel, currentAddress) = 0;
             disp('Address changed.')
@@ -159,7 +205,7 @@ classdef SmartServoModule < handle
         end
 
         function bytes = param2Bytes(obj, paramValue)
-            % Convenience function for state machine control. Position,
+            % param2Bytes() is a convenience function for state machine control. Position,
             % velocity, acceleration, current and RPM values must be
             % converted to bytes for use with the state machine serial interface.
             % Arguments:
@@ -171,7 +217,10 @@ classdef SmartServoModule < handle
         end
 
         function program = newProgram(obj)
-            % Creates a struct for a new motor program
+            % Returns a blank motor program for use with addStep(), setLoopDuration()
+            % and sendMotorProgram().
+            % Arguments: None
+            % Return: program, a struct containing a blank motor program
                 program = struct;
                 program.nSteps = 0;
                 program.loopDuration = 0;
@@ -183,9 +232,30 @@ classdef SmartServoModule < handle
                 program.stepTime = zeros(1, obj.maxSteps);
         end
 
-        function program = addStep(obj, program, channel, address, goalPosition,... 
-                              velocity, acceleration, stepTime)
-            % Add a step to an existing motor program
+        function program = addStep(obj, program, chanStr, channel, addStr, address,...
+                                   goalStr, goalPosition, velStr, velocity,... 
+                                   accStr, acceleration, stepStr, stepTime)
+            % addStep() adds a step to an existing motor program.
+            %
+            % Arguments:
+            % program: The program struct to be modified with the new step
+            % channel: The target motor's channel on the Smart Stepper Module (integer in range 1-3)
+            % address: The target motor's address on the target channel (integer in range 1-8)
+            % goalPosition: The position the motor will move to on this step (units = degrees)
+            %               velocity: The maximum velocity of the movement (units = RPM).
+            %               Use 0 for max velocity.
+            % acceleration: The maximum acceleration/deceleration of the movement start
+            %               and end (units = rev/min^2). Use 0 for max acceleration
+            % stepTime: The time when this step will begin with respect to motor
+            %           program start (units = seconds)
+            %
+            % chanStr, addStr, goalStr, velStr, accStr and stepStr are
+            % strings used to make the function calls human-readable (see
+            % example in comments at the top of this file)
+            %
+            % Returns:
+            % program, the original program struct modified with the added step
+
             nSteps = program.nSteps + 1;
             program.nSteps = nSteps;
             program.channel(nSteps) = channel;
@@ -197,11 +267,29 @@ classdef SmartServoModule < handle
         end
 
         function program = setLoopDuration(obj, program, loopDuration)
+            % setLoopDuration() sets a duration for which to loop an existing motor program.
+            % A looping program returns to time 0 each time it completes its sequence of steps, 
+            % and continues looping the program until loopDuration seconds.
+            %
+            % Arguments:
+            % program: The program struct to be modified with the new loop duration
+            % loopDuration: The duration for which to loop the motor
+            % program each time it is run (units = seconds)
+            %
+            % Returns:
+            % program, the original program struct modified with the added step
+
             program.loopDuration = loopDuration;
         end
 
         function loadProgram(obj, programIndex, program)
-            % Todo: Sort moves by timestamps
+            % loadProgram() loads a motor program to the Smart Servo Module's memory.
+            % The Smart Servo Module can store up to 100 programs of up to 256 steps each.
+            %
+            % Arguments:
+            % programIndex: The program's index on the device (integer in range 0-99)
+            % program: The program struct to load to the device at position programIndex
+
             nSteps = program.nSteps;
             channel = program.channel(1:nSteps);
             address = program.address(1:nSteps);
@@ -211,6 +299,18 @@ classdef SmartServoModule < handle
             stepTime = program.stepTime(1:nSteps)*10000;
             loopDuration = program.loopDuration*10000;
 
+            % If necessary, sort moves by timestamps
+            if sum(diff(stepTime) < 0) > 0 % If any timestamps are out of order
+                [~, sIndexes] = sort(stepTime);
+                channel = channel(sIndexes);
+                address = address(sIndexes);
+                goalPosition = goalPosition(sIndexes);
+                velocity = velocity(sIndexes);
+                acceleration = acceleration(sIndexes);
+                stepTime = stepTime(sIndexes);
+            end
+
+            % Convert the program to a byte string
             programBytes = [obj.opMenuByte 'L' programIndex nSteps...
                             typecast(uint32(loopDuration), 'uint8')...
                             uint8(channel) uint8(address)...
@@ -218,6 +318,8 @@ classdef SmartServoModule < handle
                             typecast(single(velocity), 'uint8')...
                             typecast(single(acceleration), 'uint8')...
                             typecast(uint32(stepTime), 'uint8')];
+
+            % Send the program and read confirmation
             obj.port.write(programBytes, 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
@@ -227,7 +329,12 @@ classdef SmartServoModule < handle
         end
 
         function runProgram(obj, programIndex)
-            % Run a motor program by index
+            % runProgram() runs a previously loaded motor program. Programs
+            % can also be run directly from the state machine with the 'R'
+            % command (see 'Serial Interfaces' section on the Bpod wiki)
+            % 
+            % Arguments: 
+            % programIndex: The index of the program to run (integer, range = 0-99)
             if obj.programLoaded(programIndex) == 0
                 error(['Cannot run motor program ' num2str(programIndex)... 
                        '. It must be loaded to the device first.'])
@@ -237,6 +344,7 @@ classdef SmartServoModule < handle
 
 
         function delete(obj)
+            % Class destructor, called when the SmartServoModule is cleared
             obj.port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
         end
 
