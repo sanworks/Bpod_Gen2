@@ -60,6 +60,24 @@ classdef SmartServoInterface < handle
             obj.selectedModeRange = obj.motorModeRanges{newMode};
         end
 
+        function STOP(obj)
+            % EMERGENCY STOP
+            % This function stops all motors by setting their torque to 0.
+            % It also stops any ongoing motor programs.
+            % After an emergency stop, torque must be re-enabled manually by setting motorMode for each motor.
+            obj.port.write([obj.opMenuByte '!'], 'uint8');
+            confirmed = obj.port.read(1, 'uint8');
+            disp('!! Emergency Stop Acknowledged !!'); 
+            disp('Re-enable motor torque by setting motorMode for each motor.')
+            if confirmed ~= 1
+                error('***ALERT!*** Emergency stop not confirmed.');
+            end
+        end
+
+        function stop(obj)
+            obj.STOP;
+        end
+
         function setMaxVelocity(obj, maxVelocity)
             % Sets the maximum velocity for all subsequent movements with setPosition(). Units = RPM
             maxVelocityBytes = typecast(single(maxVelocity), 'uint8');
@@ -189,7 +207,7 @@ classdef SmartServoInterface < handle
             % getPosition() returns the current shaft position
             % Arguments: None
             % Returns: pos, the current position (units = degrees)
-            obj.port.write([obj.opMenuByte '+' obj.channel obj.address], 'uint8');
+            obj.port.write([obj.opMenuByte '%' obj.channel obj.address], 'uint8');
             posBytes = obj.port.read(4, 'uint8');
             pos = typecast(posBytes, 'single');
         end

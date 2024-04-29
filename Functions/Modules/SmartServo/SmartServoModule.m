@@ -35,23 +35,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % ---SmartServoInterface---
 % myServo = S.newSmartServo(2, 1); % Create myServo, a SmartServoInterface object to control
 %                                    the servo on channel 2 at address 1
-% myServo.setPosition(90); % Move servo shaft to 90 degrees using default velocity and acceleration
+% myServo.setPosition(90); % Move servo shaft to 90 degrees using current velocity and acceleration
 % myServo.setPosition(0, 100, 200); % Return shaft to 0 degrees at 100RPM with 200RPM^2 acceleration
 % myServo.setMode(4); % Set servo to continuous rotation mode with velocity control
 % myServo.setVelocity(-10); % Start rotating clockwise at 10RPM
 % myServo.setVelocity(0); % Stop rotating
+% myServo.setMode(5); % Set servo to step mode (movements defined relative to current position)
+% myServo.step(-3000); % Rotate clockwise 3000 degrees using current velocity and acceleration
 % clear myServo; 
 % 
 % ---Motor Programs---
 % prog1 = S.newProgram; % Create a new motor program
-% prog1.addStep(prog1, 'Channel', 2,...             % Target motor channel (1-3)
-%                      'Address', 1,...             % Target motor address (1-8)
-%                      'GoalPosition', 90,...       % degrees
-%                      'MaxVelocity', 100,...       % RPM
-%                      'MaxAcceleration', 100,...   % rev/min^2
-%                      'OnsetTime', 1.520);         % seconds after program start
-% --Note: Add as many steps to prog1 as necessary with additional calls to addStep()
-% S.loadProgram(2, prog1); % Load prog1 to the device at index 2
+% prog1 = S.addMovement(prog1, 'Channel', 2,...        % Target motor channel (1-3)
+%                          'Address', 1,...            % Target motor address (1-8)
+%                          'GoalPosition', 90,...      % degrees
+%                          'MaxVelocity', 100,...      % RPM
+%                          'MaxAcceleration', 100,...  % rev/min^2
+%                          'OnsetTime', 1.520);        % seconds after program start
+% % --Note: Add as many steps to prog1 as necessary with additional calls to addStep()
+% S.loadProgram(2, prog1); % Load prog1 to program index 2 on the device
 % S.runProgram(2); % Run program 2
 %
 % ---Motor Address Change---
@@ -69,6 +71,13 @@ classdef SmartServoModule < handle
         port % ArCOM Serial port
         firmwareVersion
         hardwareVersion
+        dioTargetProgram  % Target motor program for each DIO channel to start/stop
+        dioFallingEdgeOp  % 0 = No Operation, 1 = Start Target Program, 
+                          % 2 = Stop Target Program, 3 = Emergency Stop-All
+        dioRisingEdgeOp   % 0 = No Operation, 1 = Start Target Program, 
+                          % 2 = Stop Target Program, 3 = Emergency Stop-All
+        dioDebounce       % Debounce interval for DIO channels 
+                          % (adjust if required for mechanical pushbuttons)
     end
 
     properties (Access = private)
@@ -114,6 +123,65 @@ classdef SmartServoModule < handle
             % Detect connected motors
             obj.detectMotors;
             obj.programLoaded = zeros(1, obj.maxPrograms);
+
+            % Set defaults (auto-sync to device)
+            obj.dioTargetProgram = [1 1 1];
+            obj.dioFallingEdgeOp = [0 0 0];
+            obj.dioRisingEdgeOp = [0 0 0];
+            obj.dioDebounce = [0.01 0.01 0.01];
+        end
+
+        function STOP(obj)
+            % EMERGENCY STOP
+            % This function stops all motors by setting their torque to 0.
+            % It also stops any ongoing motor programs.
+            % After an emergency stop, torque must be re-enabled manually by setting motorMode for each motor.
+            obj.port.write([obj.opMenuByte '!'], 'uint8');
+            confirmed = obj.port.read(1, 'uint8');
+            disp('Emergency Stop Acknowledged. Re-enable motor torque by setting motorMode for each motor.')
+            if confirmed ~= 1
+                error('***ALERT!*** Emergency stop not confirmed.');
+            end
+        end
+
+        function stop(obj)
+            obj.STOP;
+        end
+
+        function set.dioTargetProgram(obj, newPrograms)
+            if length(newPrograms) ~= 3
+                error('newPrograms must be a 1x3 array of program indexes')
+            end
+            obj.port.write([obj.opMenuByte '=' newPrograms-1], 'uint8');
+            obj.confirmTransmission('setting DIO target program');
+            obj.dioTargetProgram = newPrograms;
+        end
+
+        function set.dioFallingEdgeOp(obj, newOps)
+            if length(newOps) ~= 3 || min(newOps) < 0 || max(newOps) > 3
+                error('newOps must be a 1x3 array of operation codes in range 0-3')
+            end
+            obj.port.write([obj.opMenuByte '-' newOps], 'uint8');
+            obj.confirmTransmission('setting falling edge operations');
+            obj.dioFallingEdgeOp = newOps;
+        end
+
+        function set.dioRisingEdgeOp(obj, newOps)
+            if length(newOps) ~= 3 || min(newOps) < 0 || max(newOps) > 3
+                error('newOps must be a 1x3 array of operation codes in range 0-3')
+            end
+            obj.port.write([obj.opMenuByte '+' newOps], 'uint8');
+            obj.confirmTransmission('setting rising edge operations');
+            obj.dioRisingEdgeOp = newOps;
+        end
+
+        function set.dioDebounce(obj, newDebounce)
+            if length(newDebounce) ~= 3 || min(newDebounce) < 0 || max(newDebounce) > 1
+                error('newDebounce must be a 1x3 array of debounce intervals in range 0-1 seconds')
+            end
+            obj.port.write([obj.opMenuByte '~'], 'uint8', newDebounce*10000, 'uint32');
+            obj.confirmTransmission('setting debounce intervals');
+            obj.dioDebounce = newDebounce;
         end
 
         function smartServo = newSmartServo(obj, channel, address)
@@ -163,10 +231,7 @@ classdef SmartServoModule < handle
             % Set detected motors to default instruction mode
             for i = 1:nMotorsFound
                 obj.port.write([obj.opMenuByte 'M' detectedChannel(i) detectedAddress(i) 1], 'uint8');
-                confirmed = obj.port.read(1, 'uint8');
-                if confirmed ~= 1
-                    error('Error setting default mode. Confirm code not returned.');
-                end
+                obj.confirmTransmission('setting default mode');
             end
         end
 
@@ -193,12 +258,7 @@ classdef SmartServoModule < handle
             end
             % Sets the network address of a motor on a given channel
             obj.port.write([obj.opMenuByte 'I' motorChannel currentAddress newAddress], 'uint8');
-            confirmed = obj.port.read(1, 'uint8');
-            if isempty(confirmed)
-                error('Error setting motor address. Confirm code not returned.');
-            elseif confirmed == 0
-                error('Error setting motor address. The target motor did not acknowledge the instruction.')
-            end
+            obj.confirmTransmission('setting motor address');
             obj.isConnected(motorChannel, currentAddress) = 0;
             disp('Address changed.')
             obj.detectMotors;
@@ -362,7 +422,7 @@ classdef SmartServoModule < handle
             end
 
             % Convert the program to a byte string
-            programBytes = [obj.opMenuByte 'L' programIndex moveType nSteps...
+            programBytes = [obj.opMenuByte 'L' programIndex-1 moveType nSteps...
                             typecast(uint32(loopDuration), 'uint8')...
                             uint8(channel) uint8(address)...
                             typecast(single(goalPosition), 'uint8')...
@@ -372,10 +432,7 @@ classdef SmartServoModule < handle
 
             % Send the program and read confirmation
             obj.port.write(programBytes, 'uint8');
-            confirmed = obj.port.read(1, 'uint8');
-            if confirmed ~= 1
-                error('Error loading motor program. Confirm code not returned.');
-            end
+            obj.confirmTransmission('loading motor program');
             obj.programLoaded(programIndex) = 1;
         end
 
@@ -390,7 +447,7 @@ classdef SmartServoModule < handle
                 error(['Cannot run motor program ' num2str(programIndex)... 
                        '. It must be loaded to the device first.'])
             end
-            obj.port.write([obj.opMenuByte 'R' programIndex], 'uint8');
+            obj.port.write([obj.opMenuByte 'R' programIndex-1], 'uint8');
         end
 
 
@@ -399,5 +456,17 @@ classdef SmartServoModule < handle
             obj.port = []; % Trigger the ArCOM port's destructor function (closes and releases port)
         end
 
+    end
+    methods (Access = private)
+        function confirmTransmission(obj, opName)
+            % Read op confirmation byte, and throw an error if confirm not returned
+            
+            confirmed = obj.port.read(1, 'uint8');
+            if confirmed == 0
+                error(['Error ' opName ': the module denied your request.'])
+            elseif confirmed ~= 1
+                error(['Error ' opName ': module did not acknowledge the operation.']);
+            end
+        end
     end
 end
