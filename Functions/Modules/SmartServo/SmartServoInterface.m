@@ -68,6 +68,7 @@ classdef SmartServoInterface < handle
             obj.port.write([obj.opMenuByte '!'], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             disp('!! Emergency Stop Acknowledged !!'); 
+            disp('All motors now have torque disabled.')
             disp('Re-enable motor torque by setting motorMode for each motor.')
             if confirmed ~= 1
                 error('***ALERT!*** Emergency stop not confirmed.');

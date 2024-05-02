@@ -138,7 +138,9 @@ classdef SmartServoModule < handle
             % After an emergency stop, torque must be re-enabled manually by setting motorMode for each motor.
             obj.port.write([obj.opMenuByte '!'], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
-            disp('Emergency Stop Acknowledged. Re-enable motor torque by setting motorMode for each motor.')
+            disp('!! Emergency Stop Acknowledged !!'); 
+            disp('All motors now have torque disabled.')
+            disp('Re-enable motor torque by setting motorMode for each motor.')
             if confirmed ~= 1
                 error('***ALERT!*** Emergency stop not confirmed.');
             end
@@ -208,7 +210,7 @@ classdef SmartServoModule < handle
 
             disp('Detecting motors...');
             obj.port.write([obj.opMenuByte 'D'], 'uint8');
-            pause(2);
+            pause(1);
             nMotorsFound = floor(obj.port.bytesAvailable/6);
             detectedChannel = [];
             detectedAddress = [];
