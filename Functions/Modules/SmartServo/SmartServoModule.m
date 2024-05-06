@@ -291,7 +291,6 @@ classdef SmartServoModule < handle
                 program.address = zeros(1, obj.maxSteps);
                 program.goalPosition = zeros(1, obj.maxSteps);
                 program.velocity = zeros(1, obj.maxSteps);
-                program.acceleration = zeros(1, obj.maxSteps);
                 program.maxCurrent = zeros(1, obj.maxSteps);
                 program.stepTime = zeros(1, obj.maxSteps);
         end
@@ -307,8 +306,6 @@ classdef SmartServoModule < handle
             % ***Pass only if program.moveType = 0:
             %          velocity: The maximum velocity of the movement (units = RPM).
             %               Use 0 for max velocity.
-            %          acceleration: The maximum acceleration/deceleration of the movement start
-            %               and end (units = rev/min^2). Use 0 for max acceleration
             % ***Pass only if program.moveType = 1:
             %          maxCurrent: The maximum current for the move (unit = % of max current)
             % ***
@@ -323,23 +320,19 @@ classdef SmartServoModule < handle
             % program, the original program struct modified with the added step
 
             % Extract args
+            if nargin ~= 12
+                error('Incorrect number of arguments');
+            end
             channel = varargin{2};
             address = varargin{4};
             goalPosition = varargin{6};
             if program.moveType == 0
-                if nargin ~= 14
-                    error('Incorrect number of arguments');
-                end
                 velocity = varargin{8};
-                acceleration = varargin{10};
-                stepTime = varargin{12};
             else
-                if nargin ~= 12
-                    error('Incorrect number of arguments');
-                end
                 maxCurrent = varargin{8};
-                stepTime = varargin{10};
+                
             end
+            stepTime = varargin{10};
 
             nSteps = program.nSteps + 1;
             program.nSteps = nSteps;
@@ -348,7 +341,6 @@ classdef SmartServoModule < handle
             program.goalPosition(nSteps) = goalPosition;
             if program.moveType == 0
                 program.velocity(nSteps) = velocity;
-                program.acceleration(nSteps) = acceleration;
             else
                 program.maxCurrent(nSteps) = maxCurrent;
             end
@@ -401,10 +393,9 @@ classdef SmartServoModule < handle
             address = program.address(1:nSteps);
             goalPosition = program.goalPosition(1:nSteps);
             velocity = program.velocity(1:nSteps);
-            acceleration = program.acceleration(1:nSteps);
             maxCurrent = program.maxCurrent(1:nSteps);
-            stepTime = program.stepTime(1:nSteps)*10000;
-            loopDuration = program.loopDuration*10000;
+            stepTime = program.stepTime(1:nSteps)*1000;
+            loopDuration = program.loopDuration*1000;
 
             % If necessary, sort moves by timestamps
             if sum(diff(stepTime) < 0) > 0 % If any timestamps are out of order
@@ -413,7 +404,6 @@ classdef SmartServoModule < handle
                 address = address(sIndexes);
                 goalPosition = goalPosition(sIndexes);
                 velocity = velocity(sIndexes);
-                acceleration = acceleration(sIndexes);
                 maxCurrent = maxCurrent(sIndexes);
                 stepTime = stepTime(sIndexes);
             end
@@ -429,7 +419,6 @@ classdef SmartServoModule < handle
                             uint8(channel) uint8(address)...
                             typecast(single(goalPosition), 'uint8')...
                             typecast(single(current_or_velocity), 'uint8')...
-                            typecast(single(acceleration), 'uint8')...
                             typecast(uint32(stepTime), 'uint8')];
 
             % Send the program and read confirmation
