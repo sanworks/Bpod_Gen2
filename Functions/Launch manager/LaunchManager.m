@@ -150,7 +150,7 @@ elseif isempty(BpodSystem.Path.DataFolder)
     BpodSystem.setupFolders;
     close(BpodSystem.GUIHandles.LaunchManagerFig);
 else
-    loadProtocols;
+    BpodLib.launcher.ui.loadProtocols(BpodSystem);
     BpodSystem.GUIData.DummySubjectString = 'FakeSubject';
     % Set selected protocol to first non-folder item
     protocolNames = get(BpodSystem.GUIHandles.ProtocolSelector, 'String');
@@ -201,7 +201,7 @@ if currentValue == BpodSystem.GUIData.ProtocolSelectorLastValue
             BpodSystem.Path.ProtocolFolder = fullfile(BpodSystem.Path.ProtocolFolder, folderName);
         end
         isNewFolder = true;
-        loadProtocols;
+        BpodLib.launcher.ui.loadProtocols(BpodSystem);
     end
 else
     protocolName = String{currentValue};
@@ -260,53 +260,6 @@ set(BpodSystem.GUIHandles.SettingsSelector, 'String', settingsFileNames);
 set(BpodSystem.GUIHandles.SettingsSelector, 'Value', 1);
 BpodSystem.Status.CurrentSubjectName = selectedName;
 update_datafile(protocolName, selectedName);
-
-function loadProtocols
-global BpodSystem % Import the global BpodSystem object
-if strcmp(BpodSystem.Path.ProtocolFolder, BpodSystem.SystemSettings.ProtocolFolder)
-    startPos = 3;
-else
-    startPos = 2;
-end
-candidates = dir(BpodSystem.Path.ProtocolFolder);
-protocolNames = cell(0);
-nProtocols = 0;
-for x = startPos:length(candidates)
-    if candidates(x).isdir
-        protocolFolder = fullfile(BpodSystem.Path.ProtocolFolder, candidates(x).name);
-        contents = dir(protocolFolder);
-        nItems = length(contents);
-        found = 0;
-        for y = 3:nItems
-            if strcmp(contents(y).name, [candidates(x).name '.m'])
-                found = 1;
-            end
-        end
-        if found
-            protocolName = candidates(x).name;
-        else
-            protocolName = ['<' candidates(x).name '>'];
-        end
-        nProtocols = nProtocols + 1;
-        protocolNames{nProtocols} = protocolName;
-    end
-end
-
-if isempty(protocolNames)
-    protocolNames = {'No Protocols Found'};
-else
-    % Sort to put organizing directories first
-    Types = ones(1,nProtocols);
-    for i = 1:nProtocols
-        protocolName = protocolNames{i};
-        if protocolName(1) == '<'
-            Types(i) = 0;
-        end
-    end
-    [a, Order] = sort(Types);
-    protocolNames = protocolNames(Order);
-end
-set(BpodSystem.GUIHandles.ProtocolSelector, 'String', protocolNames);
 
 function loadSubjects(ProtocolName)
 global BpodSystem % Import the global BpodSystem object
@@ -476,7 +429,7 @@ if ~isempty(newName)
         fclose(file1);
         edit(newProtocolFile);
         set(BpodSystem.GUIHandles.ProtocolSelector,'Value',1);
-        loadProtocols
+        BpodLib.launcher.ui.loadProtocols(BpodSystem)
     end
 end
 
@@ -643,7 +596,7 @@ if selectedProtocol ~= 1
     if ((okToDelete == 1) && (~isempty(selectedProtocolName)))
         rmdir(protocolPath, 's');
         set(BpodSystem.GUIHandles.ProtocolSelector,'Value',1);
-        loadProtocols
+        BpodLib.launcher.ui.loadProtocols(BpodSystem)
     end
 end
 
