@@ -26,7 +26,7 @@ classdef SmartServoInterface < handle
         motorInfo % Struct with info about  the motor (detected model name within Dynamixel X series, etc)
         channel % Channel on the SmartServoModule device
         address % Index of the target motor on the selected channel
-        motorMode % Mode 1 = Position. 2 = Extended Position. 3 = Current-limited position 4 = RPM 5 = Step
+        motorMode % Mode 1 = Position. 2 = Extended Position. 3 = Current-limited position 4 = Speed 5 = Step
     end
 
     properties (Access = private)
@@ -50,7 +50,7 @@ classdef SmartServoInterface < handle
         end
 
         function set.motorMode(obj, newMode)
-            % Mode 1 = Position. 2 = Extended Position. 3 = Current-limited position 4 = RPM 5 = Step
+            % Mode 1 = Position. 2 = Extended Position. 3 = Current-limited position 4 = Speed 5 = Step
             obj.port.write([obj.opMenuByte 'M' obj.channel obj.address newMode], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
@@ -80,7 +80,7 @@ classdef SmartServoInterface < handle
         end
 
         function setMaxVelocity(obj, maxVelocity)
-            % Sets the maximum velocity for all subsequent movements with setPosition(). Units = RPM
+            % Sets the maximum velocity for all subsequent movements with setPosition(). Units = rev/s
             maxVelocityBytes = typecast(single(maxVelocity), 'uint8');
             obj.port.write([obj.opMenuByte '[' obj.channel obj.address maxVelocityBytes], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
@@ -90,7 +90,7 @@ classdef SmartServoInterface < handle
         end
 
         function setMaxAcceleration(obj, maxAcceleration)
-            % Sets the acceleration for all subsequent movements with setPosition(). Units = rev/min^2
+            % Sets the acceleration for all subsequent movements with setPosition(). Units = rev/s^2
             maxAccBytes = typecast(single(maxAcceleration), 'uint8');
             obj.port.write([obj.opMenuByte ']' obj.channel obj.address maxAccBytes], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
@@ -159,7 +159,7 @@ classdef SmartServoInterface < handle
         function setCurrentLimitedPos(obj, newPosition, currentPercent)
             % Position Units = Degrees
             % Current units = Percent of max
-            if obj.motorMode(obj.channel, obj.address) ~= 3
+            if obj.motorMode ~= 3
                 error(['Motor ' num2str(obj.address) ' on channel ' num2str(obj.channel)... 
                        ' must be in current-limited position mode (mode 3) before calling setCurrentLimitedPos().'])
             end
@@ -172,19 +172,19 @@ classdef SmartServoInterface < handle
             end
         end
 
-        function setRPM(obj, newRPM)
-            % Sets the rotational velocity of the motor shaft in RPM mode (motorMode 4). 
-            % Arguments: newRPM, the new velocity. Units = rev/min
+        function setSpeed(obj, newSpeed)
+            % Sets the rotational velocity of the motor shaft in Speed mode (motorMode 4). 
+            % Arguments: newSpeed, the new velocity. Units = rev/s
             %            Sign encodes direction (negative = clockwise, positive = counterclockwise)
             if obj.motorMode ~= 4
                 error(['Motor ' num2str(obj.address) ' on channel ' num2str(obj.channel)... 
-                       ' must be in RPM mode (mode 4) before calling setRPM().'])
+                       ' must be in Speed mode (mode 4) before calling setSpeed().'])
             end
-            rpmBytes = typecast(single(newRPM), 'uint8');
-            obj.port.write([obj.opMenuByte 'V' obj.channel obj.address rpmBytes], 'uint8');
+            speedBytes = typecast(single(newSpeed), 'uint8');
+            obj.port.write([obj.opMenuByte 'V' obj.channel obj.address speedBytes], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
-                error('Error setting RPM. Confirm code not returned.');
+                error('Error setting motor speed. Confirm code not returned.');
             end
         end
 
@@ -200,7 +200,7 @@ classdef SmartServoInterface < handle
             obj.port.write([obj.opMenuByte 'S' obj.channel obj.address stepBytes], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
-                error('Error setting RPM. Confirm code not returned.');
+                error('Error stepping the motor. Confirm code not returned.');
             end
         end
 

@@ -36,9 +36,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % myServo = S.newSmartServo(2, 1); % Create myServo, a SmartServoInterface object to control
 %                                    the servo on channel 2 at address 1
 % myServo.setPosition(90); % Move servo shaft to 90 degrees using current velocity and acceleration
-% myServo.setPosition(0, 100, 200); % Return shaft to 0 degrees at 100RPM with 200RPM^2 acceleration
+% myServo.setPosition(0, 1, 100); % Return shaft to 0 degrees at up to 1 rev/s with 100 rev/s^2 acceleration
 % myServo.setMode(4); % Set servo to continuous rotation mode with velocity control
-% myServo.setVelocity(-10); % Start rotating clockwise at 10RPM
+% myServo.setVelocity(-0.5); % Start rotating clockwise at 0.5 rev/s
 % myServo.setVelocity(0); % Stop rotating
 % myServo.setMode(5); % Set servo to step mode (movements defined relative to current position)
 % myServo.step(-3000); % Rotate clockwise 3000 degrees using current velocity and acceleration
@@ -92,10 +92,11 @@ classdef SmartServoModule < handle
         isConnected = zeros(3, 253); % Indicates whether a servo was detected at (channel, address)
                                      % 0 = not detected, 1 = detected
         detectedModelName = cell(3, 253); % Stores the model name for each detected motor
+        validProgramMoveTypes = {'velocity', 'current_limit'};
         opMenuByte = 212; % Byte code to access op menu via USB
         maxPrograms % Maximium number of motor programs that can be stored on the device
         maxSteps % Maximum number of steps per motor program
-        programLoaded % Indicates whether programs are loaded
+        programLoaded  % Indicates whether programs are loaded
     end
 
     methods
@@ -268,7 +269,7 @@ classdef SmartServoModule < handle
 
         function bytes = param2Bytes(obj, paramValue)
             % param2Bytes() is a convenience function for state machine control. Position,
-            % velocity, acceleration, current and RPM values must be
+            % velocity, acceleration, current and rev/s values must be
             % converted to bytes for use with the state machine serial interface.
             % Arguments:
             % paramValue, the value of the parameter to convert (type = double or single)
@@ -279,19 +280,18 @@ classdef SmartServoModule < handle
         end
 
         function program = newProgram(obj)
-            % Returns a blank motor program for use with addMovement(), setLoopDuration()
-            % setMoveType() and sendMotorProgram().
+            % Returns a blank motor program for use with addMovement()
+            % and sendMotorProgram().
             % Arguments: None
             % Return: program, a struct containing a blank motor program
                 program = struct;
                 program.nSteps = 0;
-                program.moveType = 0;
-                program.loopDuration = 0;
+                program.moveType = 'velocity'; % must be either 'velocity' or 'current_limit'
+                program.nLoops = 0;
                 program.channel = zeros(1, obj.maxSteps);
                 program.address = zeros(1, obj.maxSteps);
                 program.goalPosition = zeros(1, obj.maxSteps);
-                program.velocity = zeros(1, obj.maxSteps);
-                program.maxCurrent = zeros(1, obj.maxSteps);
+                program.movementLimit = zeros(1, obj.maxSteps);
                 program.stepTime = zeros(1, obj.maxSteps);
         end
 
@@ -303,11 +303,11 @@ classdef SmartServoModule < handle
             % channel: The target motor's channel on the Smart Stepper Module (integer in range 1-3)
             % address: The target motor's address on the target channel (integer in range 1-8)
             % goalPosition: The position the motor will move to on this step (units = degrees)
-            % ***Pass only if program.moveType = 0:
-            %          velocity: The maximum velocity of the movement (units = RPM).
-            %               Use 0 for max velocity.
-            % ***Pass only if program.moveType = 1:
-            %          maxCurrent: The maximum current for the move (unit = % of max current)
+            % ***Pass only if moveType = 'vLimit':
+            %          velocity: The maximum velocity of the movement (units = rev/s).
+            %          Use 0 for max velocity.
+            % ***Pass only if moveType = 'cLimit':
+            %          maxCurrent: The maximum current draw for the movement (unit = mA)
             % ***
             % stepTime: The time when this step will begin with respect to motor
             %           program start (units = seconds)
@@ -326,24 +326,14 @@ classdef SmartServoModule < handle
             channel = varargin{2};
             address = varargin{4};
             goalPosition = varargin{6};
-            if program.moveType == 0
-                velocity = varargin{8};
-            else
-                maxCurrent = varargin{8};
-                
-            end
+            movementLimit = varargin{8};
             stepTime = varargin{10};
-
             nSteps = program.nSteps + 1;
             program.nSteps = nSteps;
             program.channel(nSteps) = channel;
             program.address(nSteps) = address;
             program.goalPosition(nSteps) = goalPosition;
-            if program.moveType == 0
-                program.velocity(nSteps) = velocity;
-            else
-                program.maxCurrent(nSteps) = maxCurrent;
-            end
+            program.movementLimit(nSteps) = movementLimit;
             program.stepTime(nSteps) = stepTime;
         end
 
@@ -363,22 +353,6 @@ classdef SmartServoModule < handle
             program.loopDuration = loopDuration;
         end
 
-        function program = setMoveType(obj, program, moveType)
-            % setMoveType sets the type of move contained in the program.
-            %
-            % Arguments:
-            % moveType, the type of move contained in the program. moveType must be either:
-            % 0 = moves defined by goal position, max velocity and max acceleration
-            % 1 = moves defined by goal position and max current (torque)
-            if ~(moveType == 0 || moveType == 1)
-                error('moveType must be either 0 or 1')
-            end
-            if program.nSteps > 0
-                error('moveType must be set before steps are added to a program')
-            end
-            program.moveType = moveType;
-        end
-
         function loadProgram(obj, programIndex, program)
             % loadProgram() loads a motor program to the Smart Servo Module's memory.
             % The Smart Servo Module can store up to 100 programs of up to 256 steps each.
@@ -388,14 +362,13 @@ classdef SmartServoModule < handle
             % program: The program struct to load to the device at position programIndex
 
             nSteps = program.nSteps;
+            nLoops = program.nLoops;
             moveType = program.moveType;
             channel = program.channel(1:nSteps);
             address = program.address(1:nSteps);
             goalPosition = program.goalPosition(1:nSteps);
-            velocity = program.velocity(1:nSteps);
-            maxCurrent = program.maxCurrent(1:nSteps);
+            movementLimit = program.movementLimit(1:nSteps);
             stepTime = program.stepTime(1:nSteps)*1000;
-            loopDuration = program.loopDuration*1000;
 
             % If necessary, sort moves by timestamps
             if sum(diff(stepTime) < 0) > 0 % If any timestamps are out of order
@@ -403,22 +376,19 @@ classdef SmartServoModule < handle
                 channel = channel(sIndexes);
                 address = address(sIndexes);
                 goalPosition = goalPosition(sIndexes);
-                velocity = velocity(sIndexes);
-                maxCurrent = maxCurrent(sIndexes);
+                movementLimit = movementLimit(sIndexes);
                 stepTime = stepTime(sIndexes);
             end
-            if moveType == 0
-                current_or_velocity = velocity;
-            else
-                current_or_velocity = maxCurrent;
-            end
+            
+            % Convert move type string to integer
+            [~, moveTypeInteger] = ismember(moveType, obj.validProgramMoveTypes);
 
             % Convert the program to a byte string
-            programBytes = [obj.opMenuByte 'L' programIndex-1 moveType nSteps...
-                            typecast(uint32(loopDuration), 'uint8')...
+            programBytes = [obj.opMenuByte 'L' uint8(programIndex-1) uint8(nSteps) uint8(moveTypeInteger-1)...
+                            typecast(uint32(nLoops), 'uint8')...
                             uint8(channel) uint8(address)...
                             typecast(single(goalPosition), 'uint8')...
-                            typecast(single(current_or_velocity), 'uint8')...
+                            typecast(single(movementLimit), 'uint8')...
                             typecast(uint32(stepTime), 'uint8')];
 
             % Send the program and read confirmation
