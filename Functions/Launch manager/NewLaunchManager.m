@@ -753,6 +753,7 @@ if BpodSystem.MachineType > 3
 end
 ProtocolFolderPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName);
 ProtocolPath = fullfile(BpodSystem.Path.ProtocolFolder,ProtocolName,[ProtocolName '.m']);
+BpodSystem.Path.CurrentProtocol = ProtocolPath;
 addpath(ProtocolFolderPath);
 set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
 IsOnline = BpodSystem.check4Internet();
