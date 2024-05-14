@@ -451,6 +451,7 @@ function Out = fBase64_enc(In, doPad)
 % Encode numeric vector of UINT8 values to base64 string.
 
 B64 = org.apache.commons.codec.binary.Base64;
+% https://au.mathworks.com/matlabcentral/fileexchange/31272-datahash?tab=discussions#discussions_2595901
 Out = char(B64.encode(In)).';
 if ~doPad
    Out(Out == '=') = [];
