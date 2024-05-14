@@ -176,18 +176,9 @@ else
     BpodSystem.Status.CurrentProtocolName = selectedProtocolName;
     dataPath = fullfile(BpodSystem.Path.DataFolder,BpodSystem.GUIData.DummySubjectString);
     protocolName = BpodSystem.Status.CurrentProtocolName;
-    %Make standard folders for this protocol.  This will fail silently if the folders exist
-    warning off % Suppress warning that directory already exists
-    mkdir(dataPath, protocolName);
-    mkdir(fullfile(dataPath,protocolName,'Session Data'))
-    mkdir(fullfile(dataPath,protocolName,'Session Settings'))
-    warning on
-    % Ensure that a default settings file exists
-    defaultSettingsFilePath = fullfile(dataPath,protocolName,'Session Settings', 'DefaultSettings.mat');
-    if ~exist(defaultSettingsFilePath)
-        ProtocolSettings = struct;
-        save(defaultSettingsFilePath, 'ProtocolSettings')
-    end
+    
+    BpodLib.launcher.prepareDataFolderes(dataPath, protocolName)
+
     loadSubjects(protocolName);
     loadSettings(protocolName, BpodSystem.GUIData.DummySubjectString);
     update_datafile(protocolName, BpodSystem.GUIData.DummySubjectString);
