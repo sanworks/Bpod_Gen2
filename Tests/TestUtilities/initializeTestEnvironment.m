@@ -1,10 +1,15 @@
 function testEnvironment = initializeTestEnvironment(rootPath)
 % Create a directory structure for testing the findProtocolFile function
+%
 % Inputs
 % ------
 % rootPath : str
 %     Path to the root directory where the test environment will be created
-% 
+%
+% Outputs
+% -------
+% testEnvironment : struct
+%     Various properties specific to environment (e.g. .protocolFolder)
 % The structure will be as follows:
 % rootPath/
 %     Bpod Local/
@@ -38,6 +43,9 @@ function testEnvironment = initializeTestEnvironment(rootPath)
 
 protocolFolder = fullfile(rootPath, 'Bpod Local/Protocols');
 dataFolder = fullfile(rootPath, 'Bpod Local/Data');
+
+% Create testEnvironment
+testEnvironment = struct;
 testEnvironment.protocolFolder = protocolFolder;
 testEnvironment.dataFolder = dataFolder;
 
@@ -61,12 +69,12 @@ create_datafolder(dataFolder, 'Subject2', 'Protocol_matching1');
 create_datafolder(dataFolder, 'Subject2', 'Protocol_unique2');
 
 % Create settings files
-dummysettings = struct('dummy', 'dummy');
-filepath = fullfile(dataFolder, 'FakeSubject', 'Protocol_matching1', 'Session Settings', 'settings1.mat');
-save(filepath, 'dummysettings');
 filepath = fullfile(dataFolder, 'FakeSubject', 'Protocol_matching1', 'Session Settings', 'DefaultSettings.mat');
 emptystruct = struct;
 save(filepath, 'emptystruct');
+dummysettings = struct('dummy', 'dummy');
+filepath = fullfile(dataFolder, 'FakeSubject', 'Protocol_matching1', 'Session Settings', 'settings1.mat');
+save(filepath, 'dummysettings');
 
 end
 
