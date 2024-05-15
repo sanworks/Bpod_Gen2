@@ -16,10 +16,7 @@ mkdir(fullfile(subjectDataFolder, protocolName, 'Session Settings'))
 warning on
 
 % Ensure that a default settings file exists
-defaultSettingsFilePath = fullfile(dataPath,protocolName,'Session Settings', 'DefaultSettings.mat');
-if ~exist(defaultSettingsFilePath)
-    ProtocolSettings = struct;
-    save(defaultSettingsFilePath, 'ProtocolSettings')
-end
+[dataFolder, subjectName] = fileparts(subjectDataFolder);
+BpodLib.launcher.createDefaultSettingsFile(dataFolder, subjectName, protocolName);
 
 end
