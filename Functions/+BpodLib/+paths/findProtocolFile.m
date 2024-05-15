@@ -1,28 +1,30 @@
-function protocolFilePath = findProtocolFile(protocolFolder, fullProtocolName)
-% protocolFilePath = findProtocolFile(protocolFolder, protocolName)
+function protocolFilePath = findProtocolFile(protocolRootFolder, protocolPointer)
+% protocolFilePath = findProtocolFile(protocolRootFolder, protocolName)
 % Find the file path for the given protocol name in the given folder
+%
 % Inputs
 % ------
-% protocolFolder : str
+% protocolRootFolder : str
 %     Path to the folder containing the protocols
-% fullProtocolName : str
-%     Name of the protocol
+% protocolPointer : str
+%     Name of the protocol, which can have folder names to handle ambiguity
+%       e.g. 'Group1/MyProtocol' or 'Protocols/Group1/MyProtocol'
 
 % Normalize paths to avoid issues with different OS path separators
-fullProtocolName = strrep(fullProtocolName, '/', filesep);
-fullProtocolName = strrep(fullProtocolName, '\', filesep);
+protocolPointer = strrep(protocolPointer, '/', filesep);
+protocolPointer = strrep(protocolPointer, '\', filesep);
 
-% Split the fullProtocolName into parts based on file separators
-pathParts = strsplit(fullProtocolName, filesep);
+% Split the protocolPointer into parts based on file separators
+pathParts = strsplit(protocolPointer, filesep);
 
 % Extract the actual protocolName (last element)
 protocolName = pathParts{end};
 
 % Construct the subfolder path (if specified)
-subfolderPath = fullfile(protocolFolder, pathParts(1:end-1));
+subfolderPath = fullfile(protocolRootFolder, pathParts(1:end-1));
 
 % Retrieve and match protocols
-protocolStruct = BpodLib.paths.findAllProtocols(protocolFolder);
+protocolStruct = BpodLib.paths.findAllProtocols(protocolRootFolder);
 matchedProtocols = protocolStruct(strcmp({protocolStruct.Name}, protocolName));
 
 

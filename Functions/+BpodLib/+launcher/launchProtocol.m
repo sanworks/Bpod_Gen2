@@ -14,7 +14,7 @@ function launchProtocol(BpodSystem, protocolPointer, subjectName, settingsName, 
 % settingsName : str
 %     The name of the settings file
 % varargin : cell
-%     Additional arguments to pass to the protocol
+%     Additional arguments to pass to the protocol (i.e. MyProtocol(varargin{:}))
 
 % Generate path to protocol file
 protocolRunFile = BpodLib.paths.findProtocolFile(BpodSystem.SystemSettings.ProtocolFolder, protocolPointer);
