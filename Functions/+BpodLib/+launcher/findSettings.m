@@ -1,5 +1,5 @@
 function settingsFileNames = findSettings(dataFolder, protocolName, subjectName)
-% Find all settings files in the Settings folder
+% Find all settings files in the Settings folder for a given protocol and subject
 
 settingsPath = fullfile(dataFolder, subjectName, protocolName, 'Session Settings');
 candidates = dir(settingsPath);
