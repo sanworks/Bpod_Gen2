@@ -130,9 +130,6 @@ if sum(BpodSystem.InputsEnabled(BpodSystem.HW.Inputs == 'P')) == 0
     warning(['All Bpod behavior ports are currently disabled.'... 
              'If your protocol requires behavior ports, enable them from the settings menu.'])
 end
-% Push console GUI to top and run protocol file
-figure(BpodSystem.GUIHandles.MainFig);
-
 
 % Add protocol folder to the path
 rmpath(fileparts(BpodSystem.Path.CurrentProtocol))  % this is here because errors might prevent any shutdown procedures from running
