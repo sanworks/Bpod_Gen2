@@ -1,7 +1,9 @@
 function ProtocolNames = findProtocols(BpodSystem)
-% 
+% ProtocolNames = findProtocols(BpodSystem)
+% Returns a cell array of protocol names found in the ProtocolFolder
 
-if strcmp(BpodSystem.Path.ProtocolFolder, BpodSystem.SystemSettings.ProtocolFolder)
+
+if strcmp(BpodSystem.Path.ProtocolFolder, BpodSystem.SystemSettings.ProtocolFolder)  % todo: make this less janky?
     startPos = 3;
 else
     startPos = 2;
