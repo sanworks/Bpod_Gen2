@@ -648,91 +648,13 @@ subjectName = subjectList{subjectIndex};
 settingsList = get(BpodSystem.GUIHandles.SettingsSelector, 'String');
 settingsIndex = get(BpodSystem.GUIHandles.SettingsSelector,'Value');
 settingsName = settingsList{settingsIndex};
-settingsFileName = fullfile(BpodSystem.Path.DataFolder, subjectName, protocolName, 'Session Settings', [settingsName '.mat']);
-dataFolder = fullfile(BpodSystem.Path.DataFolder,subjectName,protocolName,'Session Data');
-if ~exist(dataFolder)
-    mkdir(dataFolder);
-end
 
-% On Bpod r2+, if FlexIO channels are configured as analog,
-% setup binary data file
-if BpodSystem.MachineType > 3
-    nAnalogChannels = sum(BpodSystem.HW.FlexIO_ChannelTypes == 2);
-    if nAnalogChannels > 0
-        analogFilename = [BpodSystem.Path.CurrentDataFile(1:end-4) '_ANLG.dat'];
-        if BpodSystem.Status.RecordAnalog == 1
-            BpodSystem.AnalogDataFile = fopen(analogFilename,'w');
-            if BpodSystem.AnalogDataFile == -1
-                error(['Error: Could not open the analog data file: ' analogFilename])
-            end
-        end
-        BpodSystem.Status.nAnalogSamples = 0;
-    end
-end
-
-BpodSystem.Status.Live = 1;
-BpodSystem.Status.LastEvent = 0;
-BpodSystem.GUIData.ProtocolName = protocolName;
-BpodSystem.GUIData.SubjectName = subjectName;
-BpodSystem.GUIData.SettingsFileName = settingsFileName;
-BpodSystem.Path.Settings = settingsFileName;
-settingStruct = load(BpodSystem.Path.Settings);
-F = fieldnames(settingStruct);
-fieldName = F{1};
-BpodSystem.ProtocolSettings = eval(['settingStruct.' fieldName]);
-BpodSystem.Data = struct;
-if BpodSystem.MachineType > 3
-    if nAnalogChannels > 0
-        BpodSystem.Data.Analog = struct;
-        BpodSystem.Data.Analog.info = struct;
-        BpodSystem.Data.Analog.FileName = analogFilename;
-        BpodSystem.Data.Analog.nChannels = nAnalogChannels;
-        BpodSystem.Data.Analog.channelNumbers = find(BpodSystem.HW.FlexIO_ChannelTypes == 2);
-        BpodSystem.Data.Analog.SamplingRate = BpodSystem.HW.FlexIO_SamplingRate;
-        BpodSystem.Data.Analog.nSamples = 0;
-        % Add human-readable info about data fields to 'info struct
-        BpodSystem.Data.Analog.info.FileName = 'Complete path and filename of the binary file to which the raw data was logged';
-        BpodSystem.Data.Analog.info.nChannels = 'The number of Flex I/O channels configured as analog input';
-        BpodSystem.Data.Analog.info.channelNumbers = 'The indexes of Flex I/O channels configured as analog input';
-        BpodSystem.Data.Analog.info.SamplingRate = 'The sampling rate of the analog data. Units = Hz';
-        BpodSystem.Data.Analog.info.nSamples = 'The total number of analog samples captured during the behavior session';
-        BpodSystem.Data.Analog.info.Samples = 'Analog measurements captured. Rows are separate analog input channels. Units = Volts';
-        BpodSystem.Data.Analog.info.Timestamps = 'Time of each sample (computed from sample index and sampling rate)';
-        BpodSystem.Data.Analog.info.TrialNumber = 'Experimental trial during which each analog sample was captured';
-        BpodSystem.Data.Analog.info.TrialData = 'A cell array of Samples. Each cell contains samples captured during a single trial.';
-    end
-end
-protocolFolderPath = fullfile(BpodSystem.Path.ProtocolFolder,protocolName);
-protocolPath = fullfile(BpodSystem.Path.ProtocolFolder,protocolName,[protocolName '.m']);
-addpath(protocolFolderPath);
-set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
-
-% % Send metadata to Bpod Phone Home program (disabled pending a more stable server)
-% isOnline = BpodSystem.check4Internet();
-% if (isOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
-%     BpodSystem.BpodPhoneHome(1);
-% end
-
-if BpodSystem.Status.AnalogViewer
-    set(BpodSystem.GUIHandles.RecordButton, 'Enable', 'off')
-end
-
-BpodSystem.Status.BeingUsed = 1;
-BpodSystem.Status.SessionStartFlag = 1;
-BpodSystem.ProtocolStartTime = now*100000;
-BpodSystem.resetSessionClock();
 close(BpodSystem.GUIHandles.LaunchManagerFig);
-disp(' ');
-disp(['Starting ' protocolName]);
-set(BpodSystem.GUIHandles.CurrentStateDisplay, 'String', '---');
-set(BpodSystem.GUIHandles.PreviousStateDisplay, 'String', '---');
-set(BpodSystem.GUIHandles.LastEventDisplay, 'String', '---');
-set(BpodSystem.GUIHandles.TimeDisplay, 'String', '0:00:00');
-if sum(BpodSystem.InputsEnabled(BpodSystem.HW.Inputs == 'P')) == 0
-    warning(['All Bpod behavior ports are currently disabled.'... 
-             'If your protocol requires behavior ports, enable them from the settings menu.'])
-end
-run(protocolPath);
+% nCoreFolder = numel(BpodSystem.SystemSettings.ProtocolFolder);
+% nProtocolFolder = numel(BpodSystem.Path.ProtocolFolder);
+% protocolParentFolder = BpodSystem.Path.ProtocolFolder(-nCoreFolder+nProtocolFolder:end);
+protocolFolderPath = fullfile(BpodSystem.Path.ProtocolFolder, protocolName)
+BpodLib.launcher.launchProtocol(BpodSystem, protocolFolderPath, subjectName, settingsName);
 
 function outputString = spaces2underscores(inputString)
 spaceIndexes = inputString == ' ';
