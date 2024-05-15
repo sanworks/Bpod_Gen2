@@ -6,12 +6,10 @@ end
 function setupOnce(testCase)
     % Setup - Create a mock directory structure
     rootPath = tempname;  % Generate a unique temporary directory
-    protocolFolder = fullfile(rootPath, 'Bpod Local/Protocols');
-
-    initializeTestEnvironment(rootPath)
-
     testCase.TestData.rootPath = rootPath;
-    testCase.TestData.protocolFolder = protocolFolder;
+
+    testEnvironment = initializeTestEnvironment(rootPath);
+    testCase.TestData.protocolFolder = testEnvironment.protocolFolder;
 end
 
 function teardownOnce(testCase)
