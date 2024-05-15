@@ -177,7 +177,7 @@ else
     dataPath = fullfile(BpodSystem.Path.DataFolder,BpodSystem.GUIData.DummySubjectString);
     protocolName = BpodSystem.Status.CurrentProtocolName;
     
-    BpodLib.launcher.prepareDataFolderes(dataPath, protocolName)
+    BpodLib.launcher.prepareDataFolders(dataPath, protocolName)
 
     loadSubjects(protocolName);
     loadSettings(protocolName, BpodSystem.GUIData.DummySubjectString);
