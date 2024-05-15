@@ -179,9 +179,9 @@ else
     
     BpodLib.launcher.prepareDataFolders(dataPath, protocolName)
 
-    loadSubjects(protocolName);
-    loadSettings(protocolName, BpodSystem.GUIData.DummySubjectString);
-    update_datafile(protocolName, BpodSystem.GUIData.DummySubjectString);
+    BpodLib.launcher.ui.loadSubjects(BpodSystem, protocolName);
+    BpodLib.launcher.ui.loadSettings(BpodSystem, protocolName, BpodSystem.GUIData.DummySubjectString);
+    BpodLib.launcher.ui.setDataFilePath(BpodSystem, protocolName, BpodSystem.GUIData.DummySubjectString);
     BpodSystem.GUIData.ProtocolSelectorLastValue = 1;
 end
 
@@ -218,9 +218,9 @@ else
             save(defaultSettingsPath, 'ProtocolSettings')
         end
 
-        loadSubjects(protocolName);
-        loadSettings(protocolName, BpodSystem.GUIData.DummySubjectString);
-        update_datafile(protocolName, BpodSystem.GUIData.DummySubjectString);
+        BpodLib.launcher.ui.loadSubjects(BpodSystem, protocolName);
+        BpodLib.launcher.ui.loadSettings(BpodSystem, protocolName, BpodSystem.GUIData.DummySubjectString);
+        BpodLib.launcher.ui.setDataFilePath(BpodSystem, protocolName, BpodSystem.GUIData.DummySubjectString);
         BpodSystem.Status.CurrentProtocolName = protocolName;
     end
 end
@@ -259,60 +259,8 @@ end
 set(BpodSystem.GUIHandles.SettingsSelector, 'String', settingsFileNames);
 set(BpodSystem.GUIHandles.SettingsSelector, 'Value', 1);
 BpodSystem.Status.CurrentSubjectName = selectedName;
-update_datafile(protocolName, selectedName);
+BpodLib.launcher.ui.setDataFilePath(BpodSystem, protocolName, selectedName);
 
-function loadSubjects(ProtocolName)
-global BpodSystem % Import the global BpodSystem object
-% Make a list of the names of all subjects who already have a folder for this
-% protocol.
-candidateSubjects = dir(BpodSystem.Path.DataFolder);
-subjectNames = cell(1);
-nSubjects = 1;
-subjectNames{1} = BpodSystem.GUIData.DummySubjectString;
-for x = 1:length(candidateSubjects)
-    if x > 2
-        if candidateSubjects(x).isdir
-            if ~strcmp(candidateSubjects(x).name, BpodSystem.GUIData.DummySubjectString)
-                testpath = fullfile(BpodSystem.Path.DataFolder,candidateSubjects(x).name,ProtocolName);
-                if exist(testpath) == 7
-                    nSubjects = nSubjects + 1;
-                    subjectNames{nSubjects} = candidateSubjects(x).name;
-                end
-            end
-        end
-    end
-end
-set(BpodSystem.GUIHandles.SubjectSelector,'String',subjectNames);
-set(BpodSystem.GUIHandles.SubjectSelector,'Value',1);
-
-function loadSettings(ProtocolName, SubjectName)
-global BpodSystem % Import the global BpodSystem object
-settingsPath = fullfile(BpodSystem.Path.DataFolder, SubjectName, ProtocolName, 'Session Settings');
-candidates = dir(settingsPath);
-nSettingsFiles = 0;
-settingsFileNames = cell(1);
-for x = 3:length(candidates)
-    extension = candidates(x).name;
-    extension = extension(end-2:end);
-    if strcmp(extension, 'mat')
-        nSettingsFiles = nSettingsFiles + 1;
-        name = candidates(x).name;
-        settingsFileNames{nSettingsFiles} = name(1:end-4);
-    end
-end
-set(BpodSystem.GUIHandles.SettingsSelector, 'String', settingsFileNames);
-set(BpodSystem.GUIHandles.SettingsSelector,'Value',1);
-
-function update_datafile(protocolName, subjectName)
-global BpodSystem % Import the global BpodSystem object
-dateInfo = datestr(now, 30);
-dateInfo(dateInfo == 'T') = '_';
-localDir = BpodSystem.Path.DataFolder(max(find(BpodSystem.Path.DataFolder(1:end-1) == filesep)+1):end);
-set(BpodSystem.GUIHandles.DataFilePathDisplay, 'String',... 
-    [filesep fullfile(localDir, subjectName, protocolName, 'Session Data') filesep],'interpreter','none');
-fileName = [subjectName '_' protocolName '_' dateInfo '.mat'];
-set(BpodSystem.GUIHandles.DataFileDisplay, 'String', fileName);
-BpodSystem.Path.CurrentDataFile = fullfile(BpodSystem.Path.DataFolder, subjectName, protocolName, 'Session Data', fileName);
 
 function add_subject(a,b)
 global BpodSystem % Import the global BpodSystem object
@@ -563,7 +511,7 @@ if selectedSettingsIndex ~= defaultSettingsIndex
         close(deleteFig);
         delete(settingsFile);
         set(BpodSystem.GUIHandles.SettingsSelector,'Value',1);
-        loadSettings(selectedProtocolName, selectedSubjectName);
+        BpodLib.launcher.ui.loadSettings(BpodSystem, selectedProtocolName, selectedSubjectName);
     end
 end
 
@@ -687,7 +635,7 @@ end
 copyfile(targetSettingsPath, destinationSettingsPath);
 
 % Update UI with new settings
-loadSettings(selectedProtocolName, selectedSubjectName);
+BpodLib.launcher.ui.loadSettings(BpodSystem, selectedProtocolName, selectedSubjectName);
 
 function launch_protocol(a,b)
 global BpodSystem % Import the global BpodSystem object
