@@ -138,6 +138,7 @@ BpodSystem.Path.CurrentProtocol = protocolRunFile;
 % ? could cd into protocolRunFolder instead of adding to path to resolve pathing issues
 
 % Run the protocol!
+fprintf('%s Launched protocol: %s\n', datestr(now, 13), protocolRunFile)
 if nargin == 4
     % Cleanest easiest behaviour
     run(protocolRunFile);
