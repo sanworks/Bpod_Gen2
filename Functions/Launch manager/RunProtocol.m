@@ -57,7 +57,7 @@ switch Opstring
 
             % Push console GUI to top and run protocol file
             figure(BpodSystem.GUIHandles.MainFig);
-            BpodLib.launcher.launchProtocol(BpodSystem, protocolName, subjectName, settingsName)
+            BpodLib.launcher.launchProtocol(BpodSystem, protocolName, subjectName, 'settingsName', settingsName)
         end
     case 'StartPause'
         % Toggles to start or pause the session

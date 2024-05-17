@@ -1,7 +1,8 @@
-function launchProtocol(BpodSystem, protocolPointer, subjectName, settingsName, varargin)
+function launchProtocol(BpodSystem, protocolPointer, subjectName, varargin)
 % launchProtocol(BpodSystem, protocolPointer, subjectName, settingsName, varargin)
 % Launches a protocol for a given subject and settings file
 %
+% 
 % Inputs
 % ------
 % BpodSystem : BpodObject
@@ -11,10 +12,16 @@ function launchProtocol(BpodSystem, protocolPointer, subjectName, settingsName, 
 %     Because of ambiguity in names, can be a absolute/relative file path (e.g. 'Protocols/Group1/MyProtocol' or 'Group1/MyProtocol')
 % subjectName : str
 %     The name of the subject
-% settingsName : str
+% settingsName : str, optional
 %     The name of the settings file
-% varargin : cell
+% protocolvarargin : cell, optional
 %     Additional arguments to pass to the protocol (i.e. MyProtocol(varargin{:}))
+
+p = inputParser();
+p.addParameter('settingsName', 'DefaultSettings', @ischar);
+p.addParameter('protocolvarargin', [], @iscell);
+p.parse(varargin{:});
+settingsName = p.Results.settingsName;
 
 % Generate path to protocol file
 protocolRunFile = BpodLib.paths.findProtocolFile(BpodSystem.SystemSettings.ProtocolFolder, protocolPointer);
@@ -139,7 +146,7 @@ BpodSystem.Path.CurrentProtocol = protocolRunFile;
 
 % Run the protocol!
 fprintf('%s Launched protocol: %s\n', datestr(now, 13), protocolRunFile)
-if nargin == 4
+if isempty(p.Results.protocolvarargin)
     % Cleanest easiest behaviour
     run(protocolRunFile);
 else
@@ -154,5 +161,6 @@ else
         fprintf('Found protocol:     %s\n', funcInfo.file)
         error('The function handle does not point to the correct file.');
     end
-    protocolFuncHandle(varargin{:});
+    protocolFuncHandle(p.Results.protocolvarargin{:});
 end
+
