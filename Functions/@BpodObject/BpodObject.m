@@ -81,10 +81,6 @@ classdef BpodObject < handle
         function obj = BpodObject
             % Constructor, run when creating an instance of BpodObject
 
-            % Notify the user of the installed software version
-            ver = BpodSoftwareVersion_Semantic;
-            disp(['Starting Bpod Console v' ver])
-
             % Check path for duplicate Bpod installations
             matlabPath = path;
             nInstallations = length([strfind(matlabPath, 'Bpod_Gen2;') strfind(matlabPath, 'Bpod_Gen2-develop;')]);
@@ -103,6 +99,15 @@ classdef BpodObject < handle
                 rng('shuffle', 'twister'); % Seed the random number generator by CPU clock
             else
                 rand('twister', sum(100*fliplr(clock))); % For older versions of MATLAB
+            end
+
+            % Notify the user of the installed software version
+            bpodMeta = BpodLib.util.getBpodSoftwareMetadata();
+            ver = BpodSoftwareVersion_Semantic;
+            disp(['Starting Bpod Console v' bpodMeta.semanticversion])
+            disp(['    from:   ' fileparts(bpodMeta.BpodFilepath)])
+            if ~isempty(bpodMeta.gitInfo)
+            disp(['    branch: ' bpodMeta.gitInfo.branch])
             end
 
             % Check for Internet Connection
