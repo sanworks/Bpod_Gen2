@@ -1,59 +1,70 @@
-function gitInfo=getGitInfo(gitPath)
-% Get information about the Git repository in the current directory, including: 
-%          - branch name of the current Git Repo 
-%          -Git SHA1 HASH of the most recent commit
-%          -url of corresponding remote repository, if one exists
+function gitInfo = getGitInfo(gitPath)
+% gitInfo = getGetInfo(gitPath)
+% Get information about the Git repository in the current directory
 %
-% The function first checks to see if a .git/ directory is present. If so it
-% reads the .git/HEAD file to identify the branch name and then it looks up
-% the corresponding commit.
-%
-% It then reads the .git/config file to find out the url of the
-% corresponding remote repository. This is all stored in a gitInfo struct.
-%
-% Note this uses only file information, it makes no external program 
-% calls at all. 
-%
-% This function must be in the base directory of the git repository
-%
-% Released under a BSD open source license. Based on a concept by Marc
-% Gershow.
-%
-% Andrew Leifer
-% Harvard University
-% Program in Biophysics, Center for Brain Science, 
-% and Department of Physics
-% leifer@fas.harvard.edu
-% http://www.andrewleifer.com
-% 12 September 2011
-%
-% Modified May 2024 GS
-%
-% Copyright 2011 Andrew Leifer. All rights reserved.
+% Inputs
+% ------
+% gitPath : char
+%     Path to the .git directory
 % 
-% Redistribution and use in source and binary forms, with or without modification, are
-% permitted provided that the following conditions are met:
-% 
-%    1. Redistributions of source code must retain the above copyright notice, this list of
-%       conditions and the following disclaimer.
-% 
-%    2. Redistributions in binary form must reproduce the above copyright notice, this list
-%       of conditions and the following disclaimer in the documentation and/or other materials
-%       provided with the distribution.
-% 
-% THIS SOFTWARE IS PROVIDED BY <COPYRIGHT HOLDER> ''AS IS'' AND ANY EXPRESS OR IMPLIED
-% WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-% FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> OR
-% CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-% SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-% ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-% NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-% ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-% 
-% The views and conclusions contained in the software and documentation are those of the
-% authors and should not be interpreted as representing official policies, either expressed
-% or implied, of <copyright holder>.
+% Outputs
+% -------
+% gitInfo : struct
+%     Information about the Git repository
+%     Fields:
+%          - branch : char
+%          - hash : char
+%          - remote : char
+%          - url : char
+
+%{
+This function reads the .git/HEAD file to identify the branch name and then it looks up the corresponding commit.
+It then reads the .git/config file to find out the url of the corresponding remote repository.
+This is all stored in a gitInfo struct.
+
+Note this uses only file information, it makes no external program calls at all. 
+
+Released under a BSD open source license. Based on a concept by Marc
+Gershow.
+
+Andrew Leifer
+Harvard University
+Program in Biophysics, Center for Brain Science, 
+and Department of Physics
+leifer@fas.harvard.edu
+http://www.andrewleifer.com
+12 September 2011
+
+Modified May 2024 GS
+
+Copyright 2011 Andrew Leifer. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are
+permitted provided that the following conditions are met:
+
+   1. Redistributions of source code must retain the above copyright notice, this list of
+      conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright notice, this list
+      of conditions and the following disclaimer in the documentation and/or other materials
+      provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY <COPYRIGHT HOLDER> ''AS IS'' AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those of the
+authors and should not be interpreted as representing official policies, either expressed
+or implied, of <copyright holder>.
+%}
+
+% ? should this function throw errors or return empty if things don't work?
 
 [folder, name, ext] = fileparts(gitPath);
 assert(isempty(name) && strcmp(ext, '.git'), 'git path is not valid %s', gitPath)
@@ -84,14 +95,15 @@ gitInfo.branch=branchName;
 SHA1text=fileread(fullfile(fullfile(gitPath, pathstr),[name ext]));
 SHA1=textscan(SHA1text,'%s');
 gitInfo.hash=SHA1{1}{1};
+
 %Read in config file
 config=fileread(fullfile(gitPath, 'config'));
 %Find everything space delimited
 temp=textscan(config,'%s','delimiter','\n');
 lines=temp{1};
 
-remote='';
 %Lets find the name of the remote corresponding to our branchName
+remote='';
 for k=1:length(lines)
     
     %Are we at the section describing our branch?
@@ -119,8 +131,8 @@ end
 gitInfo.remote=remote;
 
 
-url='';
 %Find the remote's url
+url='';
 for k=1:length(lines)
     
     %Are we at the section describing our branch?

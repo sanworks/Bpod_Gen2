@@ -103,7 +103,6 @@ classdef BpodObject < handle
 
             % Notify the user of the installed software version
             bpodMeta = BpodLib.util.getBpodSoftwareMetadata();
-            ver = BpodSoftwareVersion_Semantic;
             disp(['Starting Bpod Console v' bpodMeta.semanticversion])
             disp(['    from:   ' fileparts(bpodMeta.BpodFilepath)])
             if ~isempty(bpodMeta.gitInfo)

@@ -24,9 +24,9 @@ p.parse(varargin{:});
 settingsName = p.Results.settingsName;
 
 % Generate path to protocol file
-protocolRunFile = BpodLib.paths.findProtocolFile(BpodSystem.SystemSettings.ProtocolFolder, protocolPointer);
-protocolRunFolder = fileparts(protocolRunFile);
-[~, protocolName] = fileparts(protocolRunFile);
+protocolRunFilepath = BpodLib.paths.findProtocolFile(BpodSystem.SystemSettings.ProtocolFolder, protocolPointer);
+protocolRunFolder = fileparts(protocolRunFilepath);
+[~, protocolName] = fileparts(protocolRunFilepath);
 
 % Verify data path
 dataFilePath = BpodLib.launcher.createDataFilePath(BpodSystem.Path.DataFolder, protocolName, subjectName);
@@ -139,25 +139,25 @@ if sum(BpodSystem.InputsEnabled(BpodSystem.HW.Inputs == 'P')) == 0
 end
 
 % Add protocol folder to the path
-rmpath(fileparts(BpodSystem.Path.CurrentProtocol))  % this is here because errors might prevent any shutdown procedures from running
+rmpath(fileparts(BpodSystem.Path.CurrentProtocol))  % this is here because errors might prevent any shutdown procedures (from previous run) from running
 addpath(protocolRunFolder);
-BpodSystem.Path.CurrentProtocol = protocolRunFile;
+BpodSystem.Path.CurrentProtocol = protocolRunFilepath;  % for removal from path on next run
 % ? could cd into protocolRunFolder instead of adding to path to resolve pathing issues
 
 % Run the protocol!
-fprintf('%s Launched protocol: %s\n', datestr(now, 13), protocolRunFile)
+fprintf('%s Launched protocol: %s\n', datestr(now, 13), protocolRunFilepath)
 if isempty(p.Results.protocolvarargin)
     % Cleanest easiest behaviour
-    run(protocolRunFile);
+    run(protocolRunFilepath);
 else
     % If the user requested to pass additional arguments to the protocol
     protocolFuncHandle = str2func(protocolName);
     funcInfo = functions(protocolFuncHandle);
-    if ~strcmp(funcInfo.file, protocolRunFile)
+    if ~strcmp(funcInfo.file, protocolRunFilepath)
         % In this situation the pathing to the protocol is clear within Protocols/ but
         % there may be Path clashes from elsewhere. If the user is savvy enough to
         % pass additional arguments, hopefully they can resolve this issue.
-        fprintf('Requested protocol: %s\n', protocolRunFile)
+        fprintf('Requested protocol: %s\n', protocolRunFilepath)
         fprintf('Found protocol:     %s\n', funcInfo.file)
         error('The function handle does not point to the correct file.');
     end
