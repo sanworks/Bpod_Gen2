@@ -26,7 +26,7 @@ classdef SmartServoInterface < handle
         motorInfo % Struct with info about  the motor (detected model name within Dynamixel X series, etc)
         channel % Channel on the SmartServoModule device
         address % Index of the target motor on the selected channel
-        motorMode % Mode 1 = Position. 2 = Extended Position. 3 = Current-limited position 4 = Speed 5 = Step
+        controlMode % Mode 1 = Position. 2 = Extended Position. 3 = Current-limited position 4 = Speed 5 = Step
     end
 
     properties (Access = private)
@@ -43,20 +43,22 @@ classdef SmartServoInterface < handle
             obj.motorInfo.modelName = modelName;
             obj.channel = channel;
             obj.address = address;
-            obj.motorMode = 1;
-            obj.setMaxVelocity(0); % Reset velocity to motor default (max)
-            obj.setMaxAcceleration(0); % Reset acceleration to motor default (max)
-            obj.motorInfo.firmwareVersion = obj.readControlTable(obj.ctrlTable.FIRMWARE_VERSION);
+            if ~isempty(modelName)
+                obj.controlMode = 1;
+                obj.setMaxVelocity(0); % Reset velocity to motor default (max)
+                obj.setMaxAcceleration(0); % Reset acceleration to motor default (max)
+                obj.motorInfo.firmwareVersion = obj.readControlTable(obj.ctrlTable.FIRMWARE_VERSION);
+            end
         end
 
-        function set.motorMode(obj, newMode)
+        function set.controlMode(obj, newMode)
             % Mode 1 = Position. 2 = Extended Position. 3 = Current-limited position 4 = Speed 5 = Step
             obj.port.write([obj.opMenuByte 'M' obj.channel obj.address newMode], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
                 error('Error setting mode. Confirm code not returned.');
             end
-            obj.motorMode = newMode;
+            obj.controlMode = newMode;
             obj.selectedModeRange = obj.motorModeRanges{newMode};
         end
 
@@ -110,12 +112,12 @@ classdef SmartServoInterface < handle
             % blocking: 1: Block the MATLAB command prompt until move is complete. 0: Don't.
             % Note: If provided, max velocity and acceleration become the new settings for future movements.
 
-            if ~(obj.motorMode == 1 || obj.motorMode == 2)
+            if ~(obj.controlMode == 1 || obj.controlMode == 2)
                 error(['Motor ' num2str(obj.address) ' on channel ' num2str(obj.channel)... 
                        ' must be in a position mode (modes 1 or 2) before calling setPosition().'])
             end
             if newPosition < obj.selectedModeRange(1) || newPosition > obj.selectedModeRange(2)
-                error(['Position goal out of range. The target motor is in mode ' num2str(obj.motorMode)... 
+                error(['Position goal out of range. The target motor is in mode ' num2str(obj.controlMode)... 
                       ', with a position range of ' num2str(obj.selectedModeRange(1)) ' to '... 
                       num2str(obj.selectedModeRange(2)) ' degrees.'])
             end
@@ -159,7 +161,7 @@ classdef SmartServoInterface < handle
         function setCurrentLimitedPos(obj, newPosition, currentPercent)
             % Position Units = Degrees
             % Current units = Percent of max
-            if obj.motorMode ~= 3
+            if obj.controlMode ~= 3
                 error(['Motor ' num2str(obj.address) ' on channel ' num2str(obj.channel)... 
                        ' must be in current-limited position mode (mode 3) before calling setCurrentLimitedPos().'])
             end
@@ -176,7 +178,7 @@ classdef SmartServoInterface < handle
             % Sets the rotational velocity of the motor shaft in Speed mode (motorMode 4). 
             % Arguments: newSpeed, the new velocity. Units = rev/s
             %            Sign encodes direction (negative = clockwise, positive = counterclockwise)
-            if obj.motorMode ~= 4
+            if obj.controlMode ~= 4
                 error(['Motor ' num2str(obj.address) ' on channel ' num2str(obj.channel)... 
                        ' must be in Speed mode (mode 4) before calling setSpeed().'])
             end
@@ -192,7 +194,7 @@ classdef SmartServoInterface < handle
             % Rotate by a fixed distance in degrees (+/-) relative to current shaft position
             % motorMode must be set to 5 (Step mode) to use this function.
             % Arguments: stepSize_Degrees, the amount to rotate (units = degrees)
-            if obj.motorMode ~= 5
+            if obj.controlMode ~= 5
                 error(['Motor ' num2str(obj.address) ' on channel ' num2str(obj.channel)... 
                        ' must be in step mode (mode 5) before calling step().'])
             end

@@ -87,11 +87,11 @@ classdef SmartServoModule < handle
                       'XC430-T150/W150', 'XC430-T240/W240', 'XC330-T288', 'XC330-T181',...
                       'XC330-M288', 'XC330-M181', '2XC430-W250', 'XM540-W270', 'XM540-W150',...
                       'XM430-W350', 'XM430-W210', 'XH540-W270', 'XH540-W150', 'XH430-W210', 'XH430-W350'};
-        isActive = zeros(3, 253); % Indicates motors that have been initialized as SmartServoInterface objects
+        isActive = zeros(3, 3); % Indicates motors that have been initialized as SmartServoInterface objects
                                   % 0 = not active, 1 = active. See newSmartServo() below
-        isConnected = zeros(3, 253); % Indicates whether a servo was detected at (channel, address)
+        isConnected = zeros(3, 3); % Indicates whether a servo was detected at (channel, address)
                                      % 0 = not detected, 1 = detected
-        detectedModelName = cell(3, 253); % Stores the model name for each detected motor
+        detectedModelName = cell(3, 3); % Stores the model name for each detected motor
         validProgramMoveTypes = {'velocity', 'current_limit'};
         opMenuByte = 212; % Byte code to access op menu via USB
         maxPrograms % Maximium number of motor programs that can be stored on the device
