@@ -77,8 +77,19 @@ classdef SmartServoInterface < handle
             end
         end
 
-        function stop(obj)
-            obj.STOP;
+        function stop(obj, varargin)
+            if nargin == 1
+                obj.STOP; % Emergency stop
+            else
+                chan = varargin{1};
+                addr = varargin{2};
+                obj.port.write([obj.opMenuByte 'X' chan addr], 'uint8');
+                confirmed = obj.port.read(1, 'uint8');
+                if confirmed ~= 1
+                    error(['Error stopping motor on channel ' num2str(chan)... 
+                           ', address ' num2str(addr) '. Confirm code not returned.']);
+                end
+            end
         end
 
         function setMaxVelocity(obj, maxVelocity)
