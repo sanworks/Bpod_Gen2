@@ -65,8 +65,6 @@ else
     TheTime = now;
     TE.Info.SessionStartTime_UTC = datestr(TheTime, 13);
     TE.Info.SessionStartTime_MATLAB = TheTime;
-    TE.Info.Protocol = BpodSystem.Path.CurrentProtocol;
-    TE.Info.MD5_Hash = BpodLib.Launcher.HashFile(BpodSystem.Path.CurrentProtocol);
 end
 TE.nTrials = TrialNum;
 %% Parse and add raw events for this trial
