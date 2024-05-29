@@ -72,6 +72,7 @@ for i = 1:length(filepaths)
     end
     fileindex = fileindex + 1;
     fileHashes(i).name = filepaths(i).name;
+    fileHashes(i).folder = filepaths(i).folder;
     fileHashes(i).hash = BpodLib.dataio.HashFile(fullfile(protocolpath, filepaths(i).name));
     if p.Results.verbose
         fprintf('%s, ', filepaths(i).name);
