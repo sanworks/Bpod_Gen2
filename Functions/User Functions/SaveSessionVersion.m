@@ -54,13 +54,23 @@ if isempty(p.Results.filepaths)
     filepaths = dir(fullfile(protocolpath, '*.*'));  % look at top folders
     % remove dots
     filepaths = filepaths(~ismember({filepaths.name}, {'.', '..'}));
+    
+    % Print list of filenames concatenated
+    if p.Results.verbose
+        fprintf('Found %d files in %s:\n\t', length(filepaths), protocolpath);
+    end
 else
-    filepaths = p.Results.filepaths;
+    filepaths_cell = p.Results.filepaths;
+    % Turn into struct
+    filepaths = struct('folder', {}, 'name', {});
+    for i = 1:length(filepaths_cell)
+        [folder, name, ext] = fileparts(filepaths_cell{i});
+        filepaths(i).folder = folder;
+        filepaths(i).name = [name, ext];
+        filepaths(i).isdir = isfolder(filepaths_cell{i});
+    end
 end
-% Print list of filenames concatenated
-if p.Results.verbose
-    fprintf('Found %d files in %s:\n\t', length(filepaths), protocolpath);
-end
+
 
 
 % Hash files
@@ -99,9 +109,11 @@ end
 
 % Zip files
 if p.Results.dozip
+    
+    filepaths_cell = arrayfun(@(x) fullfile(x.folder, x.name), fileHashes, 'UniformOutput', false);
     [savelocation, fname] = fileparts(BpodSystem.Path.CurrentDataFile);
     zipfilename = fullfile(savelocation, [fname, '_protocol_files.zip']);
-    zip(zipfilename, fullfile(protocolpath, '*.*'));
+    zip(zipfilename, filepaths_cell);
     if p.Results.verbose
         fprintf('Zipped protocol files to %s\n', zipfilename);
     end
