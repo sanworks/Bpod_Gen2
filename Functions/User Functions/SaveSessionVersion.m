@@ -10,6 +10,7 @@ function hashOut = SaveSessionVersion(varargin)
 %   BpodSystem (struct): BpodSystem struct (default: global BpodSystem)
 %   filepaths (cell): list of filepaths to hash (default: [])
 %   protocolpath (char): path to the protocol (default: BpodSystem.Path.CurrentProtocol)
+%   excludedExtensions (cell): list of file extensions to exclude from hashing (default: {})
 %   verbose (logical): whether to print verbose output (default: false)
 %
 %  Returns (optional):
@@ -21,12 +22,15 @@ p.addParameter('addtosessiondata', true, @islogical);
 p.addParameter('BpodSystem', []);  % allow overriding of BpodSystem for 
 p.addParameter('filepaths', [], @iscell);
 p.addParameter('protocolpath', [], @ischar);
+p.addParameter('excludedExtensions', {}, @iscell);
 p.addParameter('verbose', false, @islogical);
 p.parse(varargin{:});
 
 % Prepare variables
 if isempty(p.Results.BpodSystem)
     global BpodSystem
+else
+    BpodSystem = p.Results.BpodSystem;
 end
 
 if isempty(p.Results.protocolpath)
@@ -57,8 +61,6 @@ if p.Results.verbose
 end
 
 
-excludedExtensions = {};  % todo: allow users to specify exclusions
-
 % Hash files
 fileHashes = struct();
 fileindex = 0;
@@ -67,7 +69,7 @@ for i = 1:length(filepaths)
         continue
     end
     [~, ~, ext] = fileparts(filepaths(i).name);
-    if ismember(ext, excludedExtensions)
+    if ismember(ext, p.Results.excludedExtensions)
         continue
     end
     fileindex = fileindex + 1;
