@@ -6,7 +6,7 @@ function uTest_DataHash(doSpeed)
 % uTest_DataHash(doSpeed)
 % INPUT:
 %   doSpeed: Optional logical flag to trigger time consuming speed tests.
-%            Default: TRUE. If no speed test is defined, this is ignored.
+%            Default: FALSE. If no speed test is defined, this is ignored.
 % OUTPUT:
 %   On failure the test stops with an error.
 %   The speed is compared to a Java method.
@@ -19,6 +19,7 @@ function uTest_DataHash(doSpeed)
 % $File: Tools\UnitTests_\uTest_DataHash.m $
 % History:
 % 001: 02-Mar-2019 19:22, First version.
+% 002: 29-May-2024 23:33, Minor modifications from George Stuyt
 
 %#ok<*STRQUOT>   % Accept string('s') for R2016b
 %#ok<*STRCLQT>
@@ -148,11 +149,10 @@ TestData = {'', 'd41d8cd98f00b204e9800998ecf8427e'; ...
    '78901234567890'], ...
    '57edf4a22be3c955ac49da2e2107b67a'; ...
    ...
-%    char(0:255), 'e2c865db4162bed963bfaa9ef6ac18f0'
-% certutils expects 'b1eba2174ca70416ae5819cb3659f929'
-% DataHash gives 4df93029fb116c131c339e021f13698f reading a test.txt
-% DataHash also give e1cb1402564d3f0d07fc946196789c81 on actual unittest
-% Failure probably due to MATLAB char encoding differences
+   char(0:127), '37eff01866ba3f538421b30b7cbefcac'; ...
+% char(0:255), 'e2c865db4162bed963bfaa9ef6ac18f0'; ... % Original from version 001
+% likely fails because matlab's char is 16bit, filehash and ascii hash are
+% different
    };
 
 try
