@@ -29,7 +29,6 @@ StateNames = BpodSystem.LastStateMatrix.StateNames;
 if isfield(TE, 'RawEvents')
     TrialNum = length(TE.RawEvents.Trial) + 1;
 else
-    % Intialise BpodSystem.Data.Info
     TrialNum = 1;
     TE.Info = struct;
     if BpodSystem.EmulatorMode == 1
