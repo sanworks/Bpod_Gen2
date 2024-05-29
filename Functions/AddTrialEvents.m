@@ -30,7 +30,9 @@ if isfield(TE, 'RawEvents')
     TrialNum = length(TE.RawEvents.Trial) + 1;
 else
     TrialNum = 1;
-    TE.Info = struct;
+    if ~isfield(TE, 'Info')
+        TE.Info = struct;
+    end
     if BpodSystem.EmulatorMode == 1
         TE.Info.StateMachineVersion = 'Bpod 0.7-1.0 EMULATOR';
     else

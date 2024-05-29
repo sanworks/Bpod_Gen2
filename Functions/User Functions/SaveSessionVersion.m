@@ -84,6 +84,9 @@ if p.Results.verbose
 end
 
 if p.Results.addtosessiondata
+    if ~isfield(BpodSystem.Data, 'Info')
+        BpodSystem.Data.Info = struct();
+    end
     if ~isfield(BpodSystem.Data.Info, 'VersionControl')
         BpodSystem.Data.Info.VersionControl = struct();
     end
