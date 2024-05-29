@@ -1,7 +1,7 @@
 function hashOut = SaveSessionVersion(varargin)
-%SaveSessionVersion - Save current protocol files and their hashes into SessionData.Info.FileHashes
+%SaveSessionVersion - Save current protocol files and their hashes into SessionData.Info.VersionControl.ProtocolFiles
 %  SaveSessionVersion(___)
-%  Using SaveSessionVersion within a protocol file will hash all files in the same directory as the protocol into SessionData.Info.VersionControl.FileHashes
+%  Using SaveSessionVersion within a protocol file will hash all files in the same directory as the protocol into SessionData.Info.VersionControl.ProtocolFiles.
 %  Hashes are unique to the file contents, so they can be used to determine if the protocol has changed.
 %  Hashes are computed using the MD5 algorithm and recorded as hexadecimal strings.
 %  
@@ -85,9 +85,9 @@ end
 
 if p.Results.addtosessiondata
     if ~isfield(BpodSystem.Data.Info, 'VersionControl')
-        BpodSystem.Data.Info.FileHashes = struct();
+        BpodSystem.Data.Info.VersionControl = struct();
     end
-    BpodSystem.Data.Info.VersionControl.FileHashes = fileHashes;
+    BpodSystem.Data.Info.VersionControl.ProtocolFiles = fileHashes;
 end
 
 if nargout > 0
