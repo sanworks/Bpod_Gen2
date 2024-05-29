@@ -187,10 +187,12 @@ delete(TestFile);
 
 % Run test on license file
 % Test added by GS in-lieu of 5th test in previous set
-license_path = split(which('BpodLib.External.DataHash.DataHash'), ' ');
+license_path = split(which('BpodLib.external.DataHash.DataHash'), ' ');
+disp(license_path)
 license_path = license_path{1};
 license_path = fullfile(fileparts(license_path), 'license.txt');
-assert(isfile(license_path), 'license.txt not found')
+
+assert(isfile(license_path), '%s not found', license_path)
 
 R = DataHash(license_path, 'file');
 Want = 'c138996c2c7df49992ff044b25beb003';
