@@ -23,7 +23,7 @@ function uTest_DataHash(doSpeed)
 %#ok<*STRQUOT>   % Accept string('s') for R2016b
 %#ok<*STRCLQT>
  
-import BpodLib.External.DataHash.DataHash
+import BpodLib.external.DataHash.DataHash
 
 % Initialize: ==================================================================
 % Global Interface: ------------------------------------------------------------
@@ -152,6 +152,7 @@ TestData = {'', 'd41d8cd98f00b204e9800998ecf8427e'; ...
 % certutils expects 'b1eba2174ca70416ae5819cb3659f929'
 % DataHash gives 4df93029fb116c131c339e021f13698f reading a test.txt
 % DataHash also give e1cb1402564d3f0d07fc946196789c81 on actual unittest
+% Failure probably due to MATLAB char encoding differences
    };
 
 try
