@@ -6,11 +6,12 @@ function hashOut = SaveSessionVersion(varargin)
 %  Hashes are computed using the MD5 algorithm and recorded as hexadecimal strings.
 %  
 %  Args:
-%   addtosessiondata (logical): whether to add the file hashes to the session data (default: true)
-%   BpodSystem (struct): BpodSystem struct (default: global BpodSystem)
-%   filepaths (cell): list of filepaths to hash (default: [])
-%   protocolpath (char): path to the protocol (default: BpodSystem.Path.CurrentProtocol)
 %   excludedExtensions (cell): list of file extensions to exclude from hashing (default: {})
+%   addtosessiondata (logical): whether to add the file hashes to the session data (default: true)
+%   dozip (logical): whether to zip the protocol files (default: true)
+%   filepaths (cell): list of filepaths to hash (default: [], finds all files)
+%   protocolpath (char): path to the protocol (default: BpodSystem.Path.CurrentProtocol)
+%   BpodSystem (struct): BpodSystem struct (default: global BpodSystem)
 %   verbose (logical): whether to print verbose output (default: false)
 %
 %  Returns (optional):
@@ -18,11 +19,12 @@ function hashOut = SaveSessionVersion(varargin)
 
 % Parse input
 p = inputParser();
+p.addParameter('excludedExtensions', {}, @iscell);
 p.addParameter('addtosessiondata', true, @islogical);
-p.addParameter('BpodSystem', []);  % allow overriding of BpodSystem for 
+p.addParameter('dozip', true, @islogical);
 p.addParameter('filepaths', [], @iscell);
 p.addParameter('protocolpath', [], @ischar);
-p.addParameter('excludedExtensions', {}, @iscell);
+p.addParameter('BpodSystem', []);  % allow overriding of BpodSystem for testing purposes
 p.addParameter('verbose', false, @islogical);
 p.parse(varargin{:});
 
@@ -94,6 +96,15 @@ if p.Results.addtosessiondata
     end
     BpodSystem.Data.Info.VersionControl.ProtocolFiles = fileHashes;
 end
+
+% Zip files
+if p.Results.dozip
+    [savelocation, fname] = fileparts(BpodSystem.Path.CurrentDataFile);
+    zipfilename = fullfile(savelocation, [fname, '_protocol_files.zip']);
+    zip(zipfilename, fullfile(protocolpath, '*.*'));
+    if p.Results.verbose
+        fprintf('Zipped protocol files to %s\n', zipfilename);
+    end
 
 if nargout > 0
     hashOut = fileHashes;
