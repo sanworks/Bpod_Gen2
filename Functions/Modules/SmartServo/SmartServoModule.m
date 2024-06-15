@@ -33,7 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %                               connecting to the Bpod Smart Servo Module on port COM3
 %
 % ---SmartServoInterface---
-% myServo = S.newSmartServo(2, 1); % Create myServo, a SmartServoInterface object to control
+% myServo = S.smartServo(2, 1); % Create myServo, a SmartServoInterface object to control
 %                                    the servo on channel 2 at address 1
 % myServo.setPosition(90); % Move servo shaft to 90 degrees using current velocity and acceleration
 % myServo.setPosition(0, 1, 100); % Return shaft to 0 degrees at up to 1 rev/s with 100 rev/s^2 acceleration
@@ -78,6 +78,7 @@ classdef SmartServoModule < handle
                           % 2 = Stop Target Program, 3 = Emergency Stop-All
         dioDebounce       % Debounce interval for DIO channels 
                           % (adjust if required for mechanical pushbuttons)
+        motor             % An array of SmartServoInterface objects to control each motor
     end
 
     properties (Access = private)
@@ -147,8 +148,13 @@ classdef SmartServoModule < handle
             end
         end
 
-        function stop(obj)
-            obj.STOP;
+        function stop(obj, chan, addr)
+            % Stop a specific motor
+            % Arguments:
+            % chan: the target motor channel 
+            % addr: the target motor address
+            obj.port.write([obj.opMenuByte 'X' chan addr], 'uint8');
+            obj.confirmTransmission(['stopping motor on channel: ' num2str(chan) ' address: ' num2str(addr)]);
         end
 
         function set.dioTargetProgram(obj, newPrograms)
@@ -187,7 +193,7 @@ classdef SmartServoModule < handle
             obj.dioDebounce = newDebounce;
         end
 
-        function smartServo = newSmartServo(obj, channel, address)
+        function newSmartServo = smartServo(obj, channel, address)
             % Create a new smart servo object, addressing a single motor on the module
             % Arguments:
             % channel: The target motor's channel on the smart servo module (1-3)
@@ -196,7 +202,7 @@ classdef SmartServoModule < handle
             % Returns:
             % smartServo, an instance of SmartServoInterface.m connected addressing the target servo
                 if obj.isConnected(channel, address)
-                    smartServo = SmartServoInterface(obj.port, channel, address, obj.detectedModelName{channel, address});
+                    newSmartServo = SmartServoInterface(obj.port, channel, address, obj.detectedModelName{channel, address});
                     obj.isActive(channel, address) = 1;
                 else
                     error(['No motor registered on channel ' num2str(channel) ' at address ' num2str(address) '.' ...
@@ -230,41 +236,54 @@ classdef SmartServoModule < handle
                 detectedChannel = [detectedChannel motorChannel];
                 detectedAddress = [detectedAddress motorAddress];
             end
-            
-            % Set detected motors to default instruction mode
-            for i = 1:nMotorsFound
-                obj.port.write([obj.opMenuByte 'M' detectedChannel(i) detectedAddress(i) 1], 'uint8');
-                obj.confirmTransmission('setting default mode');
+
+            % Set up motor objects
+            obj.motor = repmat(SmartServoInterface(-1, -1, -1, -1), 3, 3);
+            for chan = 1:3
+                for addr = 1:3
+                    if obj.isConnected(chan, addr)
+                        obj.motor(chan, addr) = SmartServoInterface(obj.port, chan, addr, obj.detectedModelName{chan, addr});
+                        obj.motor(chan, addr).controlMode = 1; % Set default control mode
+                    else
+                        obj.motor(chan, addr) = SmartServoInterface(obj.port, chan, addr, -1);
+                    end
+                end
             end
         end
 
-        function setMotorAddress(obj, motorChannel, currentAddress, newAddress)
+        function setMotorAddress(obj, channel, currentAddress, newAddress)
             % setMotorAddress() sets a new motor address for a motor on a given channel, 
             % e.g. for daisy-chain configuration.
             % The new address is written to the motor's EEPROM, and will persist across power cycles.
             %
             % Arguments:
-            % motorChannel: The target motor's channel on the smart servo module (integer in range 1-3)
-            % currentAddress: The target motor's current address on the target channel (integer in range 1-8)
+            % channel: The target motor's channel on the smart servo module (integer in range 1-3)
+            % currentAddress: The target motor's current address on the target channel (integer in range 1-3)
             % newAddress: The new address of the target motor
             %
             % Returns:
             % None
             
-            if obj.isActive(motorChannel, currentAddress)
-                error(['setMotorAddress() cannot be used if an object to control the target motor has ' ...
+            if obj.isActive(channel, currentAddress)
+                error(['setMotorAddress() cannot be used if a user object to control the target motor has ' ...
                        char(10) 'already been created with newSmartServo().'])
             end
-            if ~obj.isConnected(motorChannel, currentAddress)
-                error(['No motor registered on channel ' num2str(motorChannel) ' at address ' num2str(currentAddress) '.' ...
+            if ~obj.isConnected(channel, currentAddress)
+                error(['No motor registered at channel: ' num2str(channel) ' address: ' num2str(currentAddress) '.' ...
                            char(10) 'If a new servo was recently connected, run detectMotors().'])
             end
+            if obj.isConnected(channel, newAddress)
+                error(['A motor is already registered at channel: ' num2str(channel) ' address: ' num2str(newAddress)])
+            end
+            
             % Sets the network address of a motor on a given channel
-            obj.port.write([obj.opMenuByte 'I' motorChannel currentAddress newAddress], 'uint8');
+            obj.port.write([obj.opMenuByte 'I' channel currentAddress newAddress], 'uint8');
             obj.confirmTransmission('setting motor address');
-            obj.isConnected(motorChannel, currentAddress) = 0;
+            obj.motor(channel, currentAddress) = SmartServoInterface(obj.port, channel, currentAddress, -1);
+            obj.isConnected(channel, currentAddress) = 0;
             disp('Address changed.')
             obj.detectMotors;
+            obj.motor(channel, newAddress) = SmartServoInterface(obj.port, channel, newAddress, obj.detectedModelName{channel, newAddress});
         end
 
         function bytes = param2Bytes(obj, paramValue)

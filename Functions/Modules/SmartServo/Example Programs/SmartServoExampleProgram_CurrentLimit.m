@@ -6,9 +6,9 @@
 % likely find it easier to block the motor shaft with your fingers during the movement. 
 % Even if temporarily blocked, the movement will continue until the goal position is reached.
 
-% S = SmartServoModule('COM3'); % Replace 'COM3' with the SmartServoModule's serial port name
-% M = S.newSmartServo(1, 1);
-% M.controlMode = 3; % Mode 3 = current-limited position mode
+% S = SmartServoModule('COM3'); % Uncomment and replace 'COM3' with the SmartServoModule's serial port name
+
+S.motor(1,1).controlMode = 3; % Mode 3 = current-limited position mode
 
 prog1 = S.newProgram; % Create a new motor program
 prog1.moveType = 'current_limit';       % Set motion limit to current (defined in mA)
