@@ -30,7 +30,7 @@ classdef SmartServoInterface < handle
 
     properties (Access = private)
         opMenuByte = 212; % Byte code to access op menu via USB
-        motorModeRanges = {[0 360], [-91800 91800], [0, 360], [0, 0], [-91800 91800]}
+        controlModeRanges = {[0 360], [-91800 91800], [0, 360], [0, 0], [-91800 91800]}
         selectedModeRange = [];
         ctrlTable % Control table listing addresses of registers in motor controller
         liveInstance % If true, this instance is initialized as a placeholder, functions will error out
@@ -75,19 +75,19 @@ classdef SmartServoInterface < handle
             obj.port.write([obj.opMenuByte 'M' obj.channel obj.address newMode], 'uint8');
             obj.confirmTransmission('setting mode');
             obj.controlMode = newMode;
-            obj.selectedModeRange = obj.motorModeRanges{newMode};
+            obj.selectedModeRange = obj.controlModeRanges{newMode};
         end
 
         function STOP(obj)
             % EMERGENCY STOP
             % This function stops all motors by setting their torque to 0.
             % It also stops any ongoing motor programs.
-            % After an emergency stop, torque must be re-enabled manually by setting motorMode for each motor.
+            % After an emergency stop, torque must be re-enabled manually by setting controlMode for each motor.
             obj.port.write([obj.opMenuByte '!'], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             disp('!! Emergency Stop Acknowledged !!'); 
             disp('All motors now have torque disabled.')
-            disp('Re-enable motor torque by setting motorMode for each motor.')
+            disp('Re-enable motor torque by setting controlMode for each motor.')
             if confirmed ~= 1
                 error('***ALERT!*** Emergency stop not confirmed.');
             end
@@ -175,7 +175,7 @@ classdef SmartServoInterface < handle
             %
             % Arguments:
             % newPosition: The target position. Units = Degrees
-            % newCurrent: The maximum current. Units = mA
+            % maxCurrent: The maximum current. Units = mA
             
             obj.assertLiveInstance;
             if obj.controlMode ~= 3
@@ -189,7 +189,7 @@ classdef SmartServoInterface < handle
         end
 
         function setSpeed(obj, newSpeed)
-            % Sets the rotational velocity of the motor shaft in Speed mode (motorMode 4). 
+            % Sets the rotational velocity of the motor shaft in Speed mode (controlMode 4). 
             % Arguments: newSpeed, the new velocity. Units = rev/s
             %            Sign encodes direction (negative = clockwise, positive = counterclockwise)
             obj.assertLiveInstance;
@@ -204,7 +204,7 @@ classdef SmartServoInterface < handle
 
         function step(obj, stepSize_Degrees)
             % Rotate by a fixed distance in degrees (+/-) relative to current shaft position
-            % motorMode must be set to 5 (Step mode) to use this function.
+            % controlMode must be set to 5 (Step mode) to use this function.
             % Arguments: stepSize_Degrees, the amount to rotate (units = degrees)
             obj.assertLiveInstance;
             if obj.controlMode ~= 5

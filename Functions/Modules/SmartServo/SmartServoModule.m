@@ -139,7 +139,7 @@ classdef SmartServoModule < handle
             % EMERGENCY STOP
             % This function stops all motors by setting their torque to 0.
             % It also stops any ongoing motor programs.
-            % After an emergency stop, torque must be re-enabled manually by setting motorMode for each motor.
+            % After an emergency stop, torque must be re-enabled manually by setting controlMode for each motor.
             obj.port.write([obj.opMenuByte '!'], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
@@ -147,7 +147,7 @@ classdef SmartServoModule < handle
             end
             disp('!! Emergency Stop Acknowledged !!'); 
             disp('All motors now have torque disabled.')
-            disp('Re-enable motor torque by setting motorMode for each motor.')
+            disp('Re-enable motor torque by setting SmartServoModule.motor(chan,addr).controlMode for each motor.')
         end
 
         function stop(obj, chan, addr)
