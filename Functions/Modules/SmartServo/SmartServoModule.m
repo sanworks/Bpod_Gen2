@@ -65,6 +65,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %                               per channel. The new address is stored in 
 %                               the motor EEPROM and persists across power cycles.
 % 
+% ---Motor control objects---
+%  
+%
 % clear S; % clear the objects from the workspace, releasing the USB serial port
 
 classdef SmartServoModule < handle
@@ -118,9 +121,11 @@ classdef SmartServoModule < handle
             end
 
             % Get module information
-            obj.port.write([obj.opMenuByte '?'], 'uint8'); 
+            obj.port.write([obj.opMenuByte '&'], 'uint8'); 
             obj.firmwareVersion = obj.port.read(1, 'uint32');
             obj.hardwareVersion = obj.port.read(1, 'uint32');
+
+            obj.port.write([obj.opMenuByte '?'], 'uint8'); 
             obj.maxPrograms = double(obj.port.read(1, 'uint32'));
             obj.maxSteps = double(obj.port.read(1, 'uint32'));
 
