@@ -892,11 +892,19 @@ classdef BpodAnalogIn < handle
             drawnow;
         end
         
-        function scope_StartStop(obj)
+        function scope_StartStop(obj, pollrate)
             % scope_StartStop() toggles data acquisition by the scope()
             % GUI. It is called by a start button on the GUI, but it can also be 
             % called from a user protocol file to start analog data logging with
             % online monitoring.
+
+            % Make sure the user supplies a positive, floating-point number
+            if ~isfloat(pollrate)
+                error('Oscilloscope poll rate must be a number!');
+            elseif ~(pollrate > 0)
+                error('Oscilloscope poll rate must be greater than zero!');
+            end
+
             scopeReady = 1;
             if ~isfield(obj.UIhandles, 'OscopeFig')
                 scopeReady = 0;
@@ -927,7 +935,7 @@ classdef BpodAnalogIn < handle
                     end
                     obj.UIdata.SweepPos = 1;
                     obj.startUSBStream;
-                    obj.Timer = timer('TimerFcn',@(h,e)obj.updatePlot(), 'ExecutionMode', 'fixedRate', 'Period', 0.05);
+                    obj.Timer = timer('TimerFcn',@(h,e)obj.updatePlot(), 'ExecutionMode', 'fixedRate', 'Period', pollrate);
                     start(obj.Timer);
                 else
                     stop(obj.Timer);
