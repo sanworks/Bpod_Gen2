@@ -892,11 +892,25 @@ classdef BpodAnalogIn < handle
             drawnow;
         end
         
-        function scope_StartStop(obj, pollrate)
+        function scope_StartStop(obj, varargin)
             % scope_StartStop() toggles data acquisition by the scope()
             % GUI. It is called by a start button on the GUI, but it can also be 
             % called from a user protocol file to start analog data logging with
             % online monitoring.
+
+            default_update_time = 0.05;
+            oscope_time = 0;
+
+            ip = inputParser;
+            valid_update_time = @(time) isfloat(time) && isscalar(time) && (time > 0);
+            valid_obj = @(x) isa(x, 'BpodAnalogIn');
+            
+            addRequired(ip, 'obj', valid_obj);
+            addOptional(ip, 'oscope_time', default_update_time, valid_update_time);
+
+            parse(ip, obj, varargin{:});
+            oscope_time = ip.Results.oscope_time;
+            
 
             % Make sure the user supplies a positive, floating-point number
             if ~isfloat(pollrate)
@@ -935,7 +949,7 @@ classdef BpodAnalogIn < handle
                     end
                     obj.UIdata.SweepPos = 1;
                     obj.startUSBStream;
-                    obj.Timer = timer('TimerFcn',@(h,e)obj.updatePlot(), 'ExecutionMode', 'fixedRate', 'Period', pollrate);
+                    obj.Timer = timer('TimerFcn',@(h,e)obj.updatePlot(), 'ExecutionMode', 'fixedRate', 'Period', oscope_time);
                     start(obj.Timer);
                 else
                     stop(obj.Timer);
