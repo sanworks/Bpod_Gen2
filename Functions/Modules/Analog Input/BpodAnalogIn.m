@@ -897,27 +897,20 @@ classdef BpodAnalogIn < handle
             % GUI. It is called by a start button on the GUI, but it can also be 
             % called from a user protocol file to start analog data logging with
             % online monitoring.
-
+            
+            % Default GUI update time is 0.05s
             default_update_time = 0.05;
             oscope_time = 0;
 
             ip = inputParser;
-            valid_update_time = @(time) isfloat(time) && isscalar(time) && (time > 0);
-            valid_obj = @(x) isa(x, 'BpodAnalogIn');
-            
-            addRequired(ip, 'obj', valid_obj);
-            addOptional(ip, 'oscope_time', default_update_time, valid_update_time);
+            valid_update_time = @(time) isfloat(time) && isscalar(time) && (time > 0);  % Update time must be a float, scalar, and greater than zero
+            valid_obj = @(x) isa(x, 'BpodAnalogIn'); % Have to also check obj is an instance of BpodAnalogIn
 
-            parse(ip, obj, varargin{:});
-            oscope_time = ip.Results.oscope_time;
-            
+            addRequired(ip, 'obj', valid_obj);  % instance is a required argument
+            addOptional(ip, 'oscope_time', default_update_time, valid_update_time); % oscope_time is optional, if the passed value is invalid, the default is used
 
-            % Make sure the user supplies a positive, floating-point number
-            if ~isfloat(pollrate)
-                error('Oscilloscope poll rate must be a number!');
-            elseif ~(pollrate > 0)
-                error('Oscilloscope poll rate must be greater than zero!');
-            end
+            parse(ip, obj, varargin{:});  % parse the args
+            oscope_time = ip.Results.oscope_time; % assuming all is well, grab the value from the parser
 
             scopeReady = 1;
             if ~isfield(obj.UIhandles, 'OscopeFig')
