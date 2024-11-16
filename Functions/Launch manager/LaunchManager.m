@@ -150,7 +150,7 @@ elseif isempty(BpodSystem.Path.DataFolder)
     BpodSystem.setupFolders;
     close(BpodSystem.GUIHandles.LaunchManagerFig);
 else
-    loadProtocols;
+    BpodLib.launcher.ui.loadProtocols(BpodSystem);
     BpodSystem.GUIData.DummySubjectString = 'FakeSubject';
     % Set selected protocol to first non-folder item
     protocolNames = get(BpodSystem.GUIHandles.ProtocolSelector, 'String');
@@ -176,21 +176,12 @@ else
     BpodSystem.Status.CurrentProtocolName = selectedProtocolName;
     dataPath = fullfile(BpodSystem.Path.DataFolder,BpodSystem.GUIData.DummySubjectString);
     protocolName = BpodSystem.Status.CurrentProtocolName;
-    %Make standard folders for this protocol.  This will fail silently if the folders exist
-    warning off % Suppress warning that directory already exists
-    mkdir(dataPath, protocolName);
-    mkdir(fullfile(dataPath,protocolName,'Session Data'))
-    mkdir(fullfile(dataPath,protocolName,'Session Settings'))
-    warning on
-    % Ensure that a default settings file exists
-    defaultSettingsFilePath = fullfile(dataPath,protocolName,'Session Settings', 'DefaultSettings.mat');
-    if ~exist(defaultSettingsFilePath)
-        ProtocolSettings = struct;
-        save(defaultSettingsFilePath, 'ProtocolSettings')
-    end
-    loadSubjects(protocolName);
-    loadSettings(protocolName, BpodSystem.GUIData.DummySubjectString);
-    update_datafile(protocolName, BpodSystem.GUIData.DummySubjectString);
+    
+    BpodLib.launcher.prepareDataFolders(dataPath, protocolName)
+
+    BpodLib.launcher.ui.loadSubjects(BpodSystem, protocolName);
+    BpodLib.launcher.ui.loadSettings(BpodSystem, protocolName, BpodSystem.GUIData.DummySubjectString);
+    BpodLib.launcher.ui.setDataFilePath(BpodSystem, protocolName, BpodSystem.GUIData.DummySubjectString);
     BpodSystem.GUIData.ProtocolSelectorLastValue = 1;
 end
 
@@ -210,7 +201,7 @@ if currentValue == BpodSystem.GUIData.ProtocolSelectorLastValue
             BpodSystem.Path.ProtocolFolder = fullfile(BpodSystem.Path.ProtocolFolder, folderName);
         end
         isNewFolder = true;
-        loadProtocols;
+        BpodLib.launcher.ui.loadProtocols(BpodSystem);
     end
 else
     protocolName = String{currentValue};
@@ -227,9 +218,9 @@ else
             save(defaultSettingsPath, 'ProtocolSettings')
         end
 
-        loadSubjects(protocolName);
-        loadSettings(protocolName, BpodSystem.GUIData.DummySubjectString);
-        update_datafile(protocolName, BpodSystem.GUIData.DummySubjectString);
+        BpodLib.launcher.ui.loadSubjects(BpodSystem, protocolName);
+        BpodLib.launcher.ui.loadSettings(BpodSystem, protocolName, BpodSystem.GUIData.DummySubjectString);
+        BpodLib.launcher.ui.setDataFilePath(BpodSystem, protocolName, BpodSystem.GUIData.DummySubjectString);
         BpodSystem.Status.CurrentProtocolName = protocolName;
     end
 end
@@ -268,107 +259,8 @@ end
 set(BpodSystem.GUIHandles.SettingsSelector, 'String', settingsFileNames);
 set(BpodSystem.GUIHandles.SettingsSelector, 'Value', 1);
 BpodSystem.Status.CurrentSubjectName = selectedName;
-update_datafile(protocolName, selectedName);
+BpodLib.launcher.ui.setDataFilePath(BpodSystem, protocolName, selectedName);
 
-function loadProtocols
-global BpodSystem % Import the global BpodSystem object
-if strcmp(BpodSystem.Path.ProtocolFolder, BpodSystem.SystemSettings.ProtocolFolder)
-    startPos = 3;
-else
-    startPos = 2;
-end
-candidates = dir(BpodSystem.Path.ProtocolFolder);
-protocolNames = cell(0);
-nProtocols = 0;
-for x = startPos:length(candidates)
-    if candidates(x).isdir
-        protocolFolder = fullfile(BpodSystem.Path.ProtocolFolder, candidates(x).name);
-        contents = dir(protocolFolder);
-        nItems = length(contents);
-        found = 0;
-        for y = 3:nItems
-            if strcmp(contents(y).name, [candidates(x).name '.m'])
-                found = 1;
-            end
-        end
-        if found
-            protocolName = candidates(x).name;
-        else
-            protocolName = ['<' candidates(x).name '>'];
-        end
-        nProtocols = nProtocols + 1;
-        protocolNames{nProtocols} = protocolName;
-    end
-end
-
-if isempty(protocolNames)
-    protocolNames = {'No Protocols Found'};
-else
-    % Sort to put organizing directories first
-    Types = ones(1,nProtocols);
-    for i = 1:nProtocols
-        protocolName = protocolNames{i};
-        if protocolName(1) == '<'
-            Types(i) = 0;
-        end
-    end
-    [a, Order] = sort(Types);
-    protocolNames = protocolNames(Order);
-end
-set(BpodSystem.GUIHandles.ProtocolSelector, 'String', protocolNames);
-
-function loadSubjects(ProtocolName)
-global BpodSystem % Import the global BpodSystem object
-% Make a list of the names of all subjects who already have a folder for this
-% protocol.
-candidateSubjects = dir(BpodSystem.Path.DataFolder);
-subjectNames = cell(1);
-nSubjects = 1;
-subjectNames{1} = BpodSystem.GUIData.DummySubjectString;
-for x = 1:length(candidateSubjects)
-    if x > 2
-        if candidateSubjects(x).isdir
-            if ~strcmp(candidateSubjects(x).name, BpodSystem.GUIData.DummySubjectString)
-                testpath = fullfile(BpodSystem.Path.DataFolder,candidateSubjects(x).name,ProtocolName);
-                if exist(testpath) == 7
-                    nSubjects = nSubjects + 1;
-                    subjectNames{nSubjects} = candidateSubjects(x).name;
-                end
-            end
-        end
-    end
-end
-set(BpodSystem.GUIHandles.SubjectSelector,'String',subjectNames);
-set(BpodSystem.GUIHandles.SubjectSelector,'Value',1);
-
-function loadSettings(ProtocolName, SubjectName)
-global BpodSystem % Import the global BpodSystem object
-settingsPath = fullfile(BpodSystem.Path.DataFolder, SubjectName, ProtocolName, 'Session Settings');
-candidates = dir(settingsPath);
-nSettingsFiles = 0;
-settingsFileNames = cell(1);
-for x = 3:length(candidates)
-    extension = candidates(x).name;
-    extension = extension(end-2:end);
-    if strcmp(extension, 'mat')
-        nSettingsFiles = nSettingsFiles + 1;
-        name = candidates(x).name;
-        settingsFileNames{nSettingsFiles} = name(1:end-4);
-    end
-end
-set(BpodSystem.GUIHandles.SettingsSelector, 'String', settingsFileNames);
-set(BpodSystem.GUIHandles.SettingsSelector,'Value',1);
-
-function update_datafile(protocolName, subjectName)
-global BpodSystem % Import the global BpodSystem object
-dateInfo = datestr(now, 30);
-dateInfo(dateInfo == 'T') = '_';
-localDir = BpodSystem.Path.DataFolder(max(find(BpodSystem.Path.DataFolder(1:end-1) == filesep)+1):end);
-set(BpodSystem.GUIHandles.DataFilePathDisplay, 'String',... 
-    [filesep fullfile(localDir, subjectName, protocolName, 'Session Data') filesep],'interpreter','none');
-fileName = [subjectName '_' protocolName '_' dateInfo '.mat'];
-set(BpodSystem.GUIHandles.DataFileDisplay, 'String', fileName);
-BpodSystem.Path.CurrentDataFile = fullfile(BpodSystem.Path.DataFolder, subjectName, protocolName, 'Session Data', fileName);
 
 function add_subject(a,b)
 global BpodSystem % Import the global BpodSystem object
@@ -485,7 +377,7 @@ if ~isempty(newName)
         fclose(file1);
         edit(newProtocolFile);
         set(BpodSystem.GUIHandles.ProtocolSelector,'Value',1);
-        loadProtocols
+        BpodLib.launcher.ui.loadProtocols(BpodSystem)
     end
 end
 
@@ -619,7 +511,7 @@ if selectedSettingsIndex ~= defaultSettingsIndex
         close(deleteFig);
         delete(settingsFile);
         set(BpodSystem.GUIHandles.SettingsSelector,'Value',1);
-        loadSettings(selectedProtocolName, selectedSubjectName);
+        BpodLib.launcher.ui.loadSettings(BpodSystem, selectedProtocolName, selectedSubjectName);
     end
 end
 
@@ -652,7 +544,7 @@ if selectedProtocol ~= 1
     if ((okToDelete == 1) && (~isempty(selectedProtocolName)))
         rmdir(protocolPath, 's');
         set(BpodSystem.GUIHandles.ProtocolSelector,'Value',1);
-        loadProtocols
+        BpodLib.launcher.ui.loadProtocols(BpodSystem)
     end
 end
 
@@ -743,7 +635,7 @@ end
 copyfile(targetSettingsPath, destinationSettingsPath);
 
 % Update UI with new settings
-loadSettings(selectedProtocolName, selectedSubjectName);
+BpodLib.launcher.ui.loadSettings(BpodSystem, selectedProtocolName, selectedSubjectName);
 
 function launch_protocol(a,b)
 global BpodSystem % Import the global BpodSystem object
@@ -756,91 +648,10 @@ subjectName = subjectList{subjectIndex};
 settingsList = get(BpodSystem.GUIHandles.SettingsSelector, 'String');
 settingsIndex = get(BpodSystem.GUIHandles.SettingsSelector,'Value');
 settingsName = settingsList{settingsIndex};
-settingsFileName = fullfile(BpodSystem.Path.DataFolder, subjectName, protocolName, 'Session Settings', [settingsName '.mat']);
-dataFolder = fullfile(BpodSystem.Path.DataFolder,subjectName,protocolName,'Session Data');
-if ~exist(dataFolder)
-    mkdir(dataFolder);
-end
 
-% On Bpod r2+, if FlexIO channels are configured as analog,
-% setup binary data file
-if BpodSystem.MachineType > 3
-    nAnalogChannels = sum(BpodSystem.HW.FlexIO_ChannelTypes == 2);
-    if nAnalogChannels > 0
-        analogFilename = [BpodSystem.Path.CurrentDataFile(1:end-4) '_ANLG.dat'];
-        if BpodSystem.Status.RecordAnalog == 1
-            BpodSystem.AnalogDataFile = fopen(analogFilename,'w');
-            if BpodSystem.AnalogDataFile == -1
-                error(['Error: Could not open the analog data file: ' analogFilename])
-            end
-        end
-        BpodSystem.Status.nAnalogSamples = 0;
-    end
-end
-
-BpodSystem.Status.Live = 1;
-BpodSystem.Status.LastEvent = 0;
-BpodSystem.GUIData.ProtocolName = protocolName;
-BpodSystem.GUIData.SubjectName = subjectName;
-BpodSystem.GUIData.SettingsFileName = settingsFileName;
-BpodSystem.Path.Settings = settingsFileName;
-settingStruct = load(BpodSystem.Path.Settings);
-F = fieldnames(settingStruct);
-fieldName = F{1};
-BpodSystem.ProtocolSettings = eval(['settingStruct.' fieldName]);
-BpodSystem.Data = struct;
-if BpodSystem.MachineType > 3
-    if nAnalogChannels > 0
-        BpodSystem.Data.Analog = struct;
-        BpodSystem.Data.Analog.info = struct;
-        BpodSystem.Data.Analog.FileName = analogFilename;
-        BpodSystem.Data.Analog.nChannels = nAnalogChannels;
-        BpodSystem.Data.Analog.channelNumbers = find(BpodSystem.HW.FlexIO_ChannelTypes == 2);
-        BpodSystem.Data.Analog.SamplingRate = BpodSystem.HW.FlexIO_SamplingRate;
-        BpodSystem.Data.Analog.nSamples = 0;
-        % Add human-readable info about data fields to 'info struct
-        BpodSystem.Data.Analog.info.FileName = 'Complete path and filename of the binary file to which the raw data was logged';
-        BpodSystem.Data.Analog.info.nChannels = 'The number of Flex I/O channels configured as analog input';
-        BpodSystem.Data.Analog.info.channelNumbers = 'The indexes of Flex I/O channels configured as analog input';
-        BpodSystem.Data.Analog.info.SamplingRate = 'The sampling rate of the analog data. Units = Hz';
-        BpodSystem.Data.Analog.info.nSamples = 'The total number of analog samples captured during the behavior session';
-        BpodSystem.Data.Analog.info.Samples = 'Analog measurements captured. Rows are separate analog input channels. Units = Volts';
-        BpodSystem.Data.Analog.info.Timestamps = 'Time of each sample (computed from sample index and sampling rate)';
-        BpodSystem.Data.Analog.info.TrialNumber = 'Experimental trial during which each analog sample was captured';
-        BpodSystem.Data.Analog.info.TrialData = 'A cell array of Samples. Each cell contains samples captured during a single trial.';
-    end
-end
-protocolFolderPath = fullfile(BpodSystem.Path.ProtocolFolder,protocolName);
-protocolPath = fullfile(BpodSystem.Path.ProtocolFolder,protocolName,[protocolName '.m']);
-addpath(protocolFolderPath);
-set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
-
-% % Send metadata to Bpod Phone Home program (disabled pending a more stable server)
-% isOnline = BpodSystem.check4Internet();
-% if (isOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
-%     BpodSystem.BpodPhoneHome(1);
-% end
-
-if BpodSystem.Status.AnalogViewer
-    set(BpodSystem.GUIHandles.RecordButton, 'Enable', 'off')
-end
-
-BpodSystem.Status.BeingUsed = 1;
-BpodSystem.Status.SessionStartFlag = 1;
-BpodSystem.ProtocolStartTime = now*100000;
-BpodSystem.resetSessionClock();
 close(BpodSystem.GUIHandles.LaunchManagerFig);
-disp(' ');
-disp(['Starting ' protocolName]);
-set(BpodSystem.GUIHandles.CurrentStateDisplay, 'String', '---');
-set(BpodSystem.GUIHandles.PreviousStateDisplay, 'String', '---');
-set(BpodSystem.GUIHandles.LastEventDisplay, 'String', '---');
-set(BpodSystem.GUIHandles.TimeDisplay, 'String', '0:00:00');
-if sum(BpodSystem.InputsEnabled(BpodSystem.HW.Inputs == 'P')) == 0
-    warning(['All Bpod behavior ports are currently disabled.'... 
-             'If your protocol requires behavior ports, enable them from the settings menu.'])
-end
-run(protocolPath);
+protocolFolderPath = fullfile(BpodSystem.Path.ProtocolFolder, protocolName);
+BpodLib.launcher.launchProtocol(BpodSystem, protocolFolderPath, subjectName, 'settingsName', settingsName);
 
 function outputString = spaces2underscores(inputString)
 spaceIndexes = inputString == ' ';

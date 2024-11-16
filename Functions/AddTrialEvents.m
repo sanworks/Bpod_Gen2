@@ -92,6 +92,7 @@ else
     end
     sd.Info.SessionStartTime_UTC = datestr(theTime, 13);
     sd.Info.SessionStartTime_MATLAB = theTime;
+    sd.Info.ProtocolFilePath = BpodSystem.Path.CurrentProtocol;
 
     % Add settings struct selected for the session in the launch manager
     sd.SettingsFile = BpodSystem.ProtocolSettings;
