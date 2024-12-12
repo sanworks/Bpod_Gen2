@@ -141,10 +141,12 @@ classdef SmartServoModule < handle
         end
 
         function STOP(obj)
-            % EMERGENCY STOP
+            % PSEUDO EMERGENCY STOP
             % This function stops all motors by setting their torque to 0.
             % It also stops any ongoing motor programs.
             % After an emergency stop, torque must be re-enabled manually by setting controlMode for each motor.
+            % !IMPORTANT! While similar to a true emergency stop function, timing of motor stop is not guaranteed. 
+            %             Usage is at your own risk.
             obj.port.write([obj.opMenuByte '!'], 'uint8');
             confirmed = obj.port.read(1, 'uint8');
             if confirmed ~= 1
