@@ -396,7 +396,7 @@ classdef BpodHiFi < handle
             obj.Port.write('X', 'uint8');
         end
 
-        function result = testPSRAM(obj)
+        function [result, memSize] = testPSRAM(obj)
             % Test the module's 8MB PSRAM IC. As of firmware v5 the PSRAM IC is
             % not used. It is installed for future features, or custom user firmware.
             obj.Port.write('T', 'uint8');
