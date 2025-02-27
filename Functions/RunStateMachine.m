@@ -338,7 +338,7 @@ if BpodSystem.Status.BeingUsed == 1 % If exit was due to manual termination, Bei
     else
         trialStartTimestamp = BpodSystem.Emulator.MatrixStartTime-(BpodSystem.Status.BpodStartTime*100000);
         timeStamps = (BpodSystem.Emulator.Timestamps(1:BpodSystem.Emulator.nEvents)*1000);
-        trialEndTimestamp = trialStartTimestamp + timeStamps(end);
+        trialEndTimestamp = trialStartTimestamp + timeStamps(end)/1000;
     end
 
     % Determine event and state timestamps

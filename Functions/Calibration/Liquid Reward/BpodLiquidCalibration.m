@@ -361,8 +361,10 @@ DisplayValve;
 function SuggestPoints(varargin)
 global BpodSystem
 if isfield(BpodSystem.GUIHandles.LiquidCalibrator, 'RecommendedMeasureFig')
-    figure(BpodSystem.GUIHandles.LiquidCalibrator.RecommendedMeasureFig);
-    return
+    if isgraphics(BpodSystem.GUIHandles.LiquidCalibrator.RecommendedMeasureFig)
+        figure(BpodSystem.GUIHandles.LiquidCalibrator.RecommendedMeasureFig);
+        return
+    end
 end
 CalData = BpodSystem.PluginObjects.LiquidCal.CalData;
 BpodSystem.GUIHandles.LiquidCalibrator.RecommendedMeasureFig = figure('Position', [540 400 400 200],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off' );
