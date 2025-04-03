@@ -81,9 +81,26 @@ else
         end
         sd.Info.Modules = BpodSystem.Modules;
     end
+    % Add PC info
     sd.Info.PCsetup = struct;
     sd.Info.PCsetup.OS = BpodSystem.HostOS;
     sd.Info.PCsetup.MATLABver = version('-release');
+
+    % Add State Machine configuration info
+    sd.Info.FSMsetup = struct;
+    sd.Info.FSMsetup.CycleFrequency_Hz = BpodSystem.HW.CycleFrequency;
+    sd.Info.FSMsetup.StateMachineInfo = BpodSystem.StateMachineInfo;
+    sd.Info.FSMsetup.StateMachineInfo.Inputs = BpodSystem.HW.Inputs;
+    sd.Info.FSMsetup.StateMachineInfo.Outputs = BpodSystem.HW.Outputs;
+    sd.Info.FSMsetup.StateMachineInfo.ChannelKey = BpodSystem.HW.ChannelKey;
+    sd.Info.FSMsetup.FlexIOConfig = BpodSystem.FlexIOConfig;
+    
+    % Add calibration info
+    sd.Info.Calibration = struct;
+    sd.Info.Calibration.Liquid = BpodSystem.CalibrationTables.LiquidCal;
+    sd.Info.Calibration.Sound = BpodSystem.CalibrationTables.SoundCal;
+
+    % Add session start time
     sd.Info.SessionDate = datestr(now, 1);
     if ~isempty(BpodSystem.ProtocolStartTime)
         theTime = BpodSystem.ProtocolStartTime/100000;
