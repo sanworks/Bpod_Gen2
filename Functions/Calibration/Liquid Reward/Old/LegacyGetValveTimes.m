@@ -17,8 +17,12 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function ValveTimes = GetValveTimes(LiquidAmount, TargetValves)
-global BpodSystem
+function ValveTimes = LegacyGetValveTimes(LiquidAmount, TargetValves, varargin)
+p = inputParser();
+p.addParameter('BpodSystem', [])
+p.parse(varargin{:})
+BpodSystem = BpodLib.utils.getBpodSystem(p);
+
 nValves = length(TargetValves);
 ValveTimes = nan(1,nValves);
 for x = 1:nValves
