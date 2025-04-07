@@ -219,13 +219,8 @@ classdef BpodObject < handle
             end
 
             % Load liquid calibration
-            try
-                liquidCalibrationFilePath = fullfile(obj.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
-                load(liquidCalibrationFilePath);
-                obj.CalibrationTables.LiquidCal = LiquidCal;
-            catch
-                obj.CalibrationTables.LiquidCal = [];
-            end
+            % BpodLib.calibration.liquid.compatibility.conversionscript(obj)  % todo: finalise this inclusion
+            obj.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.loadLiquidCalibration('BpodSystem', obj);
 
             % Load sound calibration
             try
