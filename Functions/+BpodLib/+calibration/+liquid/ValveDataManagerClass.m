@@ -7,6 +7,7 @@
 classdef ValveDataManagerClass < handle
 properties
     ValveDatas  % struct of BpodLib.calibration.liquid.ValveData objects, indexed by valve name
+    metadata  % struct of metadata of valve
 end
 
 methods
@@ -18,6 +19,9 @@ methods
         p = inputParser();
         p.addParameter('filepath', '', @ischar);
         p.parse(varargin{:});
+
+        obj.ValveDatas = struct();
+        obj.metadata = struct();
 
         if ~isempty(p.Results.filepath)
             obj.loadData(p.Results.filepath);
@@ -79,6 +83,26 @@ methods
         n_Valves = numel(obj.getValveNames);
     end
 
+    function savedata = createSaveData(obj)
+        % Create a save-ready format of the manager
+        % :return savedata: Structure formatted for json encoding
+
+        % -- Create save data struct
+        % Initialize struct array (jsonencode will write as array of objects)
+        valveDatas = cell(1, obj.nValves);
+        valveNames = obj.getValveNames();
+        i = 0;
+        for valveName = valveNames'
+            i = i + 1;
+            valveDatas{i} = struct(obj.getValve(valveName{1}));
+        end
+
+        savedata = struct;
+        savedata.metadata = obj.metadata;  % todo: resolve how this keeps existing metadata
+        savedata.metadata.modification_datetime = BpodLib.calibration.liquid.isotime();
+        savedata.ValveDatas = valveDatas;
+    end
+
     function saveData(obj, filepath)
         % Save data to a file
         % :param filepath: the path to the file to save
@@ -100,26 +124,8 @@ methods
         % Coeffs is a 1x3 array of polynomial coefficients (2nd order polynomial)
         % Durations and Amounts are arrays of the same length
 
-        metadata = struct('modification_datetime', BpodLib.calibration.liquid.isotime());
-
-        % -- Create save data struct
-        % Initialize struct array (jsonencode will write as array of objects)
-        valveDatas = cell(1, obj.nValves);
-        valveNames = obj.getValveNames();
-        i = 0;
-        for valveName = valveNames'
-            i = i + 1;
-            valveDatas{i} = struct(obj.getValve(valveName{1}));
-        end
-
-        savedata = struct;
-        savedata.metadata = metadata;
-        savedata.ValveDatas = valveDatas;
-
-        writedata = jsonencode(savedata, 'PrettyPrint', true);
-        fid = fopen(filepath, 'w');
-        fwrite(fid, writedata, 'char');
-        fclose(fid);
+        
+        BpodLib.calibration.liquid.io.save(obj.createSaveData(), filepath)
     end
 
     function loadData(obj, filepath, varargin)
@@ -138,12 +144,14 @@ methods
         end
         [~, ~, ext] = fileparts(filepath);
 
-        if strcmp(ext, '.mat')
+        if ~strcmp(ext, '.json')
+            error('Expected .json file but received %s file.', ext)
             % todo: loader from old format?
         end
 
         loaddata = fileread(filepath);
         rawstruct = jsondecode(loaddata);
+        obj.metadata = rawstruct.metadata;
         valveDatas = rawstruct.ValveDatas;
         
         % Load data into ValveData objects

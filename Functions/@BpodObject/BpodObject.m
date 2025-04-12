@@ -220,7 +220,7 @@ classdef BpodObject < handle
 
             % Load liquid calibration
             % BpodLib.calibration.liquid.compatibility.conversionscript(obj)  % todo: finalise this inclusion
-            obj.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.loadLiquidCalibration('BpodSystem', obj);
+            obj.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', obj);
 
             % Load sound calibration
             try
