@@ -74,8 +74,10 @@ function testLegacySupport(testCase)
     expectedTimes = [.0674457, .0756383]; 
 
     % This should trigger the legacy code path
+    warning('off', 'GetValveTimes:Deprecation')
     actualTimes = GetValveTimes(liquidAmount, targetValves, ...
         'BpodSystem', bpodSystem);
+    warning('on', 'GetValveTimes:Deprecation')
 
     verifyEqual(testCase, actualTimes, expectedTimes, 'AbsTol', 1e-3, ...
         'Valve times should match expected values from ValveDataManager');
