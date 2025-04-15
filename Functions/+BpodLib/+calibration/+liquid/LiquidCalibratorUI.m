@@ -107,8 +107,10 @@ methods
 
     function DisplayValve(obj, ~, ~)
         % Update the GUI to show a valve
-        valveNumber = get(obj.GUIHandles.ValveSelector, 'Value'); % todo: make this more explicitly an index
-        ValveToShowName = sprintf('Valve%i', valveNumber);
+        selectedValveIndex = get(obj.GUIHandles.ValveSelector, 'Value');
+        allValveNames = obj.ValveDataManager.getValveNames();
+        ValveToShowName = allValveNames{selectedValveIndex};
+        % ValveToShowName = sprintf('Valve%i', selectedValveIndex);
         ValveData = obj.ValveDataManager.getValve(ValveToShowName);
         nMeasurements = length(ValveData.Durations);
 
@@ -197,8 +199,8 @@ methods
         % Add a pending measurement to the selected valve
 
         ThisValveCalEntries = get(obj.GUIHandles.MeasurementSelector,'String');
-        CurrentValve = get(obj.GUIHandles.ValveSelector,'Value');
-        nValvesSelected = length(CurrentValve);
+        selectedValveIndex = get(obj.GUIHandles.ValveSelector,'Value');
+        nValvesSelected = length(selectedValveIndex);
         assert(nValvesSelected, 'This should not be possible.')
         if ~iscell(ThisValveCalEntries)
             nEntries = 0;
@@ -228,7 +230,7 @@ methods
             Exists = 0;
             for x = 1:nValvesSelected
                 % Check to make sure value doesn't already exist in pending measurements
-                valveName = obj.GUIHandles.ValveSelector.String{CurrentValve};
+                valveName = obj.GUIHandles.ValveSelector.String{selectedValveIndex};
 %                 valveName = CurrentValve{x}; ? this assumes more than one
 %                 valve can be selected
                 Pending = obj.PendingMeasurements.(valveName);
@@ -238,7 +240,7 @@ methods
                     end
                 end
                 % Check to make sure value doesn't already exist in table
-                ValveData = obj.ValveDataManager.getValve(CurrentValve(x));
+                ValveData = obj.ValveDataManager.getValve(valveName);
                 if ~isempty(ValveData)
                     ValuesPresent = ValveData.Durations;
                     if sum(Value2measure == ValuesPresent) > 0
@@ -357,11 +359,13 @@ methods
         ValveIDs = [];
         PulseDurations = [];
         PendingMeasurements = obj.PendingMeasurements;
-        valveNames = fields(PendingMeasurements);
-        for x = 1:numel(valveNames)
-            valveName = valveNames{x};
+        allValveNames = fields(PendingMeasurements);
+        valveNames = {};
+        for x = 1:numel(allValveNames)
+            valveName = allValveNames{x};
             if ~isempty(PendingMeasurements.(valveName))
                 ValveIDs = [ValveIDs x];
+                valveNames = [valveNames, valveName];
                 PulseDurations = [PulseDurations (PendingMeasurements.(valveName)(1))/1000];
             end
         end
@@ -370,11 +374,12 @@ methods
             % Deliver liquid
             k = msgbox('Please refill liquid reservoirs and click Ok to begin.', 'modal');
             waitfor(k);
-            Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, str2double(get(obj.GUIHandles.nPulsesEdit, 'string')), ValveIDs, PulseDurations, 'PulseInterval', .2);
+            Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, str2double(get(obj.GUIHandles.nPulsesEdit, 'string')), valveNames, PulseDurations, 'PulseInterval', .2);
             if Completed
                 % Enter measurements:
                 
                 % Set up window
+                % todo: make compatible with port array and other numbers
                 obj.GUIHandles.RunMeasurementsFig = figure('Position', [540 100 317 530],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'Name', 'Enter pending measurements');
                 ha = axes('units','normalized', 'position',[0 0 1 1]);
                 uistack(ha,'bottom');
@@ -436,7 +441,8 @@ methods
         % Extract measured amounts from textboxes. Error if invalid.
         AllValid = 1;
         for x = 1:nValidMeasurements
-            eval(['CurrentAmounts(' num2str(x) ') = str2double(get(obj.GUIHandles.CB' num2str(ValveIDs(x)) 'b, ''String''));'])
+            CurrentAmounts(x) = str2double(obj.GUIHandles.(sprintf('CB%ib', ValveIDs(x))).String);
+            % eval(['CurrentAmounts(' num2str(x) ') = str2double(get(obj.GUIHandles.CB' num2str(ValveIDs(x)) 'b, ''String''));'])
             if isnan(CurrentAmounts(x))
                 AllValid = 0;
                 errordlg(['Invalid measurement entered for valve ' num2str(ValveIDs(x))])
@@ -451,7 +457,6 @@ methods
         % Convert g*nPulses to microliters
         CurrentAmounts = CurrentAmounts*1000/str2double(get(obj.GUIHandles.nPulsesEdit, 'string'));
         
-        
         if AllValid == 1
             % Update cal table on HD and in GUI handles
             for x = 1:nValidMeasurements
@@ -460,30 +465,14 @@ methods
                 % Add or append to table
                 valveObject.addMeasurement(PulseDurations(x), CurrentAmounts(x))
                 valveObject.updateCoeffs()
-%                 CurrentTable = obj.ValveDataManager(ValveIDs(x)).Table;
-%                 if isempty(CurrentTable)
-%                     CurrentTable = [PulseDurations(x) CurrentAmounts(x)];
-%                 else
-%                     m = [PulseDurations(x) CurrentAmounts(x)];
-%                     CurrentTable = [CurrentTable; m];
-%                 end
-%                 obj.ValveDataManager(ValveIDs(x)).Table = CurrentTable;
-%                 % Calculate coeffs
-%                 MeasuredAmounts = CurrentTable(:,2)';
-%                 ValveDurations = CurrentTable(:,1)';
-%                 nMeasurements = length(MeasuredAmounts);
-%                 if nMeasurements > 1
-%                     obj.ValveDataManager(ValveIDs(x)).Coeffs = polyfit(MeasuredAmounts, ValveDurations, 2);
-%                 else
-%                     obj.ValveDataManager(ValveIDs(x)).Coeffs = [];
-%                 end
+
             end
             % Remove pending measurements (preserving any more that were set for future rounds)
             PendingMeasurements = obj.PendingMeasurements;
             for x = 1:nValidMeasurements
                 valveName = valveNames{x};
                 if length(PendingMeasurements.(valveName)) > 1
-                    Measurements = PendingMeasurements.(valveNames);
+                    Measurements = PendingMeasurements.(valveName);
                     Measurements = Measurements(2:length(Measurements));
                     PendingMeasurements.(valveName) = Measurements;
                 else
@@ -532,30 +521,12 @@ methods
         obj.GUIHandles.CB7 = uicontrol('Style', 'checkbox', 'Position', [324 140 15 15]);
         obj.GUIHandles.CB8 = uicontrol('Style', 'checkbox', 'Position', [375 140 15 15]);
 
-        if ~isempty(CalData.getValve(1).Durations)
-            set(obj.GUIHandles.CB1, 'Value', 1);
+        for valveIndex = 1:8
+            if ~isempty(CalData.getValve(valveIndex).Durations)
+                obj.GUIHandles.(sprintf('CB%i', valveIndex)).Value = 1;
+            end
         end
-        if ~isempty(CalData.getValve(2).Durations)
-            set(obj.GUIHandles.CB2, 'Value', 1);
-        end
-        if ~isempty(CalData.getValve(3).Durations)
-            set(obj.GUIHandles.CB3, 'Value', 1);
-        end
-        if ~isempty(CalData.getValve(4).Durations)
-            set(obj.GUIHandles.CB4, 'Value', 1);
-        end
-        if ~isempty(CalData.getValve(5).Durations)
-            set(obj.GUIHandles.CB5, 'Value', 1);
-        end
-        if ~isempty(CalData.getValve(6).Durations)
-            set(obj.GUIHandles.CB6, 'Value', 1);
-        end
-        if ~isempty(CalData.getValve(7).Durations)
-            set(obj.GUIHandles.CB7, 'Value', 1);
-        end
-        if ~isempty(CalData.getValve(8).Durations)
-            set(obj.GUIHandles.CB8, 'Value', 1);
-        end
+
         obj.GUIHandles.LowRangeEdit = uicontrol('Style', 'edit', 'String', '2', 'Position', [248 71 35 30], 'FontWeight', 'bold', 'FontSize', 12, 'TooltipString', 'Enter a non-zero value for range minimum');
         obj.GUIHandles.HighRangeEdit = uicontrol('Style', 'edit', 'String', '10', 'Position', [329 71 35 30], 'FontWeight', 'bold', 'FontSize', 12, 'TooltipString', 'Enter a non-zero value for range maximum');
         set(obj.GUIHandles.LowRangeEdit, 'String', num2str(obj.CalibrationTargetRange(1)));
@@ -568,14 +539,10 @@ methods
         CalTable = obj.ValveDataManager;
         % Figure out which valves were to be targeted
         ValveLogic = zeros(1,8);
-        ValveLogic(1) = get(obj.GUIHandles.CB1, 'Value');
-        ValveLogic(2) = get(obj.GUIHandles.CB2, 'Value');
-        ValveLogic(3) = get(obj.GUIHandles.CB3, 'Value');
-        ValveLogic(4) = get(obj.GUIHandles.CB4, 'Value');
-        ValveLogic(5) = get(obj.GUIHandles.CB5, 'Value');
-        ValveLogic(6) = get(obj.GUIHandles.CB6, 'Value');
-        ValveLogic(7) = get(obj.GUIHandles.CB7, 'Value');
-        ValveLogic(8) = get(obj.GUIHandles.CB8, 'Value');
+        for valveIndex = 1:8
+            ValveLogic(valveIndex) = get(obj.GUIHandles.(sprintf('CB%i', valveIndex)), 'Value');
+        end
+
     
         TargetValves = find(ValveLogic);
         CalPending = obj.PendingMeasurements;
@@ -721,31 +688,13 @@ methods
         obj.GUIHandles.CB6b = uicontrol('Style', 'checkbox', 'Position', [271 535 15 15], 'TooltipString', 'Test valve 6');
         obj.GUIHandles.CB7b = uicontrol('Style', 'checkbox', 'Position', [324 535 15 15], 'TooltipString', 'Test valve 7');
         obj.GUIHandles.CB8b = uicontrol('Style', 'checkbox', 'Position', [375 535 15 15], 'TooltipString', 'Test valve 8');
-    
-        if ~isempty(obj.ValveDataManager.getValve(1).Durations)
-            set(obj.GUIHandles.CB1b, 'Value', 1);
+
+        for valveIndex = 1:8
+            if ~isempty(obj.ValveDataManager.getValve(valveIndex).Durations)
+                obj.GUIHandles.(sprintf('CB%ib', valveIndex)).Value = 1;
+            end
         end
-        if ~isempty(obj.ValveDataManager.getValve(2).Durations)
-            set(obj.GUIHandles.CB2b, 'Value', 1);
-        end
-        if ~isempty(obj.ValveDataManager.getValve(3).Durations)
-            set(obj.GUIHandles.CB3b, 'Value', 1);
-        end
-        if ~isempty(obj.ValveDataManager.getValve(4).Durations)
-            set(obj.GUIHandles.CB4b, 'Value', 1);
-        end
-        if ~isempty(obj.ValveDataManager.getValve(5).Durations)
-            set(obj.GUIHandles.CB5b, 'Value', 1);
-        end
-        if ~isempty(obj.ValveDataManager.getValve(6).Durations)
-            set(obj.GUIHandles.CB6b, 'Value', 1);
-        end
-        if ~isempty(obj.ValveDataManager.getValve(7).Durations)
-            set(obj.GUIHandles.CB7b, 'Value', 1);
-        end
-        if ~isempty(obj.ValveDataManager.getValve(8).Durations)
-            set(obj.GUIHandles.CB8b, 'Value', 1);
-        end
+
         obj.GUIHandles.SpecificAmtEdit = uicontrol('Style', 'edit', 'String', '10', 'Position', [256 478 40 25], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 16, 'BackgroundColor', [.9 .9 .9]);
         obj.GUIHandles.nPulsesDropmenu = uicontrol('Style', 'popupmenu', 'String', {'100' '200' '300' '400' '500'}, 'Position', [289 447 50 25], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 16, 'BackgroundColor', [.9 .9 .9], 'TooltipString', 'Use more pulses with small water volumes for improved accuracy');
         obj.GUIHandles.ToleranceDropmenu = uicontrol('Style', 'popupmenu', 'String', {'5' '10'}, 'Position', [289 416 50 25], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 16, 'BackgroundColor', [.9 .9 .9], 'TooltipString', 'Percent of intended amount by which measured amount can differ');
@@ -773,17 +722,18 @@ methods
     
         % Figure out which valves to test
         ValveLogic = zeros(1,8);
-        ValveLogic(1) = get(obj.GUIHandles.CB1b, 'Value');
-        ValveLogic(2) = get(obj.GUIHandles.CB2b, 'Value');
-        ValveLogic(3) = get(obj.GUIHandles.CB3b, 'Value');
-        ValveLogic(4) = get(obj.GUIHandles.CB4b, 'Value');
-        ValveLogic(5) = get(obj.GUIHandles.CB5b, 'Value');
-        ValveLogic(6) = get(obj.GUIHandles.CB6b, 'Value');
-        ValveLogic(7) = get(obj.GUIHandles.CB7b, 'Value');
-        ValveLogic(8) = get(obj.GUIHandles.CB8b, 'Value');
-        TargetValves = find(ValveLogic);
+        for index = 1:8
+            ValveLogic(index) = obj.GUIHandles.(sprintf('CB%ib', index)).Value;
+        end
+        TargetValveIndices = find(ValveLogic);
+        TargetValveNames = cell(sum(ValveLogic), 1);
+        allValveNames = obj.ValveDataManager.getValveNames();
+        for index = TargetValveIndices
+            valveName = allValveNames{index};
+            TargetValveNames{index} = valveName;
+        end
         % Sanity-check target valves
-        if isempty(TargetValves)
+        if isempty(TargetValveIndices)
             InvalidParams = 1;
         end
         % Figure out amount to test
@@ -799,14 +749,14 @@ methods
     
         if InvalidParams == 0
             % Convert liquid amount to pulse duration using current table
-            PulseDurations = GetValveTimes(LiquidAmount, TargetValves, 'ValveDataManager', obj.ValveDataManager);
+            PulseDurations = GetValveTimes(LiquidAmount, TargetValveIndices, 'ValveDataManager', obj.ValveDataManager);
             % Figure out how many pulses to deliver
             nPulses = get(obj.GUIHandles.nPulsesDropmenu, 'Value')*100;
             % Set valve request window
-            set(obj.GUIHandles.MeasuredValveText, 'String', num2str(TargetValves(1)));
+            set(obj.GUIHandles.MeasuredValveText, 'String', num2str(TargetValveIndices(1)));
             drawnow;
             % Call calibration script
-            Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, nPulses, TargetValves, PulseDurations, 'PulseInterval', .2);
+            Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, nPulses, TargetValveNames, PulseDurations, 'PulseInterval', .2);
         else
             warndlg('Invalid settings detected. Check setup.', 'Error', 'modal');
         end
@@ -825,14 +775,9 @@ methods
     
         % Figure out which valves were tested
         ValveLogic = zeros(1,8);
-        ValveLogic(1) = get(obj.GUIHandles.CB1b, 'Value');
-        ValveLogic(2) = get(obj.GUIHandles.CB2b, 'Value');
-        ValveLogic(3) = get(obj.GUIHandles.CB3b, 'Value');
-        ValveLogic(4) = get(obj.GUIHandles.CB4b, 'Value');
-        ValveLogic(5) = get(obj.GUIHandles.CB5b, 'Value');
-        ValveLogic(6) = get(obj.GUIHandles.CB6b, 'Value');
-        ValveLogic(7) = get(obj.GUIHandles.CB7b, 'Value');
-        ValveLogic(8) = get(obj.GUIHandles.CB8b, 'Value');
+        for index = 1:8
+            ValveLogic(index) = obj.GUIHandles.(sprintf('CB%ib', index)).Value;
+        end
         TargetValves = find(ValveLogic);
     
         InvalidParams = 0;
