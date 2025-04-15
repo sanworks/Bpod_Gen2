@@ -5,21 +5,39 @@ function liquidData = load(varargin)
 
 % todo: create tests for this
 p = inputParser();
-p.addParameter('BpodSystem', [])  % todo: rethink the usage of BpodSystem here
+p.addParameter('BpodSystem', [])
+p.addParameter('type', 'statemachine')
+p.addParameter('index', [])
 p.parse(varargin{:})
 BpodSystem = p.Results.BpodSystem;
 
-calibrationFolderpath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files');
+% todo: handle multi more gracefully
+switch lower(p.Results.type)
+    case 'statemachine'
+        filename = 'LiquidCalibration.json';
+    case 'portarray'
+        filename = sprintf('LiquidCalibration-PA%i.json', p.addParameter.index);
+    otherwise
+        error('BpodLib:LiquidCalibration:UnrecognisedType', "Load type '%s' not recognised, should be 'statemachine' or 'portarray'", p.Results.type)
+end
 
-filelist = dir(calibrationFolderpath);  % todo: maybe use a struct of files to do the logical work?
+isMulti = BpodLib.multi.isMultiSetup(BpodSystem);
+if isMulti
+    calibrationFolderpath = BpodLib.path.getPath(BpodSystem, 'liquidcalibration');
+else
+    calibrationFolderpath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files');
+end
+
+
+filelist = dir(calibrationFolderpath);
 isLegacy = any(strcmp({filelist.name}, 'LiquidCalibration.mat'));
 isJSON = any(strcmp({filelist.name}, 'LiquidCalibration.json'));
-isMulti = BpodLib.utils.isMultiSetup(BpodSystem);
 
+expectedFilepath = fullfile(calibrationFolderpath, filename);
 
 % Non-multi setup cases
 if isJSON
-    liquidData = BpodLib.calibration.liquid.ValveDataManagerClass('filepath', fullfile(calibrationFolderpath, 'LiquidCalibration.json'));
+    liquidData = BpodLib.calibration.liquid.ValveDataManagerClass('filepath', expectedFilepath);
     if isLegacy
         warning('Returning LiquidCalibration.json but LiquidCalibration.mat exists, LiquidCalibration.mat should not exist in Calibration Files/')
     end
@@ -29,26 +47,15 @@ if isJSON
     return
 else
     if isLegacy
+        assert(strcmp(p.Results.type, 'portarray'), 'BpodLib') % todo: complete error msg
         liquidData = load(fullfile(calibrationFolderpath, 'LiquidCalibration.mat'), 'LiquidCal').LiquidCal;
+        % Eventually this should return a warning for being unsupported
         return
     end
 end
 
-if ~isMulti
-    % No valid data found
-    liquidData = [];
-end
 
 % Multi-setup support
-eligibleFiles = BpodLib.calibration.liquid.multi.findCalibrationFiles(BpodSystem);
-currentCOM = BpodLib.utils.getCurrentCOM(BpodSystem);
-expectedFilename = sprintf('LiquidCalibration-%s.json', currentCOM);
-if ~ismember(expectedFilename, eligibleFiles)
-    % todo: create diagnostic showing possible actions
-    error('Eligible liquid calibration file not found.')
-end
-
-liquidData = BpodLib.calibration.liquid.ValveDataManagerClass('filepath', fullfile(calibrationFolderpath, expectedFilename));
-
+liquidData = BpodLib.calibration.liquid.ValveDataManagerClass('filepath', expectedFilename);
 
 end

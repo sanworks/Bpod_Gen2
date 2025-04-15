@@ -32,9 +32,11 @@ function setupOnce(testCase)
     mockBpod.Path.LocalDir = folderPath;
     folderPath = fullfile(folderPath, 'Calibration Files');
     mkdir(folderPath);
+    mkdir(fullfile(folderPath, 'Machine-COM13'))
+    mkdir(fullfile(folderPath, 'Machine-COM5'))
     testCase.TestData.multiBpod = mockBpod;
-    valveManager.saveData(fullfile(folderPath, 'LiquidCalibration-COM13.json'))
-    valveManager.saveData(fullfile(folderPath, 'LiquidCalibration-COM5.json'))
+    valveManager.saveData(fullfile(folderPath, 'Machine-COM13/LiquidCalibration.json'))
+    valveManager.saveData(fullfile(folderPath, 'Machine-COM5/LiquidCalibration.json'))
 
 end
 
@@ -44,25 +46,23 @@ function teardownOnce(testCase)
 end
 
 function test_noMulti(testCase)
-    BpodSystem = testCase.TestData.regularBpod;
-    filenames = BpodLib.calibration.liquid.multi.findCalibrationFiles(BpodSystem);
-    testCase.verifyTrue(numel(filenames) == 0, "Shouldn't find any potential files.")
-end
 
-function test_isMulti(testCase)
-    BpodSystem = testCase.TestData.multiBpod;
-    BpodSystem.Path.LocalDir
-    filenames = BpodLib.calibration.liquid.multi.findCalibrationFiles(BpodSystem);
-    foundcom13 = ismember('LiquidCalibration-COM13.json', filenames);
-    foundcom5 = ismember('LiquidCalibration-COM5.json', filenames);
-    testCase.verifyTrue(foundcom13 && foundcom5, 'Should find two files')
-
-    ValveDataManager = BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.multiBpod);
+    % Test that data can be loaded
+    ValveDataManager = BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.regularBpod);
     testCase.verifyTrue(isa(ValveDataManager, 'BpodLib.calibration.liquid.ValveDataManagerClass'), 'Should successfuly load the data')
 end
 
 function test_createMulti(testCase)
-BpodSystem = testCase.TestData.regularBpod;
-BpodLib.calibration.liquid.multi.createMultiSetup(BpodSystem)
-testCase.verifyTrue(isfile(fullfile(BpodSystem.Path.LocalDir, 'Calibration Files/LiquidCalibration-COM13.json')), 'The LiquidCalibration.json should have been moved to LiqudCalibration-COM13.json')
+    BpodLib.calibration.liquid.multi.createMultiSetup(testCase.TestData.regularBpod)
+    testCase.verifyTrue(isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Calibration Files/Machine-COM13/LiquidCalibration.json')),...
+        'The LiquidCalibration.json should have been moved to LiqudCalibration-COM13.json')
+
+    ValveDataManager = BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.multiBpod);
+    testCase.verifyTrue(isa(ValveDataManager, 'BpodLib.calibration.liquid.ValveDataManagerClass'), 'Should successfuly load the data')
+
+end
+
+function test_isMulti(testCase)
+    ValveDataManager = BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.multiBpod);
+    testCase.verifyTrue(isa(ValveDataManager, 'BpodLib.calibration.liquid.ValveDataManagerClass'), 'Should successfuly load the data')
 end
