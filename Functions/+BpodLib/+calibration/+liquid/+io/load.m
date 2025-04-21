@@ -41,7 +41,8 @@ if isJSON
     if isLegacy
         warning('Returning LiquidCalibration.json but LiquidCalibration.mat exists, LiquidCalibration.mat should not exist in Calibration Files/')
     end
-    if isMulti
+    singleSetupPath = fullfile(BpodLib.path.getPath(BpodSystem, 'liquidcalibration', 'setup', 'single'), 'LiquidCalibration.json');
+    if isMulti && isfile(singleSetupPath)
         warning('Bpod detected this is a computer that may have multiple state machines plugged in but found a single-setup liquid calibration file.')
     end
     return
