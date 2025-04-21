@@ -1,4 +1,3 @@
-
 function ValveTimes_s = GetValveTimes(LiquidAmount_uL, TargetValves, varargin)
 % Get time required for target valves to release requested amount of liquid
 % 
@@ -12,36 +11,25 @@ p.addParameter('BpodSystem', [])
 p.addParameter('ValveDataManager', [])
 p.parse(varargin{:})
 
-persistent warningIssued
 persistent deprecationWarningIssued
 
-if isempty(p.Results.ValveDataManager)
-    BpodSystem = BpodLib.utils.getBpodSystem(p);
-    if isfield(BpodSystem.CalibrationTables, 'LiquidCal')
-        LiquidCal = BpodSystem.CalibrationTables.LiquidCal;
+BpodSystem = BpodLib.utils.getBpodSystem(p);
+if isfield(BpodSystem.CalibrationTables, 'LiquidCal')
+    LiquidCal = BpodSystem.CalibrationTables.LiquidCal;
 
-        if isa(LiquidCal, 'struct')
-            if isempty(deprecationWarningIssued)
-                warning('GetValveTimes:Deprecation', ...
-                'The LiquidCalibration.mat file should have been converted into a .json file. This warning means this has not happened, and the file will have to be modified. Please contact the forums for assistance.');
-            deprecationWarningIssued = true; % Mark as warned
-            end
-            ValveTimes_s = LegacyGetValveTimes(LiquidAmount_uL, TargetValves, 'BpodSystem', BpodSystem);
-            return
-        else
-            ValveDataManager = LiquidCal;
+    if isa(LiquidCal, 'struct')
+        if isempty(deprecationWarningIssued)
+            warning('GetValveTimes:Deprecation', ...
+            'The LiquidCalibration.mat file should have been converted into a .json file. This warning means this has not happened, and the file will have to be modified. Please contact the forums for assistance.');
+        deprecationWarningIssued = true; % Mark as warned
         end
+        ValveTimes_s = LegacyGetValveTimes(LiquidAmount_uL, TargetValves, 'BpodSystem', BpodSystem);
+        return
+    else
+        ValveDataManager = LiquidCal;
     end
-else
-    if ~isempty(p.Results.BpodSystem)
-        if isempty(warningIssued)
-            warning('GetValveTimes:AmbiguousSource', ...
-                'Both BpodSystem and a specific ValveDataManager were provided. Only the specific ValveDataManager will be used.');
-            warningIssued = true; % Mark as warned
-        end
-    end
-    ValveDataManager = p.Results.ValveDataManager;
 end
+
 
 nValves = length(TargetValves);
 ValveTimes_ms = nan(1,nValves);

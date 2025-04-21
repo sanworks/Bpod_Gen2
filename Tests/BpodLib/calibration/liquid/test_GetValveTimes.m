@@ -34,22 +34,6 @@ function teardownOnce(testCase)
 end
 
 %% Test Cases
-function testWithValveDataManager(testCase)
-    % Test normal operation with ValveDataManager
-    valveDataManager = testCase.TestData.mockValveDataManager;
-    targetValves = [1, 3];
-    liquidAmount = 10;
-
-    % Expected values based on mock implementation
-    expectedTimes = [.0674457, .0756383]; 
-
-    actualTimes = GetValveTimes(liquidAmount, targetValves, ...
-        'ValveDataManager', valveDataManager);
-
-    verifyEqual(testCase, actualTimes, expectedTimes, 'AbsTol', 1e-3, ...
-        'Valve times should match expected values from ValveDataManager');
-end
-
 function testWithBpodSystem(testCase)
     % Test operation with BpodSystem containing ValveDataManager
     bpodSystem = testCase.TestData.bpodWithValveDataManager;
@@ -81,29 +65,6 @@ function testLegacySupport(testCase)
 
     verifyEqual(testCase, actualTimes, expectedTimes, 'AbsTol', 1e-3, ...
         'Valve times should match expected values from ValveDataManager');
-end
-
-function testAmbiguousSourceWarning(testCase)
-    % Test that warning is issued when both sources are provided
-    bpodSystem = testCase.TestData.bpodWithValveDataManager;
-    valveDataManager = testCase.TestData.mockValveDataManager;
-    targetValves = 1;
-    liquidAmount = 5;
-
-    % Verify warning is issued
-    testCase.verifyWarning(...
-        @() GetValveTimes(liquidAmount, targetValves, ...
-            'BpodSystem', bpodSystem, 'ValveDataManager', valveDataManager), ...
-        'GetValveTimes:AmbiguousSource', ...
-        'Should warn when both BpodSystem and ValveDataManager are provided');
-
-    % Verify it still works (using ValveDataManager)
-    expectedTimes = .0437772;
-    actualTimes = GetValveTimes(liquidAmount, targetValves, ...
-        'BpodSystem', bpodSystem, 'ValveDataManager', valveDataManager);
-
-    verifyEqual(testCase, actualTimes, expectedTimes, 'AbsTol', 1e-3, ...
-        'Should still return correct times when both sources provided');
 end
 
 function testDeprecationWarning(testCase)
