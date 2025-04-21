@@ -32,7 +32,7 @@ end
 
 % Save the new format
 try
-    BpodLib.calibration.liquid.compatibility.convertMAT2JSON(oldFilepath, newFilepath);
+    BpodLib.calibration.liquid.compatibility.convertMAT2JSON(BpodSystem, oldFilepath, newFilepath);
     Completed = 1;
 catch ME
     disp('Conversion of liquid calibration failed.')

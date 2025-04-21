@@ -89,7 +89,11 @@ function test_Conversion(testCase)
 
     % Save new file
     newJSONPath = fullfile(testCase.TestData.rootPath, 'new.json');
-    BpodLib.calibration.liquid.compatibility.convertMAT2JSON(testCase.TestData.oldMATPath, newJSONPath);
+    mockBpodSystem = struct();
+    mockBpodSystem.SerialPort.Port = 'COM1';
+    [folder, ~] = fileparts(testCase.TestData.oldMATPath);
+    mockBpodSystem.Path.LocalDir = folder;
+    BpodLib.calibration.liquid.compatibility.convertMAT2JSON(mockBpodSystem, testCase.TestData.oldMATPath, newJSONPath);
 
     ValveManager = BpodLib.calibration.liquid.ValveDataManagerClass();
     ValveManager.loadData(newJSONPath);

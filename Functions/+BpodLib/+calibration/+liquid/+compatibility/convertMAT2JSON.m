@@ -1,4 +1,4 @@
-function convertMAT2JSON(sourcepath, savepath)
+function convertMAT2JSON(BpodSystem, sourcepath, savepath)
 % Convert a LiquidCalibration.mat file to a LiquidCalibration.json file
 % :param sourcepath: the path to the LiquidCalibration.mat file
 % :type sourcepath: char
@@ -23,4 +23,8 @@ end
 valveManager = BpodLib.calibration.liquid.compatibility.convertFormat(LiquidCal);
 
 valveManager.saveData(savepath);
+valveDatas = valveManager.createSaveData();
+currentCOM = BpodLib.utils.getCurrentCOM(BpodSystem);
+valveDatas.metadata.COM = currentCOM;
+BpodLib.calibration.liquid.io.save(valveDatas, savepath, 'BpodSystem', BpodSystem);
 end

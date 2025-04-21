@@ -6,10 +6,14 @@ function save(ValveDataManagerStruct, filepath, varargin)
 
 p = inputParser();
 p.addParameter('BpodSystem', [])
+p.addParameter('type', [])
+p.addParameter('verbose', false)
 p.parse(varargin{:})
+BpodSystem = BpodLib.utils.getBpodSystem(p);
 
+% We want data to be a struct from the get-go because we might want to insert additional data later on...
 assert(isa(ValveDataManagerStruct, 'struct'),'BpodLib:LiquidCalibrationSave:WrongFormat',...
-    'Save data should be a structure!')
+    'Save data should be a structure.')
 savedata = ValveDataManagerStruct;
 % todo: should it be?
 
@@ -17,24 +21,18 @@ savedata = ValveDataManagerStruct;
 if isfield(savedata.metadata, 'COM')
     savedCOM = savedata.metadata.COM;
 else
-    savedCOM = [];
+    savedCOM = 'none';
 end
-if ~isempty(p.Results.BpodSystem)
-    SerialPort = p.Results.BpodSystem.SerialPort;
-    if isempty(SerialPort)
-        currentCOM = 'EMU';
-    else
-        currentCOM = SerialPort.Port;
-    end
+currentCOM = BpodLib.utils.getCurrentCOM(BpodSystem);
 
-    % check COM against saved value
-    if ~strcmp(currentCOM, savedCOM)
-        warning('COM port has changed.')
-        fprintf('Previous COM: %s\New COM: %s\n', savedCOM, currentCOM)
-    end
-    savedata.metadata.COM = currentCOM;
+% check COM against saved value
+if p.Results.verbose && ~strcmp(currentCOM, savedCOM)
+    warning('COM port has changed.')
+    fprintf('Previous COM: %s\nNew COM: %s\n', savedCOM, currentCOM)
+    % todo: is this warning useful?
 end
-% savedata.metadata.COMPort = BpodSystem.
+savedata.metadata.COM = currentCOM;
+
 
 % Write to JSON file
 writedata = jsonencode(savedata, 'PrettyPrint', true);
