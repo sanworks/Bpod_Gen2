@@ -3,7 +3,6 @@ import matlab.unittest.TestRunner
 import matlab.unittest.plugins.CodeCoveragePlugin
 import matlab.unittest.plugins.codecoverage.CoverageReport
 
-addpath('TestUtilities')
 % Create a test suite for all tests in the Tests directory
 suite = TestSuite.fromFolder('.', 'IncludingSubfolders', true);
 
