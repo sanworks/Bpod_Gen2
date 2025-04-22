@@ -16,9 +16,10 @@ GUIHandles
 
 classdef LiquidCalibratorUI < handle
 properties
-    BpodSystem
+    BpodSystem % for .GUIHandles and for running the RunRewardCal
     GUIHandles
     ValveDataManager
+    savepath
 
     PendingMeasurements  % struct: the measurements to add to the data, indexed by valve name
     Measurement2add
@@ -32,10 +33,13 @@ methods
         % :type ValveDataManager: BpodLib.calibration.liquid.ValveDataManagerClass
         % :param BpodSystem: the BpodSystem object to use
         % :type BpodSystem: BpodObject
+        % :param savepath: Filepath to save liquid calibration to
+        % :type savepath: char
 
         p = inputParser();
         p.addRequired('ValveDataManager'); % BpodSystem.CalibrationTables.LiquidCal
         p.addParameter('BpodSystem', []);
+        p.addParameter('savepath', [])
         p.parse(varargin{:});
 
         % If BpodSystem is specified insert self into GUIHandles (for closing on EndBpod)
@@ -47,6 +51,7 @@ methods
         end
 
         obj.ValveDataManager = p.Results.ValveDataManager;
+        obj.savepath = p.Results.savepath;
         
         obj.CalibrationTargetRange = [2, 10]; % uL of liquid to calibrate
         ValveListboxString = obj.ValveDataManager.getValveNames();
@@ -412,11 +417,13 @@ methods
 
     function saveFile(obj, varargin)
         % Save file
-        % todo: figure out how the saving will work
-        BpodSystem = obj.BpodSystem;
-        SavePath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.json');
-        % obj.ValveDataManager.saveData(SavePath);
-        warning('False save.')
+        saveFolder = fileparts(obj.savePath);
+        if exist(saveFolder) ~= 7
+            mkdir(saveFolder);
+        end
+        % BpodLib.calibration.liquid.io.save(obj.ValveDataManager.createSaveData(), 'BpodSystem', obj.BpodSystem, 'filepath', obj.savePath, 'verbose', true)
+        warning('LiquidCalibratorUI.saveFile() not completing save while in dev mode.')
+        % todo: make save work before final release
     end
 
     function AddCalMeasurements(obj, varargin)
@@ -485,11 +492,6 @@ methods
             % LiquidCalibrationManager to reflect the new pending measurements vector
             
             % Save file
-            % todo: handle this save reference, should be in saveFile?
-            TestSavePath = fullfile(obj.BpodSystem.Path.BpodRoot, 'Calibration Files');
-            if exist(TestSavePath) ~= 7
-                mkdir(TestSavePath);
-            end
             obj.saveFile()
             % todo: modify insert valve insertion into BpodSystem
 %             BpodSystem.CalibrationTables.LiquidCal = LiquidCal;

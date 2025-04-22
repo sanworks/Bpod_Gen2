@@ -17,14 +17,13 @@ LiquidCal = load(sourcepath, 'LiquidCal').LiquidCal;
 
 nValves = numel(LiquidCal);
 if nValves ~= 8
-    warning('BpodLib:ValveDataManagerClass:Unexpected valve number', '8 valves expected but %i found. User-modified liquid calibration data likely.', nValves);
+    warning('BpodLib:ValveDataManagerClass:UnexpectedValveNumber', '8 valves expected but %i found. User-modified liquid calibration data likely.', nValves);
 end
 
 valveManager = BpodLib.calibration.liquid.compatibility.convertFormat(LiquidCal);
 
-valveManager.saveData(savepath);
 valveDatas = valveManager.createSaveData();
 currentCOM = BpodLib.utils.getCurrentCOM(BpodSystem);
 valveDatas.metadata.COM = currentCOM;
-BpodLib.calibration.liquid.io.save(valveDatas, savepath, 'BpodSystem', BpodSystem);
+BpodLib.calibration.liquid.io.save(valveDatas, 'filepath', savepath, 'BpodSystem', BpodSystem);
 end

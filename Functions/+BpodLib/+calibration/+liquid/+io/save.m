@@ -1,11 +1,11 @@
-function save(ValveDataManagerStruct, filepath, varargin)
+function save(ValveDataManagerStruct, varargin)
 % Save liquid calibration data to disk
 % :param ValveDataManagerStruct: The output of ValveDataManager.createSaveData()
 % :type ValveDataManagerStruct: struct
 
-
 p = inputParser();
 p.addParameter('BpodSystem', [])
+p.addParameter('filepath', [])
 p.addParameter('type', [])
 p.addParameter('verbose', false)
 p.parse(varargin{:})
@@ -15,7 +15,24 @@ BpodSystem = BpodLib.utils.getBpodSystem(p);
 assert(isa(ValveDataManagerStruct, 'struct'),'BpodLib:LiquidCalibrationSave:WrongFormat',...
     'Save data should be a structure.')
 savedata = ValveDataManagerStruct;
-% todo: should it be?
+
+% Determine the save location of the calibration file
+if isempty(p.Results.filepath)
+    assert(~isempty(p.Results.type), "Either 'filepath' or 'type' must be specified")
+    calibrationFolderpath = BpodLib.pathGetPath(BpodSystem, 'liquidcalibration');
+    switch lower(p.Results.type)
+        case 'statemachine'
+            filename = 'LiquidCalibration.json';
+        case 'portarray'
+            filename = 'LiquidCalibration-PortArrays.json';
+        otherwise
+            error('BpodLib:LiquidCalibration:UnrecognisedType', "Load type '%s' not recognised, should be 'statemachine' or 'portarray'", p.Results.type)
+    end
+    filepath = fullfile(calibrationFolderpath, filename);
+else
+    assert(isempty(p.Results.type), 'Only provide filepath or automate save location with type')
+    filepath = p.Results.filepath;
+end
 
 % Insert COM port metadata
 if isfield(savedata.metadata, 'COM')
@@ -29,7 +46,6 @@ currentCOM = BpodLib.utils.getCurrentCOM(BpodSystem);
 if p.Results.verbose && ~strcmp(currentCOM, savedCOM)
     warning('COM port has changed.')
     fprintf('Previous COM: %s\nNew COM: %s\n', savedCOM, currentCOM)
-    % todo: is this warning useful?
 end
 savedata.metadata.COM = currentCOM;
 

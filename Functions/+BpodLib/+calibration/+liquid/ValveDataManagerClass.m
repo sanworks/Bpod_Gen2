@@ -2,8 +2,6 @@
 % This class is used to store ValveData objects for multiple valves, and provides methods for getting and saving data.
 % The valve datas are stored in a cell array, with each cell containing a ValveData object (a handle) for a single valve.
 
-
-
 classdef ValveDataManagerClass < handle
 properties
     ValveDatas  % struct of BpodLib.calibration.liquid.ValveData objects, indexed by valve name
@@ -104,7 +102,7 @@ methods
     end
 
     function saveData(obj, filepath)
-        % Save data to a file
+        % Convenience function to save data, BpodLib.calibration.liquid.io.save is preferred
         % :param filepath: the path to the file to save
         % :type filepath: char
         %
@@ -124,8 +122,7 @@ methods
         % Coeffs is a 1x3 array of polynomial coefficients (2nd order polynomial)
         % Durations and Amounts are arrays of the same length
 
-        
-        BpodLib.calibration.liquid.io.save(obj.createSaveData(), filepath)
+        BpodLib.calibration.liquid.io.save(obj.createSaveData(), 'filepath', filepath, 'verbose', false)
     end
 
     function loadData(obj, filepath, varargin)
