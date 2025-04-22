@@ -220,7 +220,18 @@ classdef BpodObject < handle
 
             % Load liquid calibration
             % BpodLib.calibration.liquid.compatibility.conversionscript(obj)  % todo: finalise this inclusion
-            obj.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', obj);
+            % todo these try catch statements can be improved by specifically catching file not found error?
+            try
+                obj.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', obj, 'type', 'statemachine');
+            catch
+                obj.CalibrationTables.LiquidCal = [];
+            end
+
+            try
+                obj.CalibrationTables.PortArrays = BpodLib.calibration.liquid.io.load('BpodSystem', obj, 'type', 'portarray');
+            catch
+                obj.CalibrationTables.PortArrays = [];
+            end
 
             % Load sound calibration
             try

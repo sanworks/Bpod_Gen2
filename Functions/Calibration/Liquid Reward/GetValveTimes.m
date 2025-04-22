@@ -1,23 +1,29 @@
 function ValveTimes_s = GetValveTimes(LiquidAmount_uL, TargetValves, varargin)
 % Get time required for target valves to release requested amount of liquid
 % 
+% times_s = GetValveTimes(10, [1, 3]);
+% times_s_portarray = GetValveTimes(10, [1, 3], 'PortArray', 1);
+% 
 % :param LiquidAmount: Required amount of liquid
 % :type LiquidAmount: double
 % :param TargetValves: Valves to retrieve times for
 % :type TargetValves: int or array
+% :param PortArray: PortArrayModule's indentity, integer
+% :type PortArray: double
 
 p = inputParser();
 p.addParameter('BpodSystem', [])
-p.addParameter('ValveDataManager', [])
+p.addParameter('PortArray', [])
 p.parse(varargin{:})
 
 persistent deprecationWarningIssued
 
 BpodSystem = BpodLib.utils.getBpodSystem(p);
-if isfield(BpodSystem.CalibrationTables, 'LiquidCal')
+if isempty(p.Results.PortArray)
     LiquidCal = BpodSystem.CalibrationTables.LiquidCal;
+    assert(~isempty(LiquidCal), 'Liquid calibration table not found.')
 
-    if isa(LiquidCal, 'struct')
+    if isa(LiquidCal, 'struct') % The legacy system
         if isempty(deprecationWarningIssued)
             warning('GetValveTimes:Deprecation', ...
             'The LiquidCalibration.mat file should have been converted into a .json file. This warning means this has not happened, and the file will have to be modified. Please contact the forums for assistance.');
@@ -27,7 +33,15 @@ if isfield(BpodSystem.CalibrationTables, 'LiquidCal')
         return
     else
         ValveDataManager = LiquidCal;
+        portnameFunc = @(index) sprintf('Valve%i', index);
     end
+else
+    assert(isa(BpodSystem.CalibrationTables.PortArrays, 'BpodLib.calibration.liquid.ValveDataManagerClass'), 'PortArray calibration data not loaded and therefore cannot find value.')
+    % This error probably means .PortArrays = []
+    % todo: write descriptive comment here for users who try to get the valve without having initialised it?
+    ValveDataManager = BpodSystem.CalibrationTables.PortArrays;
+    portname = sprintf('PA%i', p.Results.PortArray);
+    portnameFunc = @(index) sprintf('%s-%i', portname, index);
 end
 
 
@@ -36,9 +50,8 @@ ValveTimes_ms = nan(1,nValves);
 
 for x = 1:nValves
     valveNumber = TargetValves(x);
-    valveName = sprintf('Valve%i', valveNumber);
+    valveName = portnameFunc(valveNumber);
     valveTime_ms = ValveDataManager.getValve(valveName).getValveTime(LiquidAmount_uL);
-
     ValveTimes_ms(x) = valveTime_ms;
 end
 

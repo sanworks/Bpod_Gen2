@@ -1,22 +1,23 @@
 function liquidData = load(varargin)
-% Load a calibration file into BpodSystem
+% Load a calibration file from disk
+%
+% :param type: Source to read for the file either 'statemachine' (default) or 'portarray'
+% :type type: char
 % :return liquidData: The liquid data determined to be for the state machine
 % :rtype: struct or BpodLib.calibration.liquid.ValveDataManagerClass
 
 % todo: create tests for this
 p = inputParser();
 p.addParameter('BpodSystem', [])
-p.addParameter('type', 'statemachine')
-p.addParameter('index', [])
+p.addParameter('type', [])
 p.parse(varargin{:})
 BpodSystem = p.Results.BpodSystem;
 
-% todo: handle multi more gracefully
 switch lower(p.Results.type)
     case 'statemachine'
         filename = 'LiquidCalibration.json';
     case 'portarray'
-        filename = sprintf('LiquidCalibration-PA%i.json', p.addParameter.index);
+        filename = 'LiquidCalibration-PortArrays.json';
     otherwise
         error('BpodLib:LiquidCalibration:UnrecognisedType', "Load type '%s' not recognised, should be 'statemachine' or 'portarray'", p.Results.type)
 end
@@ -48,7 +49,7 @@ if isJSON
     return
 else
     if isLegacy
-        assert(strcmp(p.Results.type, 'portarray'), 'BpodLib') % todo: complete error msg
+        assert(strcmp(p.Results.type, 'statemachine'), 'Port Array not supported with old .mat format.')
         liquidData = load(fullfile(calibrationFolderpath, 'LiquidCalibration.mat'), 'LiquidCal').LiquidCal;
         % Eventually this should return a warning for being unsupported
         return
