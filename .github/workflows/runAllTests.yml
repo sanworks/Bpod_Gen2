@@ -40,6 +40,6 @@ jobs:
 
       # You can use "run-command" to execute custom MATLAB scripts, functions, or statements
       - name: Run custom testing procedure
-       uses: matlab-actions/run-command@v2
-       with:
-         command: disp('Running my custom testing procedure!'); addpath('Tests'); runAllTests; assertSuccess(results);
+        uses: matlab-actions/run-command@v2
+        with:
+          command: disp('Running my custom testing procedure!'); addpath('Tests'); runAllTests; assertSuccess(results);
