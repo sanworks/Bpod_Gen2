@@ -8,6 +8,8 @@ mkdir(calFolder)
 copyfile(fullfile(parentDir, 'Bpod_Gen2/Examples/Example Calibration Files'), calFolder)
 
 % GitHub Actions can't startup Bpod because of its GUI elements
+% Have to add Bpod's paths manually
+addpath(genpath('Functions'));
 % Bpod EMU
 % EndBpod
 %% Run all of the tests
