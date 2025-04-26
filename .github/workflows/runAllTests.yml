@@ -3,9 +3,9 @@ name: Run all Bpod tests
 # Triggers for running the workflow
 on:
   push:
-    branches: [master, dev]
+    branches: [master, develop]
   pull_request:
-    branches: [master, dev]
+    branches: [master, develop]
 
   # Allows running workflow manually from the Actions tab
   workflow_dispatch:
