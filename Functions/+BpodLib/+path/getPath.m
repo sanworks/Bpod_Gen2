@@ -27,6 +27,7 @@ if ~isSingle
 end
 
 switch lower(target)
+    % protocol and data roots can be set by the user in the Bpod console
     case 'local'
         path = BpodSystem.Path.LocalDir;
     case 'liquidcalibration'

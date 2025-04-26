@@ -66,7 +66,7 @@ for y = 1:nValves
         % Valve is switched open and must have another message sent to close
         openvalveaction = valvedata.outputaction;
         openvalveaction{2} = [openvalveaction{2} 1];
-        nextstate_pulseend = ['PulseClosed' valvedata.name];
+        nextstate_pulseend = ['PulseClosed' valvedata.name]; % use additional state to send close message
         closevalveaction = valvedata.outputaction;
         closevalveaction{2} = [closevalveaction{2} 0];
     end
