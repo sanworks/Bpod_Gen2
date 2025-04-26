@@ -18,9 +18,9 @@ end
 
 methods
     function obj = ValveDataClass()
-        obj.ValveName = [];
+        obj.ValveName = "";
         obj.Coeffs = [];
-        obj.LastDateModified = [];
+        obj.LastDateModified = "";
         obj.Durations = [];
         obj.Amounts = [];
     end
