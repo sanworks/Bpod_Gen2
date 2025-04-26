@@ -24,6 +24,6 @@ if isa(BpodSystem.CalibrationTables.LiquidCal, 'struct')
 end
 
 savepath = fullfile(BpodLib.path.getPath(BpodSystem, 'liquidcalibration'), 'LiquidCalibration.json');
-BpodLib.calibration.liquid.LiquidCalibratorUI(BpodSystem.CalibrationTables.LiquidCal, 'BpodSystem', BpodSystem, 'savepath', savepath)
+BpodLib.calibration.liquid.LiquidCalibratorUI(BpodSystem.CalibrationTables.LiquidCal, 'BpodSystem', BpodSystem, 'savepath', savepath);
 
 end

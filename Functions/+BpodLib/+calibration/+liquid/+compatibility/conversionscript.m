@@ -47,3 +47,6 @@ disp('Successfully converted LiquidCalibration.mat to LiquidCalibration.json');
 % msg = ["Bpod Local/Calibration Files/LiquidCalibration.mat has been converted to the new format: LiquidCalibration.json"; ...
 % "No change to existing installations/setups should occur."];
 % msgbox(msg, 'Success', 'modal')
+
+% Attach the new file into LiquidCal
+BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'type', 'statemachine');
