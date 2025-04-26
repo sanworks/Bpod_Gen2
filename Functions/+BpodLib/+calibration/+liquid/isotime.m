@@ -4,4 +4,5 @@ function datestring = isotime()
 % :rtype datestring: char
 dt = datetime('now');
 datestring = char(dt, 'yyyy-MM-dd HH:mm:ss');
+datestring = datestr(now, 31);
 end
