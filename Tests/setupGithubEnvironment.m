@@ -7,8 +7,8 @@ mkdir(localDir)
 mkdir(calFolder)
 copyfile(fullfile(parentDir, 'Bpod_Gen2/Examples/Example Calibration Files'), calFolder)
 
-% Startup bpod
-Bpod EMU
-EndBpod
+% GitHub Actions can't startup Bpod because of its GUI elements
+% Bpod EMU
+% EndBpod
 %% Run all of the tests
 % the workflow will run the tests
