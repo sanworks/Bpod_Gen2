@@ -60,16 +60,19 @@ end
 
 function test_GUItransfer(testCase)
     % Prepare the liquid calibration folder
+    global BpodSystem
     copyfile(fullfile(testCase.TestData.testDataFolder, 'LiquidCalibration.mat'), fullfile(testCase.TestData.calibrationFolder, 'LiquidCalibration.mat'));
+    BpodSystem.CalibrationTables.LiquidCal = load(fullfile(testCase.TestData.testDataFolder, 'LiquidCalibration.mat'), 'LiquidCal').LiquidCal;
     
     % Test GUI
-    global BpodSystem
     feval(get(BpodSystem.GUIHandles.SettingsButton, 'Callback')) % Click on the settings menu button
     feval(get(BpodSystem.GUIHandles.LiquidCalLaunchButton, 'Callback')) % Open up liquid calibration file
-    close(BpodSystem.GUIHandles.LiquidCalibrator)
+    testCase.verifyTrue(isa(BpodSystem.GUIHandles.LiquidCalibrator, 'struct'))
+    close(BpodSystem.GUIHandles.LiquidCalibrator.MainFig)
 
     completed = BpodLib.calibration.liquid.compatibility.conversionscript(BpodSystem);
     feval(get(BpodSystem.GUIHandles.SettingsButton, 'Callback')) % Click on the settings menu button
     feval(get(BpodSystem.GUIHandles.LiquidCalLaunchButton, 'Callback')) % Open up liquid calibration file
+    testCase.verifyTrue(isa(BpodSystem.GUIHandles.LiquidCalibrator, 'BpodLib.calibration.liquid.LiquidCalibratorUI'))
     close(BpodSystem.GUIHandles.LiquidCalibrator)
 end
