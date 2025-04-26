@@ -42,4 +42,4 @@ jobs:
       - name: Run custom testing procedure
         uses: matlab-actions/run-command@v2
         with:
-          command: disp('Running my custom testing procedure!'); addpath('Tests'); runAllTests; assertSuccess(results);
+          command: disp('Running my custom testing procedure!'); Bpod; addpath('Tests'); runAllTests; assertSuccess(results);
