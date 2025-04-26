@@ -9,7 +9,7 @@ p.addParameter('filepath', [])
 p.addParameter('type', [])
 p.addParameter('verbose', false)
 p.parse(varargin{:})
-BpodSystem = BpodLib.utils.getBpodSystem(p);
+BpodSystem = p.Results.BpodSystem;
 
 % We want data to be a struct from the get-go because we might want to insert additional data later on...
 assert(isa(ValveDataManagerStruct, 'struct'),'BpodLib:LiquidCalibrationSave:WrongFormat',...
@@ -19,7 +19,7 @@ savedata = ValveDataManagerStruct;
 % Determine the save location of the calibration file
 if isempty(p.Results.filepath)
     assert(~isempty(p.Results.type), "Either 'filepath' or 'type' must be specified")
-    calibrationFolderpath = BpodLib.pathGetPath(BpodSystem, 'liquidcalibration');
+    calibrationFolderpath = BpodLib.path.getPath(BpodSystem, 'liquidcalibration');
     switch lower(p.Results.type)
         case 'statemachine'
             filename = 'LiquidCalibration.json';
@@ -35,19 +35,21 @@ else
 end
 
 % Insert COM port metadata
-if isfield(savedata.metadata, 'COM')
-    savedCOM = savedata.metadata.COM;
-else
-    savedCOM = 'none';
+if ~isempty(BpodSystem)
+    if isfield(savedata.metadata, 'COM')
+        savedCOM = savedata.metadata.COM;
+    else
+        savedCOM = 'none';
+    end
+    currentCOM = BpodLib.utils.getCurrentCOM(BpodSystem);
+    
+    % check COM against saved value
+    if p.Results.verbose && ~strcmp(currentCOM, savedCOM)
+        warning('COM port has changed.')
+        fprintf('Previous COM: %s\nNew COM: %s\n', savedCOM, currentCOM)
+    end
+    savedata.metadata.COM = currentCOM;
 end
-currentCOM = BpodLib.utils.getCurrentCOM(BpodSystem);
-
-% check COM against saved value
-if p.Results.verbose && ~strcmp(currentCOM, savedCOM)
-    warning('COM port has changed.')
-    fprintf('Previous COM: %s\nNew COM: %s\n', savedCOM, currentCOM)
-end
-savedata.metadata.COM = currentCOM;
 
 
 % Write to JSON file
