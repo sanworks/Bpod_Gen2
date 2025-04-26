@@ -1,6 +1,7 @@
-function tests = test_multisetup()
+function tests = test_load()
     tests = functiontests(localfunctions);
 end
+
 function setup(testCase)
     rootPath = tempname;  % Generate a unique temporary directory
     testCase.TestData.rootPath = rootPath;
@@ -68,9 +69,15 @@ end
 function test_createMulti(testCase)
     % Create a multi-machine setup from a single-machine setup
     BpodLib.calibration.liquid.multi.createMultiSetup(testCase.TestData.regularBpod)
-    testCase.verifyTrue(isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Calibration Files/Machine-COM13/LiquidCalibration.json')),...
-        'The LiquidCalibration.json should have been moved to LiqudCalibration-COM13.json')
 
+    % Test: file was moved to correct location
+    testCase.verifyTrue(~isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Calibration Files/LiquidCalibration.json')),...
+        'The LiquidCalibration.json should have been moved to Machine-COM13/LiquidCalibration.json')
+
+    testCase.verifyTrue(isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Calibration Files/Machine-COM13/LiquidCalibration.json')),...
+        'The LiquidCalibration.json should have been moved to Machine-COM13/LiquidCalibration.json')
+    
+    % Test: loader can actually find the file in its new location
     ValveDataManager = BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.multiBpod, 'type', 'statemachine');
     testCase.verifyTrue(isa(ValveDataManager, 'BpodLib.calibration.liquid.ValveDataManagerClass'), 'Should successfuly load the data')
 end
