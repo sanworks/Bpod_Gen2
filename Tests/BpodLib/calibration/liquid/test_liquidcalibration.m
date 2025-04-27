@@ -133,6 +133,10 @@ function normalized = normalizeJSON(jsonStr)
     
     % Remove variable timestamps
     normalized = regexprep(jsonStr, '"modification_datetime":\s*"[^"]*"', '"modification_datetime": ""');
+
+    % Make all numbers have fixed precision (Windows and Linux behaviours
+    % differ)
+    normalized = regexprep(normalized, '(\d+\.\d{5})\d+', '$1');
     
     % Parse and re-encode to standardize formatting
     try
