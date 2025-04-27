@@ -29,7 +29,7 @@ valve3.addMeasurement(35, 3.5);
 valve3.addMeasurement(66, 8.5);
 
 % Update LastDateModified to reflect the dummy data
-valve1.LastDateModified = char(datetime('2016-11-17 16:08:26'));  % original from Bpod_Gen2
+valve1.LastDateModified = '2016-11-17 16:08:26';  % original from Bpod_Gen2
 % valve3.LastDateModified = char(datetime('2024-07-17 09:22:28'));  % the date of this function's creation
 valve3.LastDateModified = "";
 
