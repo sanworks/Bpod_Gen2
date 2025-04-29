@@ -50,7 +50,7 @@ function test_renames(testCase)
     
     % Test file actions
     global BpodSystem
-    completed = BpodLib.calibration.liquid.compatibility.conversionscript(BpodSystem);
+    completed = BpodLib.calibration.liquid.compatibility.conversionscript(BpodSystem, 'verbose', false);
     calPath = testCase.TestData.calibrationFolder;
     matpath = fullfile(calPath, 'OLD LiquidCalibration.mat');
     jsonpath = fullfile(calPath, 'LiquidCalibration.json');
@@ -70,7 +70,7 @@ function test_GUItransfer(testCase)
     testCase.verifyTrue(isa(BpodSystem.GUIHandles.LiquidCalibrator, 'struct'))
     close(BpodSystem.GUIHandles.LiquidCalibrator.MainFig)
 
-    completed = BpodLib.calibration.liquid.compatibility.conversionscript(BpodSystem);
+    completed = BpodLib.calibration.liquid.compatibility.conversionscript(BpodSystem, 'verbose', false);
     feval(get(BpodSystem.GUIHandles.SettingsButton, 'Callback')) % Click on the settings menu button
     feval(get(BpodSystem.GUIHandles.LiquidCalLaunchButton, 'Callback')) % Open up liquid calibration file
     testCase.verifyTrue(isa(BpodSystem.GUIHandles.LiquidCalibrator, 'BpodLib.calibration.liquid.LiquidCalibratorUI'))

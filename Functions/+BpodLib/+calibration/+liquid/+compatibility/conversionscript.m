@@ -1,5 +1,9 @@
-function Completed = conversionscript(BpodSystem)
+function Completed = conversionscript(BpodSystem, varargin)
 % Convert the Liquid Calibration .mat file to the new .json format
+
+p = inputParser();
+p.addParameter('verbose', true)
+p.parse(varargin{:})
 
 Completed = 0;
 
@@ -43,7 +47,9 @@ end
 modifiedFilepath = fullfile(calibrationFolderpath, 'OLD LiquidCalibration.mat');
 
 movefile(oldFilepath, modifiedFilepath);
-disp('Successfully converted LiquidCalibration.mat to LiquidCalibration.json');
+if p.Results.verbose
+    disp('Successfully converted LiquidCalibration.mat to LiquidCalibration.json');
+end
 % msg = ["Bpod Local/Calibration Files/LiquidCalibration.mat has been converted to the new format: LiquidCalibration.json"; ...
 % "No change to existing installations/setups should occur."];
 % msgbox(msg, 'Success', 'modal')
