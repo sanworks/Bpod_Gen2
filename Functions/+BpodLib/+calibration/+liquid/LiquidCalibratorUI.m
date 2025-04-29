@@ -433,9 +433,7 @@ methods
         if exist(saveFolder) ~= 7
             mkdir(saveFolder);
         end
-        % BpodLib.calibration.liquid.io.save(obj.ValveDataManager.createSaveData(), 'BpodSystem', obj.BpodSystem, 'filepath', obj.savePath, 'verbose', true)
-        warning('LiquidCalibratorUI.saveFile() not completing save while in dev mode.')
-        % todo: make save work before final release
+        BpodLib.calibration.liquid.io.save(obj.ValveDataManager.createSaveData(), 'BpodSystem', obj.BpodSystem, 'filepath', obj.savePath, 'verbose', false)
     end
 
     function AddCalMeasurements(obj, varargin)
