@@ -4,6 +4,7 @@ function ValveManager = createValveManager(BpodSystem)
 ValveManager = BpodLib.compatibility.liquid.ValveDataManagerClass();
 switch BpodSystem.MachineType
     % todo: add values for other machine types
+    case 2; nModuleChannels = 4;
     case 3; nModuleChannels = 4;
     case 4; nModuleChannels = 3;
     otherwise; error('BpodLib:portarray.createValveManager:MachineTypeUnrecognised', 'Machine type unrecognised.')
