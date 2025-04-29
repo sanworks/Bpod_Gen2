@@ -19,9 +19,10 @@ properties
     BpodSystem % for .GUIHandles and for running the RunRewardCal
     GUIHandles
     ValveDataManager
-    savepath
+    savePath
 
     PendingMeasurements  % struct: the measurements to add to the data, indexed by valve name
+    PendingRun
     Measurement2add
     CalibrationTargetRange
 end
@@ -51,7 +52,7 @@ methods
         end
 
         obj.ValveDataManager = p.Results.ValveDataManager;
-        obj.savepath = p.Results.savepath;
+        obj.savePath = p.Results.savepath;
         
         obj.CalibrationTargetRange = [2, 10]; % uL of liquid to calibrate
         ValveListboxString = obj.ValveDataManager.getValveNames();
@@ -89,7 +90,7 @@ methods
             'Position', [20 300 250 50], 'Callback', @(src,event) obj.SuggestPoints(src,event));
         set(obj.GUIHandles.SuggestPointsButton, 'CData', imread('SuggestPoints.bmp'));
         obj.GUIHandles.MeasurePendingButton = uicontrol('Style', 'pushbutton',...
-            'Position', [290 300 250 50], 'Callback', @(src,event) obj.RunPendingMeasurements(src,event));
+            'Position', [290 300 250 50], 'Callback', @(src,event) obj.PreRunPendingCheck(src,event));
         set(obj.GUIHandles.MeasurePendingButton, 'CData', imread('MeasurePending.bmp'));
         obj.GUIHandles.TestCurveButton = uicontrol('Style', 'pushbutton',...
             'Position', [560 300 250 50], 'Callback', @(src,event) obj.TestSpecificAmount(src,event));
@@ -201,8 +202,36 @@ methods
     end
 
     function AddPendingMeasurement(obj, src, event)
-        % Add a pending measurement to the selected valve
+        % -- Request user for measurement value
+        obj.GUIHandles.ValueEntryFig = figure('Position', [540 400 400 200],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off' );
+        ha = axes('units','normalized', 'position',[0 0 1 1]);
+        uistack(ha,'bottom');
+        BG = imread('RewardCalEnterValue.bmp');
+        image(BG); axis off;
+        obj.GUIHandles.AmountEntry = uicontrol('Style', 'edit', 'String', '0', 'Position', [75 15 115 50], 'FontWeight', 'bold', 'FontSize', 20);
+        CalOkButtonGFX = imread('CalOkButton.bmp');
+        obj.GUIHandles.OkButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [250 15 80 50], 'Callback', @(src, event) obj.GetPendingMeasurementFromUser(), 'CData', CalOkButtonGFX, 'TooltipString', 'Confirm entry');
+    end
 
+    function GetPendingMeasurementFromUser(obj, src, event)
+        % Get a value for liquid amount from the user
+        ValueEntered = get(obj.GUIHandles.AmountEntry, 'String');
+        ValidEntry = 1;
+        CandidateValue = str2double(ValueEntered);
+        if isnan(CandidateValue)
+            ValidEntry = 0;
+        elseif CandidateValue < 1
+            ValidEntry = 0;
+        elseif CandidateValue > 5000
+            ValidEntry = 0;
+        end
+        if ValidEntry == 1
+            obj.Measurement2add = CandidateValue;
+        else
+            obj.Measurement2add = NaN;
+        end
+
+        % Add a pending measurement to the selected valve
         ThisValveCalEntries = get(obj.GUIHandles.MeasurementSelector,'String');
         selectedValveIndex = get(obj.GUIHandles.ValveSelector,'Value');
         nValvesSelected = length(selectedValveIndex);
@@ -218,17 +247,6 @@ methods
             nEntries = length(ThisValveCalEntries);
         end
 
-        % -- Request user for measurement value
-        obj.GUIHandles.ValueEntryFig = figure('Position', [540 400 400 200],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off' );
-        ha = axes('units','normalized', 'position',[0 0 1 1]);
-        uistack(ha,'bottom');
-        BG = imread('RewardCalEnterValue.bmp');
-        image(BG); axis off;
-        obj.GUIHandles.AmountEntry = uicontrol('Style', 'edit', 'String', '0', 'Position', [75 15 115 50], 'FontWeight', 'bold', 'FontSize', 20);
-        CalOkButtonGFX = imread('CalOkButton.bmp');
-        OkButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [250 15 80 50], 'Callback', @(src, event) obj.GetPendingMeasurementFromUser(), 'CData', CalOkButtonGFX, 'TooltipString', 'Confirm entry');
-        uiwait(gcf); % ? should this be obj.GUIHandles.ValueEntryFig?
-
         % -- Add the measurement to the pending list
         Value2measure = obj.Measurement2add;
         if ~isnan(Value2measure)
@@ -236,8 +254,8 @@ methods
             for x = 1:nValvesSelected
                 % Check to make sure value doesn't already exist in pending measurements
                 valveName = obj.GUIHandles.ValveSelector.String{selectedValveIndex};
-%                 valveName = CurrentValve{x}; ? this assumes more than one
-%                 valve can be selected
+%                 valveName = CurrentValve{x}; 
+                % ? this assumes more than one valve can be selected
                 Pending = obj.PendingMeasurements.(valveName);
                 if ~isempty(Pending)
                     if sum(Pending == Value2measure) > 0
@@ -264,25 +282,7 @@ methods
             end
         end
         set(obj.GUIHandles.MeasurementSelector,'String',ThisValveCalEntries);
-    end
 
-    function GetPendingMeasurementFromUser(obj, src, event)
-        % Get a value for liquid amount from the user
-        ValueEntered = get(obj.GUIHandles.AmountEntry, 'String');
-        ValidEntry = 1;
-        CandidateValue = str2double(ValueEntered);
-        if isnan(CandidateValue)
-            ValidEntry = 0;
-        elseif CandidateValue < 1
-            ValidEntry = 0;
-        elseif CandidateValue > 5000
-            ValidEntry = 0;
-        end
-        if ValidEntry == 1
-            obj.Measurement2add = CandidateValue;
-        else
-            obj.Measurement2add = NaN;
-        end
         close(obj.GUIHandles.ValueEntryFig);
     end
 
@@ -358,8 +358,7 @@ methods
         obj.DisplayValve();
     end
 
-
-    function RunPendingMeasurements(obj, varargin)
+    function PreRunPendingCheck(obj, varargin)
         % Create a vector of measurements to test
         ValveIDs = [];
         PulseDurations = [];
@@ -374,44 +373,57 @@ methods
                 PulseDurations = [PulseDurations (PendingMeasurements.(valveName)(1))/1000];
             end
         end
+        obj.PendingRun.ValveNames = valveNames;
+        obj.PendingRun.ValveIDs = ValveIDs;
+        obj.PendingRun.PulseDurations = PulseDurations;
         nValidMeasurements = length(ValveIDs);
-        if ~isempty(ValveIDs)
-            % Deliver liquid
-            k = msgbox('Please refill liquid reservoirs and click Ok to begin.', 'modal');
-            waitfor(k);
-            Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, str2double(get(obj.GUIHandles.nPulsesEdit, 'string')), valveNames, PulseDurations, 'PulseInterval', .2);
-            if Completed
-                % Enter measurements:
-                
-                % Set up window
-                % todo: make compatible with port array and other numbers
-                obj.GUIHandles.RunMeasurementsFig = figure('Position', [540 100 317 530],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'Name', 'Enter pending measurements');
-                ha = axes('units','normalized', 'position',[0 0 1 1]);
-                uistack(ha,'bottom');
-                BG = imread('CuedMeasurementEntry.bmp');
-                image(BG); axis off;
-                obj.GUIHandles.CB1b = uicontrol('Style', 'edit', 'Position', [155 379 80 35], 'TooltipString', 'Enter liquid weight for valve 1', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-                obj.GUIHandles.CB2b = uicontrol('Style', 'edit', 'Position', [155 336 80 35], 'TooltipString', 'Enter liquid weight for valve 2', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-                obj.GUIHandles.CB3b = uicontrol('Style', 'edit', 'Position', [155 293 80 35], 'TooltipString', 'Enter liquid weight for valve 3', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-                obj.GUIHandles.CB4b = uicontrol('Style', 'edit', 'Position', [155 250 80 35], 'TooltipString', 'Enter liquid weight for valve 4', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-                obj.GUIHandles.CB5b = uicontrol('Style', 'edit', 'Position', [155 207 80 35], 'TooltipString', 'Enter liquid weight for valve 5', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-                obj.GUIHandles.CB6b = uicontrol('Style', 'edit', 'Position', [155 164 80 35], 'TooltipString', 'Enter liquid weight for valve 6', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-                obj.GUIHandles.CB7b = uicontrol('Style', 'edit', 'Position', [155 121 80 35], 'TooltipString', 'Enter liquid weight for valve 7', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-                obj.GUIHandles.CB8b = uicontrol('Style', 'edit', 'Position', [155 78 80 35], 'TooltipString', 'Enter liquid weight for valve 8', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-                MeasurementButtonGFX2 = imread('MeasurementEntryOkButtonBG.bmp');
-                obj.GUIHandles.EnterMeasurementButton2 = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [120 7 80 50], 'Callback', @(src, event) obj.AddCalMeasurements(), 'TooltipString', 'Enter measurement', 'CData', MeasurementButtonGFX2);
-                
-                % Prompt for each valid measurement in order, un-hiding the GUI box and
-                % displaying a cursor triangle on the correct row
-                for y = 1:8
-                    if isempty(find(y == ValveIDs))
-                        eval(['set(obj.GUIHandles.CB' num2str(y) 'b, ''Enable'', ''off'')'])
-                    else
-                        eval(['set(obj.GUIHandles.CB' num2str(y) 'b, ''Enable'', ''on'', ''BackgroundColor'', [.6 .9 .6])'])
-                    end
+
+        mb = msgbox('Please refill liquid reservoirs and click Ok to begin.', 'non-modal');
+        okbutton = mb.findobj('Tag', 'OKButton');
+        okbutton.Callback = @(~, ~) mbfunc(mb);
+        obj.GUIHandles.OkButton = okbutton; % used in unit test user input simulation
+
+        function mbfunc(mbox)
+            close(mbox)
+            obj.RunPendingMeasurements
+        end
+
+    end
+
+    function RunPendingMeasurements(obj, varargin)
+        % Deliver liquid
+        Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, str2double(get(obj.GUIHandles.nPulsesEdit, 'string')), obj.PendingRun.ValveNames, obj.PendingRun.PulseDurations, 'PulseInterval', .2);
+        if Completed
+            % Enter measurements:
+            
+            % Set up window
+            % todo: make compatible with port array and other numbers
+            obj.GUIHandles.RunMeasurementsFig = figure('Position', [540 100 317 530],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'Name', 'Enter pending measurements');
+            ha = axes('units','normalized', 'position',[0 0 1 1]);
+            uistack(ha,'bottom');
+            BG = imread('CuedMeasurementEntry.bmp');
+            image(BG); axis off;
+            obj.GUIHandles.CB1b = uicontrol('Style', 'edit', 'Position', [155 379 80 35], 'TooltipString', 'Enter liquid weight for valve 1', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
+            obj.GUIHandles.CB2b = uicontrol('Style', 'edit', 'Position', [155 336 80 35], 'TooltipString', 'Enter liquid weight for valve 2', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
+            obj.GUIHandles.CB3b = uicontrol('Style', 'edit', 'Position', [155 293 80 35], 'TooltipString', 'Enter liquid weight for valve 3', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
+            obj.GUIHandles.CB4b = uicontrol('Style', 'edit', 'Position', [155 250 80 35], 'TooltipString', 'Enter liquid weight for valve 4', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
+            obj.GUIHandles.CB5b = uicontrol('Style', 'edit', 'Position', [155 207 80 35], 'TooltipString', 'Enter liquid weight for valve 5', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
+            obj.GUIHandles.CB6b = uicontrol('Style', 'edit', 'Position', [155 164 80 35], 'TooltipString', 'Enter liquid weight for valve 6', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
+            obj.GUIHandles.CB7b = uicontrol('Style', 'edit', 'Position', [155 121 80 35], 'TooltipString', 'Enter liquid weight for valve 7', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
+            obj.GUIHandles.CB8b = uicontrol('Style', 'edit', 'Position', [155 78 80 35], 'TooltipString', 'Enter liquid weight for valve 8', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
+            MeasurementButtonGFX2 = imread('MeasurementEntryOkButtonBG.bmp');
+            obj.GUIHandles.EnterMeasurementButton2 = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [120 7 80 50], 'Callback', @(src, event) obj.AddCalMeasurements(), 'TooltipString', 'Enter measurement', 'CData', MeasurementButtonGFX2);
+            
+            % Prompt for each valid measurement in order, un-hiding the GUI box and
+            % displaying a cursor triangle on the correct row
+            for y = 1:8
+                if isempty(find(y == obj.PendingRun.ValveIDs))
+                    eval(['set(obj.GUIHandles.CB' num2str(y) 'b, ''Enable'', ''off'')'])
+                else
+                    eval(['set(obj.GUIHandles.CB' num2str(y) 'b, ''Enable'', ''on'', ''BackgroundColor'', [.6 .9 .6])'])
                 end
-                drawnow;
             end
+            drawnow;
         end
     end
 
@@ -495,7 +507,7 @@ methods
             obj.saveFile()
             % todo: modify insert valve insertion into BpodSystem
 %             BpodSystem.CalibrationTables.LiquidCal = LiquidCal;
-            msgbox('Calibration files updated.', 'modal')
+            obj.GUIHandles.msgbox = msgbox('Calibration files updated.', 'non-modal');
             close(obj.GUIHandles.RunMeasurementsFig);
             obj.DisplayValve();
         end
