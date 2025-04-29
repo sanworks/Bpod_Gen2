@@ -101,7 +101,6 @@ else
         end
     end
 end
-BpodLib.path.verifyPathing(BpodSystem)
 
 function emulator_setup(varargin)
 % Runs setup with emulator mode flag set to 'true'.
