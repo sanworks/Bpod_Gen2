@@ -9,7 +9,7 @@ function setup(testCase)
     mkdir(localdir)
     
     mockBpod = struct();
-    mockBpod.SerialPort.Port = 'COM13';
+    mockBpod.SerialPort.PortName = 'COM13';
     mockBpod.Path.LocalDir = localdir;
     testCase.TestData.mockBpod = mockBpod;
 end

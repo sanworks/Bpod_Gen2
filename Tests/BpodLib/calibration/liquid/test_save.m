@@ -17,7 +17,7 @@ function setup(testCase)
 
     % Create various filesetups
     mockBpod = struct();
-    mockBpod.SerialPort.Port = 'COM13';
+    mockBpod.SerialPort.PortName = 'COM13';
     mockBpod.CalibrationTables.LiquidCal = valveManager;
     % Regular setup
     folderPath = fullfile(rootPath, 'CF Regular');

@@ -97,7 +97,7 @@ function test_Conversion(testCase)
     % Save new file
     newJSONPath = fullfile(testCase.TestData.rootPath, 'new.json');
     mockBpodSystem = struct();
-    mockBpodSystem.SerialPort.Port = 'COM1';
+    mockBpodSystem.SerialPort.PortName = 'COM1';
     [folder, ~] = fileparts(testCase.TestData.oldMATPath);
     mockBpodSystem.Path.LocalDir = folder;
     BpodLib.calibration.liquid.compatibility.convertMAT2JSON(mockBpodSystem, testCase.TestData.oldMATPath, newJSONPath);

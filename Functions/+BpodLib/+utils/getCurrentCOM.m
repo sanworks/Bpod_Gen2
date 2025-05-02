@@ -5,7 +5,7 @@ function comport = getCurrentCOM(BpodSystem)
 if isempty(BpodSystem.SerialPort)
     comport = 'EMU';
 else
-    comport = BpodSystem.SerialPort.Port;
+    comport = BpodSystem.SerialPort.PortName;
 end
 
 end
