@@ -53,13 +53,10 @@ methods
 
         obj.ValveDataManager = p.Results.ValveDataManager;
         obj.savePath = p.Results.savepath;
+        obj.PendingMeasurements = BpodLib.calibration.liquid.PendingMeasurementManager(obj.ValveDataManager);
         
         obj.CalibrationTargetRange = [2, 10]; % uL of liquid to calibrate
         ValveListboxString = obj.ValveDataManager.getValveNames();
-        obj.PendingMeasurements = struct();
-        for i = 1:length(ValveListboxString)
-            obj.PendingMeasurements.(ValveListboxString{i}) = [];
-        end
 
         % Create the user interface
         obj.GUIHandles = struct();
@@ -110,6 +107,25 @@ methods
         obj.close()
     end
 
+    function valveName = selectedValve(obj)
+        % Get the name of the selected valve
+        selectedValveIndex = get(obj.GUIHandles.ValveSelector, 'Value');
+        allValveNames = obj.ValveDataManager.getValveNames();
+        valveName = allValveNames{selectedValveIndex};
+        % check against guihandle string
+        if ~strcmp(valveName, obj.GUIHandles.ValveSelector.String{selectedValveIndex})
+            error('Valve name mismatch')
+        end
+    end
+
+    function saveFile(obj, varargin)
+        % Save file
+        saveFolder = fileparts(obj.savePath);
+        if exist(saveFolder) ~= 7
+            mkdir(saveFolder);
+        end
+        BpodLib.calibration.liquid.io.save(obj.ValveDataManager.createSaveData(), 'BpodSystem', obj.BpodSystem, 'filepath', obj.savePath, 'verbose', false)
+    end
 
     function DisplayValve(obj, ~, ~)
         % Update the GUI to show a valve
@@ -122,16 +138,8 @@ methods
 
         % -- Update measurement list
         ThisValveCalEntries = cell(1, 1);
-        if nMeasurements == 0
-            if isempty(obj.PendingMeasurements.(ValveToShowName))
-                ThisValveCalEntries{1} = 'No measurements found';
-                set(obj.GUIHandles.MeasurementSelector, 'Value', 1)
-            else
-                for x = 1:length(obj.PendingMeasurements.(ValveToShowName))
-                    ThisValveCalEntries{x} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '  num2str(obj.PendingMeasurements.(ValveToShowName)(x)) 'ms</FONT></html>'];
-                end
-            end
-        else
+        % Add existing calibration data to list
+        if ~isempty(ValveData.Durations)
             for x = 1:nMeasurements
                 Pad = '';
                 if ValveData.Durations(x) < 100
@@ -142,11 +150,21 @@ methods
                 end
                 ThisValveCalEntries{x} = [num2str(ValveData.Durations(x)) 'ms pulse ' Pad '=  ' num2str(ValveData.Amounts(x)) 'ul liquid'];
             end
-            if ~isempty(obj.PendingMeasurements.(ValveToShowName))
-                for x = 1:length(obj.PendingMeasurements.(ValveToShowName))
-                    ThisValveCalEntries{nMeasurements+x} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '  num2str(obj.PendingMeasurements.(ValveToShowName)(x)) 'ms</FONT></html>'];
-                end
+        end
+
+        % Add pending measurements to list
+        PendingDurations = obj.PendingMeasurements.data.(ValveToShowName);
+        if ~isempty(PendingDurations)
+            nPendingMeasurements = length(PendingDurations);
+            for x = 1:nPendingMeasurements
+                ThisValveCalEntries{end+1} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '  num2str(PendingDurations(x)) 'ms</FONT></html>'];
             end
+        end
+
+        % If no measurements exist, add a message to the list
+        if isempty(ThisValveCalEntries{1})
+            ThisValveCalEntries{1} = 'No measurements found';
+            set(obj.GUIHandles.MeasurementSelector, 'Value', 1)
         end
 
         % If selected entry index exceeds total entries, set current highlighted
@@ -161,44 +179,44 @@ methods
 
         % -- Update plot of calibration values and curve
         ValveData = obj.ValveDataManager.getValve(ValveToShowName);
+        AxCalib = obj.GUIHandles.CalibrationCurveAxes;
         if ~isempty(ValveData.Coeffs)
             Vector = polyval(ValveData.Coeffs,0:.1:150);
             % Plot the calibration curve
-            plot(obj.GUIHandles.CalibrationCurveAxes,Vector, 0:.1:150, 'k-', 'LineWidth', 1.5);
-            hold(obj.GUIHandles.CalibrationCurveAxes, 'on');
+            plot(AxCalib,Vector, 0:.1:150, 'k-', 'LineWidth', 1.5);
+            hold(AxCalib, 'on');
             % Plot the real calibration points
-            scatter(obj.GUIHandles.CalibrationCurveAxes, ValveData.Durations, ValveData.Amounts, 'LineWidth', 2);
-            set(obj.GUIHandles.CalibrationCurveAxes, 'tickdir', 'out', 'box', 'off');
+            scatter(AxCalib, ValveData.Durations, ValveData.Amounts, 'LineWidth', 2);
+            set(AxCalib, 'tickdir', 'out', 'box', 'off');
             Ymax = max(ValveData.Amounts)+.1*max(ValveData.Amounts);
             % Add pending measurement datapoints
-            PendingMeasurements = obj.PendingMeasurements.(ValveToShowName);
-            if ~isempty(PendingMeasurements)
-                nPendingMeasurements = length(PendingMeasurements);
+            PendingDurations = obj.PendingMeasurements.data.(ValveToShowName);
+            if ~isempty(PendingDurations)
+                nPendingMeasurements = length(PendingDurations);
                 for y = 1:nPendingMeasurements
-                    line([PendingMeasurements(y) PendingMeasurements(y)],[0 Ymax], 'Color', 'r', 'LineStyle', ':','Parent',obj.GUIHandles.CalibrationCurveAxes);
+                    line([PendingDurations(y) PendingDurations(y)],[0 Ymax], 'Color', 'r', 'LineStyle', ':','Parent',obj.GUIHandles.CalibrationCurveAxes);
                 end
             end
             if Ymax > 0
-                set(obj.GUIHandles.CalibrationCurveAxes, 'YLim', [0 Ymax]);
+                set(AxCalib, 'YLim', [0 Ymax]);
             else
-                set(obj.GUIHandles.CalibrationCurveAxes, 'YLim', [0 1]);
+                set(AxCalib, 'YLim', [0 1]);
             end
             MaxPlot = max(ValveData.Durations) + min(ValveData.Durations);
-            MaxPending = max(PendingMeasurements) + min(ValveData.Durations);
+            MaxPending = max(PendingDurations) + min(ValveData.Durations);
             MaxPlotX = max([MaxPlot MaxPending]);
-            set(obj.GUIHandles.CalibrationCurveAxes, 'XLim', [0 MaxPlotX]);
-            set(get(obj.GUIHandles.CalibrationCurveAxes, 'Ylabel'), 'String', 'Liquid (ul)', 'fontsize', 14, 'color', [1 1 1]);
-            set(get(obj.GUIHandles.CalibrationCurveAxes, 'Xlabel'), 'String', 'Valve duration (ms)', 'fontsize', 14, 'color', [1 1 1]);
-            hold(obj.GUIHandles.CalibrationCurveAxes, 'off');
+            set(AxCalib, 'XLim', [0 MaxPlotX]);
+            set(get(AxCalib, 'Ylabel'), 'String', 'Liquid (ul)', 'fontsize', 14, 'color', [1 1 1]);
+            set(get(AxCalib, 'Xlabel'), 'String', 'Valve duration (ms)', 'fontsize', 14, 'color', [1 1 1]);
+            hold(AxCalib, 'off');
         else
             % If there are no measured values make plot empty
-            plot(obj.GUIHandles.CalibrationCurveAxes, 0, 0);
-            set(obj.GUIHandles.CalibrationCurveAxes, 'xtick', [], 'ytick', []);
+            plot(AxCalib, 0, 0);
+            set(AxCalib, 'xtick', [], 'ytick', []);
         end
-        set(obj.GUIHandles.CalibrationCurveAxes, 'tickdir', 'out', 'box', 'off', 'fontsize', 12, 'fontname', 'arial', 'XColor', [1 1 1], 'YColor', [1 1 1]);
-        % ? shouldn't these be pointing at the axes?
-        xlabel('Valve time (ms)', 'fontsize', 14, 'color', [1 1 1]);
-        ylabel('Liquid (ul)', 'fontsize', 14, 'color', [1 1 1]);
+        set(AxCalib, 'tickdir', 'out', 'box', 'off', 'fontsize', 12, 'fontname', 'arial', 'XColor', [1 1 1], 'YColor', [1 1 1]);
+        xlabel(AxCalib, 'Valve time (ms)', 'fontsize', 14, 'color', [1 1 1]);
+        ylabel(AxCalib, 'Liquid (ul)', 'fontsize', 14, 'color', [1 1 1]);
     end
 
     function AddPendingMeasurement(obj, src, event)
@@ -215,9 +233,11 @@ methods
 
     function GetPendingMeasurementFromUser(obj, src, event)
         % Get a value for liquid amount from the user
-        ValueEntered = get(obj.GUIHandles.AmountEntry, 'String');
+
+        % -- Validate entered value
+        ValueEntered_ms = get(obj.GUIHandles.AmountEntry, 'String');
         ValidEntry = 1;
-        CandidateValue = str2double(ValueEntered);
+        CandidateValue = str2double(ValueEntered_ms);
         if isnan(CandidateValue)
             ValidEntry = 0;
         elseif CandidateValue < 1
@@ -226,70 +246,33 @@ methods
             ValidEntry = 0;
         end
         if ValidEntry == 1
-            obj.Measurement2add = CandidateValue;
+            Value2measure_ms = CandidateValue;
         else
-            obj.Measurement2add = NaN;
+            Value2measure_ms = NaN;
         end
+        % todo: add error for invalid entry? currently it fails silently
 
-        % Add a pending measurement to the selected valve
-        ThisValveCalEntries = get(obj.GUIHandles.MeasurementSelector,'String');
-        selectedValveIndex = get(obj.GUIHandles.ValveSelector,'Value');
-        nValvesSelected = length(selectedValveIndex);
-        assert(nValvesSelected, 'This should not be possible.')
-        if ~iscell(ThisValveCalEntries)
-            nEntries = 0;
-            TempEntry = ThisValveCalEntries;
-            ThisValveCalEntries = cell(1,1);
-            ThisValveCalEntries{1} = TempEntry;
-        elseif strcmp(ThisValveCalEntries{1}, 'No measurements found')
-            nEntries = 0;
-        else
-            nEntries = length(ThisValveCalEntries);
-        end
-
-        % -- Add the measurement to the pending list
-        Value2measure = obj.Measurement2add;
-        if ~isnan(Value2measure)
-            Exists = 0;
-            for x = 1:nValvesSelected
-                % Check to make sure value doesn't already exist in pending measurements
-                valveName = obj.GUIHandles.ValveSelector.String{selectedValveIndex};
-%                 valveName = CurrentValve{x}; 
-                % ? this assumes more than one valve can be selected
-                Pending = obj.PendingMeasurements.(valveName);
-                if ~isempty(Pending)
-                    if sum(Pending == Value2measure) > 0
-                        Exists = 1;
-                    end
-                end
-                % Check to make sure value doesn't already exist in table
-                ValveData = obj.ValveDataManager.getValve(valveName);
-                if ~isempty(ValveData)
-                    ValuesPresent = ValveData.Durations;
-                    if sum(Value2measure == ValuesPresent) > 0
-                        Exists = 1;
-                    end
+        % -- Add user input into pending measurements
+        valveName = obj.selectedValve();
+        if ValidEntry
+            try
+                obj.PendingMeasurements.addPending(valveName, Value2measure_ms);
+            catch ME
+                if strcmp(ME.identifier, 'BpodLib:LiquidCalibration:ExistingDuration')
+                    warndlg(['A measurement for ' num2str(str2double(get(obj.GUIHandles.AmountEntry, 'String'))) 'ms exists. Please delete it first.'], 'Error', 'modal');
+                else
+                    rethrow(ME);
                 end
             end
-            if Exists == 0
-                for x = 1:nValvesSelected
-                    obj.PendingMeasurements.(valveName) = [obj.PendingMeasurements.(valveName) Value2measure];
-                end
-                ThisValveCalEntries{nEntries+1} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: ' num2str(Value2measure) 'ms</FONT></html>'];
-                obj.DisplayValve;
-            else
-                warndlg(['A measurement for ' num2str(Value2measure) 'ms exists. Please delete it first.'], 'Error', 'modal');
-            end
         end
-        set(obj.GUIHandles.MeasurementSelector,'String',ThisValveCalEntries);
+        obj.DisplayValve()
 
         close(obj.GUIHandles.ValueEntryFig);
     end
 
     function RemoveMeasurement(obj, varargin)
+        valveName = obj.selectedValve();
         ThisValveCalEntries = get(obj.GUIHandles.MeasurementSelector,'String');
-        currentValveIndex = get(obj.GUIHandles.ValveSelector,'Value');
-        valveName = obj.GUIHandles.ValveSelector.String{currentValveIndex};
         if ~iscell(ThisValveCalEntries)
             TempEntry = ThisValveCalEntries;
             ThisValveCalEntries = cell(1,1);
@@ -297,87 +280,30 @@ methods
         end
         SelectedEntry = get(obj.GUIHandles.MeasurementSelector,'Value');
         SelectedEntryText = ThisValveCalEntries{SelectedEntry};
+        isPendingMeasurement = SelectedEntryText(1) == '<';
 
-        isPendingMeasurement = 0;
-        if SelectedEntryText(1) == '<'
-            isPendingMeasurement = 1;
-            % remove pending measurement and skip subsequent script to remove table
-            % values
-            valveObject = obj.ValveDataManager.getValve(valveName);
-            nActualMeasurements= numel(valveObject.Durations);
-            PendingEntryIndex = SelectedEntry - nActualMeasurements;
-            CurrentValvePendingMeasurements = obj.PendingMeasurements.(valveName);
-            nPendingEntries = length(CurrentValvePendingMeasurements);
-            if nPendingEntries > 1
-                if PendingEntryIndex > 1
-                    Entries_pre = CurrentValvePendingMeasurements(1:(PendingEntryIndex-1));
-                else
-                    Entries_pre = [];
-                end
-                if PendingEntryIndex < nPendingEntries
-                    Entries_post = CurrentValvePendingMeasurements(PendingEntryIndex+1:nPendingEntries);
-                else
-                    Entries_post = [];
-                end
-                obj.PendingMeasurements.(valveName) = [Entries_pre Entries_post];
-            else
-                obj.PendingMeasurements.(valveName) = [];
-            end
-        end
-        ThisValveCalEntries = ThisValveCalEntries(~ismember(ThisValveCalEntries,SelectedEntryText));
-        [nEntries,Trash] = size(ThisValveCalEntries);
-        if SelectedEntry > nEntries
-            set(obj.GUIHandles.MeasurementSelector, 'Value', SelectedEntry-1);
-        end
-        if isempty(ThisValveCalEntries)
-            ThisValveCalEntries{1} = 'No measurements found.';
-            set(obj.GUIHandles.MeasurementSelector, 'Value', 1);
-        end
-        set(obj.GUIHandles.MeasurementSelector,'String',ThisValveCalEntries);
-
-        if isPendingMeasurement == 0
-            % Remove entry from calibration table copy in handles struct
-            valveObject = obj.ValveDataManager.getValve(valveName);
-            nMeasurements = numel(valveObject.Durations);
-            if nMeasurements > 1
-                valveObject.removeMeasurement(SelectedEntry);
-                valveObject.updateCoeffs()
-                
-                % Move selected value in listbox if that value no longer exists
-                if SelectedEntry > nMeasurements
-                    set(obj.GUIHandles.MeasurementSelector, 'Value', nMeasurements);
-                elseif SelectedEntry == nMeasurements
-                    set(obj.GUIHandles.MeasurementSelector, 'Value', nMeasurements-1);
-                end
-            else
-                valveObject.removeMeasurement(1)
-                valveObject.updateCoeffs()
-            end
+        if isPendingMeasurement
+            valuetext = strsplit(SelectedEntryText, 'ms');
+            valuetext = strsplit(valuetext{1}, ' ');
+            SelectedDuration = str2double(valuetext{end});
+            assert(~isnan(SelectedDuration), 'BpodLib:LiquidCalibration:InvalidPendingMeasurement', 'Pending measurement not valid')
+            obj.PendingMeasurements.removePending(valveName, SelectedDuration);
+        else
+            valuetext = strsplit(SelectedEntryText, 'ms');
+            SelectedDuration = str2double(valuetext{1});
+            assert(~isnan(SelectedDuration), 'BpodLib:LiquidCalibration:InvalidMeasurement', 'Measurement not valid')
+            obj.ValveDataManager.getValve(valveName).removeMeasurement(SelectedDuration, 'duration', true);
             obj.saveFile()
         end
+
         obj.DisplayValve();
     end
 
     function PreRunPendingCheck(obj, varargin)
-        % Create a vector of measurements to test
-        ValveIDs = [];
-        PulseDurations = [];
-        PendingMeasurements = obj.PendingMeasurements;
-        allValveNames = fields(PendingMeasurements);
-        valveNames = {};
-        for x = 1:numel(allValveNames)
-            valveName = allValveNames{x};
-            if ~isempty(PendingMeasurements.(valveName))
-                ValveIDs = [ValveIDs x];
-                valveNames = [valveNames, valveName];
-                PulseDurations = [PulseDurations (PendingMeasurements.(valveName)(1))/1000];
-            end
-        end
-        obj.PendingRun.ValveNames = valveNames;
-        obj.PendingRun.ValveIDs = ValveIDs;
-        obj.PendingRun.PulseDurations = PulseDurations;
-        nValidMeasurements = length(ValveIDs);
+        % % Create a vector of measurements to test
+        % todo: remove RunPending from properties
 
+        % todo: use PendingMeasurements.getPending to build more informative message box
         mb = msgbox('Please refill liquid reservoirs and click Ok to begin.', 'non-modal');
         okbutton = mb.findobj('Tag', 'OKButton');
         okbutton.Callback = @(~, ~) mbfunc(mb);
@@ -392,123 +318,47 @@ methods
 
     function RunPendingMeasurements(obj, varargin)
         % Deliver liquid
-        Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, str2double(get(obj.GUIHandles.nPulsesEdit, 'string')), obj.PendingRun.ValveNames, obj.PendingRun.PulseDurations, 'PulseInterval', .2);
+        [valveNames, pulseDurations_ms] = obj.PendingMeasurements.getPending();
+        Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, str2double(get(obj.GUIHandles.nPulsesEdit, 'string')), valveNames, pulseDurations_ms * 1000, 'PulseInterval', .2);
         if Completed
-            % Enter measurements:
-            
-            % Set up window
-            % todo: make compatible with port array and other numbers
-            obj.GUIHandles.RunMeasurementsFig = figure('Position', [540 100 317 530],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'Name', 'Enter pending measurements');
-            ha = axes('units','normalized', 'position',[0 0 1 1]);
-            uistack(ha,'bottom');
-            BG = imread('CuedMeasurementEntry.bmp');
-            image(BG); axis off;
-            obj.GUIHandles.CB1b = uicontrol('Style', 'edit', 'Position', [155 379 80 35], 'TooltipString', 'Enter liquid weight for valve 1', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-            obj.GUIHandles.CB2b = uicontrol('Style', 'edit', 'Position', [155 336 80 35], 'TooltipString', 'Enter liquid weight for valve 2', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-            obj.GUIHandles.CB3b = uicontrol('Style', 'edit', 'Position', [155 293 80 35], 'TooltipString', 'Enter liquid weight for valve 3', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-            obj.GUIHandles.CB4b = uicontrol('Style', 'edit', 'Position', [155 250 80 35], 'TooltipString', 'Enter liquid weight for valve 4', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-            obj.GUIHandles.CB5b = uicontrol('Style', 'edit', 'Position', [155 207 80 35], 'TooltipString', 'Enter liquid weight for valve 5', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-            obj.GUIHandles.CB6b = uicontrol('Style', 'edit', 'Position', [155 164 80 35], 'TooltipString', 'Enter liquid weight for valve 6', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-            obj.GUIHandles.CB7b = uicontrol('Style', 'edit', 'Position', [155 121 80 35], 'TooltipString', 'Enter liquid weight for valve 7', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-            obj.GUIHandles.CB8b = uicontrol('Style', 'edit', 'Position', [155 78 80 35], 'TooltipString', 'Enter liquid weight for valve 8', 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
-            MeasurementButtonGFX2 = imread('MeasurementEntryOkButtonBG.bmp');
-            obj.GUIHandles.EnterMeasurementButton2 = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [120 7 80 50], 'Callback', @(src, event) obj.AddCalMeasurements(), 'TooltipString', 'Enter measurement', 'CData', MeasurementButtonGFX2);
-            
-            % Prompt for each valid measurement in order, un-hiding the GUI box and
-            % displaying a cursor triangle on the correct row
-            for y = 1:8
-                if isempty(find(y == obj.PendingRun.ValveIDs))
-                    eval(['set(obj.GUIHandles.CB' num2str(y) 'b, ''Enable'', ''off'')'])
-                else
-                    eval(['set(obj.GUIHandles.CB' num2str(y) 'b, ''Enable'', ''on'', ''BackgroundColor'', [.6 .9 .6])'])
-                end
-            end
-            drawnow;
+            % -- Create GUI for entering measurements
+            allValveNames = fields(obj.PendingMeasurements.data);
+            EntryGUI = BpodLib.calibration.liquid.ui.ValueEntryGUI(allValveNames, @obj.AddCalMeasurements);
+            EntryGUI.setPending(valveNames)
+            obj.GUIHandles.ValueEntryGUI = EntryGUI;
+            obj.GUIHandles.RunMeasurementsFig = EntryGUI.GUIHandles.RunMeasurementsFig;
         end
-    end
-
-    function saveFile(obj, varargin)
-        % Save file
-        saveFolder = fileparts(obj.savePath);
-        if exist(saveFolder) ~= 7
-            mkdir(saveFolder);
-        end
-        BpodLib.calibration.liquid.io.save(obj.ValveDataManager.createSaveData(), 'BpodSystem', obj.BpodSystem, 'filepath', obj.savePath, 'verbose', false)
     end
 
     function AddCalMeasurements(obj, varargin)
         figure(obj.GUIHandles.RunMeasurementsFig);
-        PendingMeasurements = obj.PendingMeasurements;
-        allValveNames = fields(PendingMeasurements);
-        nValves = length(fields(PendingMeasurements));
-        % Create a vector of measurements to test
-        ValveIDs = [];
-        valveNames = {};
-        PulseDurations = [];
-        for x = 1:nValves
-            valveName = allValveNames{x};
-            if ~isempty(PendingMeasurements.(valveName))
-                ValveIDs = [ValveIDs x];
-                valveNames = [valveNames allValveNames(x)];
-                PulseDurations = [PulseDurations PendingMeasurements.(valveName)(1)];
-            end
-        end
-        nValidMeasurements = length(ValveIDs);
-        CurrentAmounts = nan(1,nValidMeasurements);
-        % Extract measured amounts from textboxes. Error if invalid.
-        AllValid = 1;
-        for x = 1:nValidMeasurements
-            CurrentAmounts(x) = str2double(obj.GUIHandles.(sprintf('CB%ib', ValveIDs(x))).String);
-            % eval(['CurrentAmounts(' num2str(x) ') = str2double(get(obj.GUIHandles.CB' num2str(ValveIDs(x)) 'b, ''String''));'])
-            if isnan(CurrentAmounts(x))
-                AllValid = 0;
-                errordlg(['Invalid measurement entered for valve ' num2str(ValveIDs(x))])
-                break
-            elseif CurrentAmounts(x) < 0
-                AllValid = 0;
-                errordlg(['Invalid measurement entered for valve ' num2str(ValveIDs(x))])
-                break
-            end
-        end
-        
-        % Convert g*nPulses to microliters
-        CurrentAmounts = CurrentAmounts*1000/str2double(get(obj.GUIHandles.nPulsesEdit, 'string'));
-        
-        if AllValid == 1
-            % Update cal table on HD and in GUI handles
-            for x = 1:nValidMeasurements
-                valveName = valveNames{x}; % ! I reckon this could go wrong at some point
-                valveObject = obj.ValveDataManager.getValve(valveName);
-                % Add or append to table
-                valveObject.addMeasurement(PulseDurations(x), CurrentAmounts(x))
-                valveObject.updateCoeffs()
+        [pendingValves, pendingDurations_ms] = obj.PendingMeasurements.getPending();
 
+        % -- Verify that all of the entries into the GUI are valid
+        for x = 1:length(pendingValves)
+            valveName = pendingValves{x};
+            value = str2double(obj.GUIHandles.ValueEntryGUI.GUIHandles.(valveName).String);
+            if isnan(value) || value < 0
+                errordlg(['Invalid measurement entered for valve ' num2str(valveName)])
+                return  % This exits out of the function, allowing user to modify the entered value before clicking okay again
             end
-            % Remove pending measurements (preserving any more that were set for future rounds)
-            PendingMeasurements = obj.PendingMeasurements;
-            for x = 1:nValidMeasurements
-                valveName = valveNames{x};
-                if length(PendingMeasurements.(valveName)) > 1
-                    Measurements = PendingMeasurements.(valveName);
-                    Measurements = Measurements(2:length(Measurements));
-                    PendingMeasurements.(valveName) = Measurements;
-                else
-                    PendingMeasurements.(valveName) = [];
-                end
-            end
-            obj.PendingMeasurements = PendingMeasurements;
-            
-            % Call the Listbox 1 call back in
-            % LiquidCalibrationManager to reflect the new pending measurements vector
-            
-            % Save file
-            obj.saveFile()
-            % todo: modify insert valve insertion into BpodSystem
-%             BpodSystem.CalibrationTables.LiquidCal = LiquidCal;
-            obj.GUIHandles.msgbox = msgbox('Calibration files updated.', 'non-modal');
-            close(obj.GUIHandles.RunMeasurementsFig);
-            obj.DisplayValve();
         end
+
+        % -- Update the the new values
+        for x = 1:length(pendingValves)
+            valveName = pendingValves{x};
+            pendingduration = pendingDurations_ms(x);
+            recordedWeight = str2double(obj.GUIHandles.ValueEntryGUI.GUIHandles.(valveName).String);
+            pulseWeight_ml = recordedWeight * 1000 / str2double(get(obj.GUIHandles.nPulsesEdit, 'string'));
+
+            obj.PendingMeasurements.completeMeasurement(valveName, pendingduration, pulseWeight_ml);
+            set(obj.GUIHandles.ValueEntryGUI.GUIHandles.(valveName), 'Enable', 'off', 'BackgroundColor', [.9 .9 .9]); % disable box now that value has been entered (protects against unexpected errors and multiple inputs)
+        end
+
+        obj.saveFile()
+        obj.GUIHandles.msgbox = msgbox('Calibration files updated.', 'non-modal');
+        close(obj.GUIHandles.RunMeasurementsFig);
+        obj.DisplayValve();
     end
     
     function SuggestPoints(obj, varargin)

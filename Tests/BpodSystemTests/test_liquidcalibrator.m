@@ -79,8 +79,8 @@ function test_RunCalibration(testCase)
 
     % Measurement runs
 
-    lc.GUIHandles.CB3b.String = '.8'; % enter value weighed
-    feval(lc.GUIHandles.EnterMeasurementButton2.Callback, [], []) % click OK button
+    lc.GUIHandles.ValueEntryGUI.GUIHandles.Valve3.String = '.8'; % enter value weighed
+    feval(lc.GUIHandles.ValueEntryGUI.GUIHandles.EnterMeasurementButton2.Callback, [], []) % click OK button
 
     close(lc.GUIHandles.msgbox) % close box that confirms saving
 
