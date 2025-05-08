@@ -1,27 +1,28 @@
-function data = createDummyData()
+function DummyValveManager = createDummyData()
+% DummyValveManager = createDummyData()
 % Create dummy default data for the liquid calibration
-% :return data: the ValveDataManager object with the dummy data
-% :rtype data: BpodLib.calibration.liquid.ValveDataManagerClass
+% :return: the ValveDataManager object with the dummy data
+% :rtype: BpodLib.calibration.liquid.ValveDataManagerClass
 
 % This function recreates the data originally shipped with Bpod_Gen2
 
-data = BpodLib.calibration.liquid.ValveDataManagerClass();
+DummyValveManager = BpodLib.calibration.liquid.ValveDataManagerClass();
 
 % Create valvenames 'Valve1' to 'Valve8'
 for i = 1:8
     valveName = sprintf('Valve%d', i);
-    data.createValve(valveName);
+    DummyValveManager.createValve(valveName);
 end
 
 % Add some dummy measurements
-valve1 = data.getValve('Valve1');
+valve1 = DummyValveManager.getValve('Valve1');
 valve1.addMeasurement(22, 2);
 valve1.addMeasurement(66, 9.5);
 valve1.addMeasurement(44, 5);
 valve1.addMeasurement(57, 7.5);
 valve1.addMeasurement(34, 3.5);
 
-valve3 = data.getValve('Valve3');
+valve3 = DummyValveManager.getValve('Valve3');
 valve3.addMeasurement(22, 1.5);
 valve3.addMeasurement(46, 5.5);
 valve3.addMeasurement(59, 7.5);

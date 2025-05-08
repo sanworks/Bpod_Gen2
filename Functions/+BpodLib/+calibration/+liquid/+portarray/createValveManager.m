@@ -1,7 +1,7 @@
 function ValveManager = createValveManager(BpodSystem)
 % Create an empty ValveDataManager for PortArrays
 
-ValveManager = BpodLib.compatibility.liquid.ValveDataManagerClass();
+ValveManager = BpodLib.calibration.liquid.ValveDataManagerClass();
 switch BpodSystem.MachineType
     % todo: add values for other machine types
     case 2; nModuleChannels = 4;
@@ -12,7 +12,7 @@ end
 
 for portarraynumber = 1:nModuleChannels
     for valveIndex = 1:4
-        ValveManager.addValve(sprintf('PA%i-%i', portarraynumber, valveIndex))
+        ValveManager.createValve(sprintf('PA%i_%i', portarraynumber, valveIndex))
     end
 end
 
