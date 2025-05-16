@@ -3,28 +3,41 @@ function createMultiSetup(BpodSystem, varargin)
 
 
 p = inputParser();
-% p.addParameter('BpodSystem', [])
 p.parse(varargin{:})
 
+if ~BpodLib.multi.isMultiSetup(BpodSystem)
+    ValveManager = BpodSystem.CalibrationTables.LiquidCal;
+    assert(~isa(ValveManager, 'struct'), 'LiquidCal should be a ValveDataManagerClass object.')
 
-ValveManager = BpodSystem.CalibrationTables.LiquidCal;
-assert(~isa(ValveManager, 'struct'), 'LiquidCal should be a ValveDataManagerClass object.')
+    calibrationFolderpath = BpodLib.path.getPath(BpodSystem, 'liquidcalibration', 'setuptype', 'single');
 
-calibrationFolderpath = BpodLib.path.getPath(BpodSystem, 'liquidcalibration', 'setuptype', 'single');
-currentFilepath = fullfile(calibrationFolderpath, 'LiquidCalibration.json');
+    newFolderpath = BpodLib.path.getPath(BpodSystem, 'liquidcalibration', 'setuptype', 'multi');
 
-newFolderpath = fullfile(BpodLib.path.getPath(BpodSystem, 'liquidcalibration', 'setuptype', 'multi'));
-newFilepath = fullfile(newFolderpath, 'LiquidCalibration.json');
-% todo: move PortArray files
+    if isfolder(newFolderpath)
+        error('BpodLib:LiquidCalibration:MultiSetupAlreadyCreated', 'The multi-setup for the liquid calibration for this COM already exists.')
+    end
 
+    % Create the COM specific liquid calibration folder
+    mkdir(newFolderpath)
+
+    % Rename file based on numbering
+    moveableFilenames = {'LiquidCalibration.json', 'LiquidCalibration-PortArrays.json'};
+    for idx = 1:numel(moveableFilenames)
+        moveableFilepath = fullfile(calibrationFolderpath, moveableFilenames{idx});
+        if isfile(moveableFilepath)
+            movefile(moveableFilepath, fullfile(newFolderpath, moveableFilenames{idx}))
+        end
+    end
+    return
+end
+
+% -- If there's already a multi setup, we need to initialise a "fresh" one
+newFolderpath = BpodLib.path.getPath(BpodSystem, 'liquidcalibration', 'setuptype', 'multi');
 if isfolder(newFolderpath)
     error('BpodLib:LiquidCalibration:MultiSetupAlreadyCreated', 'The multi-setup for the liquid calibration for this COM already exists.')
 end
 
-% Create the COM specific liquid calibration folder
 mkdir(newFolderpath)
-
-% Rename file based on numbering
-movefile(currentFilepath, newFilepath)
+copyfile(fullfile(BpodLib.path.getPath(BpodSystem, 'root'), 'Examples/Example Calibration Files/'), newFolderpath)
 
 end
