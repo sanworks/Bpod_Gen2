@@ -52,4 +52,16 @@ function test_saveLocations(testCase)
     testCase.verifyTrue(isfile(fullfile(testCase.TestData.multiBpod.Path.LocalDir, 'Calibration Files/Machine-COM13/LiquidCalibration.json')))
 end
 
-% todo: test repeated save and loading to verify data integrity
+function test_repeatedIO(testCase)
+    % Test that the values aren't changing across repeated load/saves
+    valveManager = testCase.TestData.mockValveDataManager;
+    n_repeats = 100;
+    for i = 1:n_repeats
+        BpodLib.calibration.liquid.io.save(valveManager.createSaveData(), 'BpodSystem', testCase.TestData.regularBpod, 'type', 'statemachine');
+        valveManager = BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.regularBpod, 'type', 'statemachine');
+
+        % Examine the values in the loaded data
+        testCase.verifyEqual(valveManager.getValve('Valve3').getValveTime(15), 110.2556502776, 'AbsTol', 1e-9)
+    end
+
+end
