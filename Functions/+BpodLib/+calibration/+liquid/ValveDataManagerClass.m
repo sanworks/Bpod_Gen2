@@ -96,7 +96,7 @@ methods
         end
 
         savedata = struct;
-        savedata.metadata = obj.metadata;  % todo: resolve how this keeps existing metadata
+        savedata.metadata = obj.metadata;
         savedata.metadata.modification_datetime = BpodLib.calibration.liquid.isotime();
         savedata.ValveDatas = valveDatas;
     end
@@ -143,7 +143,7 @@ methods
 
         if ~strcmp(ext, '.json')
             error('Expected .json file but received %s file.', ext)
-            % todo: loader from old format?
+            % ? we could implement a .mat file loader, but this is not the format we want to use
         end
 
         loaddata = fileread(filepath);

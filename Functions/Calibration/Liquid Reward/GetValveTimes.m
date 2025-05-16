@@ -38,7 +38,7 @@ if isempty(p.Results.PortArray)
 else
     assert(isa(BpodSystem.CalibrationTables.PortArrays, 'BpodLib.calibration.liquid.ValveDataManagerClass'), 'PortArray calibration data not loaded and therefore cannot find value.')
     % This error probably means .PortArrays = []
-    % todo: write descriptive comment here for users who try to get the valve without having initialised it?
+    % User should use BpodLib.calibration.liquid.portarray.launchCalibrator(BpodSystem)
     ValveDataManager = BpodSystem.CalibrationTables.PortArrays;
     portname = sprintf('PA%i', p.Results.PortArray);
     portnameFunc = @(index) sprintf('%s-%i', portname, index);

@@ -110,7 +110,6 @@ for x = 1:nPulses
         pause(p.Results.PulseSetPause);
     else
         disp('Emulator mode detected, reward calibration will not run but values can be entered.');
-        % todo: dev mode to prevent users from doing this?
         Completed = 1;
         progressbar(1)
     end
