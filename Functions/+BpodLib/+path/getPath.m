@@ -24,6 +24,12 @@ end
 
 if ~isSingle
     com = BpodLib.utils.getCurrentCOM(BpodSystem);
+
+    % check if linux
+    if isunix && ~ispc
+        % convert to windows style
+        com = strrep(com, 'dev/ttyUSB', 'COM');
+    end
 end
 
 switch lower(target)
