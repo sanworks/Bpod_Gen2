@@ -15,10 +15,11 @@ function setup(testCase)
     valveManager.loadData(fullfile(testDataFolder, 'ExpectedLiquidCalibration.json'))
     testCase.TestData.mockValveDataManager = valveManager;
 
-    % Create various filesetups
+    % -- Create various filesetups
     mockBpod = struct();
     mockBpod.SerialPort.PortName = 'COM13';
     mockBpod.CalibrationTables.LiquidCal = valveManager;
+
     % Regular setup
     folderPath = fullfile(rootPath, 'CF Regular');
     mockBpod.Path.LocalDir = folderPath;
@@ -84,4 +85,16 @@ function test_isMulti(testCase)
     testCase.verifyWarning(@() BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.multiBpod_COM13, 'type', 'statemachine'), ...
         'BpodLib:LiquidCalibrationLoad:MultiAndSingle', 'Should warn about single-setup file in multi-setup environment');
 
+end
+
+function test_createSubsequentMulti(testCase)
+    % Test that the multi setup can be created from a single setup
+    regularBpod = testCase.TestData.regularBpod;
+    subsequentBpod = regularBpod;
+    subsequentBpod.SerialPort.PortName = 'COM5';
+    BpodLib.calibration.liquid.multi.createMultiSetup(regularBpod)
+
+    BpodLib.calibration.liquid.multi.createMultiSetup(subsequentBpod)
+    testCase.verifyTrue(isfile(fullfile(BpodLib.path.getPath(subsequentBpod, 'liquidcalibration', 'setuptype', 'multi'), 'LiquidCalibration.json'), 'A dummy file should have been created for the new setup.'),...
+        'The LiquidCalibration.json should have been moved to Machine-COM5/LiquidCalibration.json')
 end
