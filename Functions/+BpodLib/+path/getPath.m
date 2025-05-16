@@ -44,6 +44,11 @@ switch lower(target)
             comfolder = sprintf('Machine-%s', com);
             path = fullfile(path, 'Calibration Files', comfolder);
         end
+    case 'root'
+        path = fileparts(fileparts(fileparts(fileparts(mfilename('fullpath')))));
+        if ~strcmp(path, BpodSystem.Path.BpodRoot)
+            warning('BpodLib:Path:RootMismatch', 'The path to the BpodLib root folder does not match the path in BpodSystem. This may cause issues.')
+        end
     otherwise
         error('BpodLib:Path:UnrecognisedTarget', "Target '%s' not recognized.", target)
 end
