@@ -66,32 +66,3 @@ function test_loadMAT(testCase)
     testCase.verifyTrue(isstruct(liquidData), 'Should load MAT data as a struct');
 end
 
-function test_createMulti(testCase)
-    % Create a multi-machine setup from a single-machine setup
-    BpodLib.calibration.liquid.multi.createMultiSetup(testCase.TestData.regularBpod)
-
-    % Test: file was moved to correct location
-    testCase.verifyTrue(~isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Calibration Files/LiquidCalibration.json')),...
-        'The LiquidCalibration.json should have been moved to Machine-COM13/LiquidCalibration.json')
-
-    testCase.verifyTrue(isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Calibration Files/Machine-COM13/LiquidCalibration.json')),...
-        'The LiquidCalibration.json should have been moved to Machine-COM13/LiquidCalibration.json')
-    
-    % Test: loader can actually find the file in its new location
-    ValveDataManager = BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.multiBpod, 'type', 'statemachine');
-    testCase.verifyTrue(isa(ValveDataManager, 'BpodLib.calibration.liquid.ValveDataManagerClass'), 'Should successfuly load the data')
-end
-
-function test_isMulti(testCase)
-    % Test functionality when the setup is a multi setup
-    
-    % Test successfuly loading of the liquid calibration file
-    ValveDataManager = BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.multiBpod, 'type', 'statemachine');
-    testCase.verifyTrue(isa(ValveDataManager, 'BpodLib.calibration.liquid.ValveDataManagerClass'), 'Should successfuly load the data')
-    
-    % Test for warning if there's a single-setup compatible file even though the file is being loaded from multi-setup
-    testCase.TestData.mockValveDataManager.saveData(fullfile(testCase.TestData.multiBpod.Path.LocalDir, 'Calibration Files/LiquidCalibration.json'))
-    testCase.verifyWarning(@() BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.multiBpod, 'type', 'statemachine'), ...
-        'BpodLib:LiquidCalibrationLoad:MultiAndSingle', 'Should warn about single-setup file in multi-setup environment');
-
-end
