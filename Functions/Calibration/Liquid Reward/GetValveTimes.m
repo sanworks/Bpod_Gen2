@@ -41,7 +41,7 @@ else
     % User should use BpodLib.calibration.liquid.portarray.launchCalibrator(BpodSystem)
     ValveDataManager = BpodSystem.CalibrationTables.PortArrays;
     portname = sprintf('PA%i', p.Results.PortArray);
-    portnameFunc = @(index) sprintf('%s-%i', portname, index);
+    portnameFunc = @(index) sprintf('%s_%i', portname, index);
 end
 
 
