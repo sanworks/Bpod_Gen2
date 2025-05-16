@@ -19,6 +19,7 @@ function setup(testCase)
     mockBpod = struct();
     mockBpod.SerialPort.PortName = 'COM13';
     mockBpod.CalibrationTables.LiquidCal = valveManager;
+    mockBpod.Path.BpodRoot = fileparts(fileparts(fileparts(fileparts(which('BpodLib.path.getPath'))))); % required for getting example calibration files
 
     % Regular setup
     folderPath = fullfile(rootPath, 'CF Regular');
@@ -95,6 +96,5 @@ function test_createSubsequentMulti(testCase)
     BpodLib.calibration.liquid.multi.createMultiSetup(regularBpod)
 
     BpodLib.calibration.liquid.multi.createMultiSetup(subsequentBpod)
-    testCase.verifyTrue(isfile(fullfile(BpodLib.path.getPath(subsequentBpod, 'liquidcalibration', 'setuptype', 'multi'), 'LiquidCalibration.json'), 'A dummy file should have been created for the new setup.'),...
-        'The LiquidCalibration.json should have been moved to Machine-COM5/LiquidCalibration.json')
+    testCase.verifyTrue(isfile(fullfile(BpodLib.path.getPath(subsequentBpod, 'liquidcalibration', 'setuptype', 'multi'), 'LiquidCalibration.json')), 'A dummy file should have been created for the new setup.')
 end
