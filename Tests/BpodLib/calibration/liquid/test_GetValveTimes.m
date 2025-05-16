@@ -79,10 +79,3 @@ function testDeprecationWarning(testCase)
         'GetValveTimes:Deprecation', ...
         'Should warn about deprecated LiquidCal format');
 end
-
-function testNoSourceProvided(testCase)
-    % Test behavior when no source is provided (should try to get BpodSystem)
-
-    % todo: make this test work, as doing global BpodSystem here could be annoying
-end
-
