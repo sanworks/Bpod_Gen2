@@ -14,6 +14,6 @@ for idx = 1:numel(filelist)
     validLogical(idx) = strcmp(filelist(idx).name(1:11), 'Machine-COM');
 end
 
-result = sum(validLogical) > 1;
+result = any(validLogical);
 
 end
