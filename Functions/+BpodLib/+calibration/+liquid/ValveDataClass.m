@@ -51,7 +51,7 @@ methods
         obj.Durations = [obj.Durations; duration];
         obj.Amounts = [obj.Amounts; amount];
         obj.updateCoeffs()
-        obj.LastDateModified = BpodLib.calibration.liquid.isotime();
+        obj.LastDateModified = BpodLib.utils.isotime();
     end
 
     function removeMeasurement(obj, value, varargin)
@@ -79,7 +79,7 @@ methods
         obj.Durations(index) = [];
         obj.Amounts(index) = [];
         obj.updateCoeffs()
-        obj.LastDateModified = BpodLib.calibration.liquid.isotime();
+        obj.LastDateModified = BpodLib.utils.isotime();
     end
 
     function updateCoeffs(obj)

@@ -97,7 +97,7 @@ methods
 
         savedata = struct;
         savedata.metadata = obj.metadata;
-        savedata.metadata.modification_datetime = BpodLib.calibration.liquid.isotime();
+        savedata.metadata.modification_datetime = BpodLib.utils.isotime();
         savedata.ValveDatas = valveDatas;
     end
 
