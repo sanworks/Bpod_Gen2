@@ -6,7 +6,6 @@ function liquidData = load(varargin)
 % :return liquidData: The liquid data determined to be for the state machine
 % :rtype: struct or BpodLib.calibration.liquid.ValveDataManagerClass
 
-% todo: create tests for this
 p = inputParser();
 p.addParameter('BpodSystem', [])
 p.addParameter('type', [])
