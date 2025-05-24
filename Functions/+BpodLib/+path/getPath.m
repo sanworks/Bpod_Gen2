@@ -24,12 +24,7 @@ end
 
 if ~isSingle
     com = BpodLib.utils.getCurrentCOM(BpodSystem);
-
-    % check if linux
-    if isunix && ~ispc
-        % convert to windows style
-        com = strrep(com, 'dev/ttyUSB', 'COM');
-    end
+    comfolder = sprintf('Machine-%s', com);
 end
 
 switch lower(target)
@@ -41,7 +36,6 @@ switch lower(target)
         if isSingle
             path = fullfile(path, 'Calibration Files');
         else
-            comfolder = sprintf('Machine-%s', com);
             path = fullfile(path, 'Calibration Files', comfolder);
         end
     case 'root'
