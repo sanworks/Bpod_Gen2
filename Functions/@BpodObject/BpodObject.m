@@ -78,12 +78,16 @@ classdef BpodObject < handle
     end
 
     methods
-        function obj = BpodObject
+        function obj = BpodObject(varargin)
             % Constructor, run when creating an instance of BpodObject
 
+            p = inputParser();
+            p.addParameter('verbose', true)
+            p.parse(varargin{:});
             % Notify the user of the installed software version
-            ver = BpodSoftwareVersion_Semantic;
-            disp(['Starting Bpod Console v' ver])
+            if p.Results.verbose
+                disp(BpodLib.utils.log.startupMessage())
+            end
 
             % Check path for duplicate Bpod installations
             matlabPath = path;
@@ -274,7 +278,9 @@ classdef BpodObject < handle
                     'Example Settings Files', 'ModuleUSBConfig.mat'), obj.Path.ModuleUSBConfig);
             end
 
-            obj.BpodSplashScreen(1);
+            if p.Results.verbose
+                obj.BpodSplashScreen(1);
+            end
         end
 
         function obj = resetSessionClock(obj)

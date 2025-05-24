@@ -144,5 +144,7 @@ end
 obj.SystemSettings.LastCOMPort = Ports{thisPortIndex};
 obj.SaveSettings;
 obj.EmulatorMode = 0;
-obj.BpodSplashScreen(2);
+if obj.Status.Verbose
+    obj.BpodSplashScreen(2);
+end
 end
