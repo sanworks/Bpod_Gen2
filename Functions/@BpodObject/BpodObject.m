@@ -102,7 +102,7 @@ classdef BpodObject < handle
             addpath(genpath(fullfile(bpodPath, 'Assets')));
             rmpath(genpath(fullfile(bpodPath, 'Assets', 'BControlPatch', 'ExperPort')));
             addpath(genpath(fullfile(bpodPath, 'Examples', 'State Machines')));
-            load BpodSplashData;
+            load(fullfile(bpodPath, 'Assets', 'BpodSplashData.mat'));
             if exist('rng','file') == 2
                 rng('shuffle', 'twister'); % Seed the random number generator by CPU clock
             else
