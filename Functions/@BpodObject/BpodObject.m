@@ -123,6 +123,7 @@ classdef BpodObject < handle
             obj.Status.BpodStartTime = now;
             obj.Status = struct;
             obj.Status.Initialized = false;
+            obj.Status.Verbose = p.Results.verbose;
             obj.Status.LastTimestamp = 0;
             obj.Status.CurrentStateCode = 0;
             obj.Status.LastStateCode = 0;
