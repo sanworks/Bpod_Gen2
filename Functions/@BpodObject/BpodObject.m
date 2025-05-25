@@ -113,7 +113,7 @@ classdef BpodObject < handle
             obj.IsOnline = obj.check4Internet();
 
             % Validate software version
-            if obj.IsOnline
+            if obj.IsOnline && p.Results.verbose
                 obj.ValidateSoftwareVersion();
             end
 
