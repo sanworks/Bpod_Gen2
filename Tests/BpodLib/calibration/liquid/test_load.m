@@ -20,19 +20,19 @@ function setup(testCase)
     mockBpod.SerialPort.PortName = 'COM13';
     mockBpod.CalibrationTables.LiquidCal = valveManager;
     % Regular setup
-    folderPath = fullfile(rootPath, 'CF Regular');
+    folderPath = fullfile(rootPath, 'BL Regular');
     mockBpod.Path.LocalDir = folderPath;
     mkdir(folderPath)
-    folderPath = fullfile(folderPath, 'Calibration Files');
+    folderPath = fullfile(folderPath, 'Settings');
     mkdir(folderPath);
     testCase.TestData.regularBpod = mockBpod;
     valveManager.saveData(fullfile(folderPath, 'LiquidCalibration.json'))
 
     % Regular multi
-    folderPath = fullfile(rootPath, 'CF Multi');
+    folderPath = fullfile(rootPath, 'BL Multi');
     mkdir(folderPath)
     mockBpod.Path.LocalDir = folderPath;
-    folderPath = fullfile(folderPath, 'Calibration Files');
+    folderPath = fullfile(folderPath, 'Settings');
     mkdir(folderPath);
     mkdir(fullfile(folderPath, 'Machine-COM13'))
     mkdir(fullfile(folderPath, 'Machine-COM5'))
@@ -55,13 +55,14 @@ end
 
 function test_loadMAT(testCase)
     % Test loading a legacy MAT file
+    mkdir(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Calibration Files'))
     copyfile(fullfile(testCase.TestData.testDataFolder, 'LiquidCalibration.mat'), ...
              fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Calibration Files/LiquidCalibration.mat')) % copy .mat file into Calibration Files
 
     testCase.verifyWarning(@() BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.regularBpod, 'type', 'statemachine'), ...
         'BpodLib:LiquidCalibrationLoad:LegacyAndJSON', 'If both legacy and JSON file exist it should warn')
 
-    delete(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Calibration Files/LiquidCalibration.json')) % delete the default .json file
+    delete(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Settings/LiquidCalibration.json')) % delete the default .json file
     liquidData = BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.regularBpod, 'type', 'statemachine');
     testCase.verifyTrue(isstruct(liquidData), 'Should load MAT data as a struct');
 end

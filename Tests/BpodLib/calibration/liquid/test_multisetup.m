@@ -25,7 +25,7 @@ function setup(testCase)
     folderPath = fullfile(rootPath, 'CF Regular');
     mockBpod.Path.LocalDir = folderPath;
     mkdir(folderPath)
-    folderPath = fullfile(folderPath, 'Calibration Files');
+    folderPath = fullfile(folderPath, 'Settings');
     mkdir(folderPath);
     testCase.TestData.regularBpod = mockBpod;
     valveManager.saveData(fullfile(folderPath, 'LiquidCalibration.json'))
@@ -34,7 +34,7 @@ function setup(testCase)
     folderPath = fullfile(rootPath, 'CF Multi');
     mkdir(folderPath)
     mockBpod.Path.LocalDir = folderPath;
-    folderPath = fullfile(folderPath, 'Calibration Files');
+    folderPath = fullfile(folderPath, 'Settings');
     mkdir(folderPath);
     mkdir(fullfile(folderPath, 'Machine-COM13'))
     mkdir(fullfile(folderPath, 'Machine-COM5'))
@@ -53,9 +53,7 @@ end
 
 function test_distinctloading(testCase)
     % Test that two LiquidCalibratorUIs will interact with their respective files
-
-
-
+    % todo: complete UI test
 end
 
 function test_createMulti(testCase)
@@ -63,10 +61,10 @@ function test_createMulti(testCase)
     BpodLib.calibration.liquid.multi.createMultiSetup(testCase.TestData.regularBpod)
 
     % Test: file was moved to correct location
-    testCase.verifyTrue(~isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Calibration Files/LiquidCalibration.json')),...
+    testCase.verifyTrue(~isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Settings/LiquidCalibration.json')),...
         'The LiquidCalibration.json should have been moved to Machine-COM13/LiquidCalibration.json')
 
-    testCase.verifyTrue(isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Calibration Files/Machine-COM13/LiquidCalibration.json')),...
+    testCase.verifyTrue(isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Settings/Machine-COM13/LiquidCalibration.json')),...
         'The LiquidCalibration.json should have been moved to Machine-COM13/LiquidCalibration.json')
     
     % Test: loader can actually find the file in its new location
@@ -82,7 +80,7 @@ function test_isMulti(testCase)
     testCase.verifyTrue(isa(ValveDataManager, 'BpodLib.calibration.liquid.ValveDataManagerClass'), 'Should successfuly load the data')
     
     % Test for warning if there's a single-setup compatible file even though the file is being loaded from multi-setup
-    testCase.TestData.mockValveDataManager.saveData(fullfile(testCase.TestData.multiBpod_COM13.Path.LocalDir, 'Calibration Files/LiquidCalibration.json'))
+    testCase.TestData.mockValveDataManager.saveData(fullfile(testCase.TestData.multiBpod_COM13.Path.LocalDir, 'Settings/LiquidCalibration.json'))
     testCase.verifyWarning(@() BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.multiBpod_COM13, 'type', 'statemachine'), ...
         'BpodLib:LiquidCalibrationLoad:MultiAndSingle', 'Should warn about single-setup file in multi-setup environment');
 

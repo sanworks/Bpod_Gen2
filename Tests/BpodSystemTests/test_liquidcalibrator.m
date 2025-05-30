@@ -11,6 +11,7 @@ function setupOnce(testCase)
         global BpodSystem
     end
     testCase.TestData.BpodSystem = BpodSystem;
+    testCase.TestData.Original = struct();
     testCase.TestData.Original.wasRunning = wasRunning;
     testCase.TestData.Original.LocalDir = BpodSystem.Path.LocalDir;
     testCase.TestData.Original.LiquidCal = BpodSystem.CalibrationTables.LiquidCal;
@@ -33,8 +34,9 @@ function setup(testCase)
     BpodSystem.Path.LocalDir = localdir;
     mkdir(localdir)
     mkdir(fullfile(localdir, 'Calibration Files'))
+    mkdir(fullfile(localdir, 'Settings'))
     % todo: make this file setup more robust to changes to save locations
-    copyfile('../BpodLib/calibration/liquid/testData/ExpectedLiquidCalibration.json', fullfile(localdir, 'Calibration Files/LiquidCalibration.json'))
+    copyfile('../BpodLib/calibration/liquid/testData/ExpectedLiquidCalibration.json', fullfile(localdir, 'Settings/LiquidCalibration.json'))
     copyfile('../BpodLib/calibration/liquid/testData/LiquidCalibration.mat', fullfile(localdir, 'Calibration Files/OLD LiquidCalibration.mat'))
     BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'type', 'statemachine');
 end
@@ -104,8 +106,9 @@ function test_GUItransfer(testCase)
     % Prepare the liquid calibration folder
     global BpodSystem
     calFolder = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files');
+    convertedCalFolder = fullfile(BpodSystem.Path.LocalDir, 'Settings');
     copyfile(fullfile(calFolder, 'OLD LiquidCalibration.mat'), fullfile(calFolder, 'LiquidCalibration.mat'));
-    copyfile(fullfile(calFolder, 'LiquidCalibration.json'), fullfile(calFolder, 'TEMP LiquidCalibration.json'));
+    copyfile(fullfile(convertedCalFolder, 'LiquidCalibration.json'), fullfile(convertedCalFolder, 'TEMP LiquidCalibration.json'));
     BpodSystem.CalibrationTables.LiquidCal = load(fullfile(calFolder, 'LiquidCalibration.mat'), 'LiquidCal').LiquidCal;
     
     % Test GUI
@@ -115,7 +118,7 @@ function test_GUItransfer(testCase)
     close(BpodSystem.GUIHandles.LiquidCalibrator.MainFig)
 
     completed = BpodLib.calibration.liquid.compatibility.conversionscript(BpodSystem, 'verbose', false);
-    BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'statemachine');
+    BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'type', 'statemachine');
     feval(get(BpodSystem.GUIHandles.SettingsButton, 'Callback')) % Click on the settings menu button
     feval(get(BpodSystem.GUIHandles.LiquidCalLaunchButton, 'Callback')) % Open up liquid calibration file
     testCase.verifyTrue(isa(BpodSystem.GUIHandles.LiquidCalibrator, 'BpodLib.calibration.liquid.LiquidCalibratorUI'), 'UI should be the object')

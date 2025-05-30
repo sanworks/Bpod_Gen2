@@ -23,7 +23,7 @@ function setup(testCase)
     folderPath = fullfile(rootPath, 'CF Regular');
     mockBpod.Path.LocalDir = folderPath;
     mkdir(folderPath)
-    folderPath = fullfile(folderPath, 'Calibration Files');
+    folderPath = fullfile(folderPath, 'Settings');
     mkdir(folderPath);
     testCase.TestData.regularBpod = mockBpod;
 
@@ -31,7 +31,7 @@ function setup(testCase)
     folderPath = fullfile(rootPath, 'CF Multi');
     mkdir(folderPath)
     mockBpod.Path.LocalDir = folderPath;
-    folderPath = fullfile(folderPath, 'Calibration Files');
+    folderPath = fullfile(folderPath, 'Settings');
     mkdir(folderPath);
     mkdir(fullfile(folderPath, 'Machine-COM13'))
     mkdir(fullfile(folderPath, 'Machine-COM5'))
@@ -46,10 +46,10 @@ end
 function test_saveLocations(testCase)
     valveManager = testCase.TestData.mockValveDataManager;
     BpodLib.calibration.liquid.io.save(valveManager.createSaveData(), 'BpodSystem', testCase.TestData.regularBpod, 'type', 'statemachine');
-    testCase.verifyTrue(isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Calibration Files/LiquidCalibration.json')))
+    testCase.verifyTrue(isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Settings/LiquidCalibration.json')))
 
     BpodLib.calibration.liquid.io.save(valveManager.createSaveData(), 'BpodSystem', testCase.TestData.multiBpod, 'type', 'statemachine');
-    testCase.verifyTrue(isfile(fullfile(testCase.TestData.multiBpod.Path.LocalDir, 'Calibration Files/Machine-COM13/LiquidCalibration.json')))
+    testCase.verifyTrue(isfile(fullfile(testCase.TestData.multiBpod.Path.LocalDir, 'Settings/Machine-COM13/LiquidCalibration.json')))
 end
 
 function test_repeatedIO(testCase)

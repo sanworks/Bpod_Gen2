@@ -35,7 +35,8 @@ function setup(testCase)
     BpodSystem.Path.LocalDir = localdir;
     mkdir(localdir)
     mkdir(fullfile(localdir, 'Calibration Files')) 
-    copyfile('../BpodLib/calibration/liquid/testData/ExpectedLiquidCalibration.json', fullfile(localdir, 'Calibration Files/LiquidCalibration.json'))
+    mkdir(fullfile(localdir, 'Settings'))
+    copyfile('../BpodLib/calibration/liquid/testData/ExpectedLiquidCalibration.json', fullfile(localdir, 'Settings/LiquidCalibration.json'))
     BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'type', 'statemachine');
 
     % -- Create port array data
