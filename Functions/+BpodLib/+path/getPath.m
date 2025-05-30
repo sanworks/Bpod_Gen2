@@ -32,16 +32,20 @@ switch lower(target)
     case 'local'
         path = BpodSystem.Path.LocalDir;
     case 'liquidcalibration'
-        path = BpodLib.path.getPath(BpodSystem, 'local');
-        if isSingle
-            path = fullfile(path, 'Calibration Files');
-        else
-            path = fullfile(path, 'Calibration Files', comfolder);
+        legacyPath = fullfile(BpodLib.path.getPath(BpodSystem, 'settings', 'setup', 'single'), 'Calibration Files');
+        if isfile(fullfile(legacyPath, 'LiquidCalibration.mat'))
+            path = legacyPath;
+            return
         end
+        path = fullfile(BpodLib.path.getPath(BpodSystem, 'settings', varargin{:}));
     case 'root'
-        path = fileparts(fileparts(fileparts(fileparts(mfilename('fullpath')))));
-        if ~strcmp(path, BpodSystem.Path.BpodRoot)
-            warning('BpodLib:Path:RootMismatch', 'The path to the BpodLib root folder does not match the path in BpodSystem. This may cause issues.')
+        path = BpodSystem.Path.BpodRoot;
+    case 'settings'
+        LocalDir = BpodLib.path.getPath(BpodSystem, 'local', varargin{:});
+        if isSingle
+            path = fullfile(LocalDir, 'Settings');
+        else
+            path = fullfile(LocalDir, 'Settings', comfolder);
         end
     otherwise
         error('BpodLib:Path:UnrecognisedTarget', "Target '%s' not recognized.", target)
