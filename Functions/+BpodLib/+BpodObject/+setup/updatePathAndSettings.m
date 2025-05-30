@@ -65,9 +65,15 @@ end
 
 %% -- Calibration Files
 calFolder = BpodLib.path.getPath(BpodSystem, 'liquidcalibration');
-if ~isfolder(calFolder)
-    mkdir(calFolder)
-    copyfile(fullfile(ExamplesDir, 'Example Calibration Files/'), calFolder)
+
+if ~isfile(fullfile(Path.SettingsDir, 'LiquidCalibration.json'))
+    % todo: make this file specific rather than copying the whole folder
+    % copyfile(fullfile(ExamplesDir, 'Example Calibration Files/'), calFolder)
+    fileNames = {'LiquidCalibration.json', 'SoundCalibration.mat', 'Readme.txt'};
+    for idx = 1:numel(fileNames)
+        fileName = fileNames{idx};
+        copyfile(fullfile(ExamplesDir, 'Example Calibration Files', fileName), fullfile(calFolder, fileName));
+    end
     if p.Results.verbose
         % todo: this message could work to inform users about new COM-detected
         questdlg('Calibration folder created in /BpodLocal/. Replace example calibration files soon.', ...
