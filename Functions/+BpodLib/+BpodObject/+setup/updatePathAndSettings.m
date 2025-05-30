@@ -8,8 +8,6 @@ p.addParameter('LocalDir', '');
 p.addParameter('verbose', false, @islogical);
 p.parse(varargin{:});
 
-% todo: make this whole thing use the COM format
-
 existingPath = BpodSystem.Path;
 
 %% -- Setup core pathing
@@ -69,18 +67,14 @@ end
 calFolder = BpodLib.path.getPath(BpodSystem, 'liquidcalibration');
 
 if ~isfile(fullfile(Path.SettingsDir, 'LiquidCalibration.json'))
-    % todo: make this file specific rather than copying the whole folder
-    % copyfile(fullfile(ExamplesDir, 'Example Calibration Files/'), calFolder)
     fileNames = {'LiquidCalibration.json', 'SoundCalibration.mat', 'Readme.txt'};
     for idx = 1:numel(fileNames)
         fileName = fileNames{idx};
         copyfile(fullfile(ExamplesDir, 'Example Calibration Files', fileName), fullfile(calFolder, fileName));
     end
     if p.Results.verbose
-        % todo: this message could work to inform users about new COM-detected
-        questdlg('Calibration folder created in /BpodLocal/. Replace example calibration files soon.', ...
-                        'Calibration folder not found', ...
-                        'Ok', 'Ok');
+        msg = msgbox(["Detected new setup and created files at:"; BpodSystem.Path.SettingsDir; "Replace example calibration files soon."], 'Settings folder not found', 'help', 'modal');
+        uiwait(msg)
     end
 end
 
