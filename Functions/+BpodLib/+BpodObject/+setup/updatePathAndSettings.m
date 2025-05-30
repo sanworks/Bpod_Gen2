@@ -36,8 +36,10 @@ if ~isfolder(Path.SettingsDir)
     mkdir(Path.SettingsDir);
 end
 
-ExamplesDir = fullfile(Path.BpodRoot, 'Examples');
+BpodSystem.Path = Path;  % Update BpodSystem.Path to ensure it has the latest settings
+
 %% -- Configure user-settable BpodSettings paths
+ExamplesDir = fullfile(Path.BpodRoot, 'Examples');
 if isfile(fullfile(Path.SettingsDir, 'BpodSettings.mat'))
     BpodSystem.SystemSettings = load(fullfile(Path.SettingsDir, 'BpodSettings.mat'), 'BpodSettings').BpodSettings;
 else
