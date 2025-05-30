@@ -23,7 +23,7 @@ else
 end
 
 % Set settings path
-if ~BpodLib.multi.isMultiSetup(BpodSystem, 'LocalDir', p.Results.LocalDir)
+if ~BpodLib.multi.isMultiSetup(BpodSystem, 'LocalDir', Path.LocalDir)
     Path.SettingsDir = fullfile(Path.LocalDir, 'Settings');
 else
     Path.SettingsDir = fullfile(Path.LocalDir, 'Settings', sprintf('Machine-%s', BpodLib.utils.getCurrentCOM(BpodSystem)));
