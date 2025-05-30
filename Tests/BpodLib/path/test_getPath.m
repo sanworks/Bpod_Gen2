@@ -37,5 +37,5 @@ function test_newCOM(testCase)
     mkdir(fullfile(localfolder, 'Machine-COM3'))
     mkdir(fullfile(localfolder, 'Machine-COM5'))
     
-    testCase.verifyError(@() BpodLib.path.verifyPathing(mockBpod, 'verbose', false), 'BpodLib:verifyPathing:PathingIncomplete', 'Should be confused.')
+    testCase.verifyWarning(@() BpodLib.path.verifyPathing(mockBpod, 'verbose', false), 'BpodLib:verifyPathing:PathingIncomplete', 'Should be confused.')
 end
