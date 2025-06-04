@@ -16,13 +16,16 @@ p.parse(varargin{:});
 
 switch lower(p.Results.format)
     case 'datetime'
-        datestring = datetime(datestring, 'yyyy-MM-dd HH:mm:ss');
+        datestring = datetime(datestring, 'Format', 'yyyy-MM-dd HH:mm:ss');
     case 'iso8601'
-        datestring = datetime(datestring, 'yyyy-MM-ddTHH:mm:ss');
+        datestring = datetime(datestring, 'Format', 'yyyy-MM-ddTHH:mm:ss');
+    case 'path'
+        % This is used for filepathing, hardcoded into SaveBpodData
+        datestring = datetime(datestring, 'Format', 'yyyyMMdd_HHmmss');
     case 'date'
-        datestring = datetime(datestring, 'yyyy-MM-dd');
+        datestring = datetime(datestring, 'Format', 'yyyy-MM-dd');
     case 'time'
-        datestring = datetime(datestring, 'HH:mm:ss');
+        datestring = datetime(datestring, 'Format', 'HH:mm:ss');
     otherwise
         error('BpodLib:Utils:Isotime:UnrecognisedFormat', "Format '%s' not recognised", p.Results.format)
 end
