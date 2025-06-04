@@ -78,12 +78,16 @@ classdef BpodObject < handle
     end
 
     methods
-        function obj = BpodObject
+        function obj = BpodObject(varargin)
             % Constructor, run when creating an instance of BpodObject
 
+            p = inputParser();
+            p.addParameter('verbose', true)
+            p.parse(varargin{:});
             % Notify the user of the installed software version
-            ver = BpodSoftwareVersion_Semantic;
-            disp(['Starting Bpod Console v' ver])
+            if p.Results.verbose
+                disp(BpodLib.utils.log.startupMessage())
+            end
 
             % Check path for duplicate Bpod installations
             matlabPath = path;
@@ -98,7 +102,7 @@ classdef BpodObject < handle
             addpath(genpath(fullfile(bpodPath, 'Assets')));
             rmpath(genpath(fullfile(bpodPath, 'Assets', 'BControlPatch', 'ExperPort')));
             addpath(genpath(fullfile(bpodPath, 'Examples', 'State Machines')));
-            load BpodSplashData;
+            load(fullfile(bpodPath, 'Assets', 'BpodSplashData.mat'));
             if exist('rng','file') == 2
                 rng('shuffle', 'twister'); % Seed the random number generator by CPU clock
             else
@@ -109,7 +113,7 @@ classdef BpodObject < handle
             obj.IsOnline = obj.check4Internet();
 
             % Validate software version
-            if obj.IsOnline
+            if obj.IsOnline && p.Results.verbose
                 obj.ValidateSoftwareVersion();
             end
 
@@ -119,6 +123,7 @@ classdef BpodObject < handle
             obj.Status.BpodStartTime = now;
             obj.Status = struct;
             obj.Status.Initialized = false;
+            obj.Status.Verbose = p.Results.verbose;
             obj.Status.LastTimestamp = 0;
             obj.Status.CurrentStateCode = 0;
             obj.Status.LastStateCode = 0;
@@ -139,6 +144,33 @@ classdef BpodObject < handle
             obj.Status.nAnalogSamples = 0;
             obj.Status.RecordAnalog = 1;
 
+            % Initialize state machine info, to be populated in SetupStateMachine()
+            obj.StateMachineInfo = struct;
+            obj.StateMachineInfo.nEvents = 0; % Number of events the state machine can respond to
+            obj.StateMachineInfo.EventNames = 0; % Cell array of strings with names for each event
+            obj.StateMachineInfo.InputChannelNames = 0; % cell array of strings with names for input channels
+            obj.StateMachineInfo.nOutputChannels = 0; % Number of output channels
+            obj.StateMachineInfo.OutputChannelNames = 0; % Cell array of strings with output channel names
+            obj.StateMachineInfo.MaxStates = 0; % Maximum number of states the attached Bpod can store
+
+            % Load list of current firmware versions
+            cf = CurrentFirmwareList; % Located in /Functions/Internal Functions/, returns list of current firmware
+            obj.CurrentFirmware = cf;
+
+            % Create timer objects
+            obj.Timers = struct;
+            obj.Timers.PortRelayTimer = timer('TimerFcn', 'UpdateSerialTerminals()',...
+                'ExecutionMode', 'fixedRate', 'Period', 0.1);
+            obj.Timers.AnalogTimer = timer('TimerFcn',@(h,e)obj.ProcessAnalogSamples(),...
+                'ExecutionMode', 'fixedRate', 'Period', 0.1);
+
+            % Get info about the PC
+            obj.HostOS = system_dependent('getos');
+            if ~isempty(strfind(obj.HostOS, 'Windows 7'))
+                disp(['Bpod Startup: Windows 7 detected.' char(10)...
+                    'Please consider updating to Windows 10 or 11 for improved stability.' char(10)])
+            end
+            
             % Initialize paths
             obj.Path = struct;
             obj.Path.BpodRoot = bpodPath;
@@ -153,15 +185,6 @@ classdef BpodObject < handle
             obj.Path.FlexConfig = fullfile(obj.Path.SettingsDir, 'FlexConfig.mat');
             obj.Path.SyncConfig = fullfile(obj.Path.SettingsDir, 'SyncConfig.mat');
             obj.Path.ModuleUSBConfig = fullfile(obj.Path.SettingsDir, 'ModuleUSBConfig.mat');
-
-            % Initialize state machine info, to be populated in SetupStateMachine()
-            obj.StateMachineInfo = struct;
-            obj.StateMachineInfo.nEvents = 0; % Number of events the state machine can respond to
-            obj.StateMachineInfo.EventNames = 0; % Cell array of strings with names for each event
-            obj.StateMachineInfo.InputChannelNames = 0; % cell array of strings with names for input channels
-            obj.StateMachineInfo.nOutputChannels = 0; % Number of output channels
-            obj.StateMachineInfo.OutputChannelNames = 0; % Cell array of strings with output channel names
-            obj.StateMachineInfo.MaxStates = 0; % Maximum number of states the attached Bpod can store
 
             % Ensure that settings, data, protocol and calibration folders exist
             if ~exist(obj.Path.LocalDir)
@@ -198,13 +221,6 @@ classdef BpodObject < handle
                         addpath(ExperPortFolder);
                     end
                 end
-            end
-
-            % Get info about the PC
-            obj.HostOS = system_dependent('getos');
-            if ~isempty(strfind(obj.HostOS, 'Windows 7'))
-                disp(['Bpod Startup: Windows 7 detected.' char(10)...
-                    'Please consider updating to Windows 10 or 11 for improved stability.' char(10)])
             end
 
             % Verify calibration folder and copy example calibration if none exist
@@ -263,17 +279,9 @@ classdef BpodObject < handle
                     'Example Settings Files', 'ModuleUSBConfig.mat'), obj.Path.ModuleUSBConfig);
             end
 
-            % Load list of current firmware versions
-            cf = CurrentFirmwareList; % Located in /Functions/Internal Functions/, returns list of current firmware
-            obj.CurrentFirmware = cf;
-
-            % Create timer objects
-            obj.Timers = struct;
-            obj.Timers.PortRelayTimer = timer('TimerFcn', 'UpdateSerialTerminals()',...
-                'ExecutionMode', 'fixedRate', 'Period', 0.1);
-            obj.Timers.AnalogTimer = timer('TimerFcn',@(h,e)obj.ProcessAnalogSamples(),...
-                'ExecutionMode', 'fixedRate', 'Period', 0.1);
-            obj.BpodSplashScreen(1);
+            if p.Results.verbose
+                obj.BpodSplashScreen(1);
+            end
         end
 
         function obj = resetSessionClock(obj)

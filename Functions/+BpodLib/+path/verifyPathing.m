@@ -24,7 +24,7 @@ if ~verified
         end
     end
     if p.Results.ThrowErrors
-        error('BpodLib:verifyPathing:PathingIncomplete', 'The pathing of Bpod does not properly exist, refer to list above. Bpod has started up but some functionality may not work as expected.')
+        warning('BpodLib:verifyPathing:PathingIncomplete', 'The pathing of Bpod does not properly exist, refer to list above. Bpod has started up but some functionality may not work as expected.')
     end
 end
 

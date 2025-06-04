@@ -22,10 +22,11 @@ switch lower(p.Results.type)
 end
 
 calibrationFolderpath = BpodLib.path.getPath(BpodSystem, 'liquidcalibration');
+legacyPath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files/LiquidCalibration.mat');
 expectedFilepath = fullfile(calibrationFolderpath, filename);
 
 % Verify that file structure is as expected
-isLegacy = isfile(fullfile(calibrationFolderpath, 'LiquidCalibration.mat'));
+isLegacy = isfile(legacyPath);
 isJSON = isfile(fullfile(calibrationFolderpath, 'LiquidCalibration.json'));
 isMulti = BpodLib.multi.isMultiSetup(BpodSystem);
 if isJSON
@@ -39,10 +40,12 @@ if isJSON
 else
     assert(isLegacy, 'Expected legacy .mat file because no .json file was found')
     assert(strcmp(p.Results.type, 'statemachine'), 'Port Array not supported with old .mat format.')
-    liquidData = load(fullfile(calibrationFolderpath, 'LiquidCalibration.mat'), 'LiquidCal').LiquidCal;
+    liquidData = load(legacyPath, 'LiquidCal').LiquidCal;
     % Eventually this should return a warning for being unsupported
     return
 end
+
+assert(isfile(expectedFilepath), 'BpodLib:LiquidCalibrationLoad:FileNotFound', 'Liquid calibration file not found at %s', expectedFilepath)
 
 liquidData = BpodLib.calibration.liquid.ValveDataManagerClass('filepath', expectedFilepath);
 

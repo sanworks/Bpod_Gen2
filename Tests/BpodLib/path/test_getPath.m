@@ -23,10 +23,10 @@ function test_liquidcalibration(testCase)
     mockBpod = testCase.TestData.mockBpod;
 
     % Test single setup path
-    testCase.verifyEqual(BpodLib.path.getPath(mockBpod, 'liquidcalibration', 'setuptype', 'single'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Calibration Files'))
+    testCase.verifyEqual(BpodLib.path.getPath(mockBpod, 'liquidcalibration', 'setuptype', 'single'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Settings'))
     
     % Test multi setup path
-    testCase.verifyEqual(BpodLib.path.getPath(mockBpod, 'liquidcalibration', 'setuptype', 'multi'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Calibration Files/Machine-COM13'))
+    testCase.verifyEqual(BpodLib.path.getPath(mockBpod, 'liquidcalibration', 'setuptype', 'multi'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Settings/Machine-COM13'))
 end
 
 function test_newCOM(testCase)
@@ -37,5 +37,5 @@ function test_newCOM(testCase)
     mkdir(fullfile(localfolder, 'Machine-COM3'))
     mkdir(fullfile(localfolder, 'Machine-COM5'))
     
-    testCase.verifyError(@() BpodLib.path.verifyPathing(mockBpod, 'verbose', false), 'BpodLib:verifyPathing:PathingIncomplete', 'Should be confused.')
+    testCase.verifyWarning(@() BpodLib.path.verifyPathing(mockBpod, 'verbose', false), 'BpodLib:verifyPathing:PathingIncomplete', 'Should be confused.')
 end

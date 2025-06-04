@@ -364,7 +364,9 @@ obj.LoadModules;
 obj.SetupStateMachine;
 
 % Advance splash screen
-obj.BpodSplashScreen(3);
+if obj.Status.Verbose
+    obj.BpodSplashScreen(3);
+end
 
 % Set flexIO config (if equipped)
 if obj.MachineType == 4
@@ -396,7 +398,9 @@ if obj.MachineType == 4
 end
 
 % Advance splash screen
-obj.BpodSplashScreen(4);
+if obj.Status.Verbose
+    obj.BpodSplashScreen(4);
+end
 
 % Automatically connect to legacy Bonsai TCP/IP port if auto-connect is configured in settings
 if isfield(obj.SystemSettings, 'BonsaiAutoConnect')
@@ -413,6 +417,8 @@ if isfield(obj.SystemSettings, 'BonsaiAutoConnect')
 end
 
 % Final tasks
-obj.BpodSplashScreen(5);
-close(obj.GUIHandles.SplashFig);
+if obj.Status.Verbose
+    obj.BpodSplashScreen(5);
+    close(obj.GUIHandles.SplashFig);
+end
 end

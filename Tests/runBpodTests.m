@@ -1,10 +1,28 @@
+function results = runbpodtests(varargin)
+% RUNBPODTESTS Run all unit tests in the Tests directory and display results
 import matlab.unittest.TestSuite
 import matlab.unittest.TestRunner
 import matlab.unittest.plugins.CodeCoveragePlugin
 import matlab.unittest.plugins.codecoverage.CoverageReport
 
+p = inputParser();
+p.addOptional('test', 'all', @ischar)
+p.parse(varargin{:});
+addpath(fileparts(mfilename))
+
+switch lower(p.Results.test)
+    case 'all'
+        testFolders = '.';
+    case 'bpodlib'
+        testFolders = 'BpodLib';
+    case 'bpodsystem'
+        testFolders = 'BpodSystemTests';
+    otherwise
+        error('Invalid test type specified. Use "all" or "unit".');
+end
+
 % Create a test suite for all tests in the Tests directory
-suite = TestSuite.fromFolder('.', 'IncludingSubfolders', true);
+suite = TestSuite.fromFolder(testFolders, 'IncludingSubfolders', true);
 
 % Create a test runner that displays detailed test results
 runner = TestRunner.withTextOutput;
@@ -14,10 +32,10 @@ runner = TestRunner.withTextOutput;
 
 % Run the suite
 results = runner.run(suite);
-% disp(table(results))
 
 % Enhanced results display
 displayTestResults(results);
+end
 
 function displayTestResults(results)  
     % Display detailed table
