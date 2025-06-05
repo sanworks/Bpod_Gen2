@@ -29,23 +29,33 @@ end
 
 switch lower(target)
     % protocol and data roots can be set by the user in the Bpod console
+    case 'config'
+        if isSingle
+            path = fullfile(BpodLib.path.getPath(BpodSystem, 'local', varargin{:}), 'Config');
+        else
+            path = fullfile(BpodLib.path.getPath(BpodSystem, 'local', varargin{:}), 'Config', comfolder);
+        end
     case 'local'
         path = BpodSystem.Path.LocalDir;
     case 'liquidcalibration'
-        legacyPath = fullfile(BpodLib.path.getPath(BpodSystem, 'settings', 'setup', 'single'), 'Calibration Files');
-        if isfile(fullfile(legacyPath, 'LiquidCalibration.mat'))
-            path = legacyPath;
+%         legacyPath = fullfile(BpodLib.path.getPath(BpodSystem, 'settings', 'setup', 'single'), 'Calibration Files');
+%         if isfile(fullfile(legacyPath, 'LiquidCalibration.mat'))
+%             path = legacyPath;
+%             return
+%         end
+        if BpodLib.path.compatibility.isLegacySettings(BpodLib.path.getPath(BpodSystem, 'local', varargin{:}))
+            path = fullfile(BpodLib.path.getPath(BpodSystem, 'local'), 'Calibration Files');
             return
         end
-        path = fullfile(BpodLib.path.getPath(BpodSystem, 'settings', varargin{:}));
+        path = fullfile(BpodLib.path.getPath(BpodSystem, 'config', varargin{:}));
     case 'root'
         path = BpodSystem.Path.BpodRoot;
     case 'settings'
         LocalDir = BpodLib.path.getPath(BpodSystem, 'local', varargin{:});
-        if isSingle
+        if BpodLib.path.compatibility.isLegacySettings(LocalDir)
             path = fullfile(LocalDir, 'Settings');
         else
-            path = fullfile(LocalDir, 'Settings', comfolder);
+            path = BpodLib.path.getPath(BpodSystem, 'config', varargin{:});
         end
     otherwise
         error('BpodLib:Path:UnrecognisedTarget', "Target '%s' not recognized.", target)

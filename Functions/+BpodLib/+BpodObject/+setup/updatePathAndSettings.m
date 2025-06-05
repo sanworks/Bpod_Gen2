@@ -19,13 +19,8 @@ if isempty(p.Results.LocalDir)
 else
     Path.LocalDir = p.Results.LocalDir;
 end
-
-% Set settings path
-if ~BpodLib.multi.isMultiSetup(BpodSystem, 'LocalDir', Path.LocalDir)
-    Path.SettingsDir = fullfile(Path.LocalDir, 'Settings');
-else
-    Path.SettingsDir = fullfile(Path.LocalDir, 'Settings', sprintf('Machine-%s', BpodLib.utils.getCurrentCOM(BpodSystem)));
-end
+BpodSystem.Path = Path;
+Path.SettingsDir = BpodLib.path.getPath(BpodSystem, 'settings');
 
 if ~isfolder(Path.LocalDir)
     mkdir(Path.LocalDir);
@@ -66,7 +61,7 @@ end
 %% -- Calibration Files
 calFolder = BpodLib.path.getPath(BpodSystem, 'liquidcalibration');
 
-if ~isfile(fullfile(Path.SettingsDir, 'LiquidCalibration.json'))
+if ~isfile(fullfile(Path.SettingsDir, 'LiquidCalibration.json')) && ~BpodLib.path.compatibility.isLegacySettings(Path.LocalDir)
     fileNames = {'LiquidCalibration.json', 'SoundCalibration.mat', 'Readme.txt'};
     for idx = 1:numel(fileNames)
         fileName = fileNames{idx};

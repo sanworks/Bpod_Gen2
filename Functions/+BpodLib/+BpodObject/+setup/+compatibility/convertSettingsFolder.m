@@ -1,6 +1,6 @@
 function Completed = convertSettingsFolder(BpodSystem, varargin)
 % Completed = convertSettingsFolder(BpodSystem)
-% Convert a Bpod Local folder with Calibration Files/ into a folder with only Settings/
+% Convert a Bpod Local folder with Calibration Files/ and Settings/ into only Config/
 
 
 p = inputParser();
@@ -83,13 +83,22 @@ for idx = 1:numel(files)
     movefile(sourceFile, destFile);
 end
 
+% renamefe Settings to Config
+movefile(settingsFolder, fullfile(BpodSystem.Path.LocalDir, 'Config'));
+mkdir(settingsFolder);  % Recreate the Settings folder
+fid = fopen(fullfile(settingsFolder, 'files moved to Config folder.txt'), 'w');
+fprintf(fid, 'This folder has had its contents moved to the Bpod Local/Config/ folder.\nThis conversion was performed: %s\nThis folder can be deleted.', BpodLib.utils.isotime());
+fclose(fid);
+
 % Attach the new file into LiquidCal
 BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'type', 'statemachine');
 
 % Place a note in the Calibration Files folder
 fid = fopen(fullfile(calibrationFolder, 'calibration files have moved.txt'), 'w');
-fprintf(fid, 'This folder has had its contents moved Bpod Local/Settings folder.\n');
+fprintf(fid, 'This folder has had its contents moved Bpod Local/Config/ folder.\nThis conversion was performed: %s\nThis folder can be deleted.', BpodLib.utils.isotime());
 fclose(fid);
 Completed = 1;
+
+BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem)
 
 end

@@ -5,10 +5,10 @@ p = inputParser();
 p.addParameter('LocalDir', '')
 p.parse(varargin{:})
 if isempty(p.Results.LocalDir)
-    SettingsDir = fullfile(BpodSystem.Path.LocalDir, 'Settings');
+    SettingsDir = fullfile(BpodSystem.Path.LocalDir, 'Config');
 else
     localDir = p.Results.LocalDir;
-    SettingsDir = fullfile(localDir, 'Settings');
+    SettingsDir = fullfile(localDir, 'Config');
 end
 
 % Currently the only way to check is if multiple liquid calibration files exist.
