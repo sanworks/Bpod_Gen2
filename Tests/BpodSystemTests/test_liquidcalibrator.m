@@ -35,8 +35,8 @@ function setup(testCase)
     mkdir(localdir)
     mkdir(fullfile(localdir, 'Calibration Files'))
     mkdir(fullfile(localdir, 'Settings'))
-    % todo: make this file setup more robust to changes to save locations
-    copyfile('../BpodLib/calibration/liquid/testData/ExpectedLiquidCalibration.json', fullfile(localdir, 'Settings/LiquidCalibration.json'))
+    mkdir(fullfile(localdir, 'Config'))
+    copyfile('../BpodLib/calibration/liquid/testData/ExpectedLiquidCalibration.json', fullfile(localdir, 'Config/LiquidCalibration.json'))
     copyfile('../BpodLib/calibration/liquid/testData/LiquidCalibration.mat', fullfile(localdir, 'Calibration Files/OLD LiquidCalibration.mat'))
     BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'type', 'statemachine');
 end
@@ -106,7 +106,7 @@ function test_GUItransfer(testCase)
     % Prepare the liquid calibration folder
     global BpodSystem
     calFolder = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files');
-    convertedCalFolder = fullfile(BpodSystem.Path.LocalDir, 'Settings');
+    convertedCalFolder = fullfile(BpodSystem.Path.LocalDir, 'Config');
     copyfile(fullfile(calFolder, 'OLD LiquidCalibration.mat'), fullfile(calFolder, 'LiquidCalibration.mat'));
     copyfile(fullfile(convertedCalFolder, 'LiquidCalibration.json'), fullfile(convertedCalFolder, 'TEMP LiquidCalibration.json'));
     BpodSystem.CalibrationTables.LiquidCal = load(fullfile(calFolder, 'LiquidCalibration.mat'), 'LiquidCal').LiquidCal;

@@ -23,7 +23,7 @@ function setup(testCase)
     folderPath = fullfile(rootPath, 'BL Regular');
     mockBpod.Path.LocalDir = folderPath;
     mkdir(folderPath)
-    folderPath = fullfile(folderPath, 'Settings');
+    folderPath = fullfile(folderPath, 'Config');
     mkdir(folderPath);
     testCase.TestData.regularBpod = mockBpod;
     valveManager.saveData(fullfile(folderPath, 'LiquidCalibration.json'))
@@ -32,7 +32,7 @@ function setup(testCase)
     folderPath = fullfile(rootPath, 'BL Multi');
     mkdir(folderPath)
     mockBpod.Path.LocalDir = folderPath;
-    folderPath = fullfile(folderPath, 'Settings');
+    folderPath = fullfile(folderPath, 'Config');
     mkdir(folderPath);
     mkdir(fullfile(folderPath, 'Machine-COM13'))
     mkdir(fullfile(folderPath, 'Machine-COM5'))
@@ -62,7 +62,7 @@ function test_loadMAT(testCase)
     testCase.verifyWarning(@() BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.regularBpod, 'type', 'statemachine'), ...
         'BpodLib:LiquidCalibrationLoad:LegacyAndJSON', 'If both legacy and JSON file exist it should warn')
 
-    delete(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Settings/LiquidCalibration.json')) % delete the default .json file
+    delete(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Config/LiquidCalibration.json')) % delete the default .json file
     liquidData = BpodLib.calibration.liquid.io.load('BpodSystem', testCase.TestData.regularBpod, 'type', 'statemachine');
     testCase.verifyTrue(isstruct(liquidData), 'Should load MAT data as a struct');
 end

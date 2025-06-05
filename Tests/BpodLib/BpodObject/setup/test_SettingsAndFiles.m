@@ -26,7 +26,7 @@ function test_freshSingleSetup(testCase)
     BpodSystem = testCase.TestData.BpodSystem;
     BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'LocalDir', testCase.TestData.LocalDir);
     testCase.verifyTrue(strcmp(BpodSystem.Path.LocalDir, testCase.TestData.LocalDir), 'LocalDir should have been overridden to test location');
-    testCase.verifyTrue(strcmp(BpodSystem.Path.SettingsDir, BpodLib.path.getPath(BpodSystem, 'Settings')), 'SettingsDir should match expected location');
+    testCase.verifyTrue(strcmp(BpodSystem.Path.SettingsDir, BpodLib.path.getPath(BpodSystem, 'Config')), 'SettingsDir should match expected location');
 end
 
 function test_freshMultiSetup(testCase)
@@ -62,13 +62,13 @@ function test_newMultiSetup(testCase)
     % On initialisation this should create a new multi
     NewBpodSystem = BpodLib.BpodObject.MockBpodObject('COM5');
     BpodLib.BpodObject.setup.updatePathAndSettings(NewBpodSystem, 'LocalDir', testCase.TestData.LocalDir);
-    testCase.verifyTrue(isfolder(fullfile(testCase.TestData.LocalDir, 'Settings/Machine-COM5')), 'Folder for new BpodSystem should exist.');
-    testCase.verifyTrue(isfolder(fullfile(testCase.TestData.LocalDir, 'Settings/Machine-COM13')), 'Folder for existing BpodSystem should still exist.');
+    testCase.verifyTrue(isfolder(fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM5')), 'Folder for new BpodSystem should exist.');
+    testCase.verifyTrue(isfolder(fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM13')), 'Folder for existing BpodSystem should still exist.');
 
-    testCase.verifyTrue(numel(dir(fullfile(testCase.TestData.LocalDir, 'Settings/Machine-COM5'))) == numel(dir(fullfile(testCase.TestData.LocalDir, 'Settings/Machine-COM13'))), ...
+    testCase.verifyTrue(numel(dir(fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM5'))) == numel(dir(fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM13'))), ...
         'New multi setup should have the same number of files as the existing one.');
 
-    filelist = dir(fullfile(testCase.TestData.LocalDir, 'Settings/'));
+    filelist = dir(fullfile(testCase.TestData.LocalDir, 'Config/'));
     filelist = filelist(~[filelist.isdir]);
     testCase.verifyTrue(numel(filelist) == 0, 'Settings folder should be empty of files after creating a new multi setup.');
 end

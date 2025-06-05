@@ -1,6 +1,5 @@
 function tests = test_legacySetup()
-    % Test that settings are setup and retrieved correctly
-    % This tests BpodLib.BpodObject.setup.updatePathAndSettings and BpodLib.multi.createMultiSetup as they are closely related.
+    % Tests for converting legacy Bpod setup folders to the new single-folder setup
     tests = functiontests(localfunctions);
 end
 
@@ -46,13 +45,27 @@ function teardown(testCase)
     rmdir(testCase.TestData.rootPath, 's');
 end
 
+function test_isLegacySetup(testCase)
+    % Test if the setup is recognised as legacy
+    BpodSystem = testCase.TestData.BpodSystem;
+    isLegacy = BpodLib.path.compatibility.isLegacySettings(BpodSystem.Path.LocalDir);
+    testCase.verifyTrue(isLegacy, 'The setup should be recognised as a legacy setup.');
+end
+
+function test_legacyStartup(testCase)
+    BpodSystem = testCase.TestData.BpodSystem;
+    BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'LocalDir', BpodSystem.Path.LocalDir)
+
+    testCase.verifyTrue(~isfolder(fullfile(BpodSystem.Path.LocalDir, 'Config')), 'The updating should not convert legacy setups')
+
+end
+
 function test_convertLegacySetup(testCase)
     % Test conversion from legacy folder setup to single-folder setup
-
     Completed = BpodLib.BpodObject.setup.compatibility.convertSettingsFolder(testCase.TestData.BpodSystem, 'verbose', false);
     testCase.verifyTrue(Completed == 1, 'Legacy setup conversion did not complete successfully.');
-    testCase.verifyTrue(isfile(fullfile(testCase.TestData.BpodSystem.Path.LocalDir, 'Settings/LiquidCalibration.json')), 'Liquid calibration file was not converted to the new format.');
-    testCase.verifyTrue(isfile(fullfile(testCase.TestData.BpodSystem.Path.LocalDir, 'Settings/SoundCalibration.mat')), 'Sound calibration file was not converted to the new format.');
+    testCase.verifyTrue(isfile(fullfile(testCase.TestData.BpodSystem.Path.LocalDir, 'Config/LiquidCalibration.json')), 'Liquid calibration file was not converted to the new format.');
+    testCase.verifyTrue(isfile(fullfile(testCase.TestData.BpodSystem.Path.LocalDir, 'Config/SoundCalibration.mat')), 'Sound calibration file was not converted to the new format.');
     testCase.verifyTrue(~isfile(fullfile(testCase.TestData.BpodSystem.Path.LocalDir, 'Calibration Files/LiquidCalibration.mat')), 'Legacy liquid calibration file still exists after conversion.');
 end
 
@@ -66,9 +79,9 @@ function test_conversionCongruence(testCase)
     BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystemNew, 'LocalDir', newLocalDir);
 
     % Now test to see if Bpod Local/ and Bpod Local New/ are the same
-    convertedFiles = dir(fullfile(testCase.TestData.BpodSystem.Path.LocalDir, 'Settings/*.*'));
-    newFiles = dir(fullfile(BpodSystemNew.Path.LocalDir, 'Settings/*.*'));
-    testCase.verifyEqual(numel(convertedFiles) - 1, numel(newFiles), 'Number of files in Settings folder after conversion does not match the new setup.');
+    convertedFiles = dir(fullfile(testCase.TestData.BpodSystem.Path.LocalDir, 'Config/*.*'));
+    newFiles = dir(fullfile(BpodSystemNew.Path.LocalDir, 'Config/*.*'));
+    testCase.verifyEqual(numel(convertedFiles) - 1, numel(newFiles), 'Number of files in Config folder after conversion does not match the new setup.');
     for idx = 1:numel(newFiles)
         if convertedFiles(idx).isdir
             continue
@@ -77,8 +90,19 @@ function test_conversionCongruence(testCase)
             % This file is created at startup if user modifies settings
             continue
         end
-        testCase.verifyTrue(isfile(fullfile(BpodSystemNew.Path.LocalDir, 'Settings', newFiles(idx).name)), ...
+        testCase.verifyTrue(isfile(fullfile(BpodSystemNew.Path.LocalDir, 'Config', newFiles(idx).name)), ...
             sprintf('File %s does not exist in the new setup after conversion.', newFiles(idx).name));
     end
+end
 
+function test_createBackup(testCase)
+    % Test if the backup folder is created correctly
+    BpodLib.BpodObject.setup.compatibility.saveSettingsBackup(testCase.TestData.BpodSystem.Path.LocalDir, 'verbose', false);
+    backupFolder = fullfile(testCase.TestData.BpodSystem.Path.LocalDir, 'SettingsBackup_*');
+    backupFolderExists = ~isempty(dir(backupFolder));
+    testCase.verifyTrue(backupFolderExists, 'Backup folder was not created successfully.');
+    
+    % Check if the backup contains the expected files
+    backupFiles = dir(fullfile(backupFolder, 'Settings/*.*'));
+    testCase.verifyTrue(~isempty(backupFiles), 'Backup folder does not contain any files.');
 end
