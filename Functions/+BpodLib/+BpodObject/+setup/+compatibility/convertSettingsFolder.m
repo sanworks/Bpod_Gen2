@@ -17,8 +17,6 @@ if verLessThan('matlab', '9.1')
     return
 end
 
-BpodLib.BpodObject.setup.compatibility.saveSettingsBackup(BpodSystem.Path.LocalDir, 'verbose', p.Results.verbose);
-
 calibrationFolderpath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files');
 oldFilepath = fullfile(calibrationFolderpath, 'LiquidCalibration.mat');
 newFilepath = fullfile(calibrationFolderpath, 'LiquidCalibration.json');
@@ -35,8 +33,11 @@ if ~isfile(oldFilepath)
 end
 
 if previouslyCompleted
+    warning('Conversion script is detected as already having been run, run cancelled.')
     return
 end
+
+BpodLib.BpodObject.setup.compatibility.saveSettingsBackup(BpodSystem.Path.LocalDir, 'verbose', p.Results.verbose);
 
 % Save the new format
 try
