@@ -5,6 +5,8 @@ end
 %% Test Setup and Teardown
 function setup(testCase)
     % Setup test data that will be used for all tests
+    testCase.TestData.rootPath = tempname;
+    mkdir(testCase.TestData.rootPath)
 
     % Create a mock ValveDataManager class
     valveManager = BpodLib.calibration.liquid.ValveDataManagerClass();
@@ -28,10 +30,23 @@ end
 
 function teardown(testCase)
     % Clean up after all tests
+    rmdir(testCase.TestData.rootPath, 's');
 end
 
-function test_check(testCase)
-    testCase.verifyTrue(strcmp(BpodLib.calibration.liquid.io.checkDefaultData(testCase.TestData.bpodWithLegacyLiquidCal.CalibrationTables.LiquidCal), 'true'), 'Function should identify old system')
+function test_warningWithUnmodifiedData(testCase)
+    % Test that 
+    testCase.verifyTrue(strcmp(BpodLib.calibration.liquid.io.checkDefaultData(testCase.TestData.bpodWithLegacyLiquidCal.CalibrationTables.LiquidCal), 'true'), 'Example legacy data should be recognised as unmodified')
+    testCase.verifyTrue(strcmp(BpodLib.calibration.liquid.io.checkDefaultData(testCase.TestData.bpodWithValveDataManager.CalibrationTables.LiquidCal), 'true'), 'Example JSON data should be recognised as unmodified')
+end
+
+function test_nowarningModifiedData(testCase)
+    % modify the liquid cal
+    LiquidCal = testCase.TestData.bpodWithValveDataManager.CalibrationTables.LiquidCal;
+    LiquidCal.getValve('Valve1').addMeasurement(10, 3)
+    filepath = fullfile(testCase.TestData.rootPath, 'tempLiquidCalibration.json');
+    LiquidCal.saveData(filepath)
+    LiquidCal = BpodLib.calibration.liquid.ValveDataManagerClass('filepath', filepath);
+    testCase.verifyTrue(strcmp(BpodLib.calibration.liquid.io.checkDefaultData(LiquidCal), 'false'), 'Modified file should be recognised as modified')
 end
 
 function test_loadFailure(testCase)

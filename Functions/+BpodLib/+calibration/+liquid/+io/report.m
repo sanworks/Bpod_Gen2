@@ -2,7 +2,7 @@ function report(LiquidCal)
 % Print report of status of liquid calibration into Command Window
 
 % Issue warning if user hasn't calibrated anything
-if strcmp(BpodLib.calibration.liquid.io.checkDefaultData(LiquidCal), 'false')
+if strcmp(BpodLib.calibration.liquid.io.checkDefaultData(LiquidCal), 'true')
     w = warning('off', 'backtrace');
     warning('BpodLib:liquidcalibration:UnmodifiedData', 'Liquid calibration data is detected as unmodified. Remember to calibrate your valve before performing experiments!')
     warning(w) % restore warning settings to their original
