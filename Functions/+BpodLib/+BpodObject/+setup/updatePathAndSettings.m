@@ -103,9 +103,9 @@ end
 try
     soundCalibrationFilePath = fullfile(calFolder, 'SoundCalibration.mat');
     load(soundCalibrationFilePath);
-    obj.CalibrationTables.SoundCal = SoundCal;
+    BpodSystem.CalibrationTables.SoundCal = SoundCal;
 catch
-    obj.CalibrationTables.SoundCal = [];
+    BpodSystem.CalibrationTables.SoundCal = [];
 end
 
 %% -- Config files
@@ -123,10 +123,10 @@ for idx = 1:numel(configItems)
         continue
     elseif strcmp(configItem, 'InputConfig')
         loaded_item = load(Path.(configItem), 'BpodInputConfig');
-        obj.InputsEnabled = loaded_item.BpodInputConfig;
+        BpodSystem.InputsEnabled = loaded_item.BpodInputConfig;
     elseif strcmp(configItem, 'SyncConfig')
         loaded_item = load(Path.(configItem), 'BpodSyncConfig');
-        obj.SyncConfig = loaded_item.BpodSyncConfig;
+        BpodSystem.SyncConfig = loaded_item.BpodSyncConfig;
     else
         error('Unknown config item: %s', configItem);
     end
@@ -134,7 +134,7 @@ end
 
 Path.FlexConfig = fullfile(Path.SettingsDir, 'FlexConfig.mat');
 
-%% -- Add dynamics paths to Path
+%% -- Add dynamic paths to Path
 % These are set during protocol launch.
 if ~isempty(existingPath)
     dynamicNames = {'Settings', 'CurrentDataFile', 'CurrentProtocol'};
