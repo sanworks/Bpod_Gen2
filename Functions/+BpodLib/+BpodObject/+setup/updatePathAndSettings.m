@@ -89,6 +89,8 @@ try
 catch err
     if strcmp(err.identifier, 'BpodLib:LiquidCalibrationLoad:FileNotFound')
         BpodSystem.CalibrationTables.PortArrays = [];
+    elseif strcmp(err.identifier, 'BpodLib:LiquidCalibration:PortArrayJSONFail')
+        BpodSystem.CalibrationTables.PortArrays = [];
     else
         rethrow(err)
     end

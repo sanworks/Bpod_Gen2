@@ -39,7 +39,7 @@ if isJSON
     end
 else
     assert(isLegacy, 'Expected legacy .mat file because no .json file was found')
-    assert(strcmp(p.Results.type, 'statemachine'), 'Port Array not supported with old .mat format.')
+    assert(strcmp(p.Results.type, 'statemachine'), 'BpodLib:LiquidCalibration:PortArrayJSONFail', 'Port Array not supported with old .mat format.')
     liquidData = load(legacyPath, 'LiquidCal').LiquidCal;
     % Eventually this should return a warning for being unsupported
     return
