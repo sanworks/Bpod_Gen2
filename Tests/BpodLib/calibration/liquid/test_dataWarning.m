@@ -8,14 +8,16 @@ function setup(testCase)
     testCase.TestData.rootPath = tempname;
     mkdir(testCase.TestData.rootPath)
 
-    % Create a mock ValveDataManager class
+    % Create a mock ValveDataManager class, using the file used at fresh Bpod startup
     valveManager = BpodLib.calibration.liquid.ValveDataManagerClass();
+    rootPath = fileparts(which('Bpod'));
+    filePath = fullfile(rootPath, 'Examples/Example Calibration Files/LiquidCalibration.json');
+    valveManager.loadData(filePath)
+    testCase.TestData.mockValveDataManager = valveManager;
+    
+    % Create a mock BpodSystem with ValveDataManager
     [testFolder, ~, ~] = fileparts(mfilename('fullpath'));
     testDataFolder = fullfile(testFolder, 'testData');
-    valveManager.loadData(fullfile(testDataFolder, 'ExpectedLiquidCalibration.json'))
-    testCase.TestData.mockValveDataManager = valveManager;
-
-    % Create a mock BpodSystem with ValveDataManager
     testCase.TestData.bpodWithValveDataManager = struct();
     testCase.TestData.bpodWithValveDataManager.CalibrationTables.LiquidCal = ...
         testCase.TestData.mockValveDataManager;
