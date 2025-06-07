@@ -18,10 +18,10 @@ for idx = 1:numel(filelist)
     if ~filelist(idx).isdir
         continue
     end
-    if numel(filelist(idx).name) < 12
+    if numel(filelist(idx).name) < 11
         continue
     end
-    validLogical(idx) = strcmp(filelist(idx).name(1:11), 'Machine-COM');
+    validLogical(idx) = ismember(filelist(idx).name(1:11), {'Machine-COM', 'Machine-EMU'});
 end
 
 result = any(validLogical);
