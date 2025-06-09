@@ -1,4 +1,4 @@
-function tests = test_settings()
+function tests = test_SettingsAndFiles()
     % Test that settings are setup and retrieved correctly
     % This tests BpodLib.BpodObject.setup.updatePathAndSettings and BpodLib.multi.createMultiSetup as they are closely related.
     tests = functiontests(localfunctions);
@@ -30,7 +30,7 @@ function test_freshSingleSetup(testCase)
 end
 
 function test_freshMultiSetup(testCase)
-    % Multi-setup created froma single setup
+    % Multi-setup created from a single setup
 
     % Create the single setup first
     BpodSystem = testCase.TestData.BpodSystem;
@@ -71,5 +71,25 @@ function test_newMultiSetup(testCase)
     filelist = dir(fullfile(testCase.TestData.LocalDir, 'Config/'));
     filelist = filelist(~[filelist.isdir]);
     testCase.verifyTrue(numel(filelist) == 0, 'Settings folder should be empty of files after creating a new multi setup.');
+
+    % Test iquidcalibration paths are set correctly
+    testCase.verifyTrue(strcmp(BpodLib.path.getPath(BpodSystem, 'liquidcalibration'), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM13')), 'Liquid calibration path should be set to the new multi setup location.');
+    testCase.verifyTrue(strcmp(BpodLib.path.getPath(NewBpodSystem, 'liquidcalibration'), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM5')), 'Liquid calibration path should be set to the new multi setup location.');
 end
+
 % todo: test for EMU being treated as a bona fide multi setup
+function test_emulatorBehaviour(testCase)
+    % Test that the emulator behaves like a multi setup
+    BpodSystem = testCase.TestData.BpodSystem;
+    BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'LocalDir', testCase.TestData.LocalDir);
+    BpodLib.multi.createMultiSetup(BpodSystem);
+    
+    EMUBpodSystem = BpodLib.BpodObject.MockBpodObject('EMU');
+    BpodLib.BpodObject.setup.updatePathAndSettings(EMUBpodSystem, 'LocalDir', testCase.TestData.LocalDir);
+    % Check if the emulator is recognised as a multi setup
+    testCase.verifyTrue(BpodLib.multi.isMultiSetup(BpodSystem), 'EMU should be treated as a multi setup.');
+    
+    % Check if the settings directory is set correctly
+    settingsPath = BpodLib.path.getPath(BpodSystem, 'settings', 'setuptype', 'multi');
+    testCase.verifyTrue(isfolder(settingsPath), 'Settings folder for EMU should exist.');
+end
