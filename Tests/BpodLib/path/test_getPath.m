@@ -24,9 +24,11 @@ function test_liquidcalibration(testCase)
 
     % Test single setup path
     testCase.verifyEqual(BpodLib.path.getPath('liquidcalibration', mockBpod, 'setuptype', 'single'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config'))
+    testCase.verifyEqual(BpodLib.path.getPath('liquidcalibration', 'LocalDir', mockBpod.Path.LocalDir, 'setuptype', 'single'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config'))
     
     % Test multi setup path
     testCase.verifyEqual(BpodLib.path.getPath('liquidcalibration', mockBpod, 'setuptype', 'multi'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config/Machine-COM13'))
+    testCase.verifyEqual(BpodLib.path.getPath('liquidcalibration', 'LocalDir', mockBpod.Path.LocalDir, 'com', 'COM13', 'setuptype', 'multi'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config/Machine-COM13'))
 end
 
 function test_newCOM(testCase)
