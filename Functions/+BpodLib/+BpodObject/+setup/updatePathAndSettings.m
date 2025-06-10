@@ -20,7 +20,7 @@ else
     Path.LocalDir = p.Results.LocalDir;
 end
 BpodSystem.Path = Path;
-Path.SettingsDir = BpodLib.path.getPath(BpodSystem, 'settings');
+Path.SettingsDir = BpodLib.path.getPath('settings', BpodSystem);
 
 if ~isfolder(Path.LocalDir)
     mkdir(Path.LocalDir);
@@ -59,7 +59,7 @@ if isfolder(Path.BcontrolRootFolder)
 end
 
 %% -- Calibration Files
-calFolder = BpodLib.path.getPath(BpodSystem, 'liquidcalibration');
+calFolder = BpodLib.path.getPath('liquidcalibration', BpodSystem);
 
 if ~isfile(fullfile(Path.SettingsDir, 'LiquidCalibration.json')) && ~BpodLib.path.compatibility.isLegacySettings(Path.LocalDir)
     fileNames = {'LiquidCalibration.json', 'SoundCalibration.mat', 'Readme.txt'};
@@ -167,7 +167,7 @@ end
 %% -- Add paths to BpodSystem
 BpodSystem.Path = Path;
 
-if ~strcmp(BpodSystem.Path.SettingsDir, BpodLib.path.getPath(BpodSystem, 'Settings'))
+if ~strcmp(BpodSystem.Path.SettingsDir, BpodLib.path.getPath('Settings', BpodSystem))
     warning('BpodLib:PathSetup:SettingsMatchFail','SettingsDir setup does not match BpodLib path. This will cause issues with loading settings.');
     % I don't see why this would happen, but if it does it's going to be a problem.
 end

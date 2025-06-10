@@ -26,7 +26,7 @@ function test_freshSingleSetup(testCase)
     BpodSystem = testCase.TestData.BpodSystem;
     BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'LocalDir', testCase.TestData.LocalDir);
     testCase.verifyTrue(strcmp(BpodSystem.Path.LocalDir, testCase.TestData.LocalDir), 'LocalDir should have been overridden to test location');
-    testCase.verifyTrue(strcmp(BpodSystem.Path.SettingsDir, BpodLib.path.getPath(BpodSystem, 'Config')), 'SettingsDir should match expected location');
+    testCase.verifyTrue(strcmp(BpodSystem.Path.SettingsDir, BpodLib.path.getPath('Config', BpodSystem)), 'SettingsDir should match expected location');
 end
 
 function test_freshMultiSetup(testCase)
@@ -39,11 +39,11 @@ function test_freshMultiSetup(testCase)
     BpodLib.multi.createMultiSetup(BpodSystem);
     
     % Check if the multi setup was created
-    settingsPath = BpodLib.path.getPath(BpodSystem, 'settings', 'setuptype', 'multi');
+    settingsPath = BpodLib.path.getPath('settings', BpodSystem, 'setuptype', 'multi');
     testCase.verifyTrue(isfolder(settingsPath), 'Multi setup folder was not created.')
     
     % Check if the calibration files were created
-    calibrationFolderpath = BpodLib.path.getPath(BpodSystem, 'liquidcalibration', 'setuptype', 'multi');
+    calibrationFolderpath = BpodLib.path.getPath('liquidcalibration', BpodSystem, 'setuptype', 'multi');
     testCase.verifyTrue(isfolder(calibrationFolderpath), 'Calibration folder was not created.')
 
     % Check that the settings files have been updated correctly
@@ -73,11 +73,10 @@ function test_newMultiSetup(testCase)
     testCase.verifyTrue(numel(filelist) == 0, 'Settings folder should be empty of files after creating a new multi setup.');
 
     % Test iquidcalibration paths are set correctly
-    testCase.verifyTrue(strcmp(BpodLib.path.getPath(BpodSystem, 'liquidcalibration'), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM13')), 'Liquid calibration path should be set to the new multi setup location.');
-    testCase.verifyTrue(strcmp(BpodLib.path.getPath(NewBpodSystem, 'liquidcalibration'), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM5')), 'Liquid calibration path should be set to the new multi setup location.');
+    testCase.verifyTrue(strcmp(BpodLib.path.getPath('liquidcalibration', BpodSystem), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM13')), 'Liquid calibration path should be set to the new multi setup location.');
+    testCase.verifyTrue(strcmp(BpodLib.path.getPath('liquidcalibration', NewBpodSystem), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM5')), 'Liquid calibration path should be set to the new multi setup location.');
 end
 
-% todo: test for EMU being treated as a bona fide multi setup
 function test_emulatorBehaviour(testCase)
     % Test that the emulator behaves like a multi setup
     BpodSystem = testCase.TestData.BpodSystem;
@@ -90,6 +89,6 @@ function test_emulatorBehaviour(testCase)
     testCase.verifyTrue(BpodLib.multi.isMultiSetup(BpodSystem), 'EMU should be treated as a multi setup.');
     
     % Check if the settings directory is set correctly
-    settingsPath = BpodLib.path.getPath(BpodSystem, 'settings', 'setuptype', 'multi');
+    settingsPath = BpodLib.path.getPath('settings', BpodSystem, 'setuptype', 'multi');
     testCase.verifyTrue(isfolder(settingsPath), 'Settings folder for EMU should exist.');
 end

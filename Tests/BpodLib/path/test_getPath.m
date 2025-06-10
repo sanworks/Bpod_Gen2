@@ -23,17 +23,17 @@ function test_liquidcalibration(testCase)
     mockBpod = testCase.TestData.mockBpod;
 
     % Test single setup path
-    testCase.verifyEqual(BpodLib.path.getPath(mockBpod, 'liquidcalibration', 'setuptype', 'single'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config'))
+    testCase.verifyEqual(BpodLib.path.getPath('liquidcalibration', mockBpod, 'setuptype', 'single'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config'))
     
     % Test multi setup path
-    testCase.verifyEqual(BpodLib.path.getPath(mockBpod, 'liquidcalibration', 'setuptype', 'multi'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config/Machine-COM13'))
+    testCase.verifyEqual(BpodLib.path.getPath('liquidcalibration', mockBpod, 'setuptype', 'multi'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config/Machine-COM13'))
 end
 
 function test_newCOM(testCase)
     % Test the expected definition of liquid calibration file location
     mockBpod = testCase.TestData.mockBpod;
     
-    localfolder = BpodLib.path.getPath(mockBpod, 'liquidcalibration');
+    localfolder = BpodLib.path.getPath('liquidcalibration', mockBpod);
     mkdir(fullfile(localfolder, 'Machine-COM3'))
     mkdir(fullfile(localfolder, 'Machine-COM5'))
     

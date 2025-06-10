@@ -21,7 +21,7 @@ switch lower(p.Results.type)
         error('BpodLib:LiquidCalibration:UnrecognisedType', "Load type '%s' not recognised, should be 'statemachine' or 'portarray'", p.Results.type)
 end
 
-calibrationFolderpath = BpodLib.path.getPath(BpodSystem, 'liquidcalibration');
+calibrationFolderpath = BpodLib.path.getPath('liquidcalibration', BpodSystem);
 legacyPath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files/LiquidCalibration.mat');
 expectedFilepath = fullfile(calibrationFolderpath, filename);
 
@@ -33,7 +33,7 @@ if isJSON
     if isLegacy
         warning('BpodLib:LiquidCalibrationLoad:LegacyAndJSON', 'Returning LiquidCalibration.json but LiquidCalibration.mat exists, LiquidCalibration.mat should not exist in folder Calibration Files/')
     end
-    singleSetupPath = fullfile(BpodLib.path.getPath(BpodSystem, 'liquidcalibration', 'setup', 'single'), 'LiquidCalibration.json');
+    singleSetupPath = fullfile(BpodLib.path.getPath('liquidcalibration', BpodSystem, 'setup', 'single'), 'LiquidCalibration.json');
     if isMulti && isfile(singleSetupPath)
         warning('BpodLib:LiquidCalibrationLoad:MultiAndSingle', 'Bpod detected this is a computer that may have multiple state machines plugged in but found a single-setup liquid calibration file.')
     end

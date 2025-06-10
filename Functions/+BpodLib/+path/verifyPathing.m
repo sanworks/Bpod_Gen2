@@ -10,7 +10,7 @@ p.parse(varargin{:});
 verified = true;
 results = cell(1, 1);
 
-liquidcalibrationPath = BpodLib.path.getPath(BpodSystem, 'liquidcalibration');
+liquidcalibrationPath = BpodLib.path.getPath('liquidcalibration', BpodSystem);
 if ~isfolder(liquidcalibrationPath)
     verified = false;
     results{1} = liquidcalibrationPath;

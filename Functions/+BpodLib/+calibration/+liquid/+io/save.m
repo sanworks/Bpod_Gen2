@@ -19,7 +19,7 @@ savedata = ValveDataManagerStruct;
 % Determine the save location of the calibration file
 if isempty(p.Results.filepath)
     assert(~isempty(p.Results.type), "Either 'filepath' or 'type' must be specified")
-    calibrationFolderpath = BpodLib.path.getPath(BpodSystem, 'liquidcalibration');
+    calibrationFolderpath = BpodLib.path.getPath('liquidcalibration', BpodSystem);
     switch lower(p.Results.type)
         case 'statemachine'
             filename = 'LiquidCalibration.json';
