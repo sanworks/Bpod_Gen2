@@ -34,12 +34,15 @@ function test_freshMultiSetup(testCase)
 
     % Create the single setup first
     BpodSystem = testCase.TestData.BpodSystem;
-    BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'LocalDir', testCase.TestData.LocalDir);
+    LocalDir = testCase.TestData.LocalDir;
+    BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'LocalDir', LocalDir);
 
     BpodLib.multi.createMultiSetup(BpodSystem);
     
     % Check if the multi setup was created
     settingsPath = BpodLib.path.getPath('settings', BpodSystem, 'setuptype', 'multi');
+    testCase.verifyTrue(strcmp(settingsPath, BpodLib.path.getPath('settings', BpodSystem, 'LocalDir', LocalDir, 'setuptype', 'multi')), "Settings path should match when LocalDir is given");
+    testCase.verifyTrue(strcmp(settingsPath, BpodLib.path.getPath('settings', 'LocalDir', LocalDir, 'com', 'COM13', 'setuptype', 'multi')), "Settings path should match when no BpodSystem is given");
     testCase.verifyTrue(isfolder(settingsPath), 'Multi setup folder was not created.')
     
     % Check if the calibration files were created

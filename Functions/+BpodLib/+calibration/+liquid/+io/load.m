@@ -8,6 +8,7 @@ function liquidData = load(varargin)
 
 p = inputParser();
 p.addParameter('BpodSystem', [])
+p.addParameter('LocalDir', [], @(x) isempty(x) || ischar(x) || isstring(x))
 p.addParameter('type', [])
 p.parse(varargin{:})
 BpodSystem = p.Results.BpodSystem;
@@ -21,19 +22,21 @@ switch lower(p.Results.type)
         error('BpodLib:LiquidCalibration:UnrecognisedType', "Load type '%s' not recognised, should be 'statemachine' or 'portarray'", p.Results.type)
 end
 
-calibrationFolderpath = BpodLib.path.getPath('liquidcalibration', BpodSystem);
-legacyPath = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files/LiquidCalibration.mat');
+LocalDir = BpodLib.path.getPath('local', BpodSystem, 'LocalDir', p.Results.LocalDir);
+
+calibrationFolderpath = BpodLib.path.getPath('liquidcalibration', BpodSystem, 'LocalDir', LocalDir);
+legacyPath = fullfile(LocalDir, 'Calibration Files/LiquidCalibration.mat');
 expectedFilepath = fullfile(calibrationFolderpath, filename);
 
 % Verify that file structure is as expected
 isLegacy = isfile(legacyPath);
 isJSON = isfile(fullfile(calibrationFolderpath, 'LiquidCalibration.json'));
-isMulti = BpodLib.multi.isMultiSetup(BpodSystem);
+isMulti = BpodLib.multi.isMultiSetup(BpodSystem, 'LocalDir', LocalDir);
 if isJSON
     if isLegacy
         warning('BpodLib:LiquidCalibrationLoad:LegacyAndJSON', 'Returning LiquidCalibration.json but LiquidCalibration.mat exists, LiquidCalibration.mat should not exist in folder Calibration Files/')
     end
-    singleSetupPath = fullfile(BpodLib.path.getPath('liquidcalibration', BpodSystem, 'setup', 'single'), 'LiquidCalibration.json');
+    singleSetupPath = fullfile(BpodLib.path.getPath('liquidcalibration', BpodSystem, 'LocalDir', LocalDir, 'setup', 'single'), 'LiquidCalibration.json');
     if isMulti && isfile(singleSetupPath)
         warning('BpodLib:LiquidCalibrationLoad:MultiAndSingle', 'Bpod detected this is a computer that may have multiple state machines plugged in but found a single-setup liquid calibration file.')
     end

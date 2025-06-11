@@ -19,8 +19,8 @@ if isempty(p.Results.LocalDir)
 else
     Path.LocalDir = p.Results.LocalDir;
 end
-BpodSystem.Path = Path;
-Path.SettingsDir = BpodLib.path.getPath('settings', BpodSystem);
+LocalDir = Path.LocalDir;
+Path.SettingsDir = BpodLib.path.getPath('settings', BpodSystem, 'LocalDir', LocalDir);
 
 if ~isfolder(Path.LocalDir)
     mkdir(Path.LocalDir);
@@ -28,8 +28,6 @@ end
 if ~isfolder(Path.SettingsDir)
     mkdir(Path.SettingsDir);
 end
-
-BpodSystem.Path = Path;  % Update BpodSystem.Path to ensure it has the latest settings
 
 %% -- Configure user-settable BpodSettings paths
 ExamplesDir = fullfile(Path.BpodRoot, 'Examples');
@@ -59,7 +57,7 @@ if isfolder(Path.BcontrolRootFolder)
 end
 
 %% -- Calibration Files
-calFolder = BpodLib.path.getPath('liquidcalibration', BpodSystem);
+calFolder = BpodLib.path.getPath('liquidcalibration', BpodSystem, 'LocalDir', LocalDir);
 
 if ~isfile(fullfile(Path.SettingsDir, 'LiquidCalibration.json')) && ~BpodLib.path.compatibility.isLegacySettings(Path.LocalDir)
     fileNames = {'LiquidCalibration.json', 'SoundCalibration.mat', 'Readme.txt'};
@@ -74,7 +72,7 @@ if ~isfile(fullfile(Path.SettingsDir, 'LiquidCalibration.json')) && ~BpodLib.pat
 end
 
 try
-    BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'type', 'statemachine');
+    BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'LocalDir', LocalDir, 'type', 'statemachine');
 catch err
     if strcmp(err.identifier, 'BpodLib:LiquidCalibrationLoad:FileNotFound')
         BpodSystem.CalibrationTables.LiquidCal = [];
@@ -85,7 +83,7 @@ end
 
 
 try
-    BpodSystem.CalibrationTables.PortArrays = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'type', 'portarray');
+    BpodSystem.CalibrationTables.PortArrays = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'LocalDir', LocalDir, 'type', 'portarray');
 catch err
     if strcmp(err.identifier, 'BpodLib:LiquidCalibrationLoad:FileNotFound')
         BpodSystem.CalibrationTables.PortArrays = [];
@@ -132,7 +130,7 @@ end
 Path.FlexConfig = fullfile(Path.SettingsDir, 'FlexConfig.mat');
 
 %% -- Add dynamic paths to Path
-% These are set during protocol launch.
+% These are set when a protocol is run, so copy them from existingPath if available.
 if ~isempty(existingPath)
     dynamicNames = {'Settings', 'CurrentDataFile', 'CurrentProtocol'};
     for idx = 1:numel(dynamicNames)
@@ -167,7 +165,7 @@ end
 %% -- Add paths to BpodSystem
 BpodSystem.Path = Path;
 
-if ~strcmp(BpodSystem.Path.SettingsDir, BpodLib.path.getPath('Settings', BpodSystem))
+if ~strcmp(BpodSystem.Path.SettingsDir, BpodLib.path.getPath('Settings', BpodSystem, 'LocalDir', LocalDir))
     warning('BpodLib:PathSetup:SettingsMatchFail','SettingsDir setup does not match BpodLib path. This will cause issues with loading settings.');
     % I don't see why this would happen, but if it does it's going to be a problem.
 end

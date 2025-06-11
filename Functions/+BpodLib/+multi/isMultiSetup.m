@@ -1,13 +1,23 @@
-function result = isMultiSetup(BpodSystem, varargin)
+function result = isMultiSetup(varargin)
+%result = BpodLib.multi.isMultiSetup(BpodSystem, _)
 % Determine if the system is being run on a computer with multiple state machines attached.
+% BpodSystem is required to be passed in if 'LocalDir' is not specified.
+%
+% Examples
+% --------
+% result = BpodLib.multi.isMultiSetup(BpodSystem)
+% result = BpodLib.multi.isMultiSetup('LocalDir', '/path/to/local/dir')
 
 p = inputParser();
+p.addOptional('BpodSystem', [], @(x) isempty(x) | isstruct(x) | isa(x, 'BpodObject') | isa(x, 'BpodLib.BpodObject.MockBpodObject'))
 p.addParameter('LocalDir', '')
 p.parse(varargin{:})
-if isempty(p.Results.LocalDir)
-    SettingsDir = fullfile(BpodSystem.Path.LocalDir, 'Config');
-else
+if ~isempty(p.Results.LocalDir)
     localDir = p.Results.LocalDir;
+    SettingsDir = fullfile(localDir, 'Config');
+else
+    assert(~isempty(p.Results.BpodSystem), 'BpodLib:MultiSetup:NoBpodSystem', 'BpodSystem or LocalDir must be specified.');
+    localDir = p.Results.BpodSystem.Path.LocalDir;
     SettingsDir = fullfile(localDir, 'Config');
 end
 

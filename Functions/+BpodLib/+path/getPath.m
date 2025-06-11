@@ -1,18 +1,38 @@
 function path = getPath(target, varargin)
+%path = getPath(target, _)
 % Retrieve the path to something
-% path = getPath(target, _)
+% Example usages:
+% path = getPath('liquidcalibration', BpodSystem, 'setuptype', 'single')
+% path = getPath('config', 'LocalDir', LocalDirPath, 'setuptype', 'multi', 'com', 'COM3')
 %
+% :param target: The target path to retrieve, can be one of the following:
+%   - 'config': Path to the config folder
+%   - 'local': Path to the local directory
+%   - 'liquidcalibration': Path to the liquid calibration files
+%   - 'root': Path to the Bpod root directory
+%   - 'settings': Path to the settings folder
+% :type target: char
+% :param BpodSystem: The Bpod system object, if not provided you must specify 'LocalDir' parameterfe
+% :type BpodSystem: BpodObject or struct
 % :param setuptype: What kind of setup (single/multi) to find path for, defaults to auto-detecting
 % :type setuptype: char
+% :param LocalDir: The local directory to use, if not provided uses BpodSystem.Path.LocalDir. This overrides auto-detection of LocalDir from BpodSystem.
+% :type LocalDir: char
+% :param com: The COM port to use for multi setups, if not provided uses BpodSystem.SerialPort.PortName
+% :type com: char
+% :return path: The path to the requested target
+% :rtype: char
 
 p = inputParser();
 p.addOptional('BpodSystem', [], @(x) isempty(x) || isstruct(x) || isa(x, 'BpodObject') || isa(x, 'BpodLib.BpodObject.MockBpodObject'))
-p.addParameter('setuptype', [])
+p.addParameter('setuptype', [], @(x) isempty(x) || ischar(x) || isstring(x))
 p.addParameter('LocalDir', [], @(x) isempty(x) || ischar(x) || isstring(x))
 p.addParameter('com', [], @(x) isempty(x) || ischar(x) || isstring(x))
 p.parse(varargin{:})
 
 BpodSystem = p.Results.BpodSystem;
+
+assert(~isempty(p.Results.BpodSystem) || ~isempty(p.Results.LocalDir), 'BpodLib:Path:MissingPathReference', 'Either BpodSystem or LocalDir must be provided to getPath.')
 
 if ~isempty(p.Results.setuptype)
     switch p.Results.setuptype
@@ -24,14 +44,14 @@ if ~isempty(p.Results.setuptype)
             error('BpodLib:Path:UnrecognisedSetupType', "setuptype must be either 'single' or 'multi'")
     end
 else
-    isSingle = ~BpodLib.multi.isMultiSetup(BpodSystem); % this computer doesn't have multiple State Machines
+    isSingle = ~BpodLib.multi.isMultiSetup(BpodSystem, 'LocalDir', p.Results.LocalDir); % this computer doesn't have multiple State Machines
 end
 
 if ~isSingle
     if ~isempty(p.Results.com)
         com = p.Results.com;
     else
-        assert(~isempty(BpodSystem), 'BpodSystem must be provided for multi setups');
+        assert(~isempty(BpodSystem), "For multi setups 'com' or BpodSystem must be provided.");
         com = BpodLib.utils.getCurrentCOM(BpodSystem);
     end
     comfolder = sprintf('Machine-%s', com);
@@ -52,18 +72,14 @@ switch lower(target)
             path = BpodSystem.Path.LocalDir;
         end
     case 'liquidcalibration'
-%         legacyPath = fullfile(BpodLib.path.getPath('settings', 'setup', 'single'), 'Calibration Files');
-%         if isfile(fullfile(legacyPath, 'LiquidCalibration.mat'))
-%             path = legacyPath;
-%             return
-%         end
         if BpodLib.path.compatibility.isLegacySettings(BpodLib.path.getPath('local', varargin{:}))
             path = fullfile(BpodLib.path.getPath('local', p.Results.BpodSystem), 'Calibration Files');
             return
         end
         path = fullfile(BpodLib.path.getPath('config', varargin{:}));
     case 'root'
-        path = BpodSystem.Path.BpodRoot;
+        % ? should this check Path to see if there are multiple Bpod.m files
+        path = fileparts(which('Bpod'));
     case 'settings'
         LocalDir = BpodLib.path.getPath('local', varargin{:});
         if BpodLib.path.compatibility.isLegacySettings(LocalDir)
