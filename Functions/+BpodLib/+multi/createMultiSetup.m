@@ -1,29 +1,20 @@
 function createMultiSetup(BpodSystem)
-% createMultiSetup(BpodSystem)
+%createMultiSetup(BpodSystem)
 %   This function creates a new multi setup for the Bpod system.
-%   It creates
+%   It either converts an existing single-setup folder structure to a multi-setup compatible one
+%   by moving the existing files, or creates a "fresh" setup by copying in example files to where
+%   the BpodSystem COM's configuration files are expected.
 
-isMulti = BpodLib.multi.isMultiSetup(BpodSystem);  % Check if the system is already in multi mode
+if BpodLib.path.compatibility.isLegacySettings(BpodSystem.Path.LocalDir)
+    error('BpodLib:MultiSetup:LegacyIncompatible', 'Legacy setups must first be converted to modern setup with Config/ folder.')
+end
+
+if BpodLib.multi.isMultiSetup(BpodSystem)
+    error('BpodLib:MultiSetup:ExistingMultiSetup', "This function can only be used when there are no existing multi-setups.")
+end
 
 % -- Intialising new setup
-if ~isMulti
-    % Create the new setup
-    movefile(BpodLib.path.getPath('settings', BpodSystem, 'setuptype', 'single'), ...
-        BpodLib.path.getPath('settings', BpodSystem, 'setuptype', 'multi'))
-    return
-end
-
-% -- A new setup is being created alongside existing multi setup
-settingsPath = BpodLib.path.getPath('settings', BpodSystem, 'setuptype', 'multi');
-if isfolder(settingsPath)
-    error('BpodLib:LiquidCalibration:MultiSetupAlreadyCreated', 'The multi-setup for the liquid calibration for this COM already exists.')
-end
-
-% Settings Files
-
-% Calibration Files
-calibrationFolderpath = BpodLib.path.getPath('liquidcalibration', BpodSystem, 'setuptype', 'multi');
-mkdir(calibrationFolderpath)
-copyfile(fullfile(BpodLib.path.getPath('root', BpodSystem), 'Examples/Example Calibration Files/'), calibrationFolderpath)
+movefile(BpodLib.path.getPath('settings', BpodSystem, 'setuptype', 'single'), ...
+    BpodLib.path.getPath('settings', BpodSystem, 'setuptype', 'multi'))
 
 end

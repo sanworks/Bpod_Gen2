@@ -52,6 +52,7 @@ function test_freshMultiSetup(testCase)
     % Check that the settings files have been updated correctly
     testCase.verifyTrue(isa(BpodSystem.CalibrationTables.LiquidCal, 'BpodLib.calibration.liquid.ValveDataManagerClass'), ...
         'LiquidCal should be a LiquidCalibrationClass object after multi setup creation.');
+    testCase.verifyTrue(isfile(fullfile(BpodLib.path.getPath('settings', BpodSystem), 'SyncConfig.mat')), 'Settings files should have been loaded.')
 
 end
 
@@ -78,6 +79,9 @@ function test_newMultiSetup(testCase)
     % Test iquidcalibration paths are set correctly
     testCase.verifyTrue(strcmp(BpodLib.path.getPath('liquidcalibration', BpodSystem), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM13')), 'Liquid calibration path should be set to the new multi setup location.');
     testCase.verifyTrue(strcmp(BpodLib.path.getPath('liquidcalibration', NewBpodSystem), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM5')), 'Liquid calibration path should be set to the new multi setup location.');
+
+    % Test settings files are moved
+    testCase.verifyTrue(isfile(fullfile(BpodLib.path.getPath('settings',NewBpodSystem), 'SyncConfig.mat')), 'Settings files should have been created.')
 end
 
 function test_emulatorBehaviour(testCase)

@@ -60,6 +60,12 @@ function test_legacyStartup(testCase)
 
 end
 
+function test_createMultiSetup(testCase)
+    % createMultiSetup errors when trying to convert from legacy.
+    BpodSystem = testCase.TestData.BpodSystem;
+    testCase.verifyError(@() BpodLib.multi.createMultiSetup(BpodSystem), 'BpodLib:MultiSetup:LegacyIncompatible', 'Should error when trying to create multi-setup from legacy setup');
+end
+
 function test_convertLegacySetup(testCase)
     % Test conversion from legacy folder setup to single-folder setup
     Completed = BpodLib.BpodObject.setup.compatibility.convertSettingsFolder(testCase.TestData.BpodSystem, 'verbose', false);
