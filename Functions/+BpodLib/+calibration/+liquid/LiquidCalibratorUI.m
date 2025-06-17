@@ -72,7 +72,7 @@ methods
             'String', {'No measurements found'}, 'Position', [140 55 300 210], 'FontWeight', 'bold',...
             'FontUnits', 'Pixels', 'FontSize', 16);
         obj.GUIHandles.AddMeasurementButton = uicontrol('Style', 'pushbutton',...
-            'Position', [445 230 30 30], 'Callback', @(src,event) obj.AddPendingMeasurement(src, event));
+            'Position', [445 230 30 30], 'Callback', @(src,event) obj.RequestPendingMeasurement(src, event));
         obj.GUIHandles.RemoveMeasurementButton = uicontrol('Style', 'pushbutton',...
             'Position', [445 185 30 30], 'Callback', @(src,event) obj.RemoveMeasurement(src,event));
         set(obj.GUIHandles.AddMeasurementButton, 'CData', imread('PlusButton.bmp'));
@@ -219,8 +219,8 @@ methods
         ylabel(AxCalib, 'Liquid (ul)', 'fontsize', 14, 'color', [1 1 1]);
     end
 
-    function AddPendingMeasurement(obj, src, event)
-        % -- Request user for measurement value
+    function RequestPendingMeasurement(obj, src, event)
+        % Create a GUI for entering a pending measurement
         obj.GUIHandles.ValueEntryFig = figure('Position', [540 400 400 200],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off' );
         ha = axes('units','normalized', 'position',[0 0 1 1]);
         uistack(ha,'bottom');
@@ -232,7 +232,7 @@ methods
     end
 
     function GetPendingMeasurementFromUser(obj, src, event)
-        % Get a value for liquid amount from the user
+        % Get the value for liquid amount from the GUI window
 
         % -- Validate entered value
         ValueEntered_ms = get(obj.GUIHandles.AmountEntry, 'String');
