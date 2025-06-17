@@ -8,7 +8,7 @@ p.parse(varargin{:})
 BpodSystem = p.Results.BpodSystem;
 % Legacy system
 if isa(BpodSystem.CalibrationTables.LiquidCal, 'struct')
-    BpodLiquidCalibration('Calibrate');
+    LegacyBpodLiquidCalibration('Calibrate');
     return
 end
 
