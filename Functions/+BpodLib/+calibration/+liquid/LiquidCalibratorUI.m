@@ -417,30 +417,6 @@ methods
             return
         end
 
-    function TestSpecificAmount(obj, varargin)
-        if isfield(obj.GUIHandles, 'TestSpecificAmtFig') && ~verLessThan('MATLAB', '8.4')
-            if isgraphics(obj.GUIHandles.TestSpecificAmtFig)
-                figure(obj.GUIHandles.TestSpecificAmtFig);
-                return
-            end
-        end
-        obj.GUIHandles.TestSpecificAmtFig = figure('Position', [100 100 400 600],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'Name', 'Test specific amount');
-        ha = axes('units','normalized', 'position',[0 0 1 1]);
-        uistack(ha,'bottom');
-        BG = imread('SpecificAmountEntry.bmp');
-        image(BG); axis off;
-        obj.GUIHandles.CB1b = uicontrol('Style', 'checkbox', 'Position', [13 535 15 15], 'TooltipString', 'Test valve 1');
-        obj.GUIHandles.CB2b = uicontrol('Style', 'checkbox', 'Position', [64 535 15 15], 'TooltipString', 'Test valve 2');
-        obj.GUIHandles.CB3b = uicontrol('Style', 'checkbox', 'Position', [116 535 15 15], 'TooltipString', 'Test valve 3');
-        obj.GUIHandles.CB4b = uicontrol('Style', 'checkbox', 'Position', [168 535 15 15], 'TooltipString', 'Test valve 4');
-        obj.GUIHandles.CB5b = uicontrol('Style', 'checkbox', 'Position', [220 535 15 15], 'TooltipString', 'Test valve 5');
-        obj.GUIHandles.CB6b = uicontrol('Style', 'checkbox', 'Position', [271 535 15 15], 'TooltipString', 'Test valve 6');
-        obj.GUIHandles.CB7b = uicontrol('Style', 'checkbox', 'Position', [324 535 15 15], 'TooltipString', 'Test valve 7');
-        obj.GUIHandles.CB8b = uicontrol('Style', 'checkbox', 'Position', [375 535 15 15], 'TooltipString', 'Test valve 8');
-
-        for valveIndex = 1:8
-            if ~isempty(obj.ValveDataManager.getValve(valveIndex).Durations)
-                obj.GUIHandles.(sprintf('CB%ib', valveIndex)).Value = 1;
         % Add suggested points to pending measurements
         for valveIndex = 1:numel(targetValveNameSet)
             valveName = targetValveNameSet{valveIndex};
@@ -454,141 +430,21 @@ methods
                     rethrow(ME);
                 end
             end
-        end
 
-        obj.GUIHandles.SpecificAmtEdit = uicontrol('Style', 'edit', 'String', '10', 'Position', [256 478 40 25], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 16, 'BackgroundColor', [.9 .9 .9]);
-        obj.GUIHandles.nPulsesDropmenu = uicontrol('Style', 'popupmenu', 'String', {'100' '200' '300' '400' '500'}, 'Position', [289 447 50 25], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 16, 'BackgroundColor', [.9 .9 .9], 'TooltipString', 'Use more pulses with small water volumes for improved accuracy');
-        obj.GUIHandles.ToleranceDropmenu = uicontrol('Style', 'popupmenu', 'String', {'5' '10'}, 'Position', [289 416 50 25], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 16, 'BackgroundColor', [.9 .9 .9], 'TooltipString', 'Percent of intended amount by which measured amount can differ');
-        obj.GUIHandles.ResultsListbox = uicontrol('Style', 'listbox', 'String', {''}, 'Position', [25 28 355 130], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 15, 'BackgroundColor', [.85 .85 .85], 'SelectionHighlight', 'off');
-    
-        jScrollPane = findjobj(obj.GUIHandles.ResultsListbox); % get the scroll-pane object
-        jListbox = jScrollPane.getViewport.getComponent(0);
-        jListbox.setBackground(javax.swing.plaf.ColorUIResource(.85,.85,.85));
-    
-        DeliverButtonGFX = imread('TestDeliverButton.bmp');
-        obj.GUIHandles.DeliverButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [40 300 325 50], 'Callback', @(src, event) obj.RunSpecificAmount(), 'TooltipString', 'Start liquid delivery', 'CData', DeliverButtonGFX);
-        obj.GUIHandles.MeasuredAmtEdit = uicontrol('Style', 'edit', 'String', '---', 'Position', [202 238 55 30], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.88 .88 .88], 'Enable', 'off');
-        obj.GUIHandles.MeasuredValveText = uicontrol('Style', 'edit', 'String', '1', 'Position', [123 238 55 30], 'FontWeight', 'bold', 'FontSize', 14, 'enable', 'off', 'BackgroundColor', [.85 .85 .85]);
-        MeasurementButtonGFX = imread('NextMeasurement.bmp');
-        obj.GUIHandles.EnterMeasurementButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [295 233 60 40], 'Callback', @(src, event) obj.EnterTestCal(), 'TooltipString', 'Enter measurement', 'CData', MeasurementButtonGFX);
-    end
-
-    function RunSpecificAmount(obj, varargin)
-        figure(obj.GUIHandles.TestSpecificAmtFig);
-        % In case the GUI has already been used, reset values.
-        set(obj.GUIHandles.EnterMeasurementButton, 'Enable', 'on');
-        set(obj.GUIHandles.ResultsListbox, 'String', cell(1,1), 'Value', 1)
-        set(obj.GUIHandles.MeasuredValveText, 'String', '1')
-        InvalidParams = 0; % if invalid params are found, this is set to "1" and delivery is skipped
-    
-        % Figure out which valves to test
-        ValveLogic = zeros(1,8);
-        for index = 1:8
-            ValveLogic(index) = obj.GUIHandles.(sprintf('CB%ib', index)).Value;
-        end
-        TargetValveIndices = find(ValveLogic);
-        TargetValveNames = cell(sum(ValveLogic), 1);
-        allValveNames = obj.ValveDataManager.getValveNames();
-        for index = TargetValveIndices
-            valveName = allValveNames{index};
-            TargetValveNames{index} = valveName;
-        end
-        % Sanity-check target valves
-        if isempty(TargetValveIndices)
-            InvalidParams = 1;
-        end
-        % Figure out amount to test
-        LiquidAmount = get(obj.GUIHandles.SpecificAmtEdit, 'String');
-        % Sanity-check liquid amount
-        if isnan(str2double(LiquidAmount))
-            InvalidParams = 1;
-        end
-        LiquidAmount = round(str2double(LiquidAmount));
-        if (LiquidAmount < 0) || (LiquidAmount > 1000)
-            InvalidParams = 1;
         end
         obj.CalibrationTargetRange = [RangeLow RangeHigh]; % Update cal range to what was in GUI
         close(obj.GUIHandles.RecommendedMeasureFig);
         obj.DisplayValve();
     
-        if InvalidParams == 0
-            % Convert liquid amount to pulse duration using current table
-            PulseDurations = GetValveTimes(LiquidAmount, TargetValveIndices, 'ValveDataManager', obj.ValveDataManager);
-            % Figure out how many pulses to deliver
-            nPulses = get(obj.GUIHandles.nPulsesDropmenu, 'Value')*100;
-            % Set valve request window
-            set(obj.GUIHandles.MeasuredValveText, 'String', num2str(TargetValveIndices(1)));
-            drawnow;
-            % Call calibration script
-            Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, nPulses, TargetValveNames, PulseDurations, 'PulseInterval', .2);
-        else
-            warndlg('Invalid settings detected. Check setup.', 'Error', 'modal');
-        end
-        if Completed
-            % Get measurements
-            set(obj.GUIHandles.MeasuredAmtEdit, 'String', '', 'Enable', 'on');
-            uicontrol(obj.GUIHandles.MeasuredAmtEdit);
-        end
     end
 
-    function EnterTestCal(obj, varargin)
-        figure(obj.GUIHandles.TestSpecificAmtFig);
-    
-        ToleranceLevelStrings = get(obj.GUIHandles.ToleranceDropmenu, 'String');
-        ToleranceLevel = str2double(ToleranceLevelStrings{get(obj.GUIHandles.ToleranceDropmenu, 'Value')})/100; % Fraction of intended amount by which measured amount is allowed to differ from intended amount
-    
-        % Figure out which valves were tested
-        ValveLogic = zeros(1,8);
-        for index = 1:8
-            ValveLogic(index) = obj.GUIHandles.(sprintf('CB%ib', index)).Value;
-        end
-        TargetValves = find(ValveLogic);
-    
-        InvalidParams = 0;
-        MeasuredLiquidAmount = get(obj.GUIHandles.MeasuredAmtEdit, 'String');
-        % Sanity-check liquid amount
-        if isnan(str2double(MeasuredLiquidAmount))
-            InvalidParams = 1;
-        end
-        nPulses = get(obj.GUIHandles.nPulsesDropmenu, 'Value')*100;
-        MeasuredLiquidAmount = str2double(MeasuredLiquidAmount);
-        if (MeasuredLiquidAmount < 0) || (MeasuredLiquidAmount > 1000)
-            InvalidParams = 1;
-        end
-        IntendedLiquidAmount = get(obj.GUIHandles.SpecificAmtEdit, 'String');
-        IntendedLiquidAmount = str2double(IntendedLiquidAmount);
-        if InvalidParams == 0
-            ValveID = str2double(get(obj.GUIHandles.MeasuredValveText, 'String'));
-            ListboxMeasurements = get(obj.GUIHandles.ResultsListbox, 'String');
-            if isempty(ListboxMeasurements{1})
-                nEntries = 0;
-            else
-                nEntries = length(ListboxMeasurements);
+    function TestSpecificAmount(obj, varargin)
+        if isfield(obj.GUIHandles, 'TestSpecificAmtFig')
+            if obj.GUIHandles.TestSpecificAmtFig.focus()
+                return
             end
-            CurrentEntry = nEntries+1;
-            MeasuredLiquidAmount = MeasuredLiquidAmount/nPulses; % Amount per pulse in ml
-            MeasuredLiquidAmount = MeasuredLiquidAmount*1000; % Amount per pulse in ul
-            ToleranceIntervalLowBound = IntendedLiquidAmount - (IntendedLiquidAmount*ToleranceLevel);
-            ToleranceIntervalHighBound = IntendedLiquidAmount + (IntendedLiquidAmount*ToleranceLevel);
-            WithinTolerance = ((MeasuredLiquidAmount >= ToleranceIntervalLowBound) && (MeasuredLiquidAmount <= ToleranceIntervalHighBound));
-            if WithinTolerance == 1
-                ListboxMeasurements{CurrentEntry} = ['<html><FONT COLOR="#009900">Valve ' num2str(ValveID) ': ' num2str(IntendedLiquidAmount) 'ul indended. ' num2str(MeasuredLiquidAmount) 'ul measured. PASS</FONT></html>'];
-            else
-                ListboxMeasurements{CurrentEntry} = ['<html><FONT COLOR="#ff0000">Valve ' num2str(ValveID) ': ' num2str(IntendedLiquidAmount) 'ul indended. ' num2str(MeasuredLiquidAmount) 'ul measured. FAIL</FONT></html>'];
-            end
-            set(obj.GUIHandles.ResultsListbox, 'String', ListboxMeasurements)
-            ValveIDPos = find(TargetValves == ValveID);
-            if ValveIDPos < length(TargetValves)
-                NextValve = TargetValves(ValveIDPos+1);
-                set(obj.GUIHandles.MeasuredValveText, 'String', num2str(NextValve));
-            else
-                set(obj.GUIHandles.EnterMeasurementButton, 'Enable', 'off');
-            end
-        else
-            warndlg('Invalid liquid amount.', 'Error', 'modal');
         end
-        set(obj.GUIHandles.MeasuredAmtEdit, 'String', '');
-    
+        obj.GUIHandles.TestSpecificAmtFig = BpodLib.calibration.liquid.ui.TestSpecificAmountGUI(obj.BpodSystem, obj.ValveDataManager);
     end
 
 end
