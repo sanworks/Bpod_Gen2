@@ -324,6 +324,7 @@ methods
     function RunPendingMeasurements(obj, varargin)
         % Deliver liquid
         [valveNames, pulseDurations_ms] = obj.PendingMeasurements.getPending();
+        assert(numel(valveNames) > 0, 'There must be pending values to calibrate')
         Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, str2double(get(obj.GUIHandles.nPulsesEdit, 'string')), valveNames, pulseDurations_ms * 1000, 'PulseInterval', .2);
         if Completed
             % -- Create GUI for entering measurements
@@ -374,11 +375,12 @@ methods
                 return
             end
         end
-        BG = imread('RewardCalAddRecommends.bmp');
+        obj.GUIHandles.RecommendedMeasureFig = BpodLib.calibration.liquid.ui.SuggestPointsGUI(obj.ValveDataManager, @obj.AddSuggestedPoints);
+        obj.GUIHandles.RecommendedMeasureFig.setRange(obj.CalibrationTargetRange(1), obj.CalibrationTargetRange(2));
 
-        for valveIndex = 1:8
-            if ~isempty(CalData.getValve(valveIndex).Durations)
-                obj.GUIHandles.(sprintf('CB%i', valveIndex)).Value = 1;
+        valveNamesSet = obj.ValveDataManager.getValveNames();
+        for iValve = 1:numel(valveNamesSet)
+            valveName = valveNamesSet{iValve};
             if ~isempty(obj.ValveDataManager.getValve(valveName).Durations)
                 obj.GUIHandles.RecommendedMeasureFig.GUIHandles.(valveName).Value = 1;
             end
