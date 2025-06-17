@@ -101,6 +101,11 @@ methods
             delete(obj.GUIHandles.MainFig);
         catch
         end
+
+        try 
+            delete(obj.GUIHandles.ValueEntryFig);
+        catch
+        end
     end
 
     function delete(obj)
@@ -331,6 +336,7 @@ methods
     end
 
     function AddCalMeasurements(obj, varargin)
+        % todo: refactor this into ValueEntryGUI
         figure(obj.GUIHandles.RunMeasurementsFig);
         [pendingValves, pendingDurations_ms] = obj.PendingMeasurements.getPending();
 
