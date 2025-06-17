@@ -37,6 +37,7 @@ methods
     end
 
     function addMeasurement(obj, duration, amount)
+        %addMeasurement(duration, amount)
         % Add a new measurement to the data set
         % :param duration: the duration of the valve opening (ms)
         % :type duration: double
@@ -95,6 +96,7 @@ methods
     end
 
     function valveTime_ms = getValveTime(obj, liquidAmount_uL)
+        %valveTime_ms = getValveTime(liquidAmount_uL)
         % Get the valve open time for a given liquid amount
         % :param liquidAmount_uL: the amount of liquid to dispense (uL)
         % :type liquidAmount_uL: double

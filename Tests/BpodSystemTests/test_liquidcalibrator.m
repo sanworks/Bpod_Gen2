@@ -30,6 +30,7 @@ function setup(testCase)
     global BpodSystem
     root = tempname;
     testCase.TestData.root = root;
+    testCase.TestData.BpodSystem = BpodSystem;
     localdir = fullfile(root, 'Bpod Local');
     BpodSystem.Path.LocalDir = localdir;
     mkdir(localdir)
@@ -43,6 +44,7 @@ end
 
 function teardown(testCase)
     rmdir(testCase.TestData.root, 's')
+    close(testCase.TestData.BpodSystem.GUIHandles.LiquidCalibrator)
 end
 
 function test_RunCalibration(testCase)
@@ -83,8 +85,8 @@ function test_RunCalibration(testCase)
 
     % Measurement runs
 
-    lc.GUIHandles.CB3b.String = '.8'; % enter value weighed
-    feval(lc.GUIHandles.EnterMeasurementButton2.Callback, [], []) % click OK button
+    lc.GUIHandles.ValueEntryGUI.GUIHandles.Valve3.String = '.8'; % enter value weighed
+    feval(lc.GUIHandles.ValueEntryGUI.GUIHandles.EnterMeasurementButton2.Callback, [], []) % click OK button
 
     close(lc.GUIHandles.msgbox) % close box that confirms saving
 
