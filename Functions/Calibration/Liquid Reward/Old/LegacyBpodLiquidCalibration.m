@@ -17,7 +17,7 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-function varargout = BpodLiquidCalibration(op, varargin)
+function varargout = LegacyBpodLiquidCalibration(op, varargin)
 global BpodSystem
 if isempty(isprop(BpodSystem, 'BpodPath'))
     error('You must run Bpod before using this function.');
