@@ -60,6 +60,14 @@ function test_Function(testCase)
     testCase.verifyEqual(out, .1102557, 'Should grab state machine port array value', 'AbsTol', 1e-6)
 end
 
+function test_legacy(testCase)
+    % Test legacy data can still be handled
+    LiquidCalStruct = load('../BpodLib/calibration/liquid/testData/LiquidCalibration.mat').LiquidCal;
+    testCase.TestData.BpodSystem.CalibrationTables.LiquidCal = LiquidCalStruct;
+    out = GetValveTimes(15, 3);
+    testCase.verifyEqual(out, .1102557, 'Should grab state machine port array value', 'AbsTol', 1e-6)
+end
+
 function test_PortArrays(testCase)
     % Test that the valve times are calculated correctly
     out = GetValveTimes(5, 3, 'PortArray', 2);
