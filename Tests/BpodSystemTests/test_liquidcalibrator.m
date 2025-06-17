@@ -29,6 +29,7 @@ function setup(testCase)
     global BpodSystem
     root = tempname;
     testCase.TestData.root = root;
+    testCase.TestData.BpodSystem = BpodSystem;
     localdir = fullfile(root, 'Bpod Local');
     BpodSystem.Path.LocalDir = localdir;
     mkdir(localdir)
@@ -39,6 +40,7 @@ end
 
 function teardown(testCase)
     rmdir(testCase.TestData.root, 's')
+    close(testCase.TestData.BpodSystem.GUIHandles.LiquidCalibrator)
 end
 
 function test_RunCalibration(testCase)
