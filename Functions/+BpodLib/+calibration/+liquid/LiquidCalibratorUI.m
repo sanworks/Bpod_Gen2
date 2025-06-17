@@ -369,59 +369,31 @@ methods
     
     function SuggestPoints(obj, varargin)
         if isfield(obj.GUIHandles, 'RecommendedMeasureFig')
-            if isvalid(obj.GUIHandles.RecommendedMeasureFig)
-                figure(obj.GUIHandles.RecommendedMeasureFig);
+            % todo: a bit of a weird pattern, should figure what to make the standard
+            if obj.GUIHandles.RecommendedMeasureFig.focus()
                 return
             end
         end
-        CalData = obj.ValveDataManager;
-        obj.GUIHandles.RecommendedMeasureFig = figure('Position', [540 400 400 200],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off' );
-        ha = axes('units','normalized', 'position',[0 0 1 1]);
-        uistack(ha,'bottom');
         BG = imread('RewardCalAddRecommends.bmp');
-        image(BG); axis off;
-        obj.GUIHandles.CB1 = uicontrol('Style', 'checkbox', 'Position', [13 140 15 15]);
-        obj.GUIHandles.CB2 = uicontrol('Style', 'checkbox', 'Position', [64 140 15 15]);
-        obj.GUIHandles.CB3 = uicontrol('Style', 'checkbox', 'Position', [116 140 15 15]);
-        obj.GUIHandles.CB4 = uicontrol('Style', 'checkbox', 'Position', [168 140 15 15]);
-        obj.GUIHandles.CB5 = uicontrol('Style', 'checkbox', 'Position', [220 140 15 15]);
-        obj.GUIHandles.CB6 = uicontrol('Style', 'checkbox', 'Position', [271 140 15 15]);
-        obj.GUIHandles.CB7 = uicontrol('Style', 'checkbox', 'Position', [324 140 15 15]);
-        obj.GUIHandles.CB8 = uicontrol('Style', 'checkbox', 'Position', [375 140 15 15]);
 
         for valveIndex = 1:8
             if ~isempty(CalData.getValve(valveIndex).Durations)
                 obj.GUIHandles.(sprintf('CB%i', valveIndex)).Value = 1;
+            if ~isempty(obj.ValveDataManager.getValve(valveName).Durations)
+                obj.GUIHandles.RecommendedMeasureFig.GUIHandles.(valveName).Value = 1;
             end
         end
-
-        obj.GUIHandles.LowRangeEdit = uicontrol('Style', 'edit', 'String', '2', 'Position', [248 71 35 30], 'FontWeight', 'bold', 'FontSize', 12, 'TooltipString', 'Enter a non-zero value for range minimum');
-        obj.GUIHandles.HighRangeEdit = uicontrol('Style', 'edit', 'String', '10', 'Position', [329 71 35 30], 'FontWeight', 'bold', 'FontSize', 12, 'TooltipString', 'Enter a non-zero value for range maximum');
-        set(obj.GUIHandles.LowRangeEdit, 'String', num2str(obj.CalibrationTargetRange(1)));
-        set(obj.GUIHandles.HighRangeEdit, 'String', num2str(obj.CalibrationTargetRange(2)));
-        obj.GUIHandles.SuggestButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [150 10 120 50], 'Callback', @(src, event) obj.AddSuggestedPoints(), 'CData', imread('SuggestButton.bmp'), 'TooltipString', 'Confirm');
     end
 
     function AddSuggestedPoints(obj, varargin)
-        figure(obj.GUIHandles.RecommendedMeasureFig);
-        CalTable = obj.ValveDataManager;
-        % Figure out which valves were to be targeted
-        ValveLogic = zeros(1,8);
-        for valveIndex = 1:8
-            ValveLogic(valveIndex) = get(obj.GUIHandles.(sprintf('CB%i', valveIndex)), 'Value');
-        end
-
-    
-        TargetValves = find(ValveLogic);
+        LiquidCal = obj.ValveDataManager;
         CalPending = obj.PendingMeasurements;
-        RangeLow = str2double(get(obj.GUIHandles.LowRangeEdit, 'String'));
-        RangeHigh = str2double(get(obj.GUIHandles.HighRangeEdit, 'String'));
-        SelectedValve = get(obj.GUIHandles.ValveSelector,'Value');
-        CurrentEntryString = get(obj.GUIHandles.MeasurementSelector,'String');
-    
+        targetValveNameSet = obj.GUIHandles.RecommendedMeasureFig.getRequestedValves();
+
+        [RangeLow, RangeHigh] = obj.GUIHandles.RecommendedMeasureFig.getRange();
+
         % Sanity check RangeLow and RangeHigh
         InvalidParams = 0;
-    
         if isnan(RangeLow)
             InvalidParams = 1;
         else
@@ -436,105 +408,14 @@ methods
                 InvalidParams = 1;
             end
         end
-    
-        if InvalidParams == 0
-            for valveIndex = TargetValves
-                ThisValve = CalTable.getValve(valveIndex);
-                if ~isempty(ThisValve.Durations)
-                    MeasuredAmounts = ThisValve.Amounts';
-                    ValveDurations = ThisValve.Durations';
-                    nMeasurements = length(MeasuredAmounts);
-                else
-                    MeasuredAmounts = [];
-                    nMeasurements = 0;
-                end
-                if nMeasurements > 1 % Use trinomial curve fit to predict next measurement
-                    DistanceVector = MeasuredAmounts;
-                    if isempty(find(MeasuredAmounts == RangeLow))
-                        DistanceVector = [DistanceVector RangeLow];
-                    end
-                    if isempty(find(MeasuredAmounts == RangeHigh))
-                        DistanceVector = [DistanceVector RangeHigh];
-                    end
-                    DistanceVector = sort(DistanceVector);
-                    Startpoint = find(DistanceVector == RangeLow);
-                    Endpoint = find(DistanceVector == RangeHigh);
-                    DistanceVector = DistanceVector(Startpoint:Endpoint);
-                    Distances = zeros(1,length(DistanceVector));
-                    for y = 2:length(DistanceVector)
-                        Distances(y) = abs(DistanceVector(y) - DistanceVector(y-1));
-                    end
-                    [MaxDistance, MaxDistancePos] = max(Distances);
-                    SuggestedAmount = DistanceVector(MaxDistancePos-1) + (DistanceVector(MaxDistancePos)-DistanceVector(MaxDistancePos-1))/2;
-                    if nMeasurements > 3
-                        SuggestedValveDuration = round(polyval(CalTable.getValve(valveIndex).Coeffs,SuggestedAmount));
-                    elseif nMeasurements == 3
-                        Coeffs = polyfit(MeasuredAmounts, ValveDurations, 2);
-                        SuggestedValveDuration = round(polyval(Coeffs, SuggestedAmount));
-                    elseif nMeasurements == 2
-                        Coeffs = polyfit(MeasuredAmounts, ValveDurations, 1);
-                        SuggestedValveDuration = round(polyval(Coeffs, SuggestedAmount));
-                    end
-                else
-                    if nMeasurements == 1
-                        % Use a linear estimate
-                        ulPerMs = MeasuredAmounts/ValveDurations;
-                        if (MeasuredAmounts < RangeLow) || (MeasuredAmounts > RangeHigh)
-                            TargetAmount = (RangeHigh - RangeLow)/2;
-                        else
-                            BottomPart = MeasuredAmounts - RangeLow;
-                            TopPart = RangeHigh - MeasuredAmounts;
-                            if BottomPart > TopPart
-                                TargetAmount = RangeLow+(BottomPart/2);
-                            else
-                                TargetAmount = RangeHigh-(TopPart/2);
-                            end
-                            
-                        end
-                        SuggestedValveDuration = round(TargetAmount/ulPerMs);
-                    else
-                        % Use an estimate of the middle of the range based on range and our experience with
-                        % the CSHL configuration (nResearch pinch valves, silastic
-                        % tubing, specs in Bpod literature)
-                        SuggestedValveDuration = mean([RangeHigh RangeLow])*4;
-                    end
-                end
-                valveNames = fields(CalPending);
-                valveName = valveNames{valveIndex};
-                ThisValvePending = CalPending.(valveName);
-                NonDuplicate = 0;
-                if isempty(ThisValvePending)
-                    ThisValvePending(1) = SuggestedValveDuration;
-                    NonDuplicate = 1;
-                else
-                    if isempty(find(ThisValvePending == SuggestedValveDuration))
-                        ThisValvePending(length(ThisValvePending)+1) = SuggestedValveDuration;
-                        NonDuplicate = 1;
-                    end
-                end
-                
-                if NonDuplicate == 1 % If this measurement hasn't already been added to pending
-                    CalPending.(valveName) = ThisValvePending;
-                    if valveIndex == SelectedValve
-                        CurrentEntryString{nMeasurements+1} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '  num2str(SuggestedValveDuration) 'ms</FONT></html>'];
-                        set(obj.GUIHandles.MeasurementSelector, 'String', CurrentEntryString);
-                    end
-                    CalPending.(valveName) = ThisValvePending;
-                end
-            end
-            obj.PendingMeasurements = CalPending;
-            obj.CalibrationTargetRange = [RangeLow RangeHigh];
-            close(obj.GUIHandles.RecommendedMeasureFig);
-            obj.DisplayValve();
-        else
+        if InvalidParams == 1
             if (RangeHigh == 0) || (RangeLow == 0)
                 warndlg('Range minimum and maximum must be non-zero.', 'Error', 'modal');
             else
                 warndlg('Invalid range entered.', 'Error', 'modal');
             end
+            return
         end
-    
-    end
 
     function TestSpecificAmount(obj, varargin)
         if isfield(obj.GUIHandles, 'TestSpecificAmtFig') && ~verLessThan('MATLAB', '8.4')
@@ -560,6 +441,18 @@ methods
         for valveIndex = 1:8
             if ~isempty(obj.ValveDataManager.getValve(valveIndex).Durations)
                 obj.GUIHandles.(sprintf('CB%ib', valveIndex)).Value = 1;
+        % Add suggested points to pending measurements
+        for valveIndex = 1:numel(targetValveNameSet)
+            valveName = targetValveNameSet{valveIndex};
+            SuggestedValveDuration = BpodLib.calibration.liquid.utils.suggestDuration(LiquidCal.getValve(valveName), RangeLow, RangeHigh);
+            SuggestedValveDuration = round(SuggestedValveDuration); % required b/c durations are assumed integers in ui code
+            try
+                CalPending.addPending(valveName, SuggestedValveDuration)
+            catch ME
+                % If the duration already exists, skip it
+                if ~strcmp(ME.identifier, 'BpodLib:LiquidCalibration:ExistingDuration')
+                    rethrow(ME);
+                end
             end
         end
 
@@ -614,6 +507,9 @@ methods
         if (LiquidAmount < 0) || (LiquidAmount > 1000)
             InvalidParams = 1;
         end
+        obj.CalibrationTargetRange = [RangeLow RangeHigh]; % Update cal range to what was in GUI
+        close(obj.GUIHandles.RecommendedMeasureFig);
+        obj.DisplayValve();
     
         if InvalidParams == 0
             % Convert liquid amount to pulse duration using current table
