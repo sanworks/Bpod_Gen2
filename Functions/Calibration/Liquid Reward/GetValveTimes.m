@@ -24,7 +24,7 @@ if isempty(p.Results.PortArray)
     assert(~isempty(LiquidCal), 'Liquid calibration table not found.')
 
     if isa(LiquidCal, 'struct') % The legacy system
-        if isempty(deprecationWarningIssued)
+        if isempty(deprecationWarningIssued) && false
             warning('GetValveTimes:Deprecation', ...
             'The LiquidCalibration.mat file should have been converted into a .json file. This warning means this has not happened, and the file will have to be modified. Please contact the forums for assistance.');
         deprecationWarningIssued = true; % Mark as warned
