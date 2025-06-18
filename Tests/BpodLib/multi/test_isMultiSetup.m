@@ -1,4 +1,4 @@
-function tests = test_createMultiSetup()
+function tests = test_isMultiSetup()
     tests = functiontests(localfunctions);
 end
 
