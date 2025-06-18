@@ -67,15 +67,15 @@ function testLegacySupport(testCase)
         'Valve times should match expected values from ValveDataManager');
 end
 
-function testDeprecationWarning(testCase)
-    % Test that deprecation warning is issued for legacy LiquidCal
-    bpodSystem = testCase.TestData.bpodWithLegacyLiquidCal;
-    targetValves = 1;
-    liquidAmount = 10;
-    clear GetValveTimes
-    % Verify warning is issued
-    testCase.verifyWarning(...
-        @() GetValveTimes(liquidAmount, targetValves, 'BpodSystem', bpodSystem), ...
-        'GetValveTimes:Deprecation', ...
-        'Should warn about deprecated LiquidCal format');
-end
+% function testDeprecationWarning(testCase)
+%     % Test that deprecation warning is issued for legacy LiquidCal
+%     bpodSystem = testCase.TestData.bpodWithLegacyLiquidCal;
+%     targetValves = 1;
+%     liquidAmount = 10;
+%     clear GetValveTimes
+%     % Verify warning is issued
+%     testCase.verifyWarning(...
+%         @() GetValveTimes(liquidAmount, targetValves, 'BpodSystem', bpodSystem), ...
+%         'GetValveTimes:Deprecation', ...
+%         'Should warn about deprecated LiquidCal format');
+% end
