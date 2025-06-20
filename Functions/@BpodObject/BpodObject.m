@@ -78,12 +78,16 @@ classdef BpodObject < handle
     end
 
     methods
-        function obj = BpodObject
+        function obj = BpodObject(varargin)
             % Constructor, run when creating an instance of BpodObject
 
+            p = inputParser();
+            p.addParameter('verbose', true)
+            p.parse(varargin{:});
             % Notify the user of the installed software version
-            ver = BpodSoftwareVersion_Semantic;
-            disp(['Starting Bpod Console v' ver])
+            if p.Results.verbose
+                disp(BpodLib.utils.log.startupMessage())
+            end
 
             % Check path for duplicate Bpod installations
             matlabPath = path;
@@ -98,7 +102,7 @@ classdef BpodObject < handle
             addpath(genpath(fullfile(bpodPath, 'Assets')));
             rmpath(genpath(fullfile(bpodPath, 'Assets', 'BControlPatch', 'ExperPort')));
             addpath(genpath(fullfile(bpodPath, 'Examples', 'State Machines')));
-            load BpodSplashData;
+            load(fullfile(bpodPath, 'Assets', 'BpodSplashData.mat'));
             if exist('rng','file') == 2
                 rng('shuffle', 'twister'); % Seed the random number generator by CPU clock
             else
@@ -109,7 +113,7 @@ classdef BpodObject < handle
             obj.IsOnline = obj.check4Internet();
 
             % Validate software version
-            if obj.IsOnline
+            if obj.IsOnline && p.Results.verbose
                 obj.ValidateSoftwareVersion();
             end
 
@@ -119,6 +123,7 @@ classdef BpodObject < handle
             obj.Status.BpodStartTime = now;
             obj.Status = struct;
             obj.Status.Initialized = false;
+            obj.Status.Verbose = p.Results.verbose;
             obj.Status.LastTimestamp = 0;
             obj.Status.CurrentStateCode = 0;
             obj.Status.LastStateCode = 0;
@@ -139,21 +144,6 @@ classdef BpodObject < handle
             obj.Status.nAnalogSamples = 0;
             obj.Status.RecordAnalog = 1;
 
-            % Initialize paths
-            obj.Path = struct;
-            obj.Path.BpodRoot = bpodPath;
-            obj.Path.ParentDir = fileparts(bpodPath);
-            obj.Path.LocalDir = fullfile(obj.Path.ParentDir, 'Bpod Local');
-            obj.Path.SettingsDir = fullfile(obj.Path.LocalDir, 'Settings');
-            obj.Path.Settings = '';
-            obj.Path.DataFolder = '';
-            obj.Path.CurrentDataFile = '';
-            obj.Path.CurrentProtocol= '';
-            obj.Path.InputConfig = fullfile(obj.Path.SettingsDir, 'InputConfig.mat');
-            obj.Path.FlexConfig = fullfile(obj.Path.SettingsDir, 'FlexConfig.mat');
-            obj.Path.SyncConfig = fullfile(obj.Path.SettingsDir, 'SyncConfig.mat');
-            obj.Path.ModuleUSBConfig = fullfile(obj.Path.SettingsDir, 'ModuleUSBConfig.mat');
-
             % Initialize state machine info, to be populated in SetupStateMachine()
             obj.StateMachineInfo = struct;
             obj.StateMachineInfo.nEvents = 0; % Number of events the state machine can respond to
@@ -162,100 +152,6 @@ classdef BpodObject < handle
             obj.StateMachineInfo.nOutputChannels = 0; % Number of output channels
             obj.StateMachineInfo.OutputChannelNames = 0; % Cell array of strings with output channel names
             obj.StateMachineInfo.MaxStates = 0; % Maximum number of states the attached Bpod can store
-
-            % Ensure that settings, data, protocol and calibration folders exist
-            if ~exist(obj.Path.LocalDir)
-                mkdir(obj.Path.LocalDir);
-            end
-            if ~exist(obj.Path.SettingsDir)
-                mkdir(obj.Path.SettingsDir);
-            end
-            addpath(genpath(obj.Path.SettingsDir));
-            if exist('BpodSettings.mat') > 0
-                load BpodSettings;
-                obj.SystemSettings = BpodSettings;
-            else
-                obj.SystemSettings = struct;
-            end
-            obj.Path.ProtocolFolder = '';
-            if isfield(obj.SystemSettings, 'ProtocolFolder')
-                if exist(obj.SystemSettings.ProtocolFolder)
-                    obj.Path.ProtocolFolder = obj.SystemSettings.ProtocolFolder;
-                end
-            end
-            obj.Path.DataFolder = '';
-            if isfield(obj.SystemSettings, 'DataFolder')
-                if exist(obj.SystemSettings.DataFolder)
-                    obj.Path.DataFolder = obj.SystemSettings.DataFolder;
-                end
-            end
-            obj.Path.BcontrolRootFolder = '';
-            if isfield(obj.SystemSettings, 'BcontrolRootFolder')
-                if exist(obj.SystemSettings.BcontrolRootFolder) == 7
-                    obj.Path.BcontrolRootFolder = obj.SystemSettings.BcontrolRootFolder;
-                    ExperPortFolder = fullfile(obj.Path.BcontrolRootFolder, 'ExperPort');
-                    if exist(ExperPortFolder) == 7
-                        addpath(ExperPortFolder);
-                    end
-                end
-            end
-
-            % Get info about the PC
-            obj.HostOS = system_dependent('getos');
-            if ~isempty(strfind(obj.HostOS, 'Windows 7'))
-                disp(['Bpod Startup: Windows 7 detected.' char(10)...
-                    'Please consider updating to Windows 10 or 11 for improved stability.' char(10)])
-            end
-
-            % Verify calibration folder and copy example calibration if none exist
-            % (so that users can validate the system and develop protocols before running calibration)
-            calFolder = fullfile(obj.Path.LocalDir,'Calibration Files');
-            if ~exist(calFolder)
-                mkdir(calFolder);
-                copyfile(fullfile(obj.Path.BpodRoot, 'Examples', 'Example Calibration Files'), calFolder);
-                questdlg('Calibration folder created in /BpodLocal/. Replace example calibration files soon.', ...
-                    'Calibration folder not found', ...
-                    'Ok', 'Ok');
-            end
-
-            % Load liquid calibration
-            try
-                liquidCalibrationFilePath = fullfile(obj.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
-                load(liquidCalibrationFilePath);
-                obj.CalibrationTables.LiquidCal = LiquidCal;
-            catch
-                obj.CalibrationTables.LiquidCal = [];
-            end
-
-            % Load sound calibration
-            try
-                soundCalibrationFilePath = fullfile(obj.Path.LocalDir, 'Calibration Files', 'SoundCalibration.mat');
-                load(soundCalibrationFilePath);
-                obj.CalibrationTables.SoundCal = SoundCal;
-            catch
-                obj.CalibrationTables.SoundCal = [];
-            end
-
-            % Load input channel settings
-            if ~exist(obj.Path.InputConfig)
-                copyfile(fullfile(obj.Path.BpodRoot, 'Examples', 'Example Settings Files', 'InputConfig.mat'), obj.Path.InputConfig);
-            end
-            load(obj.Path.InputConfig);
-            obj.InputsEnabled = BpodInputConfig;
-
-            % Load sync settings
-            if ~exist(obj.Path.SyncConfig)
-                copyfile(fullfile(obj.Path.BpodRoot, 'Examples',...
-                    'Example Settings Files', 'SyncConfig.mat'), obj.Path.SyncConfig);
-            end
-            load(obj.Path.SyncConfig);
-            obj.SyncConfig = BpodSyncConfig;
-
-            % Create module USB port config file (if not present)
-            if ~exist(obj.Path.ModuleUSBConfig)
-                copyfile(fullfile(obj.Path.BpodRoot, 'Examples',...
-                    'Example Settings Files', 'ModuleUSBConfig.mat'), obj.Path.ModuleUSBConfig);
-            end
 
             % Load list of current firmware versions
             cf = CurrentFirmwareList; % Located in /Functions/Internal Functions/, returns list of current firmware
@@ -267,7 +163,20 @@ classdef BpodObject < handle
                 'ExecutionMode', 'fixedRate', 'Period', 0.1);
             obj.Timers.AnalogTimer = timer('TimerFcn',@(h,e)obj.ProcessAnalogSamples(),...
                 'ExecutionMode', 'fixedRate', 'Period', 0.1);
-            obj.BpodSplashScreen(1);
+
+            % Get info about the PC
+            obj.HostOS = system_dependent('getos');
+            if ~isempty(strfind(obj.HostOS, 'Windows 7'))
+                disp(['Bpod Startup: Windows 7 detected.' char(10)...
+                    'Please consider updating to Windows 10 or 11 for improved stability.' char(10)])
+            end
+            
+            % Initialize paths
+            BpodLib.BpodObject.setup.updatePathAndSettings(obj, 'verbose', p.Results.verbose);
+
+            if p.Results.verbose
+                obj.BpodSplashScreen(1);
+            end
         end
 
         function obj = resetSessionClock(obj)
@@ -429,7 +338,7 @@ classdef BpodObject < handle
         function obj = SaveSettings(obj)
             % Saves the BpodObject.SystemSettings struct to the Bpod settings file
             BpodSettings = obj.SystemSettings;
-            save(fullfile(obj.Path.LocalDir, 'Settings', 'BpodSettings.mat'), 'BpodSettings');
+            save(fullfile(obj.Path.SettingsDir, 'BpodSettings.mat'), 'BpodSettings');
         end
 
         function obj = BeingUsed(obj)

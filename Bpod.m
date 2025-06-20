@@ -101,6 +101,8 @@ else
         end
     end
 end
+BpodLib.calibration.liquid.io.report(BpodSystem.CalibrationTables.LiquidCal)
+BpodLib.path.verifyPathing(BpodSystem);
 
 function emulator_setup(varargin)
 % Runs setup with emulator mode flag set to 'true'.

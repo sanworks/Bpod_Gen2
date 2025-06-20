@@ -79,7 +79,7 @@ BpodSystem.GUIHandles.FolderLaunchButton = uicontrol('Style', 'pushbutton', 'Str
 function calibrate_valves(~,~)
 global BpodSystem
 close(BpodSystem.GUIHandles.SettingsMenuFig)
-BpodLiquidCalibration('Calibrate');
+BpodLib.calibration.liquid.launchLiquidCalibrationUI(BpodSystem)
 
 function calibrate_sound(~,~)
 global BpodSystem
