@@ -66,7 +66,7 @@ if ~isfile(fullfile(Path.SettingsDir, 'LiquidCalibration.json')) && ~BpodLib.pat
         copyfile(fullfile(ExamplesDir, 'Example Calibration Files', fileName), fullfile(calFolder, fileName));
     end
     if p.Results.verbose
-        msg = msgbox(["Detected new setup and created files at:"; BpodSystem.Path.SettingsDir; "Replace example calibration files soon."], 'Settings folder not found', 'help', 'modal');
+        msg = msgbox(["Detected new setup and created files at:"; Path.SettingsDir; "Replace example calibration files soon."], 'Settings folder not found', 'help', 'modal');
         uiwait(msg)
     end
 end
