@@ -75,7 +75,7 @@ function test_arguments_vs_auto(testCase)
         for localDir = LocalDirs
             for setupType = SetupTypes
                 for bpod = Bpods
-                    if isempty(bpod{1}) && isempty(localDir{1})
+                    if isempty(bpod{1}) && isempty(localDir{1}) && ~strcmp(target{1}, 'root')
                         % Argument requires either BpodSystem or LocalDir
                         testCase.verifyError(@() BpodLib.path.getPath(target{1}, 'setuptype', setupType{1}), 'BpodLib:Path:MissingPathReference', sprintf('Should throw an error when both BpodSystem and LocalDir are empty for target "%s".', target{1}));
                         continue
