@@ -32,6 +32,18 @@ p.parse(varargin{:})
 
 BpodSystem = p.Results.BpodSystem;
 
+if strcmp(target, 'root')
+    path = fileparts(which('Bpod'));
+    [~, parentDir] = fileparts(path);
+    if strcmp(parentDir, 'Internal Functions')
+        path = fileparts(fileparts(path)); % go up two levels if in Internal Functions
+    end
+    assert(isfolder(path), 'BpodLib:Path:RootNotFound', 'Bpod root directory not found. Ensure Bpod is installed correctly.');
+    [~, parentDir] = fileparts(path);
+    assert(strcmpi(parentDir, 'Bpod_Gen2'), 'BpodLib:Path:RootNotBpod', 'Bpod root directory is not named "Bpod_Gen2". Ensure Bpod is installed correctly.');
+    return
+end
+
 assert(~isempty(p.Results.BpodSystem) || ~isempty(p.Results.LocalDir), 'BpodLib:Path:MissingPathReference', 'Either BpodSystem or LocalDir must be provided to getPath.')
 
 if ~isempty(p.Results.setuptype)
@@ -77,9 +89,8 @@ switch lower(target)
             return
         end
         path = fullfile(BpodLib.path.getPath('config', varargin{:}));
-    case 'root'
-        % ? should this check Path to see if there are multiple Bpod.m files
-        path = fileparts(which('Bpod'));
+    % case 'root'
+        % this is handled before anything else since it's fixed
     case 'settings'
         LocalDir = BpodLib.path.getPath('local', varargin{:});
         if BpodLib.path.compatibility.isLegacySettings(LocalDir)
