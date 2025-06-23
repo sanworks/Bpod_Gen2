@@ -84,7 +84,7 @@ for idx = 1:numel(files)
     movefile(sourceFile, destFile);
 end
 
-% renamefe Settings to Config
+% rename Settings to Config
 movefile(settingsFolder, fullfile(BpodSystem.Path.LocalDir, 'Config'));
 mkdir(settingsFolder);  % Recreate the Settings folder
 fid = fopen(fullfile(settingsFolder, 'files moved to Config folder.txt'), 'w');
@@ -100,6 +100,6 @@ fprintf(fid, 'This folder has had its contents moved Bpod Local/Config/ folder.\
 fclose(fid);
 Completed = 1;
 
-BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem)
+BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'LocalDir', BpodSystem.Path.LocalDir);
 
 end
