@@ -119,6 +119,11 @@ for idx = 1:numel(configItems)
     fileName = [configItem '.mat'];
     configFilepath = fullfile(Path.SettingsDir, fileName);
     Path.(configItem) = configFilepath;
+
+    if strcmp(configItem, 'InputConfig')
+        continue
+    end
+    
     if ~isfile(Path.(configItem))
         copyfile(fullfile(ExamplesDir, 'Example Settings Files', fileName), Path.(configItem));
     end
