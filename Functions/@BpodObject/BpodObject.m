@@ -172,6 +172,8 @@ classdef BpodObject < handle
             end
             
             % Initialize paths
+            obj.Path.BpodRoot = BpodLib.path.getPath('root');
+            obj.Path.LocalDir = fullfile(fileparts(obj.Path.BpodRoot), 'Bpod Local');
             BpodLib.BpodObject.setup.updatePathAndSettings(obj, 'verbose', p.Results.verbose);
 
             if p.Results.verbose

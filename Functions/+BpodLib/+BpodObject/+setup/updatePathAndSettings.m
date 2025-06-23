@@ -12,7 +12,7 @@ existingPath = BpodSystem.Path;
 
 %% -- Setup core pathing
 Path = struct();
-Path.BpodRoot = fileparts(which('Bpod'));
+Path.BpodRoot = BpodLib.path.getPath('root');
 Path.ParentDir = fileparts(Path.BpodRoot);
 if isempty(p.Results.LocalDir)
     Path.LocalDir = fullfile(Path.ParentDir, 'Bpod Local');
