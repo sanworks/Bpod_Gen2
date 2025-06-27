@@ -147,17 +147,6 @@ if messageLength > 1
                         obj.Modules.nSerialEvents(pos) = 0;
                     end
                 end
-
-%                 if obj.Modules.nSerialEvents(pos) > 0 && (obj.Modules.Connected(pos) == 0 ... 
-%                                                           || ~isempty(strfind(obj.Modules.Name{pos}, 'ValveModule')))
-%                     if obj.Modules.nSerialEvents(pos) >= nToReassign
-%                         obj.Modules.nSerialEvents(pos) = obj.Modules.nSerialEvents(pos) - nToReassign;
-%                         nToReassign = 0;
-%                     else
-%                         nToReassign = nToReassign - obj.Modules.nSerialEvents(pos);
-%                         obj.Modules.nSerialEvents(pos) = 0;
-%                     end
-%                 end
                 pos = pos - 1;
                 if pos == 0 && nToReassign > 0
                     error(['Error: modules requested more serial events ' num2str(nEventsRequested)...

@@ -75,10 +75,10 @@ try
     BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'LocalDir', LocalDir, 'type', 'statemachine');
     if strcmp(BpodLib.calibration.liquid.utils.checkCOM(BpodSystem), 'no')
         if p.Results.verbose
-            warning('BpodLib:Calibration:Liquid:CheckCOM', 'Calibration file COM port does not match current BpodSystem COM port.');
-            msg = msgbox(sprintf("Calibration file COM port (%s) does not match current BpodSystem COM port (%s). Please either initialise a multi-setup, re-run calibration, or verify that the correct COM port is being used and continue.", ...
-                BpodSystem.CalibrationTables.LiquidCal.metadata.COM, BpodLib.utils.getCurrentCOM(BpodSystem)), ...
-                'Calibration COM mismatch', 'warn', 'modal');
+            warning('BpodLib:Calibration:Liquid:CheckCOM', 'Calibration file does not match the detected state machine''s USB serial port.');
+            msg = msgbox(sprintf("Detected state machine USB serial port (%s) does not match the port used to create the current liquid calibration: (%s).\nPlease either initialize a multi-machine setup or re-run calibration.", ...
+                BpodLib.utils.getCurrentCOM(BpodSystem), BpodSystem.CalibrationTables.LiquidCal.metadata.COM), ...
+                'Calibration USB Port mismatch', 'warn', 'modal');
             uiwait(msg)
         end
     end

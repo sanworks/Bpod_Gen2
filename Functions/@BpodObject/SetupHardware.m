@@ -91,7 +91,7 @@ else
     obj.HW.StateMachineModel = smName;
 
     % Confirm connection via message in command window
-    disp(['Bpod State Machine ' smName ' connected on port ' obj.SerialPort.PortName])
+    disp(['State Machine ' smName ' connected on port ' obj.SerialPort.PortName newline])
 
     % Firmware mismatch notices
     if obj.FirmwareVersion ~= obj.CurrentFirmware.StateMachine
