@@ -11,7 +11,7 @@ function setup(testCase)
     % Setup test data that will be used for all tests
     rootPath = tempname;  % Generate a unique temporary directory
     testCase.TestData.rootPath = rootPath;
-    testCase.TestData.BpodPath = fileparts(which('Bpod'));
+    testCase.TestData.BpodPath = BpodLib.path.getPath('root');
     mkdir(testCase.TestData.rootPath)
     LocalDir = fullfile(rootPath, 'Bpod Local');
     testCase.TestData.LocalDir = LocalDir;

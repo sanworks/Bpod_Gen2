@@ -10,7 +10,7 @@ function setup(testCase)
 
     % Create a mock ValveDataManager class, using the file used at fresh Bpod startup
     valveManager = BpodLib.calibration.liquid.ValveDataManagerClass();
-    rootPath = fileparts(which('Bpod'));
+    rootPath = BpodLib.path.getPath('root');
     filePath = fullfile(rootPath, 'Examples/Example Calibration Files/LiquidCalibration.json');
     valveManager.loadData(filePath)
     testCase.TestData.mockValveDataManager = valveManager;

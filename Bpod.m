@@ -115,6 +115,7 @@ bpod_setup;
 function bpod_setup
 % Runs BpodSystem's hardware and GUI setup methods.
 global BpodSystem
+BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'verbose', true)
 BpodSystem.SetupHardware();
 BpodSystem.InitializeGUI();
 BpodSystem.Status.Initialized = true;

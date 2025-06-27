@@ -8,8 +8,7 @@ function setup(testCase)
     localdir = fullfile(testCase.TestData.rootPath, 'Bpod Local');
     mkdir(localdir)
     
-    mockBpod = struct();
-    mockBpod.SerialPort.PortName = 'COM13';
+    mockBpod = BpodLib.BpodObject.MockBpodObject('COM13');
     mockBpod.Path.LocalDir = localdir;
     testCase.TestData.mockBpod = mockBpod;
 
@@ -39,4 +38,36 @@ function test_suggestDuration(testCase)
     testCase.verifyEqual(suggestedDuration, 51.128, 'AbsTol', 0.001); % Adjust tolerance as needed
 
     % todo: build out this test for the other cases
+end
+
+function test_checkCOM(testCase)
+    % Test the checkCOM function with a mock BpodSystem
+    mockBpod = testCase.TestData.mockBpod;
+    LiquidCal = BpodLib.calibration.liquid.ValveDataManagerClass();
+    mockBpod.CalibrationTables.LiquidCal = LiquidCal;
+    LiquidCal.metadata = struct();
+
+    % Create a mock LiquidCal with a matching COM port
+    LiquidCal.metadata.COM = 'COM13';
+    mockBpod.CalibrationTables.LiquidCal = LiquidCal;
+
+    matchingCOM = BpodLib.calibration.liquid.utils.checkCOM(mockBpod);
+    testCase.verifyEqual(matchingCOM, 'yes');
+
+    % Now change the COM port and check again
+    LiquidCal.metadata.COM = 'COM14';
+    mockBpod.CalibrationTables.LiquidCal = LiquidCal;
+
+    matchingCOM = BpodLib.calibration.liquid.utils.checkCOM(mockBpod);
+    testCase.verifyEqual(matchingCOM, 'no');
+
+    % Test with no LiquidCal
+    mockBpod.CalibrationTables.LiquidCal = [];
+    matchingCOM = BpodLib.calibration.liquid.utils.checkCOM(mockBpod);
+    testCase.verifyEqual(matchingCOM, 'unknown');
+
+    % Test with a legacy LiquidCal (struct without metadata)
+    mockBpod.CalibrationTables.LiquidCal = struct();
+    matchingCOM = BpodLib.calibration.liquid.utils.checkCOM(mockBpod);
+    testCase.verifyEqual(matchingCOM, 'unknown');
 end

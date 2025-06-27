@@ -10,7 +10,7 @@ function setup(testCase)
     % Setup test data that will be used for all tests
     rootPath = tempname;  % Generate a unique temporary directory
     testCase.TestData.rootPath = rootPath;
-    testCase.TestData.BpodPath = fileparts(which('Bpod'));
+    testCase.TestData.BpodPath = BpodLib.path.getPath('root');
     mkdir(testCase.TestData.rootPath)
     LocalDir = fullfile(rootPath, 'Bpod Local');
     testCase.TestData.LocalDir = LocalDir;
@@ -87,7 +87,7 @@ function test_conversionCongruence(testCase)
     % Now test to see if Bpod Local/ and Bpod Local New/ are the same
     convertedFiles = dir(fullfile(testCase.TestData.BpodSystem.Path.LocalDir, 'Config/*.*'));
     newFiles = dir(fullfile(BpodSystemNew.Path.LocalDir, 'Config/*.*'));
-    testCase.verifyEqual(numel(convertedFiles) - 1, numel(newFiles), 'Number of files in Config folder after conversion does not match the new setup.');
+    testCase.verifyEqual(numel(convertedFiles) - 2, numel(newFiles), 'Number of files in Config folder after conversion does not match the new setup.');
     for idx = 1:numel(newFiles)
         if convertedFiles(idx).isdir
             continue

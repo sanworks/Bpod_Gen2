@@ -12,7 +12,7 @@ existingPath = BpodSystem.Path;
 
 %% -- Setup core pathing
 Path = struct();
-Path.BpodRoot = fileparts(which('Bpod'));
+Path.BpodRoot = BpodLib.path.getPath('root');
 Path.ParentDir = fileparts(Path.BpodRoot);
 if isempty(p.Results.LocalDir)
     Path.LocalDir = fullfile(Path.ParentDir, 'Bpod Local');
@@ -73,6 +73,15 @@ end
 
 try
     BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'LocalDir', LocalDir, 'type', 'statemachine');
+    if strcmp(BpodLib.calibration.liquid.utils.checkCOM(BpodSystem), 'no')
+        if p.Results.verbose
+            warning('BpodLib:Calibration:Liquid:CheckCOM', 'Calibration file COM port does not match current BpodSystem COM port.');
+            msg = msgbox(sprintf("Calibration file COM port (%s) does not match current BpodSystem COM port (%s). Please either initialise a multi-setup, re-run calibration, or verify that the correct COM port is being used and continue.", ...
+                BpodSystem.CalibrationTables.LiquidCal.metadata.COM, BpodLib.utils.getCurrentCOM(BpodSystem)), ...
+                'Calibration COM mismatch', 'warn', 'modal');
+            uiwait(msg)
+        end
+    end
 catch err
     if strcmp(err.identifier, 'BpodLib:LiquidCalibrationLoad:FileNotFound')
         BpodSystem.CalibrationTables.LiquidCal = [];
@@ -110,6 +119,11 @@ for idx = 1:numel(configItems)
     fileName = [configItem '.mat'];
     configFilepath = fullfile(Path.SettingsDir, fileName);
     Path.(configItem) = configFilepath;
+
+    if strcmp(configItem, 'InputConfig')
+        continue
+    end
+    
     if ~isfile(Path.(configItem))
         copyfile(fullfile(ExamplesDir, 'Example Settings Files', fileName), Path.(configItem));
     end

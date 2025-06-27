@@ -325,7 +325,7 @@ methods
         % Deliver liquid
         [valveNames, pulseDurations_ms] = obj.PendingMeasurements.getPending();
         assert(numel(valveNames) > 0, 'There must be pending values to calibrate')
-        Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, str2double(get(obj.GUIHandles.nPulsesEdit, 'string')), valveNames, pulseDurations_ms * 1000, 'PulseInterval', .2);
+        Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, str2double(get(obj.GUIHandles.nPulsesEdit, 'string')), valveNames, pulseDurations_ms / 1000, 'PulseInterval', .2);
         if Completed
             % -- Create GUI for entering measurements
             allValveNames = fields(obj.PendingMeasurements.data);

@@ -19,6 +19,7 @@ function Completed = RunRewardCalibration(BpodSystem, nPulses, TargetValves, Pul
 p = inputParser();
 p.addParameter('PulseInterval', 0.2, @isnumeric);
 p.addParameter('PulseSetPause', 0.5, @isnumeric);
+p.addParameter('verbose', true)
 p.parse(varargin{:})
 
 Completed = 0;
@@ -34,11 +35,17 @@ for x = 1:length(PulseDurations)
 end
 
 % Build valve testing information
+if p.Results.verbose
+    fprintf('Liquid Calibration with .\n')
+end
 data = struct('name', [], 'outputaction', [], 'type', []);
 ValvePhysicalAddress = 2.^(0:7);
 nValves = length(TargetValves);
 for idx = 1:nValves
     valveName = TargetValves{idx};
+    if p.Results.verbose
+        fprintf('\t%s for %.1f ms\n', valveName, PulseDurations(idx) / 1000)
+    end
     if strcmp(valveName(1:5), 'Valve')
         data(idx).name = valveName;
         valveID = str2double(valveName(6));
@@ -52,6 +59,10 @@ for idx = 1:nValves
     else
         error('BpodLib:LiquidCalibration:UnrecognisedValveName', 'Valve %s does not meet expected format requirement.', valveName)
     end
+end
+
+if p.Results.verbose
+    fprintf('%s start\n', valveName, PulseDurations(idx) / 1000)
 end
 
 % Create the set of pulses to be tested out

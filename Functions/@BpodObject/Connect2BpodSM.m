@@ -141,8 +141,8 @@ if obj.SerialPort.UsePsychToolbox == 0 && verLessThan('matlab', '9.7')
 end
 
 % Finish setup
-obj.SystemSettings.LastCOMPort = Ports{thisPortIndex};
-obj.SaveSettings;
+% obj.SystemSettings.LastCOMPort = Ports{thisPortIndex};
+% obj.SaveSettings;
 obj.EmulatorMode = 0;
 if obj.Status.Verbose
     obj.BpodSplashScreen(2);
