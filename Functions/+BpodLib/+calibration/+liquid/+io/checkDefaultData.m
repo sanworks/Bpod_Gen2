@@ -10,7 +10,7 @@ if isa(LiquidCal, 'struct')
         isDefault = 'false';
     end
 elseif isa(LiquidCal, 'BpodLib.calibration.liquid.ValveDataManagerClass')
-    if isfield(LiquidCal.metadata, 'modification_datetime') && ~strcmp(LiquidCal.metadata.modification_datetime, "2016-11-17 16:08:26")
+    if isfield(LiquidCal.metadata, 'modification_datetime') && ~strcmp(LiquidCal.metadata.modification_datetime, "2000-01-01 00:00:00")
         isDefault = 'false';
     end
 elseif isempty(LiquidCal)
