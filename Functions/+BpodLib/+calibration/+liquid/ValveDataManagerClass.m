@@ -37,7 +37,7 @@ methods
         % Keyword Arguments
         % -----------------
         % filepath : char
-        %     Path to file to auto load from
+        %     Path to file to auto load from, if empty initialises empty manager.
 
         p = inputParser();
         p.addParameter('filepath', '', @ischar);

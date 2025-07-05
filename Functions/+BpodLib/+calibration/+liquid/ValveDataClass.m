@@ -68,9 +68,11 @@ methods
         % Load data from saved struct into object
         % obj.load(rawstruct)
         %
-        % Inputs:
-        %   rawStruct - Struct containing valve data with fields:
-        %       ValveName, LastDateModified, Coeffs, Durations, Amounts
+        % Arguments
+        % ---------
+        % rawStruct : struct
+        %     valve data with fields:
+        %     ValveName, LastDateModified, Coeffs, Durations, Amounts
         obj.ValveName = rawstruct.ValveName;
         obj.LastDateModified = rawstruct.LastDateModified;
         obj.Coeffs = rawstruct.Coeffs;
@@ -102,7 +104,7 @@ methods
     function removeMeasurement(obj, value, varargin)
         % Remove a measurement point.
         %
-        % Parameters
+        % Arguments
         % ----------
         % value : double
         %     Either index of measurement to remove or duration value
@@ -148,7 +150,7 @@ methods
     function valveTime_ms = getValveTime(obj, liquidAmount_uL)
         % Calculate valve time needed for target amount.
         %
-        % Parameters
+        % Arguments
         % ----------
         % liquidAmount_uL : double
         %     Desired liquid amount in microliters
@@ -201,11 +203,6 @@ methods
         %     Line width (default: 1.5)
         % legendname : char, optional
         %     Legend entry (default: ValveName)
-        %
-        % Raises
-        % ------
-        % BpodLib:ValveDataClass:InsufficientData
-        %     If fewer than 2 measurements exist
 
         p = inputParser();
         p.addParameter('ax', gca, @ishandle);

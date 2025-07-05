@@ -158,7 +158,7 @@ methods
         end
 
         % Add pending measurements to list
-        PendingDurations = obj.PendingMeasurements.data.(ValveToShowName);
+        PendingDurations = obj.PendingMeasurements.getValvePending(ValveToShowName);
         if ~isempty(PendingDurations)
             nPendingMeasurements = length(PendingDurations);
             for x = 1:nPendingMeasurements
@@ -195,7 +195,7 @@ methods
             set(AxCalib, 'tickdir', 'out', 'box', 'off');
             Ymax = max(ValveData.Amounts)+.1*max(ValveData.Amounts);
             % Add pending measurement datapoints
-            PendingDurations = obj.PendingMeasurements.data.(ValveToShowName);
+            PendingDurations = obj.PendingMeasurements.getValvePending(ValveToShowName);
             if ~isempty(PendingDurations)
                 nPendingMeasurements = length(PendingDurations);
                 for y = 1:nPendingMeasurements
@@ -328,7 +328,7 @@ methods
         Completed = BpodLib.calibration.liquid.RunRewardCalibration(obj.BpodSystem, str2double(get(obj.GUIHandles.nPulsesEdit, 'string')), valveNames, pulseDurations_ms / 1000, 'PulseInterval', .2);
         if Completed
             % -- Create GUI for entering measurements
-            allValveNames = fields(obj.PendingMeasurements.data);
+            allValveNames = obj.PendingMeasurements.getValveNames();
             EntryGUI = BpodLib.calibration.liquid.ui.ValueEntryGUI(allValveNames, @obj.AddCalMeasurements);
             EntryGUI.setPending(valveNames)
             obj.GUIHandles.ValueEntryGUI = EntryGUI;
