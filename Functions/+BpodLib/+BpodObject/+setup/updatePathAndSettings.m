@@ -1,7 +1,44 @@
 function updatePathAndSettings(BpodSystem, varargin)
-% updatePathAndSettings(BpodSystem)
-% Set up paths to folders and prepare folders.
-% This is ran at Bpod startup and when file structure is changed during multi-setup initialization.
+% Update Bpod system paths and settings configuration.
+% updatePathAndSettings(BpodSystem, _)
+%
+% Sets up paths to folders and prepares folder structure. This function is called:
+% - At Bpod startup
+% - When file structure is changed during multi-setup initialization
+%
+% Modifies BpodSystem's Path property
+%
+% Parameters
+% ----------
+% BpodSystem : struct
+%     The Bpod system object
+%
+% Keyword Arguments
+% -----------------
+% LocalDir : char (default='')
+%     Path to Bpod Local directory. If empty, uses default location.
+% verbose : logical (default=false)
+%     Whether to display progress messages.
+
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
 
 p = inputParser;
 p.addParameter('LocalDir', '');
@@ -14,12 +51,15 @@ existingPath = BpodSystem.Path;
 Path = struct();
 Path.BpodRoot = BpodLib.path.getPath('root');
 Path.ParentDir = fileparts(Path.BpodRoot);
+
 if isempty(p.Results.LocalDir)
     Path.LocalDir = fullfile(Path.ParentDir, 'Bpod Local');
 else
     Path.LocalDir = p.Results.LocalDir;
 end
 LocalDir = Path.LocalDir;
+
+% SettingsDir will be Config/ unless setup uses legacy folder structure
 Path.SettingsDir = BpodLib.path.getPath('settings', BpodSystem, 'LocalDir', LocalDir);
 
 if ~isfolder(Path.LocalDir)
@@ -31,24 +71,28 @@ end
 
 %% -- Configure user-settable BpodSettings paths
 ExamplesDir = fullfile(Path.BpodRoot, 'Examples');
+
+% Load system settings if they exist
 if isfile(fullfile(Path.SettingsDir, 'BpodSettings.mat'))
     BpodSystem.SystemSettings = load(fullfile(Path.SettingsDir, 'BpodSettings.mat'), 'BpodSettings').BpodSettings;
 else
     BpodSystem.SystemSettings = struct();
 end
 
-% Specify user paths only if they are set in BpodSettings.mat and also exist
+% Process user folders from settings
 userFolders = {'ProtocolFolder', 'DataFolder', 'BcontrolRootFolder'};
 for idx = 1:numel(userFolders)
-    foldertypename = userFolders{idx};
-    Path.(foldertypename) = '';
-    if isfield(BpodSystem.SystemSettings, foldertypename)
-        if isfolder(BpodSystem.SystemSettings.(foldertypename))
-            Path.(foldertypename) = BpodSystem.SystemSettings.(foldertypename);
+    folderType = userFolders{idx};
+    Path.(folderType) = '';
+    if isfield(BpodSystem.SystemSettings, folderType)
+        if isfolder(BpodSystem.SystemSettings.(folderType))
+            Path.(folderType) = BpodSystem.SystemSettings.(folderType);
         end
     end
 end
 
+% Add ExpertPort to path if Bcontrol exists
+% todo: this is untested
 if isfolder(Path.BcontrolRootFolder)
     ExperPortFolder = fullfile(Path.BcontrolRootFolder, 'ExperPort');
     if isfolder(ExperPortFolder)
@@ -119,10 +163,6 @@ for idx = 1:numel(configItems)
     fileName = [configItem '.mat'];
     configFilepath = fullfile(Path.SettingsDir, fileName);
     Path.(configItem) = configFilepath;
-
-    if strcmp(configItem, 'InputConfig')
-        continue
-    end
     
     if ~isfile(Path.(configItem))
         copyfile(fullfile(ExamplesDir, 'Example Settings Files', fileName), Path.(configItem));
@@ -131,11 +171,11 @@ for idx = 1:numel(configItems)
     if strcmp(configItem, {'ModuleUSBConfig'})
         continue
     elseif strcmp(configItem, 'InputConfig')
-        loaded_item = load(Path.(configItem), 'BpodInputConfig');
-        BpodSystem.InputsEnabled = loaded_item.BpodInputConfig;
+        loadedItem = load(Path.(configItem), 'BpodInputConfig');
+        BpodSystem.InputsEnabled = loadedItem.BpodInputConfig;
     elseif strcmp(configItem, 'SyncConfig')
-        loaded_item = load(Path.(configItem), 'BpodSyncConfig');
-        BpodSystem.SyncConfig = loaded_item.BpodSyncConfig;
+        loadedItem = load(Path.(configItem), 'BpodSyncConfig');
+        BpodSystem.SyncConfig = loadedItem.BpodSyncConfig;
     else
         error('Unknown config item: %s', configItem);
     end
@@ -146,6 +186,7 @@ Path.FlexConfig = fullfile(Path.SettingsDir, 'FlexConfig.mat');
 %% -- Add dynamic paths to Path
 % These are set when a protocol is run, so copy them from existingPath if available.
 if ~isempty(existingPath)
+    % Copy standard dynamic paths
     dynamicNames = {'Settings', 'CurrentDataFile', 'CurrentProtocol'};
     for idx = 1:numel(dynamicNames)
         dynamicName = dynamicNames{idx};
@@ -156,7 +197,7 @@ if ~isempty(existingPath)
         end
     end
     
-    % Add paths in existingPath that aren't in Path
+    % Add any additional paths from existingPath
     dynamicNames = fieldnames(existingPath);
     for idx = 1:numel(dynamicNames)
         dynamicName = dynamicNames{idx};

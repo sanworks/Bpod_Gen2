@@ -1,6 +1,27 @@
-% Class for managing ValveData objects
-% This class is used to store ValveData objects for multiple valves, and provides methods for getting and saving data.
-% The valve datas are stored in a cell array, with each cell containing a ValveData object (a handle) for a single valve.
+% ValveDataManagerClass - Handle class for storing and managing multiple valve calibration data
+%
+% This class can store multiple valve calibration data
+% This is the OOP version of the LiquidCal struct from <1.8.1
+
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
 
 classdef ValveDataManagerClass < handle
 properties
@@ -10,10 +31,14 @@ end
 
 methods
     function obj = ValveDataManagerClass(varargin)
-        % Create the ValveDataManager
-        % :param filepath: the path to a file to load data from, optional
-        % :type filepath: char
-        
+        % Container class for managing multiple multiple valves
+        % obj = ValvedataManagerClass(_)
+        %
+        % Keyword Arguments
+        % -----------------
+        % filepath : char
+        %     Path to file to auto load from
+
         p = inputParser();
         p.addParameter('filepath', '', @ischar);
         p.parse(varargin{:});
@@ -29,11 +54,18 @@ methods
     end
 
     function valveData = getValve(obj, valveName)
-        % Get the ValveData object for a valve
-        % :param valveName: the name of the valve to get data for, or the valve number X ('ValveX')
-        % :type valveName: char or int
-        % :return valveData: the ValveData object for the valve (a handle)
-        % :rtype valveData: BpodLib.calibration.liquid.ValveDataClass
+        % Return valve object
+        % valveData = getValve(valveName)
+        %
+        % Arguments
+        % ---------
+        % valveName : char or double
+        %     Identity of vlve to retrieve
+        %
+        % Returns
+        % -------
+        % valveData : BpodLib.calibration.liquid.ValveDataClass
+        %     Single valve data object
 
         if isa(valveName, 'double')
             valveName = sprintf('Valve%d', valveName);
@@ -51,11 +83,19 @@ methods
     end
 
     function valveData = createValve(obj, valveName)
-        % Create a new ValveData object for a valve
-        % :param valveName: the name of the valve to create data for
-        % :type valveName: char or string
-        % :return valveData: the new ValveData object
-        % :rtype valveData: BpodLib.calibration.liquid.ValveDataClass
+        % Create a new valve within the manager
+        % valveData = createValve(valveName)
+        %
+        % Arguments
+        % ---------
+        % valveName : char
+        %     Name of the new valve
+        %
+        % Returns
+        % -------
+        % valveData : BpodLib.calibration.liquid.ValveDataClass
+        %     The new ValveData object
+
         valveData = BpodLib.calibration.liquid.ValveDataClass();
         valveData.ValveName = valveName;
         if isfield(obj.ValveDatas, valveName)
@@ -67,23 +107,31 @@ methods
 
     function valveNames = getValveNames(obj)
         % Get the names of all valves
-        % :return valveNames: the names of all valves
-        % :rtype valveNames: cell array of strings
+        % 
+        % Returns
+        % -------
+        % valveNames : cell array of strings
+        %     Names of all valves
 
         valveNames = fieldnames(obj.ValveDatas);
     end
 
     function n_Valves = nValves(obj)
         % Get number of valves stored in file
-        % :return n_Valves: number of valve
-        % :rtype n_Valves: int
+        % Returns
+        % -------
+        % n_Valves : double
+        %     Number of valves in the manager
 
         n_Valves = numel(obj.getValveNames);
     end
 
     function savedata = createSaveData(obj)
-        % Create a save-ready format of the manager
-        % :return savedata: Structure formatted for json encoding
+        % Create a file save-ready format of the manager
+        % Returns
+        % -------
+        % savedata : struct
+        %     Structure formatted for json encoding
 
         % -- Create save data struct
         % Initialize struct array (jsonencode will write as array of objects)
@@ -103,11 +151,13 @@ methods
 
     function saveData(obj, filepath)
         % Convenience function to save data, BpodLib.calibration.liquid.io.save is preferred
-        % :param filepath: the path to the file to save
-        % :type filepath: char
+        % 
+        % Arguments
+        % ---------
+        % filepath : char
+        %     The path to the file to save to
         %
-        % Save data JSON format
-        % ---------------------
+        % JSON save format
         % metadata: object
         %     modification_datetime: string
         % ValveDatas: array of objects
@@ -126,11 +176,18 @@ methods
     end
 
     function loadData(obj, filepath, varargin)
-        % Load data from a file
-        % :param filepath: the path to the file to load
-        % :type filepath: char
-        % :param overwrite: whether to overwrite existing data (default: true), or append
-        % :type overwrite: logical
+        % Load data from file
+        % loadData(filepath, _)
+        %
+        % Arguments
+        % ---------
+        % filepath : char
+        %     JSON file to load from
+        %
+        % Keyword Arguments
+        % -----------------
+        % overwrite : logical (default=true)
+        %     Overwrite existing valve data
 
         p = inputParser;
         p.addOptional('overwrite', true, @islogical);
