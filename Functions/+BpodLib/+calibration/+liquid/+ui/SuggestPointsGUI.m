@@ -62,12 +62,7 @@ classdef SuggestPointsGUI < handle
         end
         
         function result = focus(obj)
-            result = false;
-            if ~isvalid(obj.GUIHandles.Figure)
-                return
-            end
-            figure(obj.GUIHandles.Figure);
-            result = true;
+            result = BpodLib.ui.raise(obj);
         end
 
         function close(obj)

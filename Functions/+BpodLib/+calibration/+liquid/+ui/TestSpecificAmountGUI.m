@@ -218,10 +218,7 @@ methods
     end
 
     function result = focus(obj)
-        result = false;
-        % todo: fix this pattern
-        figure(obj.GUIHandles.Figure)
-        result = true;
+        result = BpodLib.ui.raise(obj);
     end
 end
 end
