@@ -1,7 +1,17 @@
 function isDefault = checkDefaultData(LiquidCal)
-% isDefault = checkDefaultData(LiquidCal)
 % Check if the data is unchanged from the placeholder data shipped with Bpod
-% Returns char 'true' (is default), 'false' (user modified), or 'unknown'
+% isDefault = checkDefaultData(LiquidCal)
+%
+% This tests against the data in Bpod_Gen2/Examples/Examples Calibration Files/LiquidCalibration.json
+% 
+% Arguments
+% ---------
+% LiquidCal : BpodLib.calibration.liquid.ValveDataManagerClass or struct
+%
+% Returns
+% -------
+% isDefault : char
+%      'true' (is default), 'false' (user modified), or 'unknown'
 
 % Dummy data was created in 2016-11-17
 

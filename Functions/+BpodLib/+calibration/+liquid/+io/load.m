@@ -1,10 +1,41 @@
-function liquidData = load(varargin)
+function LiquidCal = load(varargin)
 % Load a calibration file from disk
+% liquidData = load(_)
 %
-% :param type: Source to read for the file either 'statemachine' (default) or 'portarray'
-% :type type: char
-% :return liquidData: The liquid data determined to be for the state machine
-% :rtype: struct or BpodLib.calibration.liquid.ValveDataManagerClass
+% Keyword Arguments
+% -----------------
+% BpodSystem : BpodObject
+%     Whether to display messages in Command Window.
+% LocalDir : char
+%     LocalDir to use instead of BpodSystem.Path.LocalDir.
+%     Must be specified if BpodSystem is not.
+% type : char
+%     Source to read for the file either 'statemachine' (default) or 'portarray'
+%
+% Returns
+% -------
+% liquidData : struct or BpodLib.calibration.liquid.ValveDataManagerClass
+%     The liquid data determined to be for the state machine
+
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
 
 p = inputParser();
 p.addParameter('BpodSystem', [])
@@ -43,13 +74,13 @@ if isJSON
 else
     assert(isLegacy, 'Expected legacy .mat file because no .json file was found')
     assert(strcmp(p.Results.type, 'statemachine'), 'BpodLib:LiquidCalibration:PortArrayJSONFail', 'Port Array not supported with old .mat format.')
-    liquidData = load(legacyPath, 'LiquidCal').LiquidCal;
+    LiquidCal = load(legacyPath, 'LiquidCal').LiquidCal;
     % Eventually this should return a warning for being unsupported
     return
 end
 
 assert(isfile(expectedFilepath), 'BpodLib:LiquidCalibrationLoad:FileNotFound', 'Liquid calibration file not found at %s', expectedFilepath)
 
-liquidData = BpodLib.calibration.liquid.ValveDataManagerClass('filepath', expectedFilepath);
+LiquidCal = BpodLib.calibration.liquid.ValveDataManagerClass('filepath', expectedFilepath);
 
 end
