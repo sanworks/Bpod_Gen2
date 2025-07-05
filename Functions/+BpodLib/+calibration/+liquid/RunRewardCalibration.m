@@ -36,7 +36,7 @@ end
 
 % Build valve testing information
 if p.Results.verbose
-    fprintf('Liquid Calibration with .\n')
+    fprintf('Running reward calibration pulses with:\n')
 end
 data = struct('name', [], 'outputaction', [], 'type', []);
 ValvePhysicalAddress = 2.^(0:7);
@@ -44,7 +44,7 @@ nValves = length(TargetValves);
 for idx = 1:nValves
     valveName = TargetValves{idx};
     if p.Results.verbose
-        fprintf('\t%s for %.1f ms\n', valveName, PulseDurations(idx) / 1000)
+        fprintf('\t%s for %.1f ms\n', valveName, PulseDurations(idx) * 1000)
     end
     if strcmp(valveName(1:5), 'Valve')
         data(idx).name = valveName;
@@ -61,9 +61,6 @@ for idx = 1:nValves
     end
 end
 
-if p.Results.verbose
-    fprintf('%s start\n', valveName, PulseDurations(idx) / 1000)
-end
 
 % Create the set of pulses to be tested out
 sma = NewStateMatrix();
