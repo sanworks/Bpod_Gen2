@@ -53,8 +53,7 @@ switch lower(operation)
     case 'multisetup'
         % Create a multi-setup configuration
         try
-            BpodLib.multi.createMultiSetup
-            (BpodSystem);
+            BpodLib.multi.createMultiSetup(BpodSystem);
         catch ME
             if strcmp(ME.identifier, 'BpodLib:MultiSetup:LegacyIncompatible')
                 error("You must use 'BpodSetup updatesettings' first, as legacy settings folders are not supported with multi-setup.")
