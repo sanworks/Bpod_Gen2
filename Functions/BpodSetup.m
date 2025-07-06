@@ -45,6 +45,8 @@ switch lower(operation)
         if strcmpi(answer, 'yes')
             % Update the Bpod configuration
             BpodLib.BpodObject.setup.compatibility.convertSettingsFolder(BpodSystem, 'verbose', true);
+            disp('Conversion completed.')
+            disp('It is recommended you restart Bpod.')
         else
             disp('Bpod configuration update cancelled.');
         end
@@ -62,7 +64,7 @@ switch lower(operation)
         end
     otherwise
         error('BpodLib:Utils:UpdateBpodConfig:InvalidOperation', ...
-            'Operation "%s" is not recognized. Use "updatesettings" to update the Bpod configuration.', operation);
+            'Operation "%s" is not recognized.', operation);
 end
 
 end
