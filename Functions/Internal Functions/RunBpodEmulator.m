@@ -140,6 +140,7 @@ switch op
 
             % Evaluate state timer transitions
             timeInState = BpodSystem.Emulator.CurrentTime - BpodSystem.Emulator.StateStartTime;
+            BpodSystem.Emulator.timeInState = timeInState;
             stateTimer = BpodSystem.StateMatrix.StateTimers(BpodSystem.Emulator.CurrentState);
             if (timeInState > stateTimer) && (BpodSystem.Emulator.MeaningfulTimer(BpodSystem.Emulator.CurrentState) == 1)
                 BpodSystem.Emulator.nCurrentEvents = BpodSystem.Emulator.nCurrentEvents + 1;
