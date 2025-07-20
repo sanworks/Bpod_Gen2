@@ -287,7 +287,7 @@ while BpodSystem.Status.InStateMatrix
                 end
                 if BpodSystem.Status.InStateMatrix == 1
                     BpodSystem.Status.events(nEvents+1:(nEvents+nCurrentEvents)) = currentEvent(1:nCurrentEvents);
-                    if BpodSystem.LiveTimestamps == 1 || BpodSystem.EmulatorMode
+                    if BpodSystem.LiveTimestamps == 1
                         BpodSystem.Status.liveEventTimestamps(nEvents+1:(nEvents+nCurrentEvents)) = thisTimestamp;
                     end
                     BpodSystem.Status.LastEvent = currentEvent(1);

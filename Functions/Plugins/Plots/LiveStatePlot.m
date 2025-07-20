@@ -140,33 +140,38 @@ methods
             return
         end
 
-        % Calculate the time offset between the machine and computer
-        eventTimes = obj.BpodSystem.Status.liveEventTimestamps(obj.BpodSystem.Status.liveEventTimestamps ~= 0);
+        % Retrieve a timestamp for each recorded event
         if obj.BpodSystem.EmulatorMode == 0
-            eventTimes = eventTimes / 1000;
+            eventTimes = obj.BpodSystem.Status.liveEventTimestamps(obj.BpodSystem.Status.liveEventTimestamps ~= 0) / 1000;
         else
-            eventTimes = cumsum(eventTimes);
+            eventTimes = obj.BpodSystem.Emulator.Timestamps(obj.BpodSystem.Emulator.Timestamps ~= 0);
         end
         
+        % Calculate the time offset between the machine and computer
         currentTime = toc(obj.trialStartTic);
         if numel(eventTimes) > obj.lastNEvents  % If there is a new event
             obj.lastNEvents = numel(eventTimes);
             % Calculate difference between machine's time and toc() time
             obj.timeDiff = eventTimes(end) - currentTime;
         end
-        
-        % -- Build state index and times
         currentTime = currentTime + obj.timeDiff;
-
+        
+        % Build state index and times
         stateindices = obj.BpodSystem.Status.states(obj.BpodSystem.Status.states ~= 0);
 
         stateChangeIndexes = obj.BpodSystem.Status.stateChangeIndexes(obj.BpodSystem.Status.stateChangeIndexes ~= 0);
         stateTimes = eventTimes(stateChangeIndexes);
 
-        % Build stairs-compatible x/y data
+        % Build stairs-compatible x/y data with state line continuing to current time
         stateTimes = [0 stateTimes currentTime];
         stateindices = [stateindices stateindices(end)];
 
+        % Update plot
+        set(obj.GUIHandles.PlotState, ...
+            'XData', stateTimes, ...
+            'YData', stateindices);
+
+        % Maintain time window limits
         if ~isempty(obj.settings.defaultMaxTime)
             if (currentTime + obj.settings.leadTime) > obj.settings.defaultMaxTime
                 xLimMax = currentTime + obj.settings.leadTime;
@@ -176,10 +181,6 @@ methods
         else
             xLimMax = currentTime + obj.settings.leadTime;
         end
-        % Update plot
-        set(obj.GUIHandles.PlotState, ...
-            'XData', stateTimes, ...
-            'YData', stateindices);
         set(obj.GUIHandles.AxesState,...
             'XLim', [0, xLimMax]);
         obj.update_events(eventTimes, obj.BpodSystem.Status.events(obj.BpodSystem.Status.events ~= 0))
