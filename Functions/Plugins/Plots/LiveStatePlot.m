@@ -167,21 +167,21 @@ methods
         stateTimes = [0 stateTimes currentTime];
         stateindices = [stateindices stateindices(end)];
 
-        % if ~isempty(obj.settings.defaultMaxTime)
-        %     if (currentTime + obj.settings.leadTime) > obj.settings.defaultMaxTime
-        %         xLimMax = currentTime + obj.settings.leadTime;
-        %     else
-        %         xLimMax = obj.settings.defaultMaxTime;
-        %     end
-        % else
-        %     xLimMax = currentTime + obj.settings.leadTime;
-        % end
+        if ~isempty(obj.settings.defaultMaxTime)
+            if (currentTime + obj.settings.leadTime) > obj.settings.defaultMaxTime
+                xLimMax = currentTime + obj.settings.leadTime;
+            else
+                xLimMax = obj.settings.defaultMaxTime;
+            end
+        else
+            xLimMax = currentTime + obj.settings.leadTime;
+        end
         % Update plot
         set(obj.GUIHandles.PlotState, ...
             'XData', stateTimes, ...
             'YData', stateindices);
-        % set(obj.GUIHandles.AxesState,...
-            % 'XLim', [0, xLimMax]);
+        set(obj.GUIHandles.AxesState,...
+            'XLim', [0, xLimMax]);
         obj.update_events(eventTimes, obj.BpodSystem.Status.events(obj.BpodSystem.Status.events ~= 0))
 
         obj.lastTic = tic;
