@@ -45,6 +45,7 @@ classdef BpodObject < handle
         LastStateMatrix % Last state matrix completed. This is updated each time a trial run completes.
         HardwareState % Current state of I/O lines and serial codes
         StateMachineInfo % Struct with information about state machines (customized for connected hardware)
+        StateHandlerFunction % function handle to run 
         GUIHandles % Struct with graphics handles
         GUIData % Struct with graphics data
         InputsEnabled % Struct storing input channels that are connected to something. This is modified from the settings menu UI.

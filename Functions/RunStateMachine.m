@@ -42,7 +42,7 @@ function rawTrialEvents = RunStateMachine
 global BpodSystem % Import the global BpodSystem object
 
 % Setup
-timeScaleFactor = (BpodSystem.HW.CyclePeriod/1000); % To convert state machine cycles to seconds
+timeScaleFactor = (BpodSystem.HW.CyclePeriod/1000); % To convert state machine cycles to milliseconds
 rawTrialEvents = struct; % Struct for returned trial data
 
 % Ensure that a state machine description has been sent to the device
@@ -69,13 +69,16 @@ end
 BpodSystem.StateMatrix = BpodSystem.StateMatrixSent; % Current state machine
 maxEvents = 1000000; % Preallocate anticipating up to 1M events in a single trial.
 nEvents = 0; nStates = 1; % Event and state counters
-events = zeros(1,maxEvents); states = zeros(1,maxEvents);
-liveEventTimestamps = zeros(1,maxEvents); % Timestamps for each event in Events
+BpodSystem.Status.events = zeros(1,maxEvents);
+BpodSystem.Status.states = zeros(1,maxEvents);
+BpodSystem.Status.liveEventTimestamps = zeros(1,maxEvents); % Timestamps for each event in Events
+% todo: remove these from the data once trial finishes?
 currentEvent = zeros(1,100); % A machine refresh can capture up to 100 events
-stateChangeIndexes = zeros(1,maxEvents); % Indexes of event timestamps that triggered state changes
-states(nStates) = 1; % Each trial begins with state 1, the first added with AddState()
+BpodSystem.Status.stateChangeIndexes = zeros(1,maxEvents); % Indexes of event timestamps that triggered state changes
+BpodSystem.Status.states(nStates) = 1; % Each trial begins with state 1, the first added with AddState()
 stateNames = BpodSystem.StateMatrix.StateNames; % Local copy of StateNames
 nTotalStates = BpodSystem.StateMatrix.nStatesInManifest; % Local copy of nStates
+activeStateHandlerFunction = ~isempty(BpodSystem.StateHandlerFunction); % todo: ensure doesn't fail on second run of different protocol
 
 % Reset status fields (to be synced with console UI)
 BpodSystem.Status.LastStateCode = 0; % Last state (index)
@@ -112,13 +115,16 @@ if BpodSystem.Status.SessionStartFlag == 1 % On first run of session
     end
 end
 if BpodSystem.EmulatorMode == 0
-    trialStartTimestamp = send_trial_start_command;
+    trialStartTimestamp = send_trial_start_command(BpodSystem);
 else
     RunBpodEmulator('init', []);
     BpodSystem.ManualOverrideFlag = 0;
 end
-update_hardwarestate_new_state(1);
+update_hardwarestate_new_state(BpodSystem, 1);
 BpodSystem.RefreshGUI;
+if activeStateHandlerFunction
+    BpodSystem.StateHandlerFunction('trial_start');
+end
 
 % Main loop that runs during trial execution. Events arriving at the USB
 % serial port are logged, and displayed on the console GUI. The current
@@ -151,7 +157,7 @@ while BpodSystem.Status.InStateMatrix
     else
         serialPortBytesAvailable = 0;
         if BpodSystem.ManualOverrideFlag == 1
-            manualOverrideEvent = virtual_manual_override(BpodSystem.VirtualManualOverrideBytes);
+            manualOverrideEvent = virtual_manual_override(BpodSystem, BpodSystem.VirtualManualOverrideBytes);
             BpodSystem.ManualOverrideFlag = 0;
         else
             manualOverrideEvent = [];
@@ -160,6 +166,7 @@ while BpodSystem.Status.InStateMatrix
     end
 
     if newMessage % If there are new events or soft codes to read
+        fprintf('New message!%s\n', BpodLib.utils.isotime())
         opCode = opCodeBytes(1);
         switch opCode
             case 1 % Receive and handle events
@@ -167,13 +174,15 @@ while BpodSystem.Status.InStateMatrix
                 if BpodSystem.EmulatorMode == 0
                     if BpodSystem.LiveTimestamps == 1
                         tempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents+4, 'uint8');
-                        thisTimestamp = double(typecast(tempCurrentEvents(end-3:end), 'uint32'))*timeScaleFactor;
+                        thisTimestamp = double(typecast(tempCurrentEvents(end-3:end), 'uint32'))*timeScaleFactor; % milliseconds
                         tempCurrentEvents = tempCurrentEvents(1:end-4);
+                        % BpodSystem.Status.LastUpdateTime = thisTimestamp;
                     else
                         tempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents, 'uint8');
                     end
                 else
                     tempCurrentEvents = VirtualCurrentEvents;
+                    thisTimestamp = BpodSystem.Emulator.timeInState;
                 end
                 % Read and convert from c++ index at 0 to MATLAB index at 1
                 currentEvent(1:nCurrentEvents) = tempCurrentEvents(1:nCurrentEvents) + 1; 
@@ -207,7 +216,7 @@ while BpodSystem.Status.InStateMatrix
                     end
                     iEvent = iEvent + 1;
                 end
-                update_hardwarestate_new_event(currentEvent);
+                update_hardwarestate_new_event(BpodSystem, currentEvent);
                 if transitionEventFound
                     if BpodSystem.StateMatrix.meta.use255BackSignal == 1
                         if newState == 256
@@ -215,14 +224,14 @@ while BpodSystem.Status.InStateMatrix
                         end
                     end
                     if  newState <= nTotalStates
-                        stateChangeIndexes(nStates) = nEvents+1;
+                        BpodSystem.Status.stateChangeIndexes(nStates) = nEvents+1;
                         nStates = nStates + 1;
-                        states(nStates) = newState;
+                        BpodSystem.Status.states(nStates) = newState;
                         BpodSystem.Status.LastStateCode = BpodSystem.Status.CurrentStateCode;
                         BpodSystem.Status.CurrentStateCode = newState;
                         BpodSystem.Status.CurrentStateName = stateNames{newState};
                         BpodSystem.Status.LastStateName = stateNames{BpodSystem.Status.LastStateCode};
-                        update_hardwarestate_new_state(newState);
+                        update_hardwarestate_new_state(BpodSystem, newState);
                         if BpodSystem.EmulatorMode == 1
                             BpodSystem.Emulator.CurrentState = newState;
                             BpodSystem.Emulator.StateStartTime = BpodSystem.Emulator.CurrentTime;
@@ -269,17 +278,17 @@ while BpodSystem.Status.InStateMatrix
                         end
                     else
                         if BpodSystem.EmulatorMode == 1
-                            stateChangeIndexes(nStates) = nEvents+1;
-                            events(nEvents+1:(nEvents+nCurrentEvents)) = currentEvent(1:nCurrentEvents);
+                            BpodSystem.Status.stateChangeIndexes(nStates) = nEvents+1;
+                            BpodSystem.Status.events(nEvents+1:(nEvents+nCurrentEvents)) = currentEvent(1:nCurrentEvents);
                             nEvents = nEvents + nCurrentEvents;
                             break
                         end
                     end
                 end
                 if BpodSystem.Status.InStateMatrix == 1
-                    events(nEvents+1:(nEvents+nCurrentEvents)) = currentEvent(1:nCurrentEvents);
+                    BpodSystem.Status.events(nEvents+1:(nEvents+nCurrentEvents)) = currentEvent(1:nCurrentEvents);
                     if BpodSystem.LiveTimestamps == 1
-                        liveEventTimestamps(nEvents+1:(nEvents+nCurrentEvents)) = thisTimestamp;
+                        BpodSystem.Status.liveEventTimestamps(nEvents+1:(nEvents+nCurrentEvents)) = thisTimestamp;
                     end
                     BpodSystem.Status.LastEvent = currentEvent(1);
                     if serialPortBytesAvailable < 250
@@ -290,12 +299,15 @@ while BpodSystem.Status.InStateMatrix
                 end
             case 2 % Soft-code
                 softCode = opCodeBytes(2);
-                handle_soft_code(softCode);
+                handle_soft_code(BpodSystem, softCode);
             otherwise
                 disp('Error: Invalid op code received')
         end
     else
         drawnow;
+    end
+    if activeStateHandlerFunction
+        BpodSystem.StateHandlerFunction('update');
     end
 end
 
@@ -304,9 +316,9 @@ if BpodSystem.Status.BeingUsed == 1 % If exit was due to manual termination, Bei
     % Partial trials are not stored, to ensure data uniformity.
     thisTrialErrorCodes = [];
     % Trim unused preallocated data
-    events = events(1:nEvents);
-    states = states(1:nStates);
-    stateChangeIndexes = stateChangeIndexes(1:nStates-1);
+    BpodSystem.Status.events = BpodSystem.Status.events(1:nEvents);
+    BpodSystem.Status.states = BpodSystem.Status.states(1:nStates);
+    BpodSystem.Status.stateChangeIndexes = BpodSystem.Status.stateChangeIndexes(1:nStates-1);
     
     if BpodSystem.EmulatorMode == 0
         % Read trial-end timestamps.
@@ -327,7 +339,7 @@ if BpodSystem.Status.BeingUsed == 1 % If exit was due to manual termination, Bei
         end
     end
     if BpodSystem.LiveTimestamps == 1 % FSM 0.7 and newer return event timestamps as they are captured
-        timeStamps = liveEventTimestamps(1:nEvents);
+        timeStamps = BpodSystem.Status.liveEventTimestamps(1:nEvents);
     end
     % Read Timestamps
     if BpodSystem.EmulatorMode == 0
@@ -344,36 +356,39 @@ if BpodSystem.Status.BeingUsed == 1 % If exit was due to manual termination, Bei
     % Determine event and state timestamps
     eventTimeStamps = timeStamps;
     stateTimeStamps = zeros(1,nStates);
-    stateTimeStamps(2:nStates) = timeStamps(stateChangeIndexes);
+    stateTimeStamps(2:nStates) = timeStamps(BpodSystem.Status.stateChangeIndexes);
     stateTimeStamps(1) = 0;
 
     % Package trial events, states and timestamps
-    rawTrialEvents.States = states;
-    rawTrialEvents.Events = events;
-    rawTrialEvents.StateTimestamps = round2cycles(stateTimeStamps)/1000; % Convert to seconds
-    rawTrialEvents.EventTimestamps = round2cycles(eventTimeStamps)/1000;
-    rawTrialEvents.TrialStartTimestamp = round2cycles(trialStartTimestamp);
-    rawTrialEvents.TrialEndTimestamp = round2cycles(trialEndTimestamp);
+    rawTrialEvents.States = BpodSystem.Status.states;
+    rawTrialEvents.Events = BpodSystem.Status.events;
+    rawTrialEvents.StateTimestamps = round2cycles(BpodSystem, stateTimeStamps)/1000; % Convert to seconds
+    rawTrialEvents.EventTimestamps = round2cycles(BpodSystem, eventTimeStamps)/1000;
+    rawTrialEvents.TrialStartTimestamp = round2cycles(BpodSystem, trialStartTimestamp);
+    rawTrialEvents.TrialEndTimestamp = round2cycles(BpodSystem, trialEndTimestamp);
     rawTrialEvents.StateTimestamps(end+1) = rawTrialEvents.EventTimestamps(end);
     rawTrialEvents.ErrorCodes = thisTrialErrorCodes;
 end
 
-% Cleanup
-update_hardwarestate_new_state(0); % Reset hardware state
-BpodSystem.LastStateMatrix = BpodSystem.StateMatrix;
-BpodSystem.Status.InStateMatrix = 0;
+if activeStateHandlerFunction
+    BpodSystem.StateHandlerFunction('trial_end');
 end
 
-function timeOutput = round2cycles(decimalInput)
+% Cleanup
+update_hardwarestate_new_state(BpodSystem, 0); % Reset hardware state
+BpodSystem.LastStateMatrix = BpodSystem.StateMatrix;
+BpodSystem.Status.InStateMatrix = 0;
+
+end
+
+function timeOutput = round2cycles(BpodSystem, decimalInput)
 % Trims precision of timestamps to match state machine refresh interval
-global BpodSystem
 freq = BpodSystem.HW.CycleFrequency;
 timeOutput = round(decimalInput*(freq))/(freq);
 end
 
-function update_hardwarestate_new_state(currentState)
+function update_hardwarestate_new_state(BpodSystem, currentState)
 % Updates BpodSystem.HardwareState to reflect entry into a new state
-global BpodSystem
 if currentState > 0
     newOutputState = BpodSystem.StateMatrix.OutputMatrix(currentState,:);
     outputOverride = BpodSystem.HardwareState.OutputOverride;
@@ -385,9 +400,8 @@ else
 end
 end
 
-function update_hardwarestate_new_event(Events)
+function update_hardwarestate_new_event(BpodSystem, Events)
 % Updates BpodSystem.HardwareState to reflect new event(s).
-global BpodSystem
 nEvents = sum(Events ~= 0);
 for i = 1:nEvents
     thisEvent = Events(i);
@@ -433,16 +447,14 @@ function timeString = secs2hms(seconds)
     timeString = sprintf('%02d:%02d:%02d', h, m, s);
 end
 
-function handle_soft_code(softCode)
+function handle_soft_code(BpodSystem, softCode)
 % Calls the current soft code handler function, passing it the SoftCode
 % received from the state machine
-global BpodSystem
 eval([BpodSystem.SoftCodeHandlerFunction '(' num2str(softCode) ')'])
 end
 
-function manualOverrideEvent = virtual_manual_override(overrideMessage)
+function manualOverrideEvent = virtual_manual_override(BpodSystem, overrideMessage)
 % Converts the byte code transmission formatted for the state machine into event codes
-global BpodSystem
 opCode = overrideMessage(1);
 if opCode == 'V'
     inputChannel = overrideMessage(2)+1;
@@ -459,7 +471,7 @@ if opCode == 'V'
         end
     end
 elseif opCode == 'S'
-    handle_soft_code(uint8(overrideMessage(2)));
+    handle_soft_code(BpodSystem, uint8(overrideMessage(2)));
     manualOverrideEvent = [];
 elseif opCode == '~'
     code = overrideMessage(2);
@@ -474,13 +486,12 @@ else
 end
 end
 
-function trialStartTimestamp = send_trial_start_command
+function trialStartTimestamp = send_trial_start_command(BpodSystem)
 % Sends the trial start command to the Bpod State Machine device.
 % Reads an acknowledgement if a new state machine description was sent
 % previously and successfully received.
 % Returns: TrialStartTimestamp (units = s), trial start time measured by
 % the state machine clock
-global BpodSystem
 BpodSystem.SerialPort.flush;
 BpodSystem.SerialPort.write('R', 'uint8'); % Send the code to run the loaded matrix (character "R" for Run)
 if BpodSystem.Status.NewStateMachineSent % Read confirmation byte = successful state machine transmission
