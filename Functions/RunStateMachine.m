@@ -42,7 +42,7 @@ function rawTrialEvents = RunStateMachine
 global BpodSystem % Import the global BpodSystem object
 
 % Setup
-timeScaleFactor = (BpodSystem.HW.CyclePeriod/1000); % To convert state machine cycles to seconds
+timeScaleFactor = (BpodSystem.HW.CyclePeriod/1000); % To convert state machine cycles to milliseconds
 rawTrialEvents = struct; % Struct for returned trial data
 
 % Ensure that a state machine description has been sent to the device
@@ -78,6 +78,7 @@ BpodSystem.Status.stateChangeIndexes = zeros(1,maxEvents); % Indexes of event ti
 BpodSystem.Status.states(nStates) = 1; % Each trial begins with state 1, the first added with AddState()
 stateNames = BpodSystem.StateMatrix.StateNames; % Local copy of StateNames
 nTotalStates = BpodSystem.StateMatrix.nStatesInManifest; % Local copy of nStates
+activeStateHandlerFunction = ~isempty(BpodSystem.StateHandlerFunction); % todo: ensure doesn't fail on second run of different protocol
 
 % Reset status fields (to be synced with console UI)
 BpodSystem.Status.LastStateCode = 0; % Last state (index)
@@ -121,8 +122,7 @@ else
 end
 update_hardwarestate_new_state(BpodSystem, 1);
 BpodSystem.RefreshGUI;
-if ~isempty(BpodSystem.StateHandlerFunction)
-    % todo: ensure doesn't fail on second run of different protocol
+if activeStateHandlerFunction
     BpodSystem.StateHandlerFunction('trial_start');
 end
 
@@ -166,6 +166,7 @@ while BpodSystem.Status.InStateMatrix
     end
 
     if newMessage % If there are new events or soft codes to read
+        fprintf('New message!%s\n', BpodLib.utils.isotime())
         opCode = opCodeBytes(1);
         switch opCode
             case 1 % Receive and handle events
@@ -173,7 +174,7 @@ while BpodSystem.Status.InStateMatrix
                 if BpodSystem.EmulatorMode == 0
                     if BpodSystem.LiveTimestamps == 1
                         tempCurrentEvents = BpodSystem.SerialPort.read(nCurrentEvents+4, 'uint8');
-                        thisTimestamp = double(typecast(tempCurrentEvents(end-3:end), 'uint32'))*timeScaleFactor;
+                        thisTimestamp = double(typecast(tempCurrentEvents(end-3:end), 'uint32'))*timeScaleFactor; % milliseconds
                         tempCurrentEvents = tempCurrentEvents(1:end-4);
                         % BpodSystem.Status.LastUpdateTime = thisTimestamp;
                     else
@@ -181,7 +182,7 @@ while BpodSystem.Status.InStateMatrix
                     end
                 else
                     tempCurrentEvents = VirtualCurrentEvents;
-                    thisTimestamp = BpodSystem.Emulator.timeInState; % todo: figure out if this is on the same scale as the real state machine's timestamp
+                    thisTimestamp = BpodSystem.Emulator.timeInState;
                 end
                 % Read and convert from c++ index at 0 to MATLAB index at 1
                 currentEvent(1:nCurrentEvents) = tempCurrentEvents(1:nCurrentEvents) + 1; 
@@ -369,14 +370,15 @@ if BpodSystem.Status.BeingUsed == 1 % If exit was due to manual termination, Bei
     rawTrialEvents.ErrorCodes = thisTrialErrorCodes;
 end
 
+if activeStateHandlerFunction
+    BpodSystem.StateHandlerFunction('trial_end');
+end
+
 % Cleanup
 update_hardwarestate_new_state(BpodSystem, 0); % Reset hardware state
 BpodSystem.LastStateMatrix = BpodSystem.StateMatrix;
 BpodSystem.Status.InStateMatrix = 0;
 
-if ~isempty(BpodSystem.StateHandlerFunction)
-    BpodSystem.StateHandlerFunction('trial_end');
-end
 end
 
 function timeOutput = round2cycles(BpodSystem, decimalInput)

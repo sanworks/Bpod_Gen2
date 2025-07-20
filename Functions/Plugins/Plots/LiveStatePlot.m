@@ -79,7 +79,7 @@ methods
         
         obj.lastTic = tic;
         obj.lastNEvents = [];
-        obj.timeDiff = .8; % todo: seems a reasonable time
+        obj.timeDiff = 0;
         obj.maxDrawHz = 60;
     end
 
@@ -130,21 +130,31 @@ methods
                 return
         end
 
+        % Limit rate the plot update
+        if toc(obj.lastTic) < 1/obj.maxDrawHz
+            return
+        end
+
+        if ~isvalid(obj.GUIHandles.Figure)
+            assert(obj.BpodSystem.Status.BeingUsed == 0)
+            return
+        end
+
         % Calculate the time offset between the machine and computer
         eventTimes = obj.BpodSystem.Status.liveEventTimestamps(obj.BpodSystem.Status.liveEventTimestamps ~= 0);
-        eventTimes = cumsum(eventTimes);
+        if obj.BpodSystem.EmulatorMode == 0
+            eventTimes = eventTimes / 1000;
+        else
+            eventTimes = cumsum(eventTimes);
+        end
+        
         currentTime = toc(obj.trialStartTic);
         if numel(eventTimes) > obj.lastNEvents  % If there is a new event
             obj.lastNEvents = numel(eventTimes);
             % Calculate difference between machine's time and toc() time
             obj.timeDiff = eventTimes(end) - currentTime;
         end
-
-        % Limit rate the plot update
-        if toc(obj.lastTic) < 1/obj.maxDrawHz
-            return
-        end
-
+        
         % -- Build state index and times
         currentTime = currentTime + obj.timeDiff;
 
