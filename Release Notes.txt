@@ -1,3 +1,11 @@
+---v1.8.1---
+-Added support for Smart Servo Module
+-Bpod now reallocates events from valve driver module (which does not generate events) if necessary
+-Bpod Emulator: Fixed a bug that incorrectly computed the trial end timestamp. This bug did not affect sessions with Bpod hardware.
+-Bonsai Support: Reworked example connection via TCP/IP (For State Machine r1 and older)
+-Liquid Calibration: Fixed a bug where 'Suggest Points' window would not re-launch if closed
+-HiFi module: Added optional second output of PSRAM test providing the measured RAM size. Note that the PSRAM IC is not used.
+
 ---v1.8.0---
 -Analog Input Module: Added control of DIO channels as outputs (requires firmware update)
 -Analog Output Module: Revised serial interface to disentangle two parameters (requires firmware update)

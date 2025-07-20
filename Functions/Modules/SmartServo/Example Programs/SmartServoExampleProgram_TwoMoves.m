@@ -1,8 +1,11 @@
 % Example Smart Servo motor program: Two Moves x Two motors
 % This example motor program demonstrates a program with a sequence of two position moves.
-% Each move is executed by motors on channels 1 and 2 in parallel.
+% Each move is executed by motors at address 1 on channels 1 and 2 in parallel.
 
-%S = SmartServoModule('COM3'); % Replace 'COM3' with the SmartServoModule's serial port name
+% S = SmartServoModule('COM3'); % Uncomment and replace 'COM3' with the SmartServoModule's serial port name
+
+S.motor(1,1).controlMode = 1; % Motor on Ch1, Address 1. Mode 1 = position mode
+S.motor(2,1).controlMode = 1; % Motor on Ch2, Address 1. Mode 1 = position mode
 
 prog1 = S.newProgram; % Create a new motor program
 prog1 = S.addMovement(prog1, 'Channel', 1,...            % Target motor channel (1-3)

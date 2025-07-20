@@ -5,7 +5,9 @@
 % loop returns to step 1 before the final goal position is reached. A fifth
 % step is added to permit time for the motor to reach the fourth position in the cycle.
 
-%S = SmartServoModule('COM3'); % Replace 'COM3' with the SmartServoModule's serial port name
+% S = SmartServoModule('COM3'); % Uncomment and replace 'COM3' with the SmartServoModule's serial port name
+
+S.motor(1,1).controlMode = 1; % Mode 1 = position mode
 
 prog1 = S.newProgram();    % Create a new motor program
 prog1.nLoops = 3;          % Loop the entire program 3 times when triggered
