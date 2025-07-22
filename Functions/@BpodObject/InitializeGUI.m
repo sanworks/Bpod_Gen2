@@ -1,3 +1,4 @@
+
 %{
 ----------------------------------------------------------------------------
 
@@ -19,10 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 % BpodObject.InitializeGUI() initializes the Bpod Console GUI.
-% InitializeGUI() is called on startup in Bpod.m
-
-function obj = InitializeGUI(obj)
-
 % Setup figure label
 labelFontColor = [0.8 0.8 0.8];
 title = 'Bpod Console';
@@ -131,7 +128,7 @@ pluginPanelWidth = 575;
 pluginPanelOffset = 145;
 nTabs = obj.HW.n.UartSerialChannels+1;
 tabWidth = (pluginPanelWidth)/nTabs;
-moduleNames = {'<html>&nbsp;State<br>Machine', 'Serial 1', 'Serial 2', 'Serial 3', 'Serial 4', 'Serial 5'};
+moduleNames = {BpodLib.BpodObject.ui.formatPanelDisplayName('State Machine'), 'Serial 1', 'Serial 2', 'Serial 3', 'Serial 4', 'Serial 5'};
 obj.GUIHandles.PanelButton = cell(1, nTabs);
 formattedModuleNames = moduleNames;
 tabPos = pluginPanelOffset;
