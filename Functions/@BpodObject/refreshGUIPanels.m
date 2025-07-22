@@ -55,7 +55,7 @@ if obj.Status.BeingUsed == 0
         end
 
         % Update tab
-        set(obj.GUIHandles.PanelButton(i), 'String', formattedModuleNames{i});
+        set(obj.GUIHandles.PanelButton{i}, 'String', formattedModuleNames{i});
 
         % Clear panel contents
         set(obj.GUIHandles.OverridePanel(i), 'Visible', 'on');
@@ -101,11 +101,11 @@ if obj.Status.BeingUsed == 0
     end
 
     for i = 2:nTabs
-        set(obj.GUIHandles.PanelButton(i), 'BackgroundColor', [0.37 0.37 0.37]);
+        set(obj.GUIHandles.PanelButton{i}, 'BackgroundColor', [0.37 0.37 0.37]);
     end
 
     % Final formatting tasks
-    set (obj.GUIHandles.PanelButton(1), 'BackgroundColor', [0.45 0.45 0.45]); % Set first button active
+    set(obj.GUIHandles.PanelButton{1}, 'BackgroundColor', [0.45 0.45 0.45]); % Set first button active
     set(obj.GUIHandles.OverridePanel(1), 'Visible', 'on');
     uistack(obj.GUIHandles.OverridePanel(1),'top');
     axes(obj.GUIHandles.Console);
@@ -114,7 +114,7 @@ if obj.Status.BeingUsed == 0
     % Clear button borders
     if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
         for i = 1:nTabs
-            jButton = findjobj(obj.GUIHandles.PanelButton(i));
+            jButton = findjobj(obj.GUIHandles.PanelButton{i});
             jButton.setBorderPainted(false);
         end
     end

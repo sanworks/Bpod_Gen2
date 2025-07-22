@@ -131,8 +131,8 @@ pluginPanelWidth = 575;
 pluginPanelOffset = 145;
 nTabs = obj.HW.n.UartSerialChannels+1;
 tabWidth = (pluginPanelWidth)/nTabs;
-obj.GUIHandles.PanelButton = zeros(1,nTabs);
 moduleNames = {'<html>&nbsp;State<br>Machine', 'Serial 1', 'Serial 2', 'Serial 3', 'Serial 4', 'Serial 5'};
+obj.GUIHandles.PanelButton = cell(1, nTabs);
 formattedModuleNames = moduleNames;
 tabPos = pluginPanelOffset;
 obj.GUIData.DefaultPanel = ones(1,nTabs);
@@ -167,7 +167,7 @@ for i = 1:nTabs
         end
     end
     % Draw tab
-    obj.GUIHandles.PanelButton(i) = uicontrol('Style', 'pushbutton',...
+    obj.GUIHandles.PanelButton{i} = uicontrol('Style', 'pushbutton',...
         'String', formattedModuleNames{i},...
         'Callback', @(h,e)obj.SwitchPanels(i),...
         'BackgroundColor', [0.37 0.37 0.37],...
@@ -177,7 +177,7 @@ for i = 1:nTabs
         'FontName', buttonFont);
     tabPos = tabPos + tabWidth;
     if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
-        jButton = findjobj(obj.GUIHandles.PanelButton(i));
+        jButton = findjobj(obj.GUIHandles.PanelButton{i});
         jButton.setBorderPainted(false);
     end
     % Draw panel
@@ -227,7 +227,7 @@ for i = 1:nTabs
     drawnow;
     set(obj.GUIHandles.OverridePanel(i), 'Visible', 'off');
 end
-set (obj.GUIHandles.PanelButton(1), 'BackgroundColor', [0.45 0.45 0.45]); % Set first button active
+set(obj.GUIHandles.PanelButton{1}, 'BackgroundColor', [0.45 0.45 0.45]); % Set first button active
 set(obj.GUIHandles.OverridePanel(1), 'Visible', 'on');
 obj.GUIData.CurrentPanel = 1;
 axes(obj.GUIHandles.Console);
@@ -241,7 +241,7 @@ if isempty(strfind(obj.HostOS, 'Linux'))
     end
     if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
         for i = 1:obj.HW.n.UartSerialChannels+1
-            jButton = findjobj(obj.GUIHandles.PanelButton(i));
+            jButton = findjobj(obj.GUIHandles.PanelButton{i});
             jButton.setBorderPainted(false);
         end
     end
