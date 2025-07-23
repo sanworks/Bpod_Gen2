@@ -1,3 +1,6 @@
+function obj = InitializeGUI(obj)
+% BpodObject.InitializeGUI() initializes the Bpod Console GUI.
+% InitializeGUI() is called on startup in Bpod.m
 
 %{
 ----------------------------------------------------------------------------
@@ -19,7 +22,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% BpodObject.InitializeGUI() initializes the Bpod Console GUI.
 % Setup figure label
 labelFontColor = [0.8 0.8 0.8];
 title = 'Bpod Console';
@@ -142,23 +144,7 @@ for i = 1:nTabs
     if i > 1
         if obj.Modules.Connected(i-1)
             thisModuleName = obj.Modules.Name{i-1};
-            uCase = (thisModuleName > 64 & thisModuleName < 91);
-            lCase = (thisModuleName > 96 & thisModuleName < 123);
-            if sum(uCase) == 2 && length(uCase) > 5 && sum(lCase) > 0
-                capPos = find(uCase);
-                namePart1 = thisModuleName(1:capPos(2)-1);
-                namePart2 = thisModuleName(capPos(2):end);
-                bufferLength = 5-length(namePart2);
-                if bufferLength < 1
-                    bufferLength = 0;
-                end
-                buffer = ['<html>' repmat('&nbsp;', 1, bufferLength)];
-                namePart2 = [buffer namePart2(1:end-1) ' ' namePart2(end)];
-                formattedModuleNames{i} = ['<html>&nbsp;' namePart1 '<br>' namePart2];
-            else
-                thisModuleName = [thisModuleName(1:end-1) ' ' thisModuleName(end)];
-                formattedModuleNames{i} = thisModuleName;
-            end
+            formattedModuleNames{i} = BpodLib.BpodObject.ui.formatPanelDisplayName(thisModuleName);
         else
             thisModuleName = 'None';
         end
