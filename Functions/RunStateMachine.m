@@ -437,7 +437,7 @@ function handle_soft_code(softCode)
 % Calls the current soft code handler function, passing it the SoftCode
 % received from the state machine
 global BpodSystem
-eval([BpodSystem.SoftCodeHandlerFunction '(' num2str(softCode) ')'])
+feval(BpodSystem.SoftCodeHandlerFunction, num2str(softCode))
 end
 
 function manualOverrideEvent = virtual_manual_override(overrideMessage)
