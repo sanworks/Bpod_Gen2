@@ -36,9 +36,9 @@ function setup(testCase)
     mkdir(localdir)
     mkdir(fullfile(localdir, 'Calibration Files'))
     mkdir(fullfile(localdir, 'Settings'))
-    mkdir(fullfile(localdir, 'Config'))
-    copyfile('../BpodLib/calibration/liquid/testData/ExpectedLiquidCalibration.json', fullfile(localdir, 'Config/LiquidCalibration.json'))
-    copyfile('../BpodLib/calibration/liquid/testData/LiquidCalibration.mat', fullfile(localdir, 'Calibration Files/OLD LiquidCalibration.mat'))
+%     mkdir(fullfile(localdir, 'Config'))
+%     copyfile('../BpodLib/calibration/liquid/testData/ExpectedLiquidCalibration.json', fullfile(localdir, 'Config/LiquidCalibration.json'))
+    copyfile('../BpodLib/calibration/liquid/testData/LiquidCalibration.mat', fullfile(localdir, 'Calibration Files/LiquidCalibration.mat'))
     BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'type', 'statemachine');
 end
 
@@ -51,7 +51,7 @@ function test_RunCalibration(testCase)
     % Test users running a calibration
 
     global BpodSystem
-    
+    BpodLib.calibration.liquid.compatibility.conversionscript(BpodSystem, 'verbose', false);
     % Make sure there's no existing liquid calibration window when about to
     % start test
     if isfield(BpodSystem.GUIHandles, 'LiquidCalibrator') && ~isempty(BpodSystem.GUIHandles.LiquidCalibrator)
@@ -108,9 +108,6 @@ function test_GUItransfer(testCase)
     % Prepare the liquid calibration folder
     global BpodSystem
     calFolder = fullfile(BpodSystem.Path.LocalDir, 'Calibration Files');
-    convertedCalFolder = fullfile(BpodSystem.Path.LocalDir, 'Config');
-    copyfile(fullfile(calFolder, 'OLD LiquidCalibration.mat'), fullfile(calFolder, 'LiquidCalibration.mat'));
-    copyfile(fullfile(convertedCalFolder, 'LiquidCalibration.json'), fullfile(convertedCalFolder, 'TEMP LiquidCalibration.json'));
     BpodSystem.CalibrationTables.LiquidCal = load(fullfile(calFolder, 'LiquidCalibration.mat'), 'LiquidCal').LiquidCal;
     
     % Test GUI

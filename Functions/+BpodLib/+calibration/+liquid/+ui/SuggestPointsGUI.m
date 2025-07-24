@@ -1,7 +1,27 @@
+% Window for users to select valves to create duration suggestions for
+
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
+
 classdef SuggestPointsGUI < handle
-    %SUGGESTPOINTSGUI Summary of this class goes here
-    %   Detailed explanation goes here
-    
+       
     properties
         GUIHandles
         valveNames
@@ -9,11 +29,10 @@ classdef SuggestPointsGUI < handle
     end
     
     methods
-        function obj = SuggestPointsGUI(ValveManager, okcallback)
-            %SUGGESTPOINTSGUI 
-            %   Detailed explanation goes here
+        function obj = SuggestPointsGUI(LiquidCal, okcallback)
+            % obj = SuggestPointsGUI(LiquidCal, okcallback)
 
-            valveNames = ValveManager.getValveNames();
+            valveNames = LiquidCal.getValveNames();
             obj.valveNames = valveNames;
 
             obj.GUIHandles = struct();
@@ -62,12 +81,7 @@ classdef SuggestPointsGUI < handle
         end
         
         function result = focus(obj)
-            result = false;
-            if ~isvalid(obj.GUIHandles.Figure)
-                return
-            end
-            figure(obj.GUIHandles.Figure);
-            result = true;
+            result = BpodLib.ui.raise(obj);
         end
 
         function close(obj)

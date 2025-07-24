@@ -1,9 +1,37 @@
 function datestring = isotime(varargin)
-% Get the current time in ISO format
-% :param format: the format of the output string, either 'datetime' (default), 'iso8601', 'date', or 'time'
-% :type format: char
-% :return datestring: the current time in format ready for char/JSON encoding/display
-% :rtype datestring: datetime
+% Get the current date and/or time
+% datestring = isotime(varargin)
+%
+% Arguments
+% ---------
+% format : char
+%     Format of the output string, either 'datetime' (default), 'iso8601', 'date', or 'time'
+%
+% Returns
+% -------
+% datestring : datetime
+%     Current time in format ready for char/JSON encoding/display
+
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
+
 datestring = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss');
 
 if isempty(varargin)

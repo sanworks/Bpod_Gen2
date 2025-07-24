@@ -1,15 +1,16 @@
-function PortArrayCal = createValveManager(BpodSystem)
-% Create an empty Port Array Module liquid calibration manager
-% PortArrayCal = createValveManager(BpodSystem)
+function result = raise(UIObject)
+% Focus/raise a figure object is possible.
+% result = raise(UIObject)
 %
 % Arguments
 % ---------
-% BpodSystem : BpodObject
+% UIObject : object
+%     Object in BpodLib used to maintain a figure window
 %
 % Returns
 % -------
-% PortArrayCal : BpodLib.calibration.liquid.ValveDataManagerClass
-%     Manager pre-filled with empty eligible port array valves.
+% result : bool
+%     Returns true if successful, false otherwise
 
 %{
 ----------------------------------------------------------------------------
@@ -31,13 +32,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-PortArrayCal = BpodLib.calibration.liquid.ValveDataManagerClass();
-nModuleChannels = numel(BpodSystem.Modules.Connected);
+result = false;
+objFigure = UIObject.GUIHandles.Figure;
 
-for moduleNumber = 1:nModuleChannels
-    for valveIndex = 1:4
-        PortArrayCal.createValve(sprintf('PA%i_%i', moduleNumber, valveIndex));
-    end
+if ~isvalid(objFigure)
+    return
 end
+
+figure(objFigure)
+result = true;
 
 end
