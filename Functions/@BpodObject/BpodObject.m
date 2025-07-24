@@ -647,13 +647,13 @@ classdef BpodObject < handle
             uistack(obj.GUIHandles.OverridePanel(panel), 'top');
             for i = offPanels
                 % Button -> gray
-                set(obj.GUIHandles.PanelButton(i), 'BackgroundColor', [0.37 0.37 0.37]);
+                set(obj.GUIHandles.PanelButton{i}, 'BackgroundColor', [0.37 0.37 0.37]);
                 set(obj.GUIHandles.OverridePanel(i), 'Visible', 'off');
             end
-            set(obj.GUIHandles.PanelButton(panel), 'BackgroundColor', [0.45 0.45 0.45]);
+            set(obj.GUIHandles.PanelButton{panel}, 'BackgroundColor', [0.45 0.45 0.45]);
             if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
                 for i = 1:obj.HW.n.UartSerialChannels+1
-                    jButton = findjobj(obj.GUIHandles.PanelButton(i));
+                    jButton = findjobj(obj.GUIHandles.PanelButton{i});
                     jButton.setBorderPainted(false);
                 end
             end
