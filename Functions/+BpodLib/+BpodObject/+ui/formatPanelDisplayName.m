@@ -39,7 +39,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 compatibleHTML = verLessThan('matlab', '25');
 
 if strcmp(moduleName, 'State Machine')
-    pingtime
     if compatibleHTML
         formattedPanelName = '<html>&nbsp;State<br>Machine</html>';
     else
