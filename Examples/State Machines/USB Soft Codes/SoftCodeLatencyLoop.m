@@ -18,4 +18,4 @@ sma = AddState(sma, 'Name', 'HandleSoftCode', ...
     'OutputActions', {'BNCState', 2});
 
 % Set soft code handler to send byte 
-BpodSystem.SoftCodeHandlerFunction = 'SoftCodeHandler_LatencyLoop';
+BpodSystem.SoftCodeHandlerFunction = @SoftCodeHandler_LatencyLoop;

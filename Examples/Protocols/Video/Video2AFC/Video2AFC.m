@@ -117,7 +117,7 @@ BpodSystem.PluginObjects.V.TimerMode = 1;
 BpodSystem.PluginObjects.V.play(0);
 
 % Set soft code handler
-BpodSystem.SoftCodeHandlerFunction = 'SoftCodeHandler_PlayVideo';
+BpodSystem.SoftCodeHandlerFunction = @SoftCodeHandler_PlayVideo;
 
 %% Main trial loop
 for currentTrial = 1:maxTrials
