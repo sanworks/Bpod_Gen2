@@ -44,7 +44,7 @@ switch Opstring
     case 'Start'
         % Starts a new behavior session
         if nargin == 1
-            NewLaunchManager;
+            LaunchManager;
         else
             % Read user variables
             protocolName = varargin{1};
