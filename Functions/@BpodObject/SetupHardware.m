@@ -43,7 +43,9 @@ if obj.EmulatorMode == 1 % Set up as Bpod 0.7
         close(obj.GUIHandles.LaunchEmuFig);
     catch
     end
-    disp('Bpod started in Emulator mode: State Machine v1.0')
+    if obj.Status.Verbose
+        disp('Bpod started in Emulator mode: State Machine v1.0')
+    end
     obj.FirmwareVersion = obj.CurrentFirmware.StateMachine;
     obj.MachineType = 2;
     nModules = sum(obj.HW.Outputs=='U');
@@ -91,7 +93,9 @@ else
     obj.HW.StateMachineModel = smName;
 
     % Confirm connection via message in command window
-    disp(['State Machine ' smName ' connected on port ' obj.SerialPort.PortName newline])
+    if obj.Status.Verbose
+        disp(['State Machine ' smName ' connected on port ' obj.SerialPort.PortName newline])
+    end
 
     % Firmware mismatch notices
     if obj.FirmwareVersion ~= obj.CurrentFirmware.StateMachine
