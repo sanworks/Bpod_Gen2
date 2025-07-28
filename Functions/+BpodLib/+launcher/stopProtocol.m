@@ -2,10 +2,9 @@ function stopProtocol(BpodSystem)
 % End the current protocol session.
 % stopProtocol(BpodSystem)
 
-
 if ~isempty(BpodSystem.Status.CurrentProtocolName) & BpodSystem.Status.Verbose
     disp(' ')
-    disp([BpodSystem.Status.CurrentProtocolName ' ended'])
+    fprintf('%s Stopping protocol: %s\n', BpodLib.utils.isotime('time'), BpodSystem.Status.CurrentProtocolName)
 end
 warning off % Suppress warning, in case protocol folder has already been removed
 % This folder is added in launchProtocol.m
@@ -57,8 +56,10 @@ try
     end
 catch
 end
-set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.GoButton,... 
-    'TooltipString', 'Launch behavior session');
+if ~isempty(BpodSystem.GUIHandles)
+    set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.GoButton,... 
+        'TooltipString', 'Launch behavior session');
+end
 if BpodSystem.Status.Pause == 1
     BpodSystem.Status.Pause = 0;
 end
