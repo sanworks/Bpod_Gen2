@@ -658,6 +658,7 @@ settingsIndex = get(BpodSystem.GUIHandles.SettingsSelector,'Value');
 settingsName = settingsList{settingsIndex};
 
 close(BpodSystem.GUIHandles.LaunchManagerFig);
+protocolFolderPath = fullfile(BpodSystem.Path.ProtocolFolder, protocolName);
 BpodLib.launcher.launchProtocol(BpodSystem, protocolFolderPath, subjectName, 'settingsName', settingsName);
 
 function outputString = spaces2underscores(inputString)
