@@ -38,7 +38,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 p = inputParser();
-p.addOptional('BpodSystem', [], @(x) isempty(x) | isstruct(x) | isa(x, 'BpodObject') | isa(x, 'BpodLib.BpodObject.MockBpodObject'))
+p.addOptional('BpodSystem', [], @(x) isempty(x) | isstruct(x) | isa(x, 'BpodObject') | isa(x, 'BpodTest.MockBpodObject'))
 p.addParameter('LocalDir', '')
 p.parse(varargin{:})
 if ~isempty(p.Results.LocalDir)

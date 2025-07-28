@@ -1,4 +1,4 @@
-% Mock BpodObject for use in unit testing
+% A lightweight mock BpodObject for use in unit testing
 
 %{
 ----------------------------------------------------------------------------

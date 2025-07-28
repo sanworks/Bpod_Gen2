@@ -8,7 +8,7 @@ function setup(testCase)
     testCase.TestData.rootPath = rootPath;
     mkdir(testCase.TestData.rootPath)
 
-    mockBpod = BpodLib.BpodObject.MockBpodObject('COM13');
+    mockBpod = BpodTest.MockBpodObject('COM13');
     LocalDir = fullfile(rootPath, 'Bpod Local');
     mkdir(LocalDir)
     testCase.TestData.LocalDir = LocalDir;
@@ -35,7 +35,7 @@ end
 
 function test_isMultiSetupEMU(testCase)
     % Test if the EMU setup is recognised as a multi setup
-    mockBpod = BpodLib.BpodObject.MockBpodObject('EMU');
+    mockBpod = BpodTest.MockBpodObject('EMU');
     BpodLib.BpodObject.setup.updatePathAndSettings(mockBpod, 'LocalDir', testCase.TestData.LocalDir);
     testCase.verifyTrue(~BpodLib.multi.isMultiSetup(mockBpod), 'The setup should not be recognised as a multi setup before creation.');
     % Create a multi setup
