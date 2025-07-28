@@ -8,7 +8,8 @@ if ~isempty(BpodSystem.Status.CurrentProtocolName) & BpodSystem.Status.Verbose
     disp([BpodSystem.Status.CurrentProtocolName ' ended'])
 end
 warning off % Suppress warning, in case protocol folder has already been removed
-rmpath(fullfile(BpodSystem.Path.ProtocolFolder, BpodSystem.Status.CurrentProtocolName));
+% This folder is added in launchProtocol.m
+rmpath(fileparts(BpodSystem.Path.CurrentProtocol));
 warning on
 BpodSystem.Status.BeingUsed = 0;
 BpodSystem.Status.CurrentProtocolName = '';
