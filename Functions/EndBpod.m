@@ -74,11 +74,12 @@ if ~isempty(BpodSystem)
         
         % Close legacy Bonsai TCP server if open
         BpodSocketServer('close');
-
-        if BpodSystem.EmulatorMode == 0
-            disp('Bpod successfully disconnected.')
-        else
-            disp('Bpod emulator successfully closed.')
+        if BpodSystem.Status.Verbose
+            if BpodSystem.EmulatorMode == 0
+                disp('Bpod successfully disconnected.')
+            else
+                disp('Bpod emulator successfully closed.')
+            end
         end
 
         % Close remaining figures
