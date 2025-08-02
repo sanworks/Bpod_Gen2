@@ -25,13 +25,13 @@ jobs:
       - name: Setup environment
         uses: matlab-actions/run-command@v2
         with:
-          command: addpath('Tests'); setupGithubEnvironment;
+          command: addpath('Tests/'); setupGithubEnvironment;
 
       # Runs a set of commands using the runners shell
       - name: Run all tests
         uses: matlab-actions/run-tests@v2
         with:
-          source-folder: Functions/
+          source-folder: Functions/; Tests/
           select-by-folder: Tests/BpodLib/; Tests/Integrations
 
   test-windows:
