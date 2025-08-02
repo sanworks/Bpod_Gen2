@@ -99,8 +99,10 @@ stateTimerOffset = conditionOffset+BpodSystem.HW.n.Conditions;
 
 % Update console GUI time display
 timeElapsed = ceil((now*100000) - BpodSystem.ProtocolStartTime);
-set(BpodSystem.GUIHandles.TimeDisplay, 'String', secs2hms(timeElapsed));
-set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton);
+if ~isempty(BpodSystem.GUIHandles)
+    set(BpodSystem.GUIHandles.TimeDisplay, 'String', secs2hms(timeElapsed));
+    set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton);
+end
 
 % Start trial
 BpodSystem.Status.BeingUsed = 1; BpodSystem.Status.InStateMatrix = 1;
