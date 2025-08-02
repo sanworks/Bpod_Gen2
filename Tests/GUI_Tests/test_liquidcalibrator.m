@@ -4,26 +4,11 @@ function tests = test_liquidcalibrator()
 end
 
 function setupOnce(testCase)
-    global BpodSystem
-    wasRunning = ~isempty(BpodSystem);
-    if ~wasRunning
-        Bpod('EMU')
-        global BpodSystem
-    end
-    testCase.TestData.BpodSystem = BpodSystem;
-    testCase.TestData.Original = struct();
-    testCase.TestData.Original.wasRunning = wasRunning;
-    testCase.TestData.Original.LocalDir = BpodSystem.Path.LocalDir;
-    testCase.TestData.Original.LiquidCal = BpodSystem.CalibrationTables.LiquidCal;
+    BpodTest.setupBpodSystemFixture(testCase, 'gui', true)
 end
 
 function teardownOnce(testCase)
-    global BpodSystem
-    BpodSystem.Path.LocalDir = testCase.TestData.Original.LocalDir;
-    BpodSystem.CalibrationTables.LiquidCal = testCase.TestData.Original.LiquidCal;
-    if ~testCase.TestData.Original.wasRunning
-        EndBpod
-    end
+    BpodTest.teardownBpodSystemFixture(testCase)
 end
 
 function setup(testCase)
