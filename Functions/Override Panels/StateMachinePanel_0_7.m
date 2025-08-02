@@ -18,12 +18,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% StateMachinePanel_0_7() sets up the state machine panel on the 
+% StateMachinePanel_0_7(BpodSystem) sets up the state machine panel on the 
 % console GUI for State Machine r0.7-r1.0
 
-function StateMachinePanel_0_7
-
-global BpodSystem % Import the global BpodSystem object
+function StateMachinePanel_0_7(BpodSystem)
 
 fontName = 'Courier New';
 if ~ismac && ~ispc

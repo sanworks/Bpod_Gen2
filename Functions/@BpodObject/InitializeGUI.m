@@ -184,7 +184,7 @@ for i = 1:nTabs
             case 1
                 StateMachinePanel_0_5; % This is a file in /Bpod/Functions/OverridePanels/
             case 2
-                StateMachinePanel_0_7;
+                StateMachinePanel_0_7(obj);
             case 3
                 StateMachinePanel_2_0_0;
             case 4
