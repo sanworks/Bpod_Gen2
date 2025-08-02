@@ -4,42 +4,22 @@ function tests = test_GetValveTimes()
 end
     
 function setupOnce(testCase)
-    global BpodSystem
-    wasRunning = ~isempty(BpodSystem);
-    if ~wasRunning
-        Bpod('EMU')
-        global BpodSystem
-    end
-    testCase.TestData.BpodSystem = BpodSystem;
-    testCase.TestData.Original.wasRunning = wasRunning;
-    testCase.TestData.Original.LocalDir = BpodSystem.Path.LocalDir;
-    testCase.TestData.Original.LiquidCal = BpodSystem.CalibrationTables.LiquidCal;
-    testCase.TestData.Original.PortArrays = BpodSystem.CalibrationTables.PortArrays;
+    BpodTest.setupBpodSystemFixture(testCase)
 end
 
 function teardownOnce(testCase)
-    global BpodSystem
-    BpodSystem.Path.LocalDir = testCase.TestData.Original.LocalDir;
-    BpodSystem.CalibrationTables.LiquidCal = testCase.TestData.Original.LiquidCal;
-    BpodSystem.CalibrationTables.PortArrays = testCase.TestData.Original.PortArrays;
-    if ~testCase.TestData.Original.wasRunning
-        EndBpod
-    end
+    BpodTest.teardownBpodSystemFixture(testCase)
 end
 
 function setup(testCase)
-    BpodSystem = testCase.TestData.BpodSystem;
     root = tempname;
     testCase.TestData.root = root;
     localdir = fullfile(root, 'Bpod Local');
-    BpodSystem.Path.LocalDir = localdir;
     mkdir(localdir)
-    mkdir(fullfile(localdir, 'Calibration Files')) 
-    mkdir(fullfile(localdir, 'Settings'))
-    mkdir(fullfile(localdir, 'Config'))
-    copyfile('../BpodLib/calibration/liquid/testData/ExpectedLiquidCalibration.json', fullfile(localdir, 'Config/LiquidCalibration.json'))
-    BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'type', 'statemachine');
-
+    
+    BpodSystem = testCase.TestData.BpodSystem;
+    BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'LocalDir', localdir)
+;
     % -- Create port array data
     PAM = BpodLib.calibration.liquid.portarray.createValveManager(BpodSystem);
     valve = PAM.getValve('PA2_3');
@@ -47,7 +27,6 @@ function setup(testCase)
     valve.addMeasurement(10, 10);
     valve.addMeasurement(7, 7);
     BpodSystem.CalibrationTables.PortArrays = PAM;
-
 end
 
 function teardown(testCase)
