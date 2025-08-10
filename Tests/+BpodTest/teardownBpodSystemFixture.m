@@ -16,6 +16,7 @@ if testCase.TestData.Original.wasRunning
     global BpodSystem
     BpodSystem = testCase.TestData.Original.BpodSystem;
     BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'LocalDir', testCase.TestData.Original.LocalDir)
+    BpodSystem.Status.Verbose = testCase.TestData.Original.Verbose;
 end
 
 end

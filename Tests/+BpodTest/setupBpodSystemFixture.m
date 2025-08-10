@@ -22,6 +22,8 @@ if wasRunning
     assert(isa(BpodSystem, 'BpodObject'), 'BpodSystem should be a BpodObject')
     testCase.TestData.Original.BpodSystem = BpodSystem;
     testCase.TestData.Original.LocalDir = BpodSystem.Path.LocalDir; % store for restoration later
+    testCase.TestData.Original.Verbose = BpodSystem.Status.Verbose;
+    BpodSystem.Status.Verbose = false;
 else
     % Create a new BpodSystem for testing
     % A fresh startup requires a local dir (to not contaminate existing local dir)
