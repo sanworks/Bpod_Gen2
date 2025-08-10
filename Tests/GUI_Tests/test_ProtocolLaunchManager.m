@@ -4,7 +4,7 @@ function tests = test_ProtocolLaunchManager()
 end
 
 function setupOnce(testCase)
-    BpodTest.setupBpodSystemFixture(testCase)
+    BpodTest.setupBpodSystemFixture(testCase, 'gui', true)
 end
 
 function teardownOnce(testCase)
@@ -47,7 +47,7 @@ function test_runLaunchManager(testCase)
 
 
     %
-    BpodSystem = testCase.TestData.Original.BpodSystem;
+    BpodSystem = testCase.TestData.BpodSystem;
     BpodTest.ui.click(BpodSystem.GUIHandles.RunButton)
 
     BpodSystem.GUIHandles.ProtocolSelector.Value = 1;

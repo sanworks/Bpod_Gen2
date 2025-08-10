@@ -35,6 +35,7 @@ end
 
 if p.Results.gui
     assert(~isempty(BpodSystem.GUIHandles))
+    BpodTest.ui.closePhoneHome(BpodSystem)
 end
 
 testCase.TestData.BpodSystem = BpodSystem;
