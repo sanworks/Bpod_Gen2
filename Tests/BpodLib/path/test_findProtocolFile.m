@@ -7,7 +7,7 @@ function setupOnce(testCase)
     rootPath = tempname;  % Generate a unique temporary directory
     testCase.TestData.rootPath = rootPath;
 
-    testEnvironment = BpodTest.createDummyProtocolFolders(rootPath);
+    testEnvironment = BpodTest.dir.createDummyProtocolFolders(rootPath);
     testCase.TestData.protocolFolder = testEnvironment.protocolFolder;
 end
 

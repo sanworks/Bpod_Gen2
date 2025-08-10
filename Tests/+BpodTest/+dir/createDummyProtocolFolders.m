@@ -51,23 +51,33 @@ testEnvironment.protocolFolder = protocolFolder;
 testEnvironment.dataFolder = dataFolder;
 
 % Create a protocol folder structure
-create_protocol(fullfile(protocolFolder), 'Protocol_unique1');
-create_protocol(fullfile(protocolFolder), 'Protocol_unique2');
-create_protocol(fullfile(protocolFolder), 'Protocol_matching1');
-create_protocol(fullfile(protocolFolder, 'subfolderA'), 'Protocol_matching1');
-create_protocol(fullfile(protocolFolder, 'subfolderA'), 'Protocol_matching2');
-create_protocol(fullfile(protocolFolder, 'subfolderB'), 'Protocol_unique3');
-create_protocol(fullfile(protocolFolder, 'subfolderB'), 'Protocol_matching2');
-create_protocol(fullfile(protocolFolder, 'subfolderB/subfolderC'), 'Protocol_unique4');
+protocolStructure = {...
+    {fullfile(protocolFolder), 'Protocol_unique1'}, ...
+    {fullfile(protocolFolder), 'Protocol_unique2'}, ...
+    {fullfile(protocolFolder), 'Protocol_matching1'}, ...
+    {fullfile(protocolFolder, 'subfolderA'), 'Protocol_matching1'}, ...
+    {fullfile(protocolFolder, 'subfolderA'), 'Protocol_matching2'}, ...
+    {fullfile(protocolFolder, 'subfolderB'), 'Protocol_unique3'}, ...
+    {fullfile(protocolFolder, 'subfolderB'), 'Protocol_matching2'}, ...
+    {fullfile(protocolFolder, 'subfolderB/subfolderC'), 'Protocol_unique4'}, ...
+    };
+for i = 1:length(protocolStructure)
+    BpodTest.dir.createProtocolMaterials(protocolStructure{i}{1}, protocolStructure{i}{2}, 'dataFolder', false);
+end
 
-% Create a data folder structure
-create_datafolder(dataFolder, 'FakeSubject', 'Protocol_matching1');
-create_datafolder(dataFolder, 'FakeSubject', 'Protocol_unique1');
-create_datafolder(dataFolder, 'FakeSubject', 'Protocol_unique2');
-create_datafolder(dataFolder, 'Subject1', 'Protocol_unique1');
-create_datafolder(dataFolder, 'Subject1', 'Protocol_matching1');
-create_datafolder(dataFolder, 'Subject2', 'Protocol_matching1');
-create_datafolder(dataFolder, 'Subject2', 'Protocol_unique2');
+dataStructure = {...
+    {'FakeSubject', 'Protocol_matching1'}, ...
+    {'FakeSubject', 'Protocol_unique1'}, ...
+    {'FakeSubject', 'Protocol_unique2'}, ...
+    {'Subject1', 'Protocol_unique1'}, ...
+    {'Subject1', 'Protocol_matching1'}, ...
+    {'Subject2', 'Protocol_matching1'}, ...
+    {'Subject2', 'Protocol_unique2'}, ...
+    };
+
+for i = 1:length(dataStructure)
+    BpodTest.dir.createDataFolder(dataFolder, dataStructure{i}{1}, dataStructure{i}{2});
+end
 
 % Create settings files
 filepath = fullfile(dataFolder, 'FakeSubject', 'Protocol_matching1', 'Session Settings', 'DefaultSettings.mat');
@@ -81,18 +91,4 @@ save(filepath, 'dummysettings');
 filepath = fullfile(dataFolder, 'FakeSubject', 'Protocol_matching1', 'Session Data', 'FakeSubject_Protocol_matching1_20160315_021512.mat');
 save(filepath, 'emptystruct');
 
-end
-
-function create_protocol(folderPath, protocolName)
-    % Create a folder with the protocol name and an empty protocol file
-    mkdir(fullfile(folderPath, protocolName));
-    fileID = fopen(fullfile(folderPath, protocolName, [protocolName '.m']), 'w');
-    fprintf(fileID, 'function %s\n disp("This is a protocol file.");', protocolName);
-    fclose(fileID);
-end
-
-function create_datafolder(dataFolder, subjectName, protocolName)
-    % Create a data folder structure for a subject and protocol
-    mkdir(fullfile(dataFolder, subjectName, protocolName, 'Session Data'));
-    mkdir(fullfile(dataFolder, subjectName, protocolName, 'Session Settings'));
 end
