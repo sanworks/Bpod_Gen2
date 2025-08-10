@@ -200,11 +200,11 @@ for i = 1:nTabs
                 eval([moduleFunctionName '(obj.GUIHandles.OverridePanel(' num2str(i) '), ''' thisModuleName ''');']);
                 obj.GUIData.DefaultPanel(i) = 0;
             else % No override panel function exists for module
-                DefaultBpodModule_Panel(obj.GUIHandles.OverridePanel(i), obj.Modules.Name{i-1});
+                DefaultBpodModule_Panel(obj, obj.GUIHandles.OverridePanel(i), obj.Modules.Name{i-1});
             end
 
         else % Module did not respond
-            DefaultBpodModule_Panel(obj.GUIHandles.OverridePanel(i), obj.Modules.Name{i-1});
+            DefaultBpodModule_Panel(obj, obj.GUIHandles.OverridePanel(i), obj.Modules.Name{i-1});
         end
     end
     drawnow;

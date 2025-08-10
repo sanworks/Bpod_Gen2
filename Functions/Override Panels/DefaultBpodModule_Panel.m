@@ -27,9 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % This file includes bug fixes and/or feature updates contributed by:
 % - Florian Rau, Poulet Lab, Max Delbruck Center, Berlin Germany
 
-function DefaultBpodModule_Panel(panelHandle, moduleName)
-
-global BpodSystem % Import the global BpodSystem object
+function DefaultBpodModule_Panel(BpodSystem, panelHandle, moduleName)
 
 fontName = 'Courier New';
 if ~ismac && ~ispc
