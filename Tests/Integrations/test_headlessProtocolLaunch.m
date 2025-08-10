@@ -1,5 +1,5 @@
-function tests = test_protocolLaunch()
-% Test launching a protocol without a GUI
+function tests = test_headlessProtocolLaunch()
+% Test launching a protocol without a GUI (compatile with GitHub Actions)
     tests = functiontests(localfunctions);
 end
 
@@ -67,5 +67,4 @@ testCase.verifyTrue(isfield(SessionData, 'TrialOutcomes'),...
 
 testCase.verifyTrue(isfield(SessionData.RawEvents.Trial{1}.States, 'Start'),...
     "The state 'Start' should have been entered into.")
-
 end

@@ -1,4 +1,5 @@
-function tests = test_RunProtocol()
+function tests = test_ProtocolLaunchManager()
+    % Test user launching of protocol
     tests = functiontests(localfunctions);
 end
 
@@ -11,7 +12,7 @@ function teardownOnce(testCase)
 end
 
 function setup(testCase)
-        % Setup local folder
+    % Setup local folder
     testCase.TestData.root = tempname;
     localDir = fullfile(testCase.TestData.root, 'Bpod Local');
     mkdir(localDir)
@@ -34,6 +35,7 @@ function setup(testCase)
     mkdir(fullfile(localDir, 'Data/FakeSubject/CoreTestProtocol/Session Data'))
     mkdir(fullfile(localDir, 'Data/FakeSubject/CoreTestProtocol/Session Settings/'))
 end
+
 function teardown(testCase)
     rmdir(testCase.TestData.root, 's');
 end
