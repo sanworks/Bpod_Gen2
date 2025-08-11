@@ -17,7 +17,7 @@ function test_fullStartup(testCase)
     % verify that function Bpod() runs without error
     try
         Bpod('EMU')
-        BpodTest.ui.closePhoneHome(BpodSystem)
+        BpodTest.ui.closeMessageBoxes(BpodSystem)
     catch ME
         testCase.verifyFail(sprintf('Bpod startup failed: %s', ME.message));
     end
