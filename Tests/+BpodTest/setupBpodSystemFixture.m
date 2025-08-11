@@ -1,6 +1,6 @@
 function setupBpodSystemFixture(testCase, varargin)
 % Prepare a BpodSystem for testing, using an existing BpodSystem or creating a new one.
-% setupBpodSystemFixture(testCase)
+% setupBpodSystemFixture(testCase, _)
 %
 % Expected to be called in setupOnce()
 % Works in tandem with teardownBpodSystemFixture.m
