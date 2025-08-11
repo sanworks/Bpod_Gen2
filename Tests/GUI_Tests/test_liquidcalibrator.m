@@ -64,13 +64,17 @@ function test_RunCalibration(testCase)
     lc.GUIHandles.AmountEntry.String = '40';
     feval(lc.GUIHandles.OkButton.Callback, [], [])
 
+    % Decrease n pulses to two
+    nPulses = '2';
+    lc.GUIHandles.nPulsesEdit.String = nPulses;
+
     % Request running of measurement
     feval(lc.GUIHandles.MeasurePendingButton.Callback, [], [])
     feval(lc.GUIHandles.OkButton.Callback, [], [])
 
     % Measurement runs
-
-    lc.GUIHandles.ValueEntryGUI.GUIHandles.Valve3.String = '.8'; % enter value weighed
+    weight = num2str(.8 * str2double(nPulses) / 100);
+    lc.GUIHandles.ValueEntryGUI.GUIHandles.Valve3.String = weight; % enter value weighed
     feval(lc.GUIHandles.ValueEntryGUI.GUIHandles.EnterMeasurementButton2.Callback, [], []) % click OK button
 
     close(lc.GUIHandles.msgbox) % close box that confirms saving
@@ -79,7 +83,7 @@ function test_RunCalibration(testCase)
     testCase.verifyEqual(BpodSystem.CalibrationTables.LiquidCal.getValve('Valve3').getValveTime(5), 42.507, 'AbsTol', 1e-2)
 
     % Test GetValveTimes returns expected value
-    testCase.verifyEqual(GetValveTimes(5, 3), 42.507 / 1000, 'AbsTol', 1e-2)
+    testCase.verifyEqual(GetValveTimes(5, 3) * 1000, 42.507, 'AbsTol', 1e-2)
 
     % Test file is saved appropriately
     savedliquid = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'type', 'statemachine');
