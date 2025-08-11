@@ -1,15 +1,16 @@
-function PortArrayCal = createValveManager(BpodSystem)
-% Create an empty Port Array Module liquid calibration manager
-% PortArrayCal = createValveManager(BpodSystem)
+function formattedText = createMultiLine(cellText, varargin)
+% Format multiline text destined for uicontrol objects
+% formattedText = createMultiLine(cellText)
 %
 % Arguments
 % ---------
-% BpodSystem : BpodObject
+% cellText : cell
+%     Cell of chars/strings that you want to display in multiple lines
 %
 % Returns
 % -------
-% PortArrayCal : BpodLib.calibration.liquid.ValveDataManagerClass
-%     Manager pre-filled with empty eligible port array valves.
+% formattedText : char
+%     Returns char appropriately
 
 %{
 ----------------------------------------------------------------------------
@@ -31,13 +32,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-PortArrayCal = BpodLib.calibration.liquid.ValveDataManagerClass();
-nModuleChannels = numel(BpodSystem.Modules.Connected);
+if verLessThan('matlab', '25')
+    textFormat = repmat('%s<br>', 1, numel(cellText));
+    textFormat = textFormat(1:end-4);  % remove trailing <br>
+    cellText = sprintf(textFormat, cellText{:});
 
-for moduleNumber = 1:nModuleChannels
-    for valveIndex = 1:4
-        PortArrayCal.createValve(sprintf('PA%i_%i', moduleNumber, valveIndex));
-    end
-end
+    formattedText = ['<html>' cellText '</html>'];
+else
+    textFormat = repmat('%s\n', 1, numel(cellText));
+    textFormat = textFormat(1:end-2);
 
+    formattedText = sprintf(textFormat, cellText{:});
 end

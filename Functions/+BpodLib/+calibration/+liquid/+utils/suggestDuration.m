@@ -1,6 +1,41 @@
 function suggestedDuration_ms = suggestDuration(valveobject, rangeLow, rangeHigh)
-%duration = suggestDuration(valve)
 % Suggest a duration for the valve based on its type and size.
+% duration = suggestDuration(valve)
+%
+% Arguments
+% ---------
+% valveobject : BpodLib.calibration.liquid.ValveDataClass
+%     A single valve's object
+% rangeLow : double
+%     The minimum amount expected to be dispensed
+% rangeHigh : double
+%     The maximum amount expected to be dispensed
+%
+%
+% Returns
+% -------
+% suggestDuration_ms : double
+%     Duration that fills the gap in the existing calibration data
+
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
 
 if ~isempty(valveobject.Durations)
     durations = valveobject.Durations';

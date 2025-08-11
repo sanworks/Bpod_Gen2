@@ -1,27 +1,57 @@
 function path = getPath(target, varargin)
-%path = getPath(target, _)
 % Retrieve the path to something
-% Example usages:
+% path = getPath(target, _)
+%
+% Examples
+% --------
 % path = getPath('liquidcalibration', BpodSystem, 'setuptype', 'single')
 % path = getPath('config', 'LocalDir', LocalDirPath, 'setuptype', 'multi', 'com', 'COM3')
 %
-% :param target: The target path to retrieve, can be one of the following:
-%   - 'config': Path to the config folder
-%   - 'local': Path to the local directory
-%   - 'liquidcalibration': Path to the liquid calibration files
-%   - 'root': Path to the Bpod root directory
-%   - 'settings': Path to the settings folder
-% :type target: char
-% :param BpodSystem: The Bpod system object, if not provided you must specify 'LocalDir' parameterfe
-% :type BpodSystem: BpodObject or struct
-% :param setuptype: What kind of setup (single/multi) to find path for, defaults to auto-detecting
-% :type setuptype: char
-% :param LocalDir: The local directory to use, if not provided uses BpodSystem.Path.LocalDir. This overrides auto-detection of LocalDir from BpodSystem.
-% :type LocalDir: char
-% :param com: The COM port to use for multi setups, if not provided uses BpodSystem.SerialPort.PortName
-% :type com: char
-% :return path: The path to the requested target
-% :rtype: char
+% Arguments
+% ---------
+% target : char
+%     The target path to retrieve, can be one of the following:
+%         - 'config': Path to the config folder
+%         - 'local': Path to the local directory
+%         - 'liquidcalibration': Path to the liquid calibration files
+%         - 'root': Path to the Bpod root directory
+%         - 'settings': Path to the settings folder
+% BpodSystem : BpodObject or struct
+%     Optional, if not provided you must specify 'LocalDir' keyword argument
+%
+% Keyword Argument
+% ----------------
+% setuptype : char
+%     What kind of setup (single/multi) to find path for, defaults to auto-detecting
+% LocalDir : char
+%     The local directory to use, if not provided uses BpodSystem.Path.LocalDir. This overrides auto-detection of LocalDir from BpodSystem.
+% com : char
+%     The COM port to use for multi setups, if not provided uses BpodSystem.SerialPort.PortName
+%
+% Returns
+% -------
+% path : char
+%     The path to the requested target
+
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
 
 p = inputParser();
 p.addOptional('BpodSystem', [], @(x) isempty(x) || isstruct(x) || isa(x, 'BpodObject') || isa(x, 'BpodLib.BpodObject.MockBpodObject'))

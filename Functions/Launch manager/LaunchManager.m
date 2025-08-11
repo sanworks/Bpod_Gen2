@@ -30,6 +30,14 @@ if isfield(BpodSystem.GUIHandles, 'LaunchManagerFig') && ~verLessThan('MATLAB', 
     end
 end
 
+% Set colors if dark theme is active (r2025a or newer)
+listBGColor = [0.8 0.8 0.8];
+if ~verLessThan('matlab', '25.1')
+    if strcmp(settings().matlab.appearance.MATLABTheme.ActiveValue, 'Dark')
+        listBGColor = [0.2 0.2 0.2];
+    end
+end
+
 % Build UI
 if (drawFig)
     BpodSystem.GUIHandles.LaunchManagerFig = figure('Position',[80 50 750 600],'name','Launch Manager',...
@@ -52,13 +60,13 @@ text(lmYpos, 45,'Protocol Launch Manager', 'FontName', fontName, 'FontSize', 20,
 line([10 590], [80 80], 'Color', [0.8 0.8 0.8], 'LineWidth', 1);
 BpodSystem.GUIHandles.ProtocolSelector = uicontrol('Style', 'listbox','Position', [25 95 200 390],... 
                                          'String', 'Folder not found', 'Callback', @ProtocolSelectorNavigate, 'FontWeight', 'bold',... 
-                                         'FontSize', selectorFontSize, 'BackgroundColor', [.8 .8 .8]);
+                                         'FontSize', selectorFontSize, 'BackgroundColor', listBGColor);
 BpodSystem.GUIHandles.SubjectSelector = uicontrol('Style', 'listbox','Position', [265 95 200 390],... 
                                          'String', 'Folder not found', 'Callback', @subject_selector_navigate, 'FontWeight', 'bold',... 
-                                         'FontSize', selectorFontSize, 'BackgroundColor', [.8 .8 .8]);
+                                         'FontSize', selectorFontSize, 'BackgroundColor', listBGColor);
 BpodSystem.GUIHandles.SettingsSelector = uicontrol('Style', 'listbox','Position', [505 95 200 390],... 
                                          'String', 'Folder not found', 'FontWeight', 'bold', 'FontSize', selectorFontSize,... 
-                                         'BackgroundColor', [.8 .8 .8]);
+                                         'BackgroundColor', listBGColor);
 text(20, 120,'Protocol', 'FontName', fontName, 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
 text(212, 120,'Subject', 'FontName', fontName, 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
 text(405, 120,'Settings', 'FontName', fontName, 'FontSize', 16, 'Color', [0.8 0.8 0.8]);

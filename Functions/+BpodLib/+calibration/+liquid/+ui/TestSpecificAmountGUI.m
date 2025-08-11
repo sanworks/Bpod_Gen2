@@ -1,3 +1,25 @@
+% Window for users to test whether their liquid calibration is accurate.
+
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
+
 classdef TestSpecificAmountGUI < handle
 properties
     BpodSystem
@@ -11,8 +33,7 @@ end
 
 methods
     function obj = TestSpecificAmountGUI(BpodSystem, LiquidCal)
-        %TestSpecificAmountGUI(BpodSystem, LiquidCal)
-        % GUI for testing specific amounts of liquid
+        % obj = TestSpecificAmountGUI(BpodSystem, LiquidCal)
 
         obj.BpodSystem = BpodSystem;
         obj.LiquidCal = LiquidCal;
@@ -218,10 +239,7 @@ methods
     end
 
     function result = focus(obj)
-        result = false;
-        % todo: fix this pattern
-        figure(obj.GUIHandles.Figure)
-        result = true;
+        result = BpodLib.ui.raise(obj);
     end
 end
 end

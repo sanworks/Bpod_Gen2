@@ -27,16 +27,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 classdef PortArrayModule < handle
     properties
         Port % ArCOM wrapper to simplify data transactions on the USB serial port
-        valveState = zeros(1,4); % State of each port's valve (0 = closed, 1 = open)
-        ledBrightness = zeros(1,4); % Brightness of each port's LED (0 = off, 255 = max)
+        valveState % State of each port's valve (0 = closed, 1 = open)
+        ledBrightness % Brightness of each port's LED (0 = off, 255 = max)
     end
 
     properties (SetAccess = protected)
+        HardwareVersion = 1;
         FirmwareVersion = 0;
     end
 
     properties (Access = private)
-        CurrentFirmwareVersion = 2;
+        CurrentFirmwareVersion = 3;
+        nChannels = 0; % Number of channels on detected device
         eventsTemplate % Struct with fields for events returned with USB streaming
         timeByteMask % Logical array to index time bytes in USB streaming frames
         eventByteMask % Logical array to index event bytes in USB streaming frames
@@ -54,6 +56,18 @@ classdef PortArrayModule < handle
                 error('Could not connect =( ')
             end
             obj.FirmwareVersion = obj.Port.read(1, 'uint32');
+            obj.nChannels = 4;
+            if obj.FirmwareVersion > 2
+                obj.Port.write('H', 'uint8');
+                obj.HardwareVersion = obj.Port.read(1, 'uint8');
+                if obj.HardwareVersion > 1
+                    obj.nChannels = 8;
+                end
+            else
+                error(['Old firmware detected. Firmware must be updated to v' num2str(obj.CurrentFirmwareVersion)])
+            end
+            obj.valveState = zeros(1,obj.nChannels); % State of each port's valve (0 = closed, 1 = open)
+            obj.ledBrightness = zeros(1,obj.nChannels); % Brightness of each port's LED (0 = off, 255 = max)
             try
                 addpath(fullfile(fileparts(which('Bpod')), 'Functions', 'Internal Functions'));
                 currentFirmware = CurrentFirmwareList;
@@ -66,8 +80,8 @@ classdef PortArrayModule < handle
                 error(['Error: old firmware detected - v' num2str(obj.FirmwareVersion) '. The current version is: '... 
                     num2str(latestFirmware) '. Please update the Port Array Module using LoadBpodFirmware().'])
             end
-            obj.timeByteMask = repmat(logical([1 1 1 1 1 1 1 1 0 0 0 0]), 1, 1000);
-            obj.eventByteMask = repmat(logical([0 0 0 0 0 0 0 0 1 1 1 1]), 1, 1000);
+            obj.timeByteMask = repmat(logical([1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0]), 1, 1000);
+            obj.eventByteMask = repmat(logical([0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1]), 1, 1000);
             obj.eventsTemplate = struct;
             obj.eventsTemplate.about = struct;
             obj.eventsTemplate.about.events = 'Event codes for ports: 1 = Port1In, 2 = Port1Out, 3 = Port2In,... 8 = Port4Out';
@@ -81,11 +95,11 @@ classdef PortArrayModule < handle
             % Set the state of each port's valve
             % Arguments: stateVector, a 1xnPorts array. 0 = closed, 1 = open
             if obj.Initialized
-                if (length(stateVector) < 4) || (sum(stateVector > 1) > 0) || (sum(stateVector < 0) > 0)
-                    error(['Error: You must provide a vector of 4 valve states: 0=closed, 1=open ' ...
+                if (length(stateVector) ~= obj.nChannels) || (sum(stateVector > 1) > 0) || (sum(stateVector < 0) > 0)
+                    error(['Error: You must provide a vector of ' num2str(obj.nChannels) ' valve states: 0=closed, 1=open ' ...
                            '(or modify one position of the .valveState vector).'])
                 end
-                valveBits = sum((stateVector).*(2.^(0:3)));
+                valveBits = sum((stateVector).*(2.^(0:obj.nChannels-1)));
                 obj.Port.write(['B' valveBits], 'uint8');
                 if ~obj.usbStreaming
                     confirmed = obj.Port.read(1, 'uint8');
@@ -101,8 +115,8 @@ classdef PortArrayModule < handle
             % Set the brightness of each port's LED
             % Arguments: stateVector, a 1xnPorts array. 0 = off, 255 = max brightness
             if obj.Initialized
-                if (length(stateVector) < 4) || (sum(stateVector > 255) > 0) || (sum(stateVector < 0) > 0)
-                    error(['Error: You must provide a vector of 4 PWM values in range 0-255 ' ...
+                if (length(stateVector) ~= obj.nChannels) || (sum(stateVector > 255) > 0) || (sum(stateVector < 0) > 0)
+                    error(['Error: You must provide a vector of ' num2str(obj.nChannels) ' PWM values in range 0-255 ' ...
                            '(or modify one position of the .ledBrightness vector).'])
                 end
                 obj.Port.write(['W' stateVector], 'uint8');
@@ -121,7 +135,7 @@ classdef PortArrayModule < handle
             % Arguments: None
             % Returns: state, a 1xnPorts array. 0 = not occupied, 1 = occupied
             obj.Port.write('S', 'uint8');
-            state = double(obj.Port.read(4, 'uint8'));
+            state = double(obj.Port.read(obj.nChannels, 'uint8'));
         end
         
         function startEventStream(obj)
@@ -139,21 +153,21 @@ classdef PortArrayModule < handle
             %          events, an array of detected events encoded as: 1 = Port1In, 2 = Port1Out, 3 = Port2In,... 8 = Port4Out'
             %          eventTimestamps, an array of timestamps for each event
             events = obj.eventsTemplate;
-            nEventFrames = floor(obj.Port.bytesAvailable/12);
+            nEventFrames = floor(obj.Port.bytesAvailable/16);
             if nEventFrames > 0
-                nBytes = nEventFrames*12;
+                nBytes = nEventFrames*16;
                 message = obj.Port.read(nBytes, 'uint8');
                 newTimes = double(typecast(message(obj.timeByteMask(1:nBytes)), 'uint64'))/1000000;
                 newEvents = message(obj.eventByteMask(1:nBytes));
                 pos = 1; eventPos = 1;
                 for i = 1:nEventFrames
-                    thisFrameEvents = newEvents(pos:pos+3);
+                    thisFrameEvents = newEvents(pos:pos+7);
                     eventPositions = thisFrameEvents > 0;
                     nEventsInFrame = sum(eventPositions);
                     events.events(eventPos:eventPos+nEventsInFrame-1) = thisFrameEvents(eventPositions);
                     events.eventTimestamps(eventPos:eventPos+nEventsInFrame-1) = newTimes(i);
                     eventPos = eventPos + nEventsInFrame;
-                    pos = pos + 4;
+                    pos = pos + 8;
                 end
                 events.events = events.events(1:eventPos-1);
                 events.eventTimestamps = events.eventTimestamps(1:eventPos-1);

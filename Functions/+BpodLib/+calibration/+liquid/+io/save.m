@@ -1,7 +1,42 @@
-function save(ValveDataManagerStruct, varargin)
+function save(saveData, varargin)
 % Save liquid calibration data to disk
-% :param ValveDataManagerStruct: The output of ValveDataManager.createSaveData()
-% :type ValveDataManagerStruct: struct
+% save(saveData, _)
+%
+% Arguments
+% ---------
+% saveData : struct
+%     The output of ValveDataManager.createSaveData().
+%
+% Keyword Arguments
+% -----------------
+% BpodSystem : BpodObject
+%     BpodSystem used to identify the COM
+% type : char
+%     What kind of liquid calibration data it is. 'statemachine' or 'portarray'
+% filepath : char
+%     Filepath to save to. Must be specified if 'type' is not.
+% verbose : logical (default=true)
+%     Whether to display messages in Command Window.
+
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
 
 p = inputParser();
 p.addParameter('BpodSystem', [])
@@ -11,10 +46,11 @@ p.addParameter('verbose', false)
 p.parse(varargin{:})
 BpodSystem = p.Results.BpodSystem;
 
-% We want data to be a struct from the get-go because we might want to insert additional data later on...
-assert(isa(ValveDataManagerStruct, 'struct'),'BpodLib:LiquidCalibrationSave:WrongFormat',...
+% LiquidCal should be converted into a a struct with .createSaveData()
+% first, as this allows arbitrary metadata to be saved prior to this final
+% process.
+assert(isa(saveData, 'struct'),'BpodLib:LiquidCalibrationSave:WrongFormat',...
     'Save data should be a structure.')
-savedata = ValveDataManagerStruct;
 
 % Determine the save location of the calibration file
 if isempty(p.Results.filepath)
@@ -36,8 +72,8 @@ end
 
 % Insert COM port metadata
 if ~isempty(BpodSystem)
-    if isfield(savedata.metadata, 'COM')
-        savedCOM = savedata.metadata.COM;
+    if isfield(saveData.metadata, 'COM')
+        savedCOM = saveData.metadata.COM;
     else
         savedCOM = 'none';
     end
@@ -48,12 +84,12 @@ if ~isempty(BpodSystem)
         warning('COM port has changed.')
         fprintf('Previous COM: %s\nNew COM: %s\n', savedCOM, currentCOM)
     end
-    savedata.metadata.COM = currentCOM;
+    saveData.metadata.COM = currentCOM;
 end
 
 
 % Write to JSON file
-writedata = jsonencode(savedata, 'PrettyPrint', true);
+writedata = jsonencode(saveData, 'PrettyPrint', true);
 fid = fopen(filepath, 'w');
 fwrite(fid, writedata, 'char');
 fclose(fid);
