@@ -39,7 +39,7 @@ ha = axes('units','normalized', 'position',[0 0 1 1]);
 uistack(ha,'bottom');
 bg = imread('ErrorDlgBG.bmp');
 image(bg); axis off; drawnow;
-text(128, 20,'ERROR', 'FontName', 'OCRAStd', 'FontSize', 16, 'Color', [1 0 0]);
+text(128, 20,'ERROR', 'FontName', 'Arial', 'FontSize', 16, 'Color', [1 0 0]);
 newLinePos = find(Message == 10);
 nSegments = 1;
 if isempty(newLinePos)
@@ -56,12 +56,12 @@ end
 xPos = 45;
 for i = 1:nSegments
     yPos = 190-(length(messageLines{i})*4);
-    text(yPos, xPos, messageLines{i}, 'FontName', 'OCRAStd', 'FontSize', 12, 'Color', [1 0 0]);
+    text(yPos, xPos, messageLines{i}, 'FontName', 'Arial', 'FontSize', 12, 'Color', [1 0 0]);
     xPos = xPos + 18;
 end
 BpodSystem.GUIHandles.BpodErrorBtn = uicontrol('Style', 'pushbutton', 'String', 'Ok',...
     'Position', [170 10 60 40], 'Callback', 'evalin(''base'', ''close(BpodSystem.GUIHandles.BpodErrorFig)'')',...
-    'FontSize', 12,'Backgroundcolor',[0.7 0.1 0.1], 'FontName', 'OCRAStd');
+    'FontSize', 12,'Backgroundcolor',[0.7 0.1 0.1], 'FontName', 'Arial');
 if generateError ~= 0
     error(Message);
 end
