@@ -43,6 +43,11 @@ properties
     Measurement2add
     CalibrationTargetRange
 end
+
+properties (Access = private)
+    supportsHTMLTags % bool. MATLAB stopped supporting HTML in UI strings in r2025a
+end
+
 methods
     function obj = LiquidCalibratorUI(varargin)
         % Create the LiquidCalibratorUI
@@ -59,6 +64,12 @@ methods
         p.addParameter('BpodSystem', []);
         p.addParameter('savepath', [])
         p.parse(varargin{:});
+
+        % Configure support for HTML tags
+        obj.supportsHTMLTags = true;
+        if ~verLessThan('matlab', '25.1')
+            obj.supportsHTMLTags = false;
+        end
 
         % If BpodSystem is specified insert self into GUIHandles (for closing on EndBpod)
         if ~isempty(p.Results.BpodSystem)
@@ -77,7 +88,9 @@ methods
 
         % Create the user interface
         obj.GUIHandles = struct();
-        obj.GUIHandles.MainFig =  figure('Position',[150 180 830 370],'name','Bpod liquid calibrator','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'CloseRequestFcn', @(src,event) obj.close());
+        obj.GUIHandles.MainFig = figure('Position',[150 180 830 370],'name','Bpod liquid calibrator',...
+            'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'CloseRequestFcn', @(src,event) obj.close(), ...
+            'Tag', 'BpodLiquidCal-Main');
         ha = axes('units','normalized', 'position',[0 0 1 1]);
         uistack(ha,'bottom');
         BG = imread('RewardCalMain.bmp');
@@ -178,8 +191,14 @@ methods
         PendingDurations = obj.PendingMeasurements.getValvePending(ValveToShowName);
         if ~isempty(PendingDurations)
             nPendingMeasurements = length(PendingDurations);
+            prefix = '';
+            suffix = '';
+            if obj.supportsHTMLTags
+                prefix = '<html><FONT COLOR="#ff0000">';
+                suffix = '</FONT></html>';
+            end
             for x = 1:nPendingMeasurements
-                ThisValveCalEntries{end+1} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '  num2str(PendingDurations(x)) 'ms</FONT></html>'];
+                ThisValveCalEntries{end+1} = [prefix '*PENDING MEASUREMENT: '  num2str(PendingDurations(x)) 'ms' suffix];
             end
         end
 
@@ -251,7 +270,8 @@ methods
 
     function RequestPendingMeasurement(obj, src, event)
         % Create a GUI for entering a pending measurement
-        obj.GUIHandles.ValueEntryFig = figure('Position', [540 400 400 200],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off' );
+        obj.GUIHandles.ValueEntryFig = figure('Position', [540 400 400 200],'numbertitle','off', 'MenuBar', 'none',... 
+            'Resize', 'off', 'Tag', 'BpodLiquidCal-EnterPending');
         ha = axes('units','normalized', 'position',[0 0 1 1]);
         uistack(ha,'bottom');
         BG = imread('RewardCalEnterValue.bmp');
@@ -310,7 +330,7 @@ methods
         end
         SelectedEntry = get(obj.GUIHandles.MeasurementSelector,'Value');
         SelectedEntryText = ThisValveCalEntries{SelectedEntry};
-        isPendingMeasurement = SelectedEntryText(1) == '<';
+        isPendingMeasurement = (SelectedEntryText(1) == '<' || SelectedEntryText(1) == '*');
 
         if isPendingMeasurement
             valuetext = strsplit(SelectedEntryText, 'ms');
@@ -332,8 +352,16 @@ methods
     function PreRunPendingCheck(obj, varargin)
         % % Create a vector of measurements to test
         % todo: remove RunPending from properties
-
+        
         % todo: use PendingMeasurements.getPending to build more informative message box
+
+        % Check for pending measurements
+        [valveNames, pulseDurations_ms] = obj.PendingMeasurements.getPending();
+        if numel(valveNames) == 0 
+            errordlg('No pending measurements found. Please add pending measurements and try again.', 'Error')
+            error('No pending measurements found. Please add pending measurements and try again.')
+        end
+
         mb = msgbox('Please refill liquid reservoirs and click Ok to begin.', 'non-modal');
         okbutton = mb.findobj('Tag', 'OKButton');
         okbutton.Callback = @(~, ~) mbfunc(mb);

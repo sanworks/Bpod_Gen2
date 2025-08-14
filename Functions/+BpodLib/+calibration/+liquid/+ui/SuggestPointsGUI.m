@@ -39,7 +39,8 @@ classdef SuggestPointsGUI < handle
             buttonSpacing = 30;
             figheight = 70 + numel(valveNames) * buttonSpacing + 85;
             figwidth = 213;
-            fig = figure('Position', [500, 400, figwidth, figheight], 'Resize', 'off', 'MenuBar', 'none', 'numbertitle', 'off');
+            fig = figure('Position', [500, 400, figwidth, figheight], 'Resize', 'off', 'MenuBar', 'none',... 
+                'numbertitle', 'off', 'Tag', 'BpodLiquidCal-SuggestPoints');
             obj.GUIHandles.Figure = fig;
 
             ax = axes('units','normalized', 'position',[0 0 1 1]); % axes fill figures at end of initialisation with full size
