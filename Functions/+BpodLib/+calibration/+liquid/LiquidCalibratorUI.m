@@ -202,13 +202,20 @@ methods
         % -- Update plot of calibration values and curve
         ValveData = obj.ValveDataManager.getValve(ValveToShowName);
         AxCalib = obj.GUIHandles.CalibrationCurveAxes;
+        LineColor = [0 0 0];
+        PointColor = [0 0 1];
+        if IsMATLAB_DarkMode
+            LineColor = [.5 .8 1];
+            PointColor = [.4 .5 1];
+        end
         if ~isempty(ValveData.Coeffs)
             Vector = polyval(ValveData.Coeffs,0:.1:150);
             % Plot the calibration curve
-            plot(AxCalib,Vector, 0:.1:150, 'k-', 'LineWidth', 1.5);
+            plot(AxCalib,Vector, 0:.1:150, 'Color', LineColor, 'LineWidth', 1.5);
             hold(AxCalib, 'on');
             % Plot the real calibration points
-            scatter(AxCalib, ValveData.Durations, ValveData.Amounts, 'LineWidth', 2);
+            scatter(AxCalib, ValveData.Durations, ValveData.Amounts,... 
+                    'LineWidth', 2, 'MarkerEdgeColor', PointColor);
             set(AxCalib, 'tickdir', 'out', 'box', 'off');
             Ymax = max(ValveData.Amounts)+.1*max(ValveData.Amounts);
             % Add pending measurement datapoints
@@ -216,7 +223,8 @@ methods
             if ~isempty(PendingDurations)
                 nPendingMeasurements = length(PendingDurations);
                 for y = 1:nPendingMeasurements
-                    line([PendingDurations(y) PendingDurations(y)],[0 Ymax], 'Color', 'r', 'LineStyle', ':','Parent',obj.GUIHandles.CalibrationCurveAxes);
+                    line([PendingDurations(y) PendingDurations(y)],[0 Ymax], 'Color', 'r',... 
+                        'LineStyle', ':','Parent',obj.GUIHandles.CalibrationCurveAxes);
                 end
             end
             if Ymax > 0

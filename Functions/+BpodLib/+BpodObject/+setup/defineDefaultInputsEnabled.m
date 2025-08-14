@@ -5,7 +5,7 @@ function InputsEnabled = defineDefaultInputsEnabled(BpodSystem)
 InputsEnabled = zeros(1,BpodSystem.HW.n.Inputs);
 portPos = find(BpodSystem.HW.Inputs == 'P');
 if ~isempty(portPos)
-    InputsEnabled(portPos([1, 3])) = 1;
+    InputsEnabled(portPos(1:3)) = 1;
 end
 InputsEnabled(BpodSystem.HW.Inputs == 'B') = 1;
 if BpodSystem.MachineType > 1 % v0.7+ uses optoisolators on wire channels; OK to enable by default
