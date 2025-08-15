@@ -32,13 +32,14 @@ properties
 end
 
 methods
-    function obj = TestSpecificAmountGUI(BpodSystem, LiquidCal)
+    function obj = TestSpecificAmountGUI(BpodSystem, LiquidCal, nValvesToDisplay)
         % obj = TestSpecificAmountGUI(BpodSystem, LiquidCal)
 
         obj.BpodSystem = BpodSystem;
         obj.LiquidCal = LiquidCal;
         obj.GUIHandles = struct();
         valveNamesSet = LiquidCal.getValveNames();
+        valveNamesSet = valveNamesSet(1:nValvesToDisplay);
         obj.valveNamesSet = valveNamesSet;
         obj.hasRun = false;
 

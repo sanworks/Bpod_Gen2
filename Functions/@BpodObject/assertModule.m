@@ -60,11 +60,13 @@ end
 for i = 1:nModules
     thisModule = [moduleNames{i} '1'];
     if sum(strcmp(obj.Modules.Name, thisModule)) == 0
+        errordlg(['Bpod ' moduleNames{i} ' module not found.'])
         error(['Bpod ' moduleNames{i} ' module not found.' char(10)...
             'Connect the module to a state machine ''Module'' port and click the ''refresh'' icon on the Bpod console.'])
     end
     if usbParied(i)
         if ~isfield(obj.ModuleUSB, thisModule)
+            errordlg(['Bpod ' moduleNames{i} ' module not paired. See command window.'])
             error(['Error: To run this protocol, you must first pair the ' moduleNames{i}...
                 ' module with its USB port.' char(10) 'Click the USB config button on the Bpod console.'])
         end

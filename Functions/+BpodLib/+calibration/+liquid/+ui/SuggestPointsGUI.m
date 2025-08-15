@@ -29,12 +29,13 @@ classdef SuggestPointsGUI < handle
     end
     
     methods
-        function obj = SuggestPointsGUI(LiquidCal, okcallback)
+        function obj = SuggestPointsGUI(LiquidCal, BpodSystem, nValvesToDisplay, okcallback)
             % obj = SuggestPointsGUI(LiquidCal, okcallback)
 
             valveNames = LiquidCal.getValveNames();
+            valveNames = valveNames(1:nValvesToDisplay);
             obj.valveNames = valveNames;
-
+            
             obj.GUIHandles = struct();
             buttonSpacing = 30;
             figheight = 70 + numel(valveNames) * buttonSpacing + 85;

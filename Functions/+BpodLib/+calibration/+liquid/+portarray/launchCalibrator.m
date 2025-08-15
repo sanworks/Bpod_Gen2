@@ -26,9 +26,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-savePath = fullfile(BpodLib.path.getPath('liquidcalibration', BpodSystem), 'LiquidCalibration-PortArrays.json');
+savePath = fullfile(BpodLib.path.getPath('liquidcalibration', BpodSystem),... 
+                                         'LiquidCalibration-PortArrays.json');
 if isempty(BpodSystem.CalibrationTables.PortArrays)
-    error('BpodLib:portarraylaunchCalibrator:NoData', "No existing port array data found, did you mean BpodLib.calibration.liquid.portarray.initialize(BpodSystem) ?")
+    error('BpodLib:portarraylaunchCalibrator:NoData',... 
+        "No existing port array data found, did you mean BpodLib.calibration.liquid.portarray.initialise(BpodSystem) ?")
 end
 
-BpodLib.calibration.liquid.LiquidCalibratorUI(BpodSystem.CalibrationTables.PortArrays, 'BpodSystem', BpodSystem, 'savepath', savePath);
+BpodLib.calibration.liquid.LiquidCalibratorUI(BpodSystem.CalibrationTables.PortArrays,... 
+    'BpodSystem', BpodSystem, 'savepath', savePath, 'target', 'PortArray');

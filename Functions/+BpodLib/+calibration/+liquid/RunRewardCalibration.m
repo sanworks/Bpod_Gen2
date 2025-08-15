@@ -92,7 +92,7 @@ for idx = 1:nValves
 end
 
 %% Create pulse delivery state matrix
-sma = NewStateMatrix();
+sma = NewStateMachine();
 for y = 1:nValves
     valveData = data(y);
     
@@ -118,7 +118,7 @@ for y = 1:nValves
                         'OutputActions', openValveAction);
 
     if strcmp(valveData.type, 'serial')
-        sma = AddState(sma, 'Name', ['PulseClose' valveData.name], ...
+        sma = AddState(sma, 'Name', ['PulseClosed' valveData.name], ...
                             'Timer', 0,...
                             'StateChangeConditions', ...
                             {'Tup', ['Delay' valveData.name]},...
@@ -141,7 +141,7 @@ for y = 1:nValves
 end
 
 %% Execute pulses
-SendStateMatrix(sma);
+SendStateMachine(sma);
 
 for x = 1:nPulses
     progressbar(x/nPulses)

@@ -46,6 +46,7 @@ end
 
 properties (Access = private)
     supportsHTMLTags % bool. MATLAB stopped supporting HTML in UI strings in r2025a
+    nValvesToDisplay % int: The number of valves to display (matches target device(s).
 end
 
 methods
@@ -62,7 +63,8 @@ methods
         p = inputParser();
         p.addRequired('ValveDataManager'); % BpodSystem.CalibrationTables.LiquidCal
         p.addParameter('BpodSystem', []);
-        p.addParameter('savepath', [])
+        p.addParameter('savepath', []);
+        p.addParameter('target', []);
         p.parse(varargin{:});
 
         % Configure support for HTML tags
@@ -84,7 +86,20 @@ methods
         obj.PendingMeasurements = BpodLib.calibration.liquid.PendingMeasurementManager(obj.ValveDataManager);
         
         obj.CalibrationTargetRange = [2, 10]; % uL of liquid to calibrate
+        switch p.Results.target
+            case 'FSM_Onboard'
+                nValves = obj.BpodSystem.HW.n.Ports;
+            case 'PortArray'
+                nValves = 0;
+                for i = 1:obj.BpodSystem.Modules.nModules
+                    if ~isempty(strfind(obj.BpodSystem.Modules.Name{i}, 'PA'))
+                        nValves = nValves + obj.BpodSystem.Modules.nSerialEvents(i)/2;
+                    end
+                end
+        end
+        obj.nValvesToDisplay = nValves;
         ValveListboxString = obj.ValveDataManager.getValveNames();
+        ValveListboxString = ValveListboxString(1:nValves);
 
         % Create the user interface
         obj.GUIHandles = struct();
@@ -382,6 +397,7 @@ methods
         if Completed
             % -- Create GUI for entering measurements
             allValveNames = obj.PendingMeasurements.getValveNames();
+            allValveNames = allValveNames(1:obj.nValvesToDisplay);
             EntryGUI = BpodLib.calibration.liquid.ui.ValueEntryGUI(allValveNames, @obj.AddCalMeasurements);
             EntryGUI.setPending(valveNames)
             obj.GUIHandles.ValueEntryGUI = EntryGUI;
@@ -428,7 +444,8 @@ methods
                 return
             end
         end
-        obj.GUIHandles.RecommendedMeasureFig = BpodLib.calibration.liquid.ui.SuggestPointsGUI(obj.ValveDataManager, @obj.AddSuggestedPoints);
+        obj.GUIHandles.RecommendedMeasureFig = BpodLib.calibration.liquid.ui.SuggestPointsGUI(obj.ValveDataManager,... 
+            obj.BpodSystem, obj.nValvesToDisplay, @obj.AddSuggestedPoints);
         obj.GUIHandles.RecommendedMeasureFig.setRange(obj.CalibrationTargetRange(1), obj.CalibrationTargetRange(2));
 
         valveNamesSet = obj.ValveDataManager.getValveNames();
@@ -499,7 +516,7 @@ methods
                 return
             end
         end
-        obj.GUIHandles.TestSpecificAmtFig = BpodLib.calibration.liquid.ui.TestSpecificAmountGUI(obj.BpodSystem, obj.ValveDataManager);
+        obj.GUIHandles.TestSpecificAmtFig = BpodLib.calibration.liquid.ui.TestSpecificAmountGUI(obj.BpodSystem, obj.ValveDataManager, obj.nValvesToDisplay);
     end
 
 end
