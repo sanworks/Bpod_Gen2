@@ -373,7 +373,7 @@ methods
         % Check for pending measurements
         [valveNames, pulseDurations_ms] = obj.PendingMeasurements.getPending();
         if numel(valveNames) == 0 
-            errordlg('No pending measurements found. Please add pending measurements and try again.', 'Error')
+            errordlg(['No pending measurements found.' char(10) 'Please add pending measurements and try again.'], 'Error')
             error('No pending measurements found. Please add pending measurements and try again.')
         end
 
