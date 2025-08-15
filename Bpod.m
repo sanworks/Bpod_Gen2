@@ -70,6 +70,14 @@ end
 bpodPath = fileparts(which('Bpod'));
 addpath(genpath(fullfile(bpodPath, 'Functions')));
 
+% Check for minimum MATLAB version
+[Ver, VerName] = BpodMinimumMATLABVersion;
+if verLessThan('matlab', Ver)
+    error(['Bpod v' BpodSoftwareVersion_Semantic ' requires MATLAB ' VerName ' or newer.'...
+            char(10) 'If you must use previous MATLAB versions, please consider using Bpod v1.8.1 '... 
+            '<a href="matlab:web(''https://github.com/sanworks/Bpod_Gen2/tree/9be6bea107dba96e8b4e38aa1c5617339d4efc50'',''-browser'')">(Click Here)</a>'])
+end
+
 % Initialize BpodSystem. The BpodSystem class is used for system config.
 BpodSystem = BpodObject;
 
