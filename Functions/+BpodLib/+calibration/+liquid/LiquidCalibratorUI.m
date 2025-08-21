@@ -34,9 +34,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 classdef LiquidCalibratorUI < handle
 properties
     BpodSystem % for .GUIHandles and for running the RunRewardCal
-    GUIHandles
-    ValveDataManager
-    savePath
+    GUIHandles % struct with handles of all GUI objects
+    ValveDataManager % handle object that manages valve data
+    savePath % char: path to save liquid calibration data
+    source % char : 'statemachine' | 'portarray'
 
     PendingMeasurements  % struct: the measurements to add to the data, indexed by valve name
     PendingRun
@@ -57,7 +58,8 @@ methods
         p = inputParser();
         p.addRequired('ValveDataManager'); % BpodSystem.CalibrationTables.LiquidCal
         p.addParameter('BpodSystem', []);
-        p.addParameter('savepath', [])
+        p.addParameter('savepath', []);
+        p.addParameter('source', 'unknown');
         p.parse(varargin{:});
 
         % If BpodSystem is specified insert self into GUIHandles (for closing on EndBpod)
@@ -71,13 +73,16 @@ methods
         obj.ValveDataManager = p.Results.ValveDataManager;
         obj.savePath = p.Results.savepath;
         obj.PendingMeasurements = BpodLib.calibration.liquid.PendingMeasurementManager(obj.ValveDataManager);
+        obj.source = p.Results.source;
         
         obj.CalibrationTargetRange = [2, 10]; % uL of liquid to calibrate
         ValveListboxString = obj.ValveDataManager.getValveNames();
 
         % Create the user interface
         obj.GUIHandles = struct();
-        obj.GUIHandles.MainFig =  figure('Position',[150 180 830 370],'name','Bpod liquid calibrator','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'CloseRequestFcn', @(src,event) obj.close());
+        figWidth = 830;
+        figHeight = 370;
+        obj.GUIHandles.MainFig =  figure('Position',[150 180 figWidth figHeight],'name','Bpod liquid calibrator','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'CloseRequestFcn', @(src,event) obj.close());
         ha = axes('units','normalized', 'position',[0 0 1 1]);
         uistack(ha,'bottom');
         BG = imread('RewardCalMain.bmp');
@@ -100,15 +105,55 @@ methods
         obj.GUIHandles.nPulsesEdit = uicontrol('Style', 'edit',...
             'String', '100', 'Position', [360 15 80 30], 'FontSize', 14,...
             'TooltipString', 'Number of pulses per weight measurement (100-500)');
+
+        % -- Top bar
+        styleargs = {'BackgroundColor', 'none', 'ForegroundColor', 'white', 'FontName', 'FixedWidth', 'FontWeight', 'bold', 'FontSize', 17};
         obj.GUIHandles.SuggestPointsButton = uicontrol('Style', 'pushbutton',...
-            'Position', [20 300 250 50], 'Callback', @(src,event) obj.SuggestPoints(src,event));
-        set(obj.GUIHandles.SuggestPointsButton, 'CData', imread('SuggestPoints.bmp'));
+            'String', 'Suggest Points', styleargs{:},...
+            'Position', [20 300 200 50], 'Callback', @(src,event) obj.SuggestPoints(src,event));
+        % set(obj.GUIHandles.SuggestPointsButton, 'CData', imread('SuggestPoints.bmp'));
         obj.GUIHandles.MeasurePendingButton = uicontrol('Style', 'pushbutton',...
-            'Position', [290 300 250 50], 'Callback', @(src,event) obj.PreRunPendingCheck(src,event));
-        set(obj.GUIHandles.MeasurePendingButton, 'CData', imread('MeasurePending.bmp'));
+            'String', 'Measure Pending', styleargs{:},...
+            'Position', [235 300 215 50], 'Callback', @(src,event) obj.PreRunPendingCheck(src,event));
         obj.GUIHandles.TestCurveButton = uicontrol('Style', 'pushbutton',...
-            'Position', [560 300 250 50], 'Callback', @(src,event) obj.TestSpecificAmount(src,event));
-        set(obj.GUIHandles.TestCurveButton, 'CData', imread('TestCurve.bmp'));
+            'String', 'Test Curve', styleargs{:},...
+            'Position', [460 300 150 50], 'Callback', @(src,event) obj.TestSpecificAmount(src,event));
+        
+        % Is PortArray connected?
+        arrayConnected = false;
+        if ~isempty(obj.BpodSystem)
+            moduleNames = obj.BpodSystem.Modules.Name;
+            for x = 1:numel(moduleNames)
+                if startsWith(moduleNames{x}, 'PA')
+                    arrayConnected = true;
+                    break
+                end
+            end
+        end
+
+        if arrayConnected || strcmp(obj.source, 'portarray')
+            sourceList = {'State Machine', 'Port Array Module'};
+        else
+            sourceList = {'State Machine'};
+        end
+
+        % Determine what the current source is and set button to it
+        if strcmp(obj.source, 'statemachine')
+            buttonIndex = 1;
+        elseif strcmp(obj.source, 'portarray')
+            buttonIndex = 2;
+        else
+            error('BpodLib:LiquidCalibratorUI:InvalidSource', 'Source must be either ''statemachine'' or ''portarray''');
+        end
+        styleargs{end} = 12; % replace font size from styleargs with 12
+        obj.GUIHandles.SourceSelection = uicontrol(obj.GUIHandles.MainFig, 'Style', 'popupmenu',...
+            'String', sourceList,...
+            'Position', [630 300 160 25], 'Callback', @(src,event) obj.SwapSource,...
+            styleargs{:});
+        obj.GUIHandles.SourceSelection.Value = buttonIndex;
+
+        uicontrol('Style', 'text', 'String', 'Source:', 'Position', [630 325 160 25], styleargs{:});
+
         obj.DisplayValve()
     end
 
@@ -253,7 +298,7 @@ methods
         obj.GUIHandles.OkButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [250 15 80 50], 'Callback', @(src, event) obj.GetPendingMeasurementFromUser(), 'CData', CalOkButtonGFX, 'TooltipString', 'Confirm entry');
     end
 
-    function GetPendingMeasurementFromUser(obj, src, event)
+    function GetPendingMeasurementFromUser(obj, ~, ~)
         % Get the value for liquid amount from the GUI window
 
         % -- Validate entered value
@@ -464,6 +509,29 @@ methods
             end
         end
         obj.GUIHandles.TestSpecificAmtFig = BpodLib.calibration.liquid.ui.TestSpecificAmountGUI(obj.BpodSystem, obj.ValveDataManager);
+    end
+
+    function SwapSource(obj)
+        % Swap between state machine and port array calibrations
+        selectedSource = obj.GUIHandles.SourceSelection.String{obj.GUIHandles.SourceSelection.Value}; % retrieve the selected source before closing the current GUI
+        originalPosition = obj.GUIHandles.MainFig.Position; % save current position to restore later
+        obj.close()
+
+        % Determine what source was selected
+        if strcmp(selectedSource, 'State Machine')
+            BpodLib.calibration.liquid.launchLiquidCalibrationUI(obj.BpodSystem);
+        elseif strcmp(selectedSource, 'Port Array Module')
+            if isempty(obj.BpodSystem.CalibrationTables.PortArrays)
+                BpodLib.calibration.liquid.portarray.initialize(obj.BpodSystem);
+                BpodLib.calibration.liquid.portarray.launchCalibrator(obj.BpodSystem)
+            else
+                BpodLib.calibration.liquid.portarray.launchCalibrator(obj.BpodSystem)
+            end
+        else
+            error('BpodLib:LiquidCalibration:UnknownSource', 'Unknown source selected: %s', selectedSource);
+        end
+
+        BpodLib.ui.alignWindow(obj.BpodSystem.GUIHandles.LiquidCalibrator.GUIHandles.MainFig, originalPosition)
     end
 
 end
