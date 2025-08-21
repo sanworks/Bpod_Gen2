@@ -11,7 +11,8 @@ methods
         figwidth = 317;
         startY = figheight - 151;
 
-        obj.GUIHandles.RunMeasurementsFig = figure('Position', [540 100 figwidth figheight],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'Name', 'Enter pending measurements');
+        obj.GUIHandles.RunMeasurementsFig = figure('Position', [540 100 figwidth figheight],'numbertitle','off',... 
+            'MenuBar', 'none', 'Resize', 'off', 'Name', 'Enter pending measurements', 'Tag', 'BpodLiquidCal-EnterValue');
         ha = axes('units','normalized', 'position',[0 0 1 1]);
         hold(ha, 'on')
         set(obj.GUIHandles.RunMeasurementsFig, 'Color', [0.2627 0.2627 0.2627]);
@@ -32,14 +33,19 @@ methods
         text(ha, 120, figheight - 80, 'Liquid weight', textargs{:})
         MeasurementButtonGFX2 = imread('MeasurementEntryOkButtonBG.bmp');
         obj.GUIHandles.EnterMeasurementButton2 = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [120 7 80 50], 'Callback', @(src, event) okcallback(), 'TooltipString', 'Enter measurement', 'CData', MeasurementButtonGFX2);
-        
+        bgColor = [.9 .9 .9];
+        fgColor = [0 0 0];
+        if IsMATLAB_DarkMode
+            bgColor = [.2 .2 .2];
+            fgColor = [1 1 1];
+        end
 
         for idx = 1:numel(valveNames)
             valveName = valveNames{idx};
             yposition = startY - (idx-1) * spacing;
             obj.GUIHandles.(valveName) = uicontrol('Style', 'edit', 'Position', [155 yposition 80 35], ...
                 'TooltipString', sprintf('Enter liquid weight for %s', valveName), 'FontWeight', 'bold', ...
-                'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
+                'FontSize', 12,'ForegroundColor', fgColor, 'BackgroundColor', bgColor);
             obj.GUIHandles.(valveName).Enable = 'off';
             
             % Add text for each valve
@@ -59,9 +65,13 @@ methods
 
     function setPending(obj, pendingNames)
         % Set the active valves that require value entry
+        enabledColor = [.6 .9 .6];
+        if IsMATLAB_DarkMode
+            enabledColor = [.3 .6 .3];
+        end
         for idx = 1:numel(pendingNames)
             valvename = pendingNames{idx};
-            set(obj.GUIHandles.(valvename), 'BackgroundColor', [.6 .9 .6], 'Enable', 'on');
+            set(obj.GUIHandles.(valvename), 'BackgroundColor', enabledColor, 'Enable', 'on');
         end
     end
 end

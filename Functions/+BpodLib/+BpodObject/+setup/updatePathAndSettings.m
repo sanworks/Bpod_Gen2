@@ -163,16 +163,22 @@ for idx = 1:numel(configItems)
     fileName = [configItem '.mat'];
     configFilepath = fullfile(Path.SettingsDir, fileName);
     Path.(configItem) = configFilepath;
-    
+
     if ~isfile(Path.(configItem))
-        copyfile(fullfile(ExamplesDir, 'Example Settings Files', fileName), Path.(configItem));
+        if ~strcmp(configItem, 'InputConfig')
+            copyfile(fullfile(ExamplesDir, 'Example Settings Files', fileName), Path.(configItem));
+        end
     end
 
     if strcmp(configItem, {'ModuleUSBConfig'})
         continue
     elseif strcmp(configItem, 'InputConfig')
-        loadedItem = load(Path.(configItem), 'BpodInputConfig');
-        BpodSystem.InputsEnabled = loadedItem.BpodInputConfig;
+        if ~isfile(Path.(configItem))
+            % Only load if a user defined
+            continue
+        end
+        loaded_item = load(Path.(configItem), 'BpodInputConfig');
+        BpodSystem.InputsEnabled = loaded_item.BpodInputConfig;
     elseif strcmp(configItem, 'SyncConfig')
         loadedItem = load(Path.(configItem), 'BpodSyncConfig');
         BpodSystem.SyncConfig = loadedItem.BpodSyncConfig;

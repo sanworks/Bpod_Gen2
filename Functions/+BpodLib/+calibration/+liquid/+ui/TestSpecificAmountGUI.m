@@ -32,13 +32,14 @@ properties
 end
 
 methods
-    function obj = TestSpecificAmountGUI(BpodSystem, LiquidCal)
+    function obj = TestSpecificAmountGUI(BpodSystem, LiquidCal, nValvesToDisplay)
         % obj = TestSpecificAmountGUI(BpodSystem, LiquidCal)
 
         obj.BpodSystem = BpodSystem;
         obj.LiquidCal = LiquidCal;
         obj.GUIHandles = struct();
         valveNamesSet = LiquidCal.getValveNames();
+        valveNamesSet = valveNamesSet(1:nValvesToDisplay);
         obj.valveNamesSet = valveNamesSet;
         obj.hasRun = false;
 
@@ -46,7 +47,9 @@ methods
         buttonSpacing = 30;
         figheight = 137 + numel(valveNamesSet) * buttonSpacing + 190;
         figwidth = 400;
-        fig = figure('Position', [500, 400, figwidth, figheight], 'Resize', 'off', 'MenuBar', 'none', 'numbertitle', 'off');
+
+        fig = figure('Position', [500, 400, figwidth, figheight], 'Resize', 'off', 'MenuBar', 'none',... 
+            'numbertitle', 'off', 'Tag', 'BpodLiquidCal-TestAmount');
         BpodLib.ui.alignWindow(fig, BpodSystem.GUIHandles.LiquidCalibrator.GUIHandles.MainFig); % Align to liquid calibration position
         obj.GUIHandles.Figure = fig;
 
@@ -59,6 +62,10 @@ methods
         axis off;
 
         % -- Parameter box
+        bgColor = [.9 .9 .9];
+        if IsMATLAB_DarkMode
+            bgColor = [.2 .2 .2];
+        end
         ypos = figheight;
         textstep = 29;
         boxpad = 3;
@@ -68,20 +75,29 @@ methods
         text(ax, 200, ypos, 'Parameters', textargs{:}, 'HorizontalAlignment', 'center')
 
         ypos = ypos - textstep - 10;
-        text(ax, xpos, ypos, 'Amount to test (uL):', textargs{:}, 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom')
-        obj.GUIHandles.SpecificAmtEdit = uicontrol('Style', 'edit', 'String', '10', 'Position', [xpos+boxpad ypos 40 25], 'FontWeight', 'bold', 'FontSize', 12);
+
+        text(ax, xpos, ypos, 'Amount to test (uL):', textargs{:}, 'HorizontalAlignment', 'right',... 
+            'VerticalAlignment', 'bottom')
+        obj.GUIHandles.SpecificAmtEdit = uicontrol('Style', 'edit', 'String', '10',... 
+            'Position', [xpos+boxpad ypos 65 25], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', bgColor);
 
         ypos = ypos - textstep;
-        text(ax, xpos, ypos, 'Number of pulses:', textargs{:}, 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom')
-        obj.GUIHandles.nPulsesDropmenu = uicontrol('Style', 'popupmenu', 'String', {'100' '200' '300' '400' '500'}, 'Position', [xpos+boxpad ypos 50 25], 'FontWeight', 'bold', 'FontSize', 12, 'TooltipString', 'Use more pulses with small water volumes for improved accuracy');
+        text(ax, xpos, ypos, 'Number of pulses:', textargs{:}, 'HorizontalAlignment', 'right',... 
+            'VerticalAlignment', 'bottom')
+        obj.GUIHandles.nPulsesDropmenu = uicontrol('Style', 'popupmenu', 'String', {'100' '200' '300' '400' '500'},... 
+            'Position', [xpos+boxpad ypos 65 25], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', bgColor,... 
+            'TooltipString', 'Use more pulses with small water volumes for improved accuracy');
 
         ypos = ypos - textstep;
-        text(ax, xpos, ypos, 'Measure tolerance (%):', textargs{:}, 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom')
-        obj.GUIHandles.ToleranceDropmenu = uicontrol('Style', 'popupmenu', 'String', {'5' '10'}, 'Position', [xpos+boxpad ypos 50 25], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9], 'TooltipString', 'Percent of intended amount by which measured amount can differ');
+        text(ax, xpos, ypos, 'Measure tolerance (%):', textargs{:}, 'HorizontalAlignment', 'right',...
+            'VerticalAlignment', 'bottom')
+        obj.GUIHandles.ToleranceDropmenu = uicontrol('Style', 'popupmenu', 'String', {'5' '10'},... 
+            'Position', [xpos+boxpad ypos 65 25], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', bgColor, 'TooltipString', 'Percent of intended amount by which measured amount can differ');
         
         ypos = ypos - 20;
         parameter_lower = ypos;
-        rectangle(ax, 'Position', [10 ypos figwidth - 20 figheight - 10 - ypos], 'linewidth', 1.5, 'EdgeColor', 'w', 'Curvature', 0.1)
+        rectangle(ax, 'Position', [10 ypos figwidth - 20 figheight - 10 - ypos], 'linewidth', 1.5,... 
+            'EdgeColor', 'w', 'Curvature', 0.1)
         % disp(figheight - parameter_lower) % = 137 (this is the height of the parameter box)
         
         % -- Check box
@@ -143,6 +159,7 @@ methods
         targetValveNamesSet =  obj.getTargetValves();
 
         if isempty(targetValveNamesSet)
+            errordlg('No valves selected for testing. Please select at least one valve.')
             error('BpodLib:LiquidCalibration:NoValvesSelected', 'No valves selected for testing. Please select at least one valve.');
         end
 
@@ -189,11 +206,12 @@ methods
     function checkResults(obj)
         % Check if results meet criteria, update GUI, and print results
         if ~obj.hasRun
+            errordlg('Please run the test pulses first before checking results.', 'Error')
             error('BpodLib:LiquidCalibration:NoTestRun', 'Please run the test pulses first before checking results.');
         end
 
         % Print results into command window
-        fprintf('Bpod liquid calibration (%s) %s\n', BpodLib.utils.getCurrentCOM(obj.BpodSystem), BpodLib.calibration.liquid.isotime())
+        fprintf('Bpod liquid calibration (%s) %s\n', BpodLib.utils.getCurrentCOM(obj.BpodSystem), BpodLib.utils.isotime())
         fprintf('    Expected amount to dispense per pulse: %.3f uL\n', str2double(obj.GUIHandles.SpecificAmtEdit.String));
         fprintf('    Acceptable tolerance: %.2f%%\n', str2double(obj.GUIHandles.ToleranceDropmenu.String{obj.GUIHandles.ToleranceDropmenu.Value}));
         fprintf('    %d pulses delivered over %.2f seconds\n', str2double(obj.GUIHandles.nPulsesDropmenu.String{obj.GUIHandles.nPulsesDropmenu.Value}), obj.testDuration);
@@ -217,10 +235,10 @@ methods
             passed = abs(expectedAmount_g - measuredWeight_g_avg) <= toleranceFraction * expectedAmount_g;
 
             if passed
-                obj.GUIHandles.(valveName).resultbox.String = 'Passing';
+                obj.GUIHandles.(valveName).resultbox.String = 'PASS';
                 obj.GUIHandles.(valveName).resultbox.Color = 'g';
             else
-                obj.GUIHandles.(valveName).resultbox.String = 'Failing';
+                obj.GUIHandles.(valveName).resultbox.String = 'FAIL';
                 obj.GUIHandles.(valveName).resultbox.Color = 'r';
             end
             fprintf("Valve '%s' : Result = %s, Measured = %.3f uL\n", ...

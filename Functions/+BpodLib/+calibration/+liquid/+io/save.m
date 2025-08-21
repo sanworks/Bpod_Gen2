@@ -89,7 +89,12 @@ end
 
 
 % Write to JSON file
-writedata = jsonencode(saveData, 'PrettyPrint', true);
+
+if verLessThan('matlab', '9.10') % R2021a is 9.10
+    writedata = jsonencode(saveData);
+else
+    writedata = jsonencode(saveData, 'PrettyPrint', true);
+end
 fid = fopen(filepath, 'w');
 fwrite(fid, writedata, 'char');
 fclose(fid);

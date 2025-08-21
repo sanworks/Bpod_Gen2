@@ -40,10 +40,8 @@ if verLessThan('matlab', '25.1')
 end
 % Set background color to match UI theme
 bgColor = [.8 .8 .8];
-if ~verLessThan('matlab', '25.1')
-    if strcmp(settings().matlab.appearance.MATLABTheme.ActiveValue, 'Dark')
-        bgColor = [0.15 0.15 0.15];
-    end
+if IsMATLAB_DarkMode
+    bgColor = [0.15 0.15 0.15];
 end
 BpodSystem.GUIHandles.FlexConfigFig = figure('Position',[600 400 500 200],'name','Flex I/O Config.',...
     'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');

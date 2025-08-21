@@ -44,6 +44,12 @@ properties
     Measurement2add
     CalibrationTargetRange
 end
+
+properties (Access = private)
+    supportsHTMLTags % bool. MATLAB stopped supporting HTML in UI strings in r2025a
+    nValvesToDisplay % int: The number of valves to display (matches target device(s).
+end
+
 methods
     function obj = LiquidCalibratorUI(varargin)
         % Create the LiquidCalibratorUI
@@ -60,7 +66,14 @@ methods
         p.addParameter('BpodSystem', []);
         p.addParameter('savepath', []);
         p.addParameter('source', 'unknown');
+        p.addParameter('target', []);
         p.parse(varargin{:});
+
+        % Configure support for HTML tags
+        obj.supportsHTMLTags = true;
+        if ~verLessThan('matlab', '25.1')
+            obj.supportsHTMLTags = false;
+        end
 
         % If BpodSystem is specified insert self into GUIHandles (for closing on EndBpod)
         if ~isempty(p.Results.BpodSystem)
@@ -76,13 +89,26 @@ methods
         obj.source = p.Results.source;
         
         obj.CalibrationTargetRange = [2, 10]; % uL of liquid to calibrate
+        switch p.Results.target
+            case 'FSM_Onboard'
+                nValves = obj.BpodSystem.HW.n.Ports;
+            case 'PortArray'
+                nValves = 0;
+                for i = 1:obj.BpodSystem.Modules.nModules
+                    if ~isempty(strfind(obj.BpodSystem.Modules.Name{i}, 'PA'))
+                        nValves = nValves + obj.BpodSystem.Modules.nSerialEvents(i)/2;
+                    end
+                end
+        end
+        obj.nValvesToDisplay = nValves;
         ValveListboxString = obj.ValveDataManager.getValveNames();
+        ValveListboxString = ValveListboxString(1:nValves);
 
         % Create the user interface
         obj.GUIHandles = struct();
-        figWidth = 830;
-        figHeight = 370;
-        obj.GUIHandles.MainFig =  figure('Position',[150 180 figWidth figHeight],'name','Bpod liquid calibrator','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'CloseRequestFcn', @(src,event) obj.close());
+        obj.GUIHandles.MainFig = figure('Position',[150 180 830 370],'name','Bpod liquid calibrator',...
+            'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'CloseRequestFcn', @(src,event) obj.close(), ...
+            'Tag', 'BpodLiquidCal-Main');
         ha = axes('units','normalized', 'position',[0 0 1 1]);
         uistack(ha,'bottom');
         BG = imread('RewardCalMain.bmp');
@@ -223,8 +249,14 @@ methods
         PendingDurations = obj.PendingMeasurements.getValvePending(ValveToShowName);
         if ~isempty(PendingDurations)
             nPendingMeasurements = length(PendingDurations);
+            prefix = '';
+            suffix = '';
+            if obj.supportsHTMLTags
+                prefix = '<html><FONT COLOR="#ff0000">';
+                suffix = '</FONT></html>';
+            end
             for x = 1:nPendingMeasurements
-                ThisValveCalEntries{end+1} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '  num2str(PendingDurations(x)) 'ms</FONT></html>'];
+                ThisValveCalEntries{end+1} = [prefix '*PENDING MEASUREMENT: '  num2str(PendingDurations(x)) 'ms' suffix];
             end
         end
 
@@ -247,13 +279,20 @@ methods
         % -- Update plot of calibration values and curve
         ValveData = obj.ValveDataManager.getValve(ValveToShowName);
         AxCalib = obj.GUIHandles.CalibrationCurveAxes;
+        LineColor = [0 0 0];
+        PointColor = [0 0 1];
+        if IsMATLAB_DarkMode
+            LineColor = [.5 .8 1];
+            PointColor = [.4 .5 1];
+        end
         if ~isempty(ValveData.Coeffs)
             Vector = polyval(ValveData.Coeffs,0:.1:150);
             % Plot the calibration curve
-            plot(AxCalib,Vector, 0:.1:150, 'k-', 'LineWidth', 1.5);
+            plot(AxCalib,Vector, 0:.1:150, 'Color', LineColor, 'LineWidth', 1.5);
             hold(AxCalib, 'on');
             % Plot the real calibration points
-            scatter(AxCalib, ValveData.Durations, ValveData.Amounts, 'LineWidth', 2);
+            scatter(AxCalib, ValveData.Durations, ValveData.Amounts,... 
+                    'LineWidth', 2, 'MarkerEdgeColor', PointColor);
             set(AxCalib, 'tickdir', 'out', 'box', 'off');
             Ymax = max(ValveData.Amounts)+.1*max(ValveData.Amounts);
             % Add pending measurement datapoints
@@ -261,7 +300,8 @@ methods
             if ~isempty(PendingDurations)
                 nPendingMeasurements = length(PendingDurations);
                 for y = 1:nPendingMeasurements
-                    line([PendingDurations(y) PendingDurations(y)],[0 Ymax], 'Color', 'r', 'LineStyle', ':','Parent',obj.GUIHandles.CalibrationCurveAxes);
+                    line([PendingDurations(y) PendingDurations(y)],[0 Ymax], 'Color', 'r',... 
+                        'LineStyle', ':','Parent',obj.GUIHandles.CalibrationCurveAxes);
                 end
             end
             if Ymax > 0
@@ -288,7 +328,8 @@ methods
 
     function RequestPendingMeasurement(obj, src, event)
         % Create a GUI for entering a pending measurement
-        obj.GUIHandles.ValueEntryFig = figure('Position', [540 400 400 200],'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off' );
+        obj.GUIHandles.ValueEntryFig = figure('Position', [540 400 400 200],'numbertitle','off', 'MenuBar', 'none',... 
+            'Resize', 'off', 'Tag', 'BpodLiquidCal-EnterPending');
         ha = axes('units','normalized', 'position',[0 0 1 1]);
         uistack(ha,'bottom');
         BG = imread('RewardCalEnterValue.bmp');
@@ -347,7 +388,7 @@ methods
         end
         SelectedEntry = get(obj.GUIHandles.MeasurementSelector,'Value');
         SelectedEntryText = ThisValveCalEntries{SelectedEntry};
-        isPendingMeasurement = SelectedEntryText(1) == '<';
+        isPendingMeasurement = (SelectedEntryText(1) == '<' || SelectedEntryText(1) == '*');
 
         if isPendingMeasurement
             valuetext = strsplit(SelectedEntryText, 'ms');
@@ -369,8 +410,16 @@ methods
     function PreRunPendingCheck(obj, varargin)
         % % Create a vector of measurements to test
         % todo: remove RunPending from properties
-
+        
         % todo: use PendingMeasurements.getPending to build more informative message box
+
+        % Check for pending measurements
+        [valveNames, pulseDurations_ms] = obj.PendingMeasurements.getPending();
+        if numel(valveNames) == 0 
+            errordlg(['No pending measurements found.' char(10) 'Please add pending measurements and try again.'], 'Error')
+            error('No pending measurements found. Please add pending measurements and try again.')
+        end
+
         mb = msgbox('Please refill liquid reservoirs and click Ok to begin.', 'non-modal');
         okbutton = mb.findobj('Tag', 'OKButton');
         okbutton.Callback = @(~, ~) mbfunc(mb);
@@ -391,6 +440,7 @@ methods
         if Completed
             % -- Create GUI for entering measurements
             allValveNames = obj.PendingMeasurements.getValveNames();
+            allValveNames = allValveNames(1:obj.nValvesToDisplay);
             EntryGUI = BpodLib.calibration.liquid.ui.ValueEntryGUI(allValveNames, @obj.AddCalMeasurements);
             EntryGUI.setPending(valveNames)
             obj.GUIHandles.ValueEntryGUI = EntryGUI;
@@ -437,7 +487,8 @@ methods
                 return
             end
         end
-        obj.GUIHandles.RecommendedMeasureFig = BpodLib.calibration.liquid.ui.SuggestPointsGUI(obj.ValveDataManager, @obj.AddSuggestedPoints);
+        obj.GUIHandles.RecommendedMeasureFig = BpodLib.calibration.liquid.ui.SuggestPointsGUI(obj.ValveDataManager,... 
+            obj.BpodSystem, obj.nValvesToDisplay, @obj.AddSuggestedPoints);
         obj.GUIHandles.RecommendedMeasureFig.setRange(obj.CalibrationTargetRange(1), obj.CalibrationTargetRange(2));
 
         valveNamesSet = obj.ValveDataManager.getValveNames();
@@ -508,7 +559,7 @@ methods
                 return
             end
         end
-        obj.GUIHandles.TestSpecificAmtFig = BpodLib.calibration.liquid.ui.TestSpecificAmountGUI(obj.BpodSystem, obj.ValveDataManager);
+        obj.GUIHandles.TestSpecificAmtFig = BpodLib.calibration.liquid.ui.TestSpecificAmountGUI(obj.BpodSystem, obj.ValveDataManager, obj.nValvesToDisplay);
     end
 
     function SwapSource(obj)

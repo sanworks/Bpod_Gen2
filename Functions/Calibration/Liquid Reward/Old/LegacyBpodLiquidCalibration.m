@@ -117,6 +117,10 @@ end
 
 function DisplayValve(varargin)
 global BpodSystem
+HtmlSupported = true;
+if ~verLessThan('matlab', '25.1')
+    HtmlSupported = false;
+end
 ValveToShow = get(BpodSystem.GUIHandles.LiquidCalibrator.ValveSelector,'Value');
 ValveData = BpodSystem.PluginObjects.LiquidCal.CalData(ValveToShow).Table;
 [nMeasurements trash] = size(ValveData);
@@ -128,7 +132,13 @@ if isempty(ValveData)
         set(BpodSystem.GUIHandles.LiquidCalibrator.MeasurementSelector,'Value', 1)
     else
         for x = 1:length(BpodSystem.PluginObjects.LiquidCal.PendingMeasurements{ValveToShow})
-            ThisValveCalEntries{x} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '  num2str(BpodSystem.PluginObjects.LiquidCal.PendingMeasurements{ValveToShow}(x)) 'ms</FONT></html>'];
+            if HtmlSupported
+                ThisValveCalEntries{x} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '...  
+                    num2str(BpodSystem.PluginObjects.LiquidCal.PendingMeasurements{ValveToShow}(x)) 'ms</FONT></html>'];
+            else
+                ThisValveCalEntries{x} = ['*PENDING MEASUREMENT: '...  
+                    num2str(BpodSystem.PluginObjects.LiquidCal.PendingMeasurements{ValveToShow}(x)) 'ms'];
+            end
         end
     end
 else
@@ -144,7 +154,13 @@ else
     end
     if ~isempty(BpodSystem.PluginObjects.LiquidCal.PendingMeasurements{ValveToShow})
         for x = 1:length(BpodSystem.PluginObjects.LiquidCal.PendingMeasurements{ValveToShow})
-            ThisValveCalEntries{nMeasurements+x} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '  num2str(BpodSystem.PluginObjects.LiquidCal.PendingMeasurements{ValveToShow}(x)) 'ms</FONT></html>'];
+            if HtmlSupported
+                ThisValveCalEntries{nMeasurements+x} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '...  
+                    num2str(BpodSystem.PluginObjects.LiquidCal.PendingMeasurements{ValveToShow}(x)) 'ms</FONT></html>'];
+            else
+                ThisValveCalEntries{nMeasurements+x} = ['*PENDING MEASUREMENT: '...  
+                    num2str(BpodSystem.PluginObjects.LiquidCal.PendingMeasurements{ValveToShow}(x)) 'ms'];
+            end
         end
     end
 end
@@ -158,13 +174,20 @@ elseif SelectedEntry > nMeasurements
 end
 set(BpodSystem.GUIHandles.LiquidCalibrator.MeasurementSelector,'String',ThisValveCalEntries);
 % Update plot
+LineColor = [0 0 0];
+PointColor = [0 0 1];
+if IsMATLAB_DarkMode
+    LineColor = [.5 .8 1];
+    PointColor = [.4 .5 1];
+end
 ValveData = BpodSystem.PluginObjects.LiquidCal.CalData;
 p = ValveData(ValveToShow).Coeffs;
 if ~isempty(p)
     Vector = polyval(p,0:.1:150);
-    plot(BpodSystem.GUIHandles.LiquidCalibrator.CalibrationCurveAxes,Vector, 0:.1:150, 'k-', 'LineWidth', 1.5);
+    plot(BpodSystem.GUIHandles.LiquidCalibrator.CalibrationCurveAxes,Vector, 0:.1:150, 'Color', LineColor, 'LineWidth', 1.5);
     hold(BpodSystem.GUIHandles.LiquidCalibrator.CalibrationCurveAxes, 'on');
-    scatter(BpodSystem.GUIHandles.LiquidCalibrator.CalibrationCurveAxes, ValveData(ValveToShow).Table(:,1), ValveData(ValveToShow).Table(:,2), 'LineWidth', 2);
+    scatter(BpodSystem.GUIHandles.LiquidCalibrator.CalibrationCurveAxes, ValveData(ValveToShow).Table(:,1),... 
+            ValveData(ValveToShow).Table(:,2), 'LineWidth', 2, 'MarkerEdgeColor', PointColor);
     hold(BpodSystem.GUIHandles.LiquidCalibrator.CalibrationCurveAxes, 'on');
     set(BpodSystem.GUIHandles.LiquidCalibrator.CalibrationCurveAxes, 'tickdir', 'out', 'box', 'off');
     Ymax = max(ValveData(ValveToShow).Table(:,2))+.1*max(ValveData(ValveToShow).Table(:,2));
@@ -197,6 +220,10 @@ xlabel('Valve time (ms)', 'fontsize', 14, 'color', [1 1 1]); ylabel('Liquid (ul)
 
 function AddPendingMeasurement(varargin)
 global BpodSystem
+HtmlSupported = true;
+if ~verLessThan('matlab', '25.1')
+    HtmlSupported = false;
+end
 ThisValveCalEntries = get(BpodSystem.GUIHandles.LiquidCalibrator.MeasurementSelector,'String');
 CurrentValve = get(BpodSystem.GUIHandles.LiquidCalibrator.ValveSelector,'Value');
 nValvesSelected = length(CurrentValve);
@@ -243,7 +270,13 @@ if ~isnan(Value2measure)
         for x = 1:nValvesSelected
             BpodSystem.PluginObjects.LiquidCal.PendingMeasurements{CurrentValve(x)} = [BpodSystem.PluginObjects.LiquidCal.PendingMeasurements{CurrentValve(x)} Value2measure];
         end
-        ThisValveCalEntries{nEntries+1} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: ' num2str(Value2measure) 'ms</FONT></html>'];
+        if HtmlSupported
+            ThisValveCalEntries{nEntries+1} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '... 
+                num2str(Value2measure) 'ms</FONT></html>'];
+        else
+            ThisValveCalEntries{nEntries+1} = ['*PENDING MEASUREMENT: '... 
+                num2str(Value2measure) 'ms'];
+        end
         DisplayValve;
     else
         warndlg(['A measurement for ' num2str(Value2measure) 'ms exists. Please delete it first.'], 'Error', 'modal');
@@ -413,6 +446,10 @@ BpodSystem.PluginObjects.LiquidCal.SuggestButton = uicontrol('Style', 'pushbutto
 
 function AddSuggestedPoints(varargin)
 global BpodSystem
+HtmlSupported = true;
+if ~verLessThan('matlab', '25.1')
+    HtmlSupported = false;
+end
 figure(BpodSystem.GUIHandles.LiquidCalibrator.RecommendedMeasureFig);
 CalTable = BpodSystem.PluginObjects.LiquidCal.CalData;
 % Figure out which valves were to be targeted
@@ -528,7 +565,13 @@ if InvalidParams == 0
         if NonDuplicate == 1 % If this measurement hasn't already been added to pending
             CalPending{x} = ThisValvePending;
             if x == SelectedValve
-                CurrentEntryString{nMeasurements+1} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '  num2str(SuggestedValveDuration) 'ms</FONT></html>'];
+                if HtmlSupported
+                    CurrentEntryString{nMeasurements+1} = ['<html><FONT COLOR="#ff0000">*PENDING MEASUREMENT: '...  
+                        num2str(SuggestedValveDuration) 'ms</FONT></html>'];
+                else
+                    CurrentEntryString{nMeasurements+1} = ['*PENDING MEASUREMENT: '...  
+                        num2str(SuggestedValveDuration) 'ms'];
+                end
                 set(BpodSystem.GUIHandles.LiquidCalibrator.MeasurementSelector, 'String', CurrentEntryString);
             end
             CalPending{x} = ThisValvePending;
@@ -787,21 +830,42 @@ end
 if ~isempty(BpodSystem.PluginObjects.LiquidCal.CalData(8).Table);
     set(BpodSystem.GUIHandles.LiquidCalibrator.CB8b, 'Value', 1);
 end
-BpodSystem.GUIHandles.LiquidCalibrator.SpecificAmtEdit = uicontrol('Style', 'edit', 'String', '10', 'Position', [256 478 40 25], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 16, 'BackgroundColor', [.9 .9 .9]);
-BpodSystem.GUIHandles.LiquidCalibrator.nPulsesDropmenu = uicontrol('Style', 'popupmenu', 'String', {'100' '200' '300' '400' '500'}, 'Position', [289 447 50 25], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 16, 'BackgroundColor', [.9 .9 .9], 'TooltipString', 'Use more pulses with small water volumes for improved accuracy');
-BpodSystem.GUIHandles.LiquidCalibrator.ToleranceDropmenu = uicontrol('Style', 'popupmenu', 'String', {'5' '10'}, 'Position', [289 416 50 25], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 16, 'BackgroundColor', [.9 .9 .9], 'TooltipString', 'Percent of intended amount by which measured amount can differ');
-BpodSystem.GUIHandles.LiquidCalibrator.ResultsListbox = uicontrol('Style', 'listbox', 'String', {''}, 'Position', [25 28 355 130], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 15, 'BackgroundColor', [.85 .85 .85], 'SelectionHighlight', 'off');
+BGcolor = [.9 .9 .9];
+if IsMATLAB_DarkMode
+    BGcolor = [.2 .2 .2];
+end
+BpodSystem.GUIHandles.LiquidCalibrator.SpecificAmtEdit = uicontrol('Style', 'edit', 'String', '10',... 
+    'Position', [256 478 40 25], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 16, 'BackgroundColor', BGcolor);
+BpodSystem.GUIHandles.LiquidCalibrator.nPulsesDropmenu = uicontrol('Style', 'popupmenu',... 
+    'String', {'100' '200' '300' '400' '500'}, 'Position', [289 447 65 25], 'FontWeight', 'bold',... 
+    'FontUnits', 'Pixels', 'FontSize', 16, 'BackgroundColor', BGcolor,... 
+    'TooltipString', 'Use more pulses with small water volumes for improved accuracy');
+BpodSystem.GUIHandles.LiquidCalibrator.ToleranceDropmenu = uicontrol('Style', 'popupmenu',... 
+    'String', {'5' '10'}, 'Position', [289 416 50 25], 'FontWeight', 'bold', 'FontUnits', 'Pixels',... 
+    'FontSize', 16, 'BackgroundColor', BGcolor,... 
+    'TooltipString', 'Percent of intended amount by which measured amount can differ');
+BpodSystem.GUIHandles.LiquidCalibrator.ResultsListbox = uicontrol('Style', 'listbox', 'String', {''},... 
+    'Position', [25 28 355 130], 'FontWeight', 'bold', 'FontUnits', 'Pixels', 'FontSize', 15,... 
+    'BackgroundColor', BGcolor, 'SelectionHighlight', 'off');
 
-jScrollPane = findjobj(BpodSystem.GUIHandles.LiquidCalibrator.ResultsListbox); % get the scroll-pane object
-jListbox = jScrollPane.getViewport.getComponent(0);
-jListbox.setBackground(javax.swing.plaf.ColorUIResource(.85,.85,.85));
+if verLessThan('matlab', '25.1')
+    jScrollPane = findjobj(BpodSystem.GUIHandles.LiquidCalibrator.ResultsListbox); % get the scroll-pane object
+    jListbox = jScrollPane.getViewport.getComponent(0);
+    jListbox.setBackground(javax.swing.plaf.ColorUIResource(.85,.85,.85));
+end
 
 DeliverButtonGFX = imread('TestDeliverButton.bmp');
-BpodSystem.GUIHandles.LiquidCalibrator.DeliverButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [40 300 325 50], 'Callback', @RunSpecificAmount, 'TooltipString', 'Start liquid delivery', 'CData', DeliverButtonGFX);
-BpodSystem.GUIHandles.LiquidCalibrator.MeasuredAmtEdit = uicontrol('Style', 'edit', 'String', '---', 'Position', [202 238 55 30], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.88 .88 .88], 'Enable', 'off');
-BpodSystem.GUIHandles.LiquidCalibrator.MeasuredValveText = uicontrol('Style', 'edit', 'String', '1', 'Position', [123 238 55 30], 'FontWeight', 'bold', 'FontSize', 14, 'enable', 'off', 'BackgroundColor', [.85 .85 .85]);
+BpodSystem.GUIHandles.LiquidCalibrator.DeliverButton = uicontrol('Style', 'pushbutton', 'String', '',... 
+    'Position', [40 300 325 50], 'Callback', @RunSpecificAmount, 'TooltipString', 'Start liquid delivery',... 
+    'CData', DeliverButtonGFX);
+BpodSystem.GUIHandles.LiquidCalibrator.MeasuredAmtEdit = uicontrol('Style', 'edit', 'String', '---',... 
+    'Position', [202 238 55 30], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', BGcolor, 'Enable', 'off');
+BpodSystem.GUIHandles.LiquidCalibrator.MeasuredValveText = uicontrol('Style', 'edit', 'String', '1',... 
+    'Position', [123 238 55 30], 'FontWeight', 'bold', 'FontSize', 14, 'enable', 'off', 'BackgroundColor', BGcolor);
 MeasurementButtonGFX = imread('NextMeasurement.bmp');
-BpodSystem.GUIHandles.LiquidCalibrator.EnterMeasurementButton = uicontrol('Style', 'pushbutton', 'String', '', 'Position', [295 233 60 40], 'Callback', @EnterTestCal, 'TooltipString', 'Enter measurement', 'CData', MeasurementButtonGFX);
+BpodSystem.GUIHandles.LiquidCalibrator.EnterMeasurementButton = uicontrol('Style', 'pushbutton', 'String', '',... 
+    'Position', [295 233 60 40], 'Callback', @EnterTestCal, 'TooltipString', 'Enter measurement',... 
+    'CData', MeasurementButtonGFX);
 
 function RunSpecificAmount(varargin)
 global BpodSystem
@@ -859,6 +923,10 @@ end
 
 function EnterTestCal(varargin)
 global BpodSystem
+HtmlSupported = true;
+if ~verLessThan('matlab', '25.1')
+    HtmlSupported = false;
+end
 figure(BpodSystem.GUIHandles.LiquidCalibrator.TestSpecificAmtFig);
 
 ToleranceLevelStrings = get(BpodSystem.GUIHandles.LiquidCalibrator.ToleranceDropmenu, 'String');
@@ -903,10 +971,18 @@ if InvalidParams == 0
     ToleranceIntervalLowBound = IntendedLiquidAmount - (IntendedLiquidAmount*ToleranceLevel);
     ToleranceIntervalHighBound = IntendedLiquidAmount + (IntendedLiquidAmount*ToleranceLevel);
     WithinTolerance = ((MeasuredLiquidAmount >= ToleranceIntervalLowBound) && (MeasuredLiquidAmount <= ToleranceIntervalHighBound));
-    if WithinTolerance == 1
-        ListboxMeasurements{CurrentEntry} = ['<html><FONT COLOR="#009900">Valve ' num2str(ValveID) ': ' num2str(IntendedLiquidAmount) 'ul indended. ' num2str(MeasuredLiquidAmount) 'ul measured. PASS</FONT></html>'];
+    if HtmlSupported
+        if WithinTolerance == 1
+            ListboxMeasurements{CurrentEntry} = ['<html><FONT COLOR="#009900">Valve ' num2str(ValveID) ': ' num2str(IntendedLiquidAmount) 'ul indended. ' num2str(MeasuredLiquidAmount) 'ul measured. PASS</FONT></html>'];
+        else
+            ListboxMeasurements{CurrentEntry} = ['<html><FONT COLOR="#ff0000">Valve ' num2str(ValveID) ': ' num2str(IntendedLiquidAmount) 'ul indended. ' num2str(MeasuredLiquidAmount) 'ul measured. FAIL</FONT></html>'];
+        end
     else
-        ListboxMeasurements{CurrentEntry} = ['<html><FONT COLOR="#ff0000">Valve ' num2str(ValveID) ': ' num2str(IntendedLiquidAmount) 'ul indended. ' num2str(MeasuredLiquidAmount) 'ul measured. FAIL</FONT></html>'];
+        if WithinTolerance == 1
+            ListboxMeasurements{CurrentEntry} = ['Valve ' num2str(ValveID) ': ' num2str(IntendedLiquidAmount) 'ul indended. ' num2str(MeasuredLiquidAmount) 'ul measured. PASS'];
+        else
+            ListboxMeasurements{CurrentEntry} = ['Valve ' num2str(ValveID) ': ' num2str(IntendedLiquidAmount) 'ul indended. ' num2str(MeasuredLiquidAmount) 'ul measured. FAIL'];
+        end
     end
     set(BpodSystem.GUIHandles.LiquidCalibrator.ResultsListbox, 'String', ListboxMeasurements)
     ValveIDPos = find(TargetValves == ValveID);

@@ -93,10 +93,8 @@ switch op
         maxVPos = 0;
         % Set background color to match UI theme
         bgColor = [1 1 1];
-        if ~verLessThan('matlab', '25.1')
-            if strcmp(settings().matlab.appearance.MATLABTheme.ActiveValue, 'Dark')
-                bgColor = [0.15 0.15 0.15];
-            end
+        if IsMATLAB_DarkMode
+            bgColor = [0.15 0.15 0.15];
         end
         BpodSystem.ProtocolFigures.ParameterGUI = figure('Position', [50 50 450 guiHeight],'name', 'Parameter GUI',...
             'numbertitle', 'off', 'MenuBar', 'none', 'Resize', 'on');

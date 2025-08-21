@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function LaunchManager
 
-global BpodSystem% Import the global BpodSystem object
+global BpodSystem % Import the global BpodSystem object
 
 drawFig = 1;
 if isfield(BpodSystem.GUIHandles, 'LaunchManagerFig') && ~verLessThan('MATLAB', '8.4')
@@ -32,10 +32,8 @@ end
 
 % Set colors if dark theme is active (r2025a or newer)
 listBGColor = [0.8 0.8 0.8];
-if ~verLessThan('matlab', '25.1')
-    if strcmp(settings().matlab.appearance.MATLABTheme.ActiveValue, 'Dark')
-        listBGColor = [0.2 0.2 0.2];
-    end
+if IsMATLAB_DarkMode
+    listBGColor = [0.2 0.2 0.2];
 end
 
 % Build UI

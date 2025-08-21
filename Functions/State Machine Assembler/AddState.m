@@ -264,6 +264,13 @@ for x = 1:2:length(outputActions)
                         value = bin2dec(value);
                 else % Implicit programming of serial message library
                     sma.SerialMessageMode = 1;
+                    % Verify message length
+                    messageLength = length(value);
+                    if messageLength > BpodSystem.HW.n.MaxBytesPerSerialMsg
+                        error(['State ' stateName ' contains a ' num2str(messageLength) '-byte serial message.' ...
+                              char(10) 'The maximum message length supported by your state machine firmware is ' ...
+                              num2str(BpodSystem.HW.n.MaxBytesPerSerialMsg) ' bytes.'])
+                    end
                     messageIndex = 0;
                     for i = 1:sma.nSerialMessages(targetEventCode)
                         thisMessage = sma.SerialMessages{i};
