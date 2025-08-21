@@ -47,6 +47,7 @@ methods
         figheight = 137 + numel(valveNamesSet) * buttonSpacing + 190;
         figwidth = 400;
         fig = figure('Position', [500, 400, figwidth, figheight], 'Resize', 'off', 'MenuBar', 'none', 'numbertitle', 'off');
+        BpodLib.ui.alignWindow(fig, BpodSystem.GUIHandles.LiquidCalibrator.GUIHandles.MainFig); % Align to liquid calibration position
         obj.GUIHandles.Figure = fig;
 
         ax = axes('units','normalized', 'position',[0 0 1 1]); % axes fill figures at end of initialisation with full size
