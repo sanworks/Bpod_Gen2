@@ -1,6 +1,6 @@
-function initialise(BpodSystem)
-% Initialise a new port array calibration configuration
-% initialise(BpodSystem)
+function initialize(BpodSystem)
+% Initialize a new port array calibration configuration
+% initialize(BpodSystem)
 %
 % Arguments
 % ---------
@@ -47,5 +47,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 if isempty(BpodSystem.CalibrationTables.PortArrays)
     BpodSystem.CalibrationTables.PortArrays = BpodLib.calibration.liquid.portarray.createValveManager(BpodSystem);
 else
-    error('BpodLib:PortArrayInitialise:ExistingData', 'PortArray data is already loaded in, maybe you want BpodLib.calibration.liquid.portarray.launchCalibrator(BpodSystem)')
+    error('BpodLib:PortArrayInitialize:ExistingData', 'PortArray data is already loaded in, maybe you want BpodLib.calibration.liquid.portarray.launchCalibrator(BpodSystem)')
 end
