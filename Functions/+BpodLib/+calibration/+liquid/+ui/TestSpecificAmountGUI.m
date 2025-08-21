@@ -53,7 +53,7 @@ methods
         ax = axes('units','normalized', 'position',[0 0 1 1]); % axes fill figures at end of initialisation with full size
         bgcolor = [0.2627 0.2627 0.2627];
         set(obj.GUIHandles.Figure, 'Color', bgcolor);
-        textargs = {'FontSize', 14, 'FontWeight', 'bold', 'Color', 'w', 'Interpreter', 'none', 'FontName', 'FixedWidth'};
+        textargs = {'FontSize', 14, 'FontWeight', 'bold', 'Interpreter', 'none', 'FontName', 'FixedWidth'};
         obj.GUIHandles.ax = ax;
         uistack(ax,'bottom');
         axis off;
@@ -69,11 +69,11 @@ methods
 
         ypos = ypos - textstep - 10;
         text(ax, xpos, ypos, 'Amount to test (uL):', textargs{:}, 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom')
-        obj.GUIHandles.SpecificAmtEdit = uicontrol('Style', 'edit', 'String', '10', 'Position', [xpos+boxpad ypos 40 25], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9]);
+        obj.GUIHandles.SpecificAmtEdit = uicontrol('Style', 'edit', 'String', '10', 'Position', [xpos+boxpad ypos 40 25], 'FontWeight', 'bold', 'FontSize', 12);
 
         ypos = ypos - textstep;
         text(ax, xpos, ypos, 'Number of pulses:', textargs{:}, 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom')
-        obj.GUIHandles.nPulsesDropmenu = uicontrol('Style', 'popupmenu', 'String', {'100' '200' '300' '400' '500'}, 'Position', [xpos+boxpad ypos 50 25], 'FontWeight', 'bold', 'FontSize', 12, 'BackgroundColor', [.9 .9 .9], 'TooltipString', 'Use more pulses with small water volumes for improved accuracy');
+        obj.GUIHandles.nPulsesDropmenu = uicontrol('Style', 'popupmenu', 'String', {'100' '200' '300' '400' '500'}, 'Position', [xpos+boxpad ypos 50 25], 'FontWeight', 'bold', 'FontSize', 12, 'TooltipString', 'Use more pulses with small water volumes for improved accuracy');
 
         ypos = ypos - textstep;
         text(ax, xpos, ypos, 'Measure tolerance (%):', textargs{:}, 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom')
