@@ -4,8 +4,8 @@ function datestring = isotime(varargin)
 %
 % Arguments
 % ---------
-% format : char
-%     Format of the output string, either 'datetime' (default), 'iso8601', 'date', or 'time'
+% format : char, optional (default = 'iso')
+%     Format of the output string, either 'iso', 'display', 'path', 'date', or 'time'
 %
 % Returns
 % -------
@@ -32,23 +32,24 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-datestring = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss');
+% define time as quickly as possible
+datestring = datetime('now', 'Format', 'yyyy-MM-dd''T''HH:mm:ss');
 
 if isempty(varargin)
     return
 end
 
 p = inputParser();
-p.addOptional('format', 'datetime', @ischar);
+p.addOptional('format', 'iso', @ischar);
 p.parse(varargin{:});
 
 switch lower(p.Results.format)
-    case 'datetime'
+    case 'display'
         datestring = datetime(datestring, 'Format', 'yyyy-MM-dd HH:mm:ss');
-    case 'iso8601'
-        datestring = datetime(datestring, 'Format', 'yyyy-MM-ddTHH:mm:ss');
+    case 'iso'
+        datestring = datetime(datestring, 'Format', 'yyyy-MM-dd''T''HH:mm:ss');
     case 'path'
-        % This is used for filepathing, hardcoded into SaveBpodData
+        % The equivalent is used in `BpodSystem.Path.CurrentDataFile =`
         datestring = datetime(datestring, 'Format', 'yyyyMMdd_HHmmss');
     case 'date'
         datestring = datetime(datestring, 'Format', 'yyyy-MM-dd');

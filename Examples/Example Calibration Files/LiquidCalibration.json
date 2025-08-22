@@ -1,11 +1,11 @@
 {
   "metadata": {
-    "modification_datetime": "2000-01-01 00:00:00"
+    "modification_datetime": "2000-01-01T00:00:00"
   },
   "ValveDatas": [
     {
       "ValveName": "Valve1",
-      "LastDateModified": "2000-01-01 00:00:00",
+      "LastDateModified": "2000-01-01T00:00:00",
       "Coeffs": [
         -0.305761022808475,
         9.3201104694953631,
@@ -35,7 +35,7 @@
     },
     {
       "ValveName": "Valve3",
-      "LastDateModified": "2000-01-01 00:00:00",
+      "LastDateModified": "2000-01-01T00:00:00",
       "Coeffs": [
         0.047977795400474969,
         5.7240285487708258,
