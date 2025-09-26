@@ -892,11 +892,26 @@ classdef BpodAnalogIn < handle
             drawnow;
         end
         
-        function scope_StartStop(obj)
-            % scope_StartStop() toggles data acquisition by the scope()
-            % GUI. It is called by a start button on the GUI, but it can also be 
-            % called from a user protocol file to start analog data logging with
-            % online monitoring.
+        function scope_StartStop(obj, varargin)
+        % scope_StartStop   This function toggles data acquisition when using the oscilloscope functionality of the AnalogIn module. 
+        % The function is called by the start button on the oscilloscope GUI, but can also be called from a
+        % user protocol to start recording data with online monitoring via the GUI. 
+
+        % :param update_frequency: Update frequency, in seconds (s), for the oscilloscope GUI during data acquisition, defaults to 0.05 (50 ms)
+        % :type update_frequency: float, optional
+
+            
+            % Default GUI update time is 0.05s
+            default_update_time = 0.05;
+            update_frequency = 0;
+
+            ip = inputParser;
+            valid_update_time = @(time) isfloat(time) && isscalar(time) && (time > 0);  % Update time must be a float, scalar, and greater than zero
+            addOptional(ip, 'update_frequency', default_update_time, valid_update_time); % update_frequency is optional, if the passed value is invalid, the default is used
+
+            parse(ip, varargin{:});  % parse the args
+            update_frequency = ip.Results.update_frequency; % assuming all is well, grab the value from the parser
+
             scopeReady = 1;
             if ~isfield(obj.UIhandles, 'OscopeFig')
                 scopeReady = 0;
@@ -927,7 +942,7 @@ classdef BpodAnalogIn < handle
                     end
                     obj.UIdata.SweepPos = 1;
                     obj.startUSBStream;
-                    obj.Timer = timer('TimerFcn',@(h,e)obj.updatePlot(), 'ExecutionMode', 'fixedRate', 'Period', 0.05);
+                    obj.Timer = timer('TimerFcn',@(h,e)obj.updatePlot(), 'ExecutionMode', 'fixedRate', 'Period', update_frequency);
                     start(obj.Timer);
                 else
                     stop(obj.Timer);
