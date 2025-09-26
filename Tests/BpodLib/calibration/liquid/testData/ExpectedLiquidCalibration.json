@@ -1,11 +1,11 @@
 {
   "metadata": {
-    "modification_datetime": "2016-11-17 16:08:26"
+    "modification_datetime": "2016-11-17T16:08:26"
   },
   "ValveDatas": [
     {
       "ValveName": "Valve1",
-      "LastDateModified": "2016-11-17 16:08:26",
+      "LastDateModified": "2016-11-17T16:08:26",
       "Coeffs": [
         -0.305761022808475,
         9.3201104694953631,

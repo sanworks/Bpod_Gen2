@@ -211,7 +211,7 @@ methods
         end
 
         % Print results into command window
-        fprintf('Bpod liquid calibration (%s) %s\n', BpodLib.utils.getCurrentCOM(obj.BpodSystem), BpodLib.utils.isotime())
+        fprintf('Bpod liquid calibration (%s) %s\n', BpodLib.utils.getCurrentCOM(obj.BpodSystem), BpodLib.utils.isotime('display'))
         fprintf('    Expected amount to dispense per pulse: %.3f uL\n', str2double(obj.GUIHandles.SpecificAmtEdit.String));
         fprintf('    Acceptable tolerance: %.2f%%\n', str2double(obj.GUIHandles.ToleranceDropmenu.String{obj.GUIHandles.ToleranceDropmenu.Value}));
         fprintf('    %d pulses delivered over %.2f seconds\n', str2double(obj.GUIHandles.nPulsesDropmenu.String{obj.GUIHandles.nPulsesDropmenu.Value}), obj.testDuration);

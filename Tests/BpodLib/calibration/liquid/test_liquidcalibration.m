@@ -86,7 +86,7 @@ function test_JSONRead(testCase)
 
     % Verify datetime of first
     Valve1 = ValveManager.getValve('Valve1');
-    originalDateTime = datetime(testCase.TestData.OriginalLiquidCal(1).LastDateModified, 'ConvertFrom', 'datenum', 'Format', 'yyyy-MM-dd HH:mm:ss');
+    originalDateTime = datetime(testCase.TestData.OriginalLiquidCal(1).LastDateModified, 'ConvertFrom', 'datenum', 'Format', 'yyyy-MM-dd''T''HH:mm:ss');
     testCase.verifyEqual(Valve1.LastDateModified, char(originalDateTime));
 end
 
