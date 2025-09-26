@@ -34,4 +34,4 @@ if isempty(BpodSystem.CalibrationTables.PortArrays)
 end
 
 BpodLib.calibration.liquid.LiquidCalibratorUI(BpodSystem.CalibrationTables.PortArrays,... 
-    'BpodSystem', BpodSystem, 'savepath', savePath, 'target', 'PortArray');
+    'BpodSystem', BpodSystem, 'savepath', savePath, 'source', 'portarray', 'target', 'PortArray');

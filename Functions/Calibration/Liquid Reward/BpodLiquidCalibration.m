@@ -13,7 +13,7 @@ if strcmpi(operation, 'calibrate')
             BpodLib.calibration.liquid.portarray.launchCalibrator(BpodSystem);
         catch ME
             if strcmp(ME.identifier, 'BpodLib:portarraylaunchCalibrator:NoData')
-                BpodLib.calibration.liquid.portarray.initialise(BpodSystem);
+                BpodLib.calibration.liquid.portarray.initialize(BpodSystem);
                 fprintf('%s Created new port array calibration file.\n', BpodLib.utils.isotime('time'))
                 BpodLib.calibration.liquid.portarray.launchCalibrator(BpodSystem);
             else

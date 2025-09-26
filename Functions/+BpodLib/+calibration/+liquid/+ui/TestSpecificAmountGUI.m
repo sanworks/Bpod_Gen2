@@ -47,14 +47,16 @@ methods
         buttonSpacing = 30;
         figheight = 137 + numel(valveNamesSet) * buttonSpacing + 190;
         figwidth = 400;
+
         fig = figure('Position', [500, 400, figwidth, figheight], 'Resize', 'off', 'MenuBar', 'none',... 
             'numbertitle', 'off', 'Tag', 'BpodLiquidCal-TestAmount');
+        BpodLib.ui.alignWindow(fig, BpodSystem.GUIHandles.LiquidCalibrator.GUIHandles.MainFig); % Align to liquid calibration position
         obj.GUIHandles.Figure = fig;
 
         ax = axes('units','normalized', 'position',[0 0 1 1]); % axes fill figures at end of initialisation with full size
         bgcolor = [0.2627 0.2627 0.2627];
         set(obj.GUIHandles.Figure, 'Color', bgcolor);
-        textargs = {'FontSize', 14, 'FontWeight', 'bold', 'Color', 'w', 'Interpreter', 'none', 'FontName', 'FixedWidth'};
+        textargs = {'FontSize', 14, 'FontWeight', 'bold', 'Interpreter', 'none', 'FontName', 'FixedWidth'};
         obj.GUIHandles.ax = ax;
         uistack(ax,'bottom');
         axis off;
@@ -73,6 +75,7 @@ methods
         text(ax, 200, ypos, 'Parameters', textargs{:}, 'HorizontalAlignment', 'center')
 
         ypos = ypos - textstep - 10;
+
         text(ax, xpos, ypos, 'Amount to test (uL):', textargs{:}, 'HorizontalAlignment', 'right',... 
             'VerticalAlignment', 'bottom')
         obj.GUIHandles.SpecificAmtEdit = uicontrol('Style', 'edit', 'String', '10',... 
