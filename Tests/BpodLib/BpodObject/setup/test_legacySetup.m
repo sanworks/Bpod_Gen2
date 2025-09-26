@@ -4,7 +4,7 @@ function tests = test_legacySetup()
 end
 
 function setup(testCase)
-    BpodSystem = BpodLib.BpodObject.MockBpodObject('COM13');
+    BpodSystem = BpodTest.MockBpodObject('COM13');
     testCase.TestData.BpodSystem = BpodSystem;
 
     % Setup test data that will be used for all tests
@@ -81,7 +81,7 @@ function test_conversionCongruence(testCase)
 
     rootPath = testCase.TestData.rootPath;
     newLocalDir = fullfile(rootPath, 'Bpod Local New');
-    BpodSystemNew = BpodLib.BpodObject.MockBpodObject('COM13');
+    BpodSystemNew = BpodTest.MockBpodObject('COM13');
     BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystemNew, 'LocalDir', newLocalDir);
 
     % Now test to see if Bpod Local/ and Bpod Local New/ are the same

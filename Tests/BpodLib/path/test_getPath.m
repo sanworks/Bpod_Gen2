@@ -9,7 +9,7 @@ function setup(testCase)
     mkdir(localdir)
     testCase.TestData.localDir = localdir;
     
-    mockBpod = BpodLib.BpodObject.MockBpodObject('COM13');
+    mockBpod = BpodTest.MockBpodObject('COM13');
     BpodLib.BpodObject.setup.updatePathAndSettings(mockBpod, 'LocalDir', localdir)
     testCase.TestData.mockBpod = mockBpod;
     

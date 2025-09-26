@@ -98,7 +98,7 @@ classdef BpodObject < handle
             end
 
             % Add Bpod code to MATLAB path
-            bpodPath = fileparts(which('Bpod'));
+            bpodPath = BpodLib.path.getPath('root');
             addpath(genpath(fullfile(bpodPath, 'Assets')));
             rmpath(genpath(fullfile(bpodPath, 'Assets', 'BControlPatch', 'ExperPort')));
             addpath(genpath(fullfile(bpodPath, 'Examples', 'State Machines')));

@@ -25,6 +25,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % Calling functions are RunStateMachine() and BpodTrialManager()
 
 function obj = RefreshGUI(obj)
+    if isempty(obj.GUIHandles)
+        % TODO: a better check for headless mode
+        return % No GUI to update (running headless)
+    end
     % Update most recent state and event names
     if ~isempty(obj.StateMatrix)
         set(obj.GUIHandles.PreviousStateDisplay, 'String', obj.Status.LastStateName);

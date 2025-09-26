@@ -109,8 +109,7 @@ else
         end
     end
 end
-BpodLib.calibration.liquid.io.report(BpodSystem.CalibrationTables.LiquidCal)
-BpodLib.path.verifyPathing(BpodSystem);
+
 
 function emulator_setup(varargin)
 % Runs setup with emulator mode flag set to 'true'.
@@ -127,10 +126,12 @@ BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'verbose', true)
 BpodSystem.SetupHardware();
 BpodSystem.InitializeGUI();
 BpodSystem.Status.Initialized = true;
+BpodLib.calibration.liquid.io.report(BpodSystem.CalibrationTables.LiquidCal)
+BpodLib.path.verifyPathing(BpodSystem);
 evalin('base', 'global BpodSystem')
 
 function emulator_dialog
-% Launches a GUI indicating that hardware connection has failed.
+% Launches a  non-modal GUI indicating that hardware connection has failed.
 % Prompts the user to start emulator mode or close the program.
 global BpodSystem
 BpodErrorSound;

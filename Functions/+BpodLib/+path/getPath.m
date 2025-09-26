@@ -54,7 +54,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 p = inputParser();
-p.addOptional('BpodSystem', [], @(x) isempty(x) || isstruct(x) || isa(x, 'BpodObject') || isa(x, 'BpodLib.BpodObject.MockBpodObject'))
+p.addOptional('BpodSystem', [], @(x) isempty(x) || isstruct(x) || isa(x, 'BpodObject') || isa(x, 'BpodTest.MockBpodObject'))
 p.addParameter('setuptype', [], @(x) isempty(x) || ischar(x) || isstring(x))
 p.addParameter('LocalDir', [], @(x) isempty(x) || ischar(x) || isstring(x))
 p.addParameter('com', [], @(x) isempty(x) || ischar(x) || isstring(x))
