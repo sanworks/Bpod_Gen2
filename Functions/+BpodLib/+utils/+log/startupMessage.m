@@ -22,5 +22,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-message = sprintf('** Starting Bpod Console v%s **\nInitialized: %s', BpodSoftwareVersion_Semantic, BpodLib.utils.isotime());
+%message = sprintf('** Starting Bpod Console v%s **\nInitialized: %s', BpodSoftwareVersion_Semantic, BpodLib.utils.isotime());
+message = sprintf('** Starting Bpod Console v%s **', BpodSoftwareVersion_Semantic);
 % todo: add datetime and git head 

@@ -302,16 +302,5 @@ line([10 130], [79 79], 'Color', labelFontColor, 'LineWidth', 2);
 ver = BpodSoftwareVersion_Semantic;
 text(10, 376,['Console v' ver], 'FontName', fontName, 'FontSize', vsm, 'Color', [0.8 0.8 0.8]);
 drawnow;
-if obj.IsOnline == 1
-    if isfield(obj.SystemSettings, 'PhoneHome')
-        if obj.SystemSettings.PhoneHome == 1 % Note: You are opted out by default
-            %obj.BpodPhoneHome(0);
-            % Sends installation metadata to the Sanworks secure server on load (see comments in BpodPhoneHome fcn below)
-            % Disabled until server migration. -JS July 2018
-        end
-    else
-        obj.PhoneHomeOpt_In_Out();
-    end
-end
 set(obj.GUIHandles.MainFig, 'HandleVisibility', 'callback');
 end

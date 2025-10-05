@@ -177,12 +177,6 @@ switch Opstring
 
             % Set console GUI run button
             set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
-            
-            % Send metadata to Bpod Phone Home program (disabled pending a more stable server)
-            % isOnline = BpodSystem.check4Internet();
-            % if (isOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
-                %BpodSystem.BpodPhoneHome(1); % Disabled until server migration. -JS July 2018
-            % end
 
             % Disable analog viewer record button (fixed for session)
             if BpodSystem.Status.AnalogViewer

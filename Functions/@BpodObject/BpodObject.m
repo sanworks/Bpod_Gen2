@@ -565,33 +565,6 @@ classdef BpodObject < handle
             obj.FlexIOConfig = config;
         end
 
-        function PhoneHomeOpt_In_Out(obj)
-            % Launches a GUI for registration with the Bpod Phone Home program
-            obj.GUIHandles.BpodPhoneHomeFig = figure('Position', [550 180 400 350],...
-                'name','Bpod Phone Home','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
-            ha = axes('units','normalized', 'position',[0 0 1 1]);
-            uistack(ha,'bottom');
-            bg = imread('PhoneHomeBG.bmp');
-            image(bg); axis off; drawnow;
-            text(20, 40,'Bpod PhoneHome Program', 'FontName', 'Courier New', 'FontSize', 16, 'Color', [1 1 1]);
-            Pos = 80; Step = 25;
-            text(20, Pos,'Bpod PhoneHome is an opt-in', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'program to send anonymous data', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'about your Bpod software setup', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'to Sanworks LLC on Bpod start.', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'This will help us understand', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'which MATLAB versions and OS', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'flavors typically run Bpod', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'+ how many rigs are out there.', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step+5;
-            text(140, Pos,'See BpodPhoneHome.m', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            BpodSystem.GUIHandles.PhoneHomeAcceptBtn = uicontrol('Style', 'pushbutton', 'String', 'Ok',...
-                'Position', [130 15 120 40], 'Callback', @(h,e)obj.phoneHomeRegister(1),...
-                'FontSize', 12,'Backgroundcolor',[0.29 0.29 0.43],'Foregroundcolor',[0.9 0.9 0.9], 'FontName', 'Courier New');
-            BpodSystem.GUIHandles.PhoneHomeAcceptBtn = uicontrol('Style', 'pushbutton', 'String', 'Decline',...
-                'Position', [260 15 120 40], 'Callback', @(h,e)obj.phoneHomeRegister(0),...
-                'FontSize', 12,'Backgroundcolor',[0.29 0.29 0.43],'Foregroundcolor',[0.9 0.9 0.9], 'FontName', 'Courier New');
-        end
-
         function onlineStatus = check4Internet(obj)
             % Check for Internet connectivity
             % Returns: onlineStatus (double) = 1 if online, 0 if not
@@ -625,23 +598,6 @@ classdef BpodObject < handle
     end
 
     methods (Access = private)
-        function phoneHomeRegister(obj, state)
-            % Callback from pushbutton of PhoneHomeOpt_In_Out() GUI
-            % Registers user with the Bpod Phone Home program
-            if ~isfield(obj.SystemSettings, 'PhoneHomeRigID')
-                obj.SystemSettings.PhoneHomeRigID = char(floor(rand(1,16)*25)+65);
-            end
-            switch state
-                case 0
-                    obj.SystemSettings.PhoneHome = 0;
-                    obj.BpodPhoneHome('Opt_Out');
-                case 1
-                    obj.SystemSettings.PhoneHome = 1;
-                    obj.BpodPhoneHome(0);
-            end
-            obj.SaveSettings;
-            close(obj.GUIHandles.BpodPhoneHomeFig);
-        end
 
         function SwitchPanels(obj, panel)
             % Callback triggered when switching between module tabs on the Bpod Console GUI

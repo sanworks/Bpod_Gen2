@@ -821,12 +821,6 @@ protocolPath = fullfile(BpodSystem.Path.ProtocolFolder,protocolName,[protocolNam
 addpath(protocolFolderPath);
 set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
 
-% % Send metadata to Bpod Phone Home program (disabled pending a more stable server)
-% isOnline = BpodSystem.check4Internet();
-% if (isOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
-%     BpodSystem.BpodPhoneHome(1);
-% end
-
 if BpodSystem.Status.AnalogViewer
     set(BpodSystem.GUIHandles.RecordButton, 'Enable', 'off')
 end
