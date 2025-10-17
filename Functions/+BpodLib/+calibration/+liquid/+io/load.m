@@ -55,7 +55,7 @@ end
 
 LocalDir = BpodLib.path.getPath('local', BpodSystem, 'LocalDir', p.Results.LocalDir);
 
-calibrationFolderpath = BpodLib.path.getPath('liquidcalibration', BpodSystem, 'LocalDir', LocalDir);
+calibrationFolderpath = BpodLib.path.getPath('calibration', BpodSystem, 'LocalDir', LocalDir);
 legacyPath = fullfile(LocalDir, 'Calibration Files/LiquidCalibration.mat');
 expectedFilepath = fullfile(calibrationFolderpath, filename);
 
@@ -67,7 +67,7 @@ if isJSON
     if isLegacy
         warning('BpodLib:LiquidCalibrationLoad:LegacyAndJSON', 'Returning LiquidCalibration.json but LiquidCalibration.mat exists, LiquidCalibration.mat should not exist in folder Calibration Files/')
     end
-    singleSetupPath = fullfile(BpodLib.path.getPath('liquidcalibration', BpodSystem, 'LocalDir', LocalDir, 'setup', 'single'), 'LiquidCalibration.json');
+    singleSetupPath = fullfile(BpodLib.path.getPath('calibration', BpodSystem, 'LocalDir', LocalDir, 'setup', 'single'), 'LiquidCalibration.json');
     if isMulti && isfile(singleSetupPath)
         warning('BpodLib:LiquidCalibrationLoad:MultiAndSingle', 'Bpod detected this is a computer that may have multiple state machines plugged in but found a single-setup liquid calibration file.')
     end

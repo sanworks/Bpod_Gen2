@@ -207,7 +207,7 @@ global BpodSystem
 % hObject    handle to file (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[FileName, PathName] = uigetfile(BpodLib.path.getPath('liquidcalibration', BpodSystem));
+[FileName, PathName] = uigetfile(BpodLib.path.getPath('calibration', BpodSystem));
 if FileName ~= 0
     handles.calfile = fullfile(PathName,FileName);
     set(handles.filename_edit, 'String', handles.calfile);

@@ -264,7 +264,7 @@ else
     BpodSystem.PluginObjects.SoundServer = PsychToolboxAudio;
 end
 
-[FileName, PathName] = uiputfile(fullfile(BpodLib.path.getPath('liquidcalibration', BpodSystem), 'SoundCalibration.mat'), 'Save Sound Calibration File');
+[FileName, PathName] = uiputfile(fullfile(BpodLib.path.getPath('calibration', BpodSystem), 'SoundCalibration.mat'), 'Save Sound Calibration File');
 
 handles.filename = fullfile(PathName,FileName);
 

@@ -49,7 +49,7 @@ p.parse(varargin{:});
 verified = true;
 results = cell(1, 1);
 
-liquidcalibrationPath = BpodLib.path.getPath('liquidcalibration', BpodSystem);
+liquidcalibrationPath = BpodLib.path.getPath('calibration', BpodSystem);
 if ~isfolder(liquidcalibrationPath)
     verified = false;
     results{1} = liquidcalibrationPath;

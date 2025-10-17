@@ -4,7 +4,7 @@ function path = getPath(target, varargin)
 %
 % Examples
 % --------
-% path = getPath('liquidcalibration', BpodSystem, 'setuptype', 'single')
+% path = getPath('calibration', BpodSystem, 'setuptype', 'single')
 % path = getPath('config', 'LocalDir', LocalDirPath, 'setuptype', 'multi', 'com', 'COM3')
 %
 % Arguments
@@ -13,7 +13,7 @@ function path = getPath(target, varargin)
 %     The target path to retrieve, can be one of the following:
 %         - 'config': Path to the config folder
 %         - 'local': Path to the local directory
-%         - 'liquidcalibration': Path to the liquid calibration files
+%         - 'calibration': Path to the calibration files
 %         - 'root': Path to the Bpod root directory
 %         - 'settings': Path to the settings folder
 % BpodSystem : BpodObject or struct
@@ -113,7 +113,7 @@ switch lower(target)
         else
             path = BpodSystem.Path.LocalDir;
         end
-    case 'liquidcalibration'
+    case 'calibration'
         if BpodLib.path.compatibility.isLegacySettings(BpodLib.path.getPath('local', varargin{:}))
             path = fullfile(BpodLib.path.getPath('local', p.Results.BpodSystem), 'Calibration Files');
             return

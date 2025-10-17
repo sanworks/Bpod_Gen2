@@ -46,7 +46,7 @@ function test_freshMultiSetup(testCase)
     testCase.verifyTrue(isfolder(settingsPath), 'Multi setup folder was not created.')
     
     % Check if the calibration files were created
-    calibrationFolderpath = BpodLib.path.getPath('liquidcalibration', BpodSystem, 'setuptype', 'multi');
+    calibrationFolderpath = BpodLib.path.getPath('calibration', BpodSystem, 'setuptype', 'multi');
     testCase.verifyTrue(isfolder(calibrationFolderpath), 'Calibration folder was not created.')
 
     % Check that the settings files have been updated correctly
@@ -77,8 +77,8 @@ function test_newMultiSetup(testCase)
     testCase.verifyTrue(numel(filelist) == 0, 'Settings folder should be empty of files after creating a new multi setup.');
 
     % Test iquidcalibration paths are set correctly
-    testCase.verifyTrue(strcmp(BpodLib.path.getPath('liquidcalibration', BpodSystem), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM13')), 'Liquid calibration path should be set to the new multi setup location.');
-    testCase.verifyTrue(strcmp(BpodLib.path.getPath('liquidcalibration', NewBpodSystem), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM5')), 'Liquid calibration path should be set to the new multi setup location.');
+    testCase.verifyTrue(strcmp(BpodLib.path.getPath('calibration', BpodSystem), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM13')), 'Liquid calibration path should be set to the new multi setup location.');
+    testCase.verifyTrue(strcmp(BpodLib.path.getPath('calibration', NewBpodSystem), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM5')), 'Liquid calibration path should be set to the new multi setup location.');
 
     % Test settings files are moved
     testCase.verifyTrue(isfile(fullfile(BpodLib.path.getPath('settings',NewBpodSystem), 'SyncConfig.mat')), 'Settings files should have been created.')

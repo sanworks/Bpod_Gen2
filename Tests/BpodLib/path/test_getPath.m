@@ -27,19 +27,19 @@ function test_liquidcalibration(testCase)
     mockBpod = testCase.TestData.mockBpod;
 
     % Test single setup path
-    testCase.verifyEqual(BpodLib.path.getPath('liquidcalibration', mockBpod, 'setuptype', 'single'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config'))
-    testCase.verifyEqual(BpodLib.path.getPath('liquidcalibration', 'LocalDir', mockBpod.Path.LocalDir, 'setuptype', 'single'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config'))
+    testCase.verifyEqual(BpodLib.path.getPath('calibration', mockBpod, 'setuptype', 'single'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config'))
+    testCase.verifyEqual(BpodLib.path.getPath('calibration', 'LocalDir', mockBpod.Path.LocalDir, 'setuptype', 'single'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config'))
     
     % Test multi setup path
-    testCase.verifyEqual(BpodLib.path.getPath('liquidcalibration', mockBpod, 'setuptype', 'multi'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config/Machine-COM13'))
-    testCase.verifyEqual(BpodLib.path.getPath('liquidcalibration', 'LocalDir', mockBpod.Path.LocalDir, 'com', 'COM13', 'setuptype', 'multi'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config/Machine-COM13'))
+    testCase.verifyEqual(BpodLib.path.getPath('calibration', mockBpod, 'setuptype', 'multi'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config/Machine-COM13'))
+    testCase.verifyEqual(BpodLib.path.getPath('calibration', 'LocalDir', mockBpod.Path.LocalDir, 'com', 'COM13', 'setuptype', 'multi'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config/Machine-COM13'))
 end
 
 function test_newCOM(testCase)
     % Test the expected definition of liquid calibration file location
     mockBpod = testCase.TestData.mockBpod;
     
-    localfolder = BpodLib.path.getPath('liquidcalibration', mockBpod);
+    localfolder = BpodLib.path.getPath('calibration', mockBpod);
     mkdir(fullfile(localfolder, 'Machine-COM3'))
     mkdir(fullfile(localfolder, 'Machine-COM5'))
     
@@ -48,7 +48,7 @@ end
 
 function test_arguments_vs_auto(testCase)
     % Test that the function returns expected outputs with different combinations of arguments
-    Targets = {'config', 'local', 'liquidcalibration', 'root', 'settings'};
+    Targets = {'config', 'local', 'calibration', 'root', 'settings'};
 
     for target = Targets
         regularPath = BpodLib.path.getPath(target{1}, testCase.TestData.mockBpod);

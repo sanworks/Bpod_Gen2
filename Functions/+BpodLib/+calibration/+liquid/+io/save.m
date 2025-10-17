@@ -55,7 +55,7 @@ assert(isa(saveData, 'struct'),'BpodLib:LiquidCalibrationSave:WrongFormat',...
 % Determine the save location of the calibration file
 if isempty(p.Results.filepath)
     assert(~isempty(p.Results.type), "Either 'filepath' or 'type' must be specified")
-    calibrationFolderpath = BpodLib.path.getPath('liquidcalibration', BpodSystem);
+    calibrationFolderpath = BpodLib.path.getPath('calibration', BpodSystem);
     switch lower(p.Results.type)
         case 'statemachine'
             filename = 'LiquidCalibration.json';

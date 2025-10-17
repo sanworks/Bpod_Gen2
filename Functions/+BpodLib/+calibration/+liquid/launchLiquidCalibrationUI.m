@@ -22,7 +22,7 @@ if isfield(BpodSystem.GUIHandles, 'LiquidCalibrator')
     end
 end
 
-savepath = fullfile(BpodLib.path.getPath('liquidcalibration', BpodSystem), 'LiquidCalibration.json');
+savepath = fullfile(BpodLib.path.getPath('calibration', BpodSystem), 'LiquidCalibration.json');
 BpodLib.calibration.liquid.LiquidCalibratorUI(BpodSystem.CalibrationTables.LiquidCal,... 
     'BpodSystem', BpodSystem, 'savepath', savepath, 'source', 'statemachine', 'target', 'FSM_Onboard');
 
