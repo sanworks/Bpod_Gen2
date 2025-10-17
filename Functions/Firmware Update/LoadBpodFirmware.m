@@ -425,6 +425,7 @@ classdef LoadBpodFirmware < handle
             try
                 bpodPath = fileparts(which('Bpod'));
                 parentDir = fileparts(bpodPath);
+                % todo: fix this pathing reference
                 settingsDir = fullfile(parentDir, 'Bpod Local', 'Settings');
                 data = load(fullfile(settingsDir, 'ModuleUSBConfig.mat'));
                 moduleUSBConfig = data.ModuleUSBConfig(1);
