@@ -127,7 +127,10 @@ BpodSystem.InitializeGUI();
 BpodSystem.Status.Initialized = true;
 evalin('base', 'global BpodSystem')
 
-BpodLib.calibration.liquid.io.report(BpodSystem.CalibrationTables.LiquidCal)
+% Todo: Add a system setting to enable calibration reports on startup.
+% If enabled, run the following line:
+% BpodLib.calibration.liquid.io.report(BpodSystem.CalibrationTables.LiquidCal)
+
 BpodLib.path.verifyPathing(BpodSystem);
 
 function emulator_dialog
