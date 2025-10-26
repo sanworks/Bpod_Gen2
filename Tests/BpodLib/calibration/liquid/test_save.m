@@ -15,27 +15,28 @@ function setup(testCase)
     valveManager.loadData(fullfile(testDataFolder, 'ExpectedLiquidCalibration.json'))
     testCase.TestData.mockValveDataManager = valveManager;
 
-    % Create various filesetups
-    mockBpod = struct();
-    mockBpod.SerialPort.PortName = 'COM13';
-    mockBpod.CalibrationTables.LiquidCal = valveManager;
+    % Create various file setups
     % Regular setup
+    mockBpod_regular = BpodLib.BpodObject.MockBpodObject('COM13');
+    mockBpod_regular.CalibrationTables.LiquidCal = valveManager;
     folderPath = fullfile(rootPath, 'CF Regular');
-    mockBpod.Path.LocalDir = folderPath;
+    mockBpod_regular.Path.LocalDir = folderPath;
     mkdir(folderPath)
     folderPath = fullfile(folderPath, 'Config');
     mkdir(folderPath);
-    testCase.TestData.regularBpod = mockBpod;
+    testCase.TestData.regularBpod = mockBpod_regular;
 
     % Regular multi
+    mockBpod_multi = BpodLib.BpodObject.MockBpodObject('COM13');
+    mockBpod_multi.CalibrationTables.LiquidCal = valveManager;
     folderPath = fullfile(rootPath, 'CF Multi');
     mkdir(folderPath)
-    mockBpod.Path.LocalDir = folderPath;
+    mockBpod_multi.Path.LocalDir = folderPath;
     folderPath = fullfile(folderPath, 'Config');
     mkdir(folderPath);
     mkdir(fullfile(folderPath, 'Machine-COM13'))
     mkdir(fullfile(folderPath, 'Machine-COM5'))
-    testCase.TestData.multiBpod = mockBpod;
+    testCase.TestData.multiBpod = mockBpod_multi;
 end
 
 function teardown(testCase)
