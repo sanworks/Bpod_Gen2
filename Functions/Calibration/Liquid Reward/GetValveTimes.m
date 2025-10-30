@@ -1,12 +1,12 @@
 function ValveTimes_s = GetValveTimes(LiquidAmount_uL, TargetValves, varargin)
 % Get time required for target valves to release requested amount of liquid
 % 
-% times_s = GetValveTimes(10, [1, 3]);
+% times_s = GetValveTimes(LiquidAmount_uL, TargetValves);
 % times_s_portarray = GetValveTimes(10, [1, 3], 'PortArray', 1);
 % 
 % :param LiquidAmount: Required amount of liquid
 % :type LiquidAmount: double
-% :param TargetValves: Valves to retrieve times for
+% :param TargetValves: List of valves to retrieve times for
 % :type TargetValves: int or array
 % :param PortArray: PortArrayModule's indentity, integer
 % :type PortArray: double

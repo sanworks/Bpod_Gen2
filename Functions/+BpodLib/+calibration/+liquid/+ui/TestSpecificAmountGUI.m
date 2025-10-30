@@ -260,5 +260,12 @@ methods
     function result = focus(obj)
         result = BpodLib.ui.raise(obj);
     end
+    function close(obj)
+        % Close the UI
+        try
+            delete(obj.GUIHandles.Figure);
+        catch
+        end
+    end
 end
 end

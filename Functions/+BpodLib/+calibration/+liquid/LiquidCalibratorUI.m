@@ -164,7 +164,7 @@ methods
         end
 
         if arrayConnected || strcmp(obj.source, 'portarray')
-            sourceList = {'State Machine', 'Port Array Module'};
+            sourceList = {'State Machine', 'Port Array'};
         else
             sourceList = {'State Machine'};
         end
@@ -180,7 +180,7 @@ methods
         styleargs{end} = 12; % replace font size from styleargs with 12
         obj.GUIHandles.SourceSelection = uicontrol(obj.GUIHandles.MainFig, 'Style', 'popupmenu',...
             'String', sourceList,...
-            'Position', [630 300 160 25], 'Callback', @(src,event) obj.SwapSource,...
+            'Position', [630 300 165 25], 'Callback', @(src,event) obj.SwapSource,...
             styleargs{:});
         obj.GUIHandles.SourceSelection.Value = buttonIndex;
 
@@ -192,12 +192,8 @@ methods
     function close(obj)
         % Close the UI
         try
+            obj.CloseChildWindows();
             delete(obj.GUIHandles.MainFig);
-        catch
-        end
-
-        try 
-            delete(obj.GUIHandles.ValueEntryFig);
         catch
         end
     end
@@ -572,12 +568,12 @@ methods
         % Swap between state machine and port array calibrations
         selectedSource = obj.GUIHandles.SourceSelection.String{obj.GUIHandles.SourceSelection.Value}; % retrieve the selected source before closing the current GUI
         originalPosition = obj.GUIHandles.MainFig.Position; % save current position to restore later
+        % Close any GUI windows configured for previous source
         obj.close()
-
         % Determine what source was selected
         if strcmp(selectedSource, 'State Machine')
             BpodLib.calibration.liquid.launchLiquidCalibrationUI(obj.BpodSystem);
-        elseif strcmp(selectedSource, 'Port Array Module')
+        elseif strcmp(selectedSource, 'Port Array')
             if isempty(obj.BpodSystem.CalibrationTables.PortArrays)
                 BpodLib.calibration.liquid.portarray.initialize(obj.BpodSystem);
                 BpodLib.calibration.liquid.portarray.launchCalibrator(obj.BpodSystem)
@@ -589,6 +585,27 @@ methods
         end
 
         BpodLib.ui.alignWindow(obj.BpodSystem.GUIHandles.LiquidCalibrator.GUIHandles.MainFig, originalPosition)
+    end
+
+    function CloseChildWindows(obj)
+        if isfield(obj.GUIHandles, 'TestSpecificAmtFig')
+            try
+                obj.GUIHandles.TestSpecificAmtFig.close();
+            catch
+            end
+        end
+        if isfield(obj.GUIHandles, 'RecommendedMeasureFig')
+            try
+                obj.GUIHandles.RecommendedMeasureFig.close();
+            catch
+            end
+        end
+        if isfield(obj.GUIHandles, 'RunMeasurementsFig')
+            try
+                close(obj.GUIHandles.RunMeasurementsFig);
+            catch
+            end
+        end
     end
 
 end

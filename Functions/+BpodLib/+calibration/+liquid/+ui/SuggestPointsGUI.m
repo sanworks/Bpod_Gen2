@@ -21,13 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 classdef SuggestPointsGUI < handle
-       
+
     properties
         GUIHandles
         valveNames
         callbackfunc
     end
-    
+
     methods
         function obj = SuggestPointsGUI(LiquidCal, BpodSystem, nValvesToDisplay, okcallback)
             % obj = SuggestPointsGUI(LiquidCal, okcallback)
@@ -35,12 +35,12 @@ classdef SuggestPointsGUI < handle
             valveNames = LiquidCal.getValveNames();
             valveNames = valveNames(1:nValvesToDisplay);
             obj.valveNames = valveNames;
-            
+
             obj.GUIHandles = struct();
             buttonSpacing = 30;
             figheight = 70 + numel(valveNames) * buttonSpacing + 85;
             figwidth = 213;
-            fig = figure('Position', [500, 400, figwidth, figheight], 'Resize', 'off', 'MenuBar', 'none',... 
+            fig = figure('Position', [500, 400, figwidth, figheight], 'Resize', 'off', 'MenuBar', 'none',...
                 'numbertitle', 'off', 'Tag', 'BpodLiquidCal-SuggestPoints');
             obj.GUIHandles.Figure = fig;
 
@@ -81,7 +81,7 @@ classdef SuggestPointsGUI < handle
         function callback(obj)
             obj.callbackfunc()
         end
-        
+
         function result = focus(obj)
             result = BpodLib.ui.raise(obj);
         end
