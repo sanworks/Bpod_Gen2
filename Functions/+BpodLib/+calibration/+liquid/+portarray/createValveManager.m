@@ -32,8 +32,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 PortArrayCal = BpodLib.calibration.liquid.ValveDataManagerClass();
-
-for moduleNumber = 1:BpodSystem.Modules.nModules
+nModules = numel(BpodSystem.Modules.Connected);
+for moduleNumber = 1:nModules
     for valveIndex = 1:8 % Todo: Only the connected PA's?
         PortArrayCal.createValve(sprintf('PA%i_%i', moduleNumber, valveIndex));
     end
