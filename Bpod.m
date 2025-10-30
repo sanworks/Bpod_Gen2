@@ -28,9 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % It is necessary to connect separate instances of MATLAB to separate machines.
 % Note: To launch directly into emulator mode, use port name EMU.
 %
-% Java: On MATLAB pre-r2019a, adding a second argument 'Java' forces usage 
-% of MATLAB's legacy Java serial interface, even with PsychToolbox installed.
-%
 % Example usage
 % Bpod();       % Start Bpod and auto-detect the state machine serial port
 % Bpod('COM3'); % Start Bpod with a state machine on port COM3
@@ -86,12 +83,7 @@ if nargin > 0
     if strcmp(varargin{1}, 'EMU')
         emulator_setup;
     else
-        if nargin > 1
-            forceJava = varargin{2};
-            BpodSystem.Connect2BpodSM(varargin{1}, forceJava);
-        else
-            BpodSystem.Connect2BpodSM(varargin{1});
-        end
+        BpodSystem.Connect2BpodSM(varargin{1});
         bpod_setup;
     end
 else
