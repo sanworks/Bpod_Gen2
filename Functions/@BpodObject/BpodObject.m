@@ -588,6 +588,23 @@ classdef BpodObject < handle
             obj.analogViewer('init', []);
         end
 
+        function createMultiSetup(obj)
+            disp('** Multi Setup **')
+            disp(['This will configure the PC for multiple Bpod systems' newline...
+                  'which must run in separate instances of MATLAB.' newline ...
+                  'Start each with Bpod(''COMX''); % COMX is the target machine.' newline...
+                  'This can only be undone by manually, removing /Bpod Local/.'])
+            disp(' ');
+            reply = input('Proceed? (y/n) >', 's');
+            if strcmpi(reply, 'y')
+                BpodLib.multi.createMultiSetup(obj)
+                disp(['Multi setup complete! Each state machine will have its own' newline...
+                      'settings and calibration folder in /Bpod Local/Config/'])
+            else
+                disp('Multi Setup creation canceled. No changes were made.')
+            end
+        end
+
         function delete(obj)
             % Destructor
             obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
