@@ -17,12 +17,12 @@ function path = getPath(target, varargin)
 %         - 'root': Path to the Bpod root directory
 %         - 'settings': Path to the settings folder
 % BpodSystem : BpodObject or struct
-%     Optional, if not provided you must specify 'LocalDir' keyword argument
+%     Optional, if not provided you must specify 'LocalDir' keyword argument (unless requesting 'root')
 %
 % Keyword Argument
 % ----------------
 % setuptype : char
-%     What kind of setup (single/multi) to find path for, defaults to auto-detecting
+%     What kind of setup ('single'/'multi') to find path for, defaults to auto-detecting
 % LocalDir : char
 %     The local directory to use, if not provided uses BpodSystem.Path.LocalDir. This overrides auto-detection of LocalDir from BpodSystem.
 % com : char
