@@ -33,7 +33,7 @@ LiquidCal = BpodSystem.CalibrationTables.LiquidCal;  % the handle is extracted f
 if BpodLib.multi.isMultiSetup(BpodSystem)
     availableMachines = BpodLib.multi.listMultiSetups(BpodLib.path.getPath('config', BpodSystem, 'setuptype', 'single'));  % we need to look in Config/ for multi setups
 
-    % Multi setup - ask user which machine this is
+    % Multi setup - ask user which machine to import from.
     prompt = {
         sprintf('The Bpod COM port (%s) does not match the', BpodLib.utils.getCurrentCOM(BpodSystem));
         sprintf('liquid calibration file''s COM port (%s).', LiquidCal.metadata.COM);
