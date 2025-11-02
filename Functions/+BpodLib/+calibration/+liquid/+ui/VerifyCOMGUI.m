@@ -17,8 +17,8 @@ if BpodLib.multi.isMultiSetup(BpodSystem)
     prompt = {
         sprintf('The Bpod COM port (%s) does not match the', BpodLib.utils.getCurrentCOM(BpodSystem));
         sprintf('liquid calibration file''s COM port (%s).', LiquidCal.metadata.COM);
-        'Please select which machine this Bpod is from the';
-        'list below:'
+        'Please select which COM to copy in the liquid';
+        'calibration file from:'
     };
     ignoreOption = 'I will remember to recalibrate. (ignore)';
     options = [{ignoreOption}, availableMachines'];
@@ -37,11 +37,15 @@ if BpodLib.multi.isMultiSetup(BpodSystem)
         return
     end
 
-    % Update the calibration file's COM to match the selected machine
-    % BpodSytem cannot be fed to save as it will override the COM port.
-    LiquidCal.metadata.COM = extractAfter(selectedMachine, 'Machine-');
-    filepath = fullfile(BpodLib.path.getPath('calibration', BpodSystem), 'LiquidCalibration.json');
-    BpodLib.calibration.liquid.io.save(LiquidCal.createSaveData(), 'filepath', filepath);
+    % Load calibration from selected machine
+    configDir = BpodLib.path.getPath('config', BpodSystem, 'setuptype', 'single');
+    filepath = fullfile(configDir, selectedMachine, 'LiquidCalibration.json');
+    NewLiquidCal = BpodLib.calibration.liquid.ValveDataManagerClass('filepath', filepath);
+
+    % Update COM port and save to current machine
+    NewLiquidCal.metadata.COM = BpodLib.utils.getCurrentCOM(BpodSystem);
+    BpodSystem.CalibrationTables.LiquidCal = NewLiquidCal;
+    BpodLib.calibration.liquid.io.save(NewLiquidCal.createSaveData(), 'BpodSystem', BpodSystem, 'type', 'statemachine');
 else
     % Single setup - ask user what to do
     choice = questdlg(sprintf(['The Bpod COM port (%s) does not match the liquid calibration file''s COM port (%s).\n\n', ...
