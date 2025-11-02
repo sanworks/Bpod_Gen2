@@ -41,7 +41,8 @@ else
     % check if linux
     if isunix && ~ispc
         % convert to windows style
-        comport = strrep(comport, 'dev/ttyUSB', 'COM');
+        comport = strrep(comport, '/dev/ttyUSB', 'COM');
+        comport = strrep(comport, '/dev/ttyACM', 'COM');
     end
 end
 
