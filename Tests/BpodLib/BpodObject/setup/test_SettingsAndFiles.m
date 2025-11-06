@@ -5,7 +5,7 @@ function tests = test_SettingsAndFiles()
 end
 
 function setup(testCase)
-    BpodSystem = BpodLib.BpodObject.MockBpodObject('COM13');
+    BpodSystem = BpodTest.MockBpodObject('COM13');
     testCase.TestData.BpodSystem = BpodSystem;
 
     % Setup test data that will be used for all tests
@@ -64,7 +64,7 @@ function test_newMultiSetup(testCase)
     testCase.verifyTrue(BpodLib.multi.isMultiSetup(BpodSystem), 'Multi setup should be recognised to trigger multi mode.');
 
     % On initialisation this should create a new multi
-    NewBpodSystem = BpodLib.BpodObject.MockBpodObject('COM5');
+    NewBpodSystem = BpodTest.MockBpodObject('COM5');
     BpodLib.BpodObject.setup.updatePathAndSettings(NewBpodSystem, 'LocalDir', testCase.TestData.LocalDir);
     testCase.verifyTrue(isfolder(fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM5')), 'Folder for new BpodSystem should exist.');
     testCase.verifyTrue(isfolder(fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM13')), 'Folder for existing BpodSystem should still exist.');
@@ -90,7 +90,7 @@ function test_emulatorBehaviour(testCase)
     BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'LocalDir', testCase.TestData.LocalDir);
     BpodLib.multi.createMultiSetup(BpodSystem);
     
-    EMUBpodSystem = BpodLib.BpodObject.MockBpodObject('EMU');
+    EMUBpodSystem = BpodTest.MockBpodObject('EMU');
     BpodLib.BpodObject.setup.updatePathAndSettings(EMUBpodSystem, 'LocalDir', testCase.TestData.LocalDir);
     % Check if the emulator is recognised as a multi setup
     testCase.verifyTrue(BpodLib.multi.isMultiSetup(BpodSystem), 'EMU should be treated as a multi setup.');

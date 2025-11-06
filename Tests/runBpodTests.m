@@ -5,6 +5,8 @@ import matlab.unittest.TestRunner
 import matlab.unittest.plugins.CodeCoveragePlugin
 import matlab.unittest.plugins.codecoverage.CoverageReport
 
+addpath(fileparts(mfilename('fullpath'))) % enable +BpodTest access
+
 p = inputParser();
 p.addOptional('test', 'all', @ischar)
 p.parse(varargin{:});

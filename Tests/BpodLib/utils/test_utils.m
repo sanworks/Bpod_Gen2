@@ -7,7 +7,7 @@ function setup(testCase)
     testCase.TestData.rootPath = rootPath;
     mkdir(testCase.TestData.rootPath)
     
-    mockBpod = BpodLib.BpodObject.MockBpodObject('COM13');
+    mockBpod = BpodTest.MockBpodObject('COM13');
     mockBpod.Path.LocalDir = testCase.TestData.rootPath;
     testCase.TestData.mockBpod = mockBpod;
 end

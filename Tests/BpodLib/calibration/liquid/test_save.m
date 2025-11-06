@@ -17,7 +17,7 @@ function setup(testCase)
 
     % Create various file setups
     % Regular setup
-    mockBpod_regular = BpodLib.BpodObject.MockBpodObject('COM13');
+    mockBpod_regular = BpodTest.MockBpodObject('COM13');
     mockBpod_regular.CalibrationTables.LiquidCal = valveManager;
     folderPath = fullfile(rootPath, 'CF Regular');
     mockBpod_regular.Path.LocalDir = folderPath;
@@ -27,7 +27,7 @@ function setup(testCase)
     testCase.TestData.regularBpod = mockBpod_regular;
 
     % Regular multi
-    mockBpod_multi = BpodLib.BpodObject.MockBpodObject('COM13');
+    mockBpod_multi = BpodTest.MockBpodObject('COM13');
     mockBpod_multi.CalibrationTables.LiquidCal = valveManager;
     folderPath = fullfile(rootPath, 'CF Multi');
     mkdir(folderPath)

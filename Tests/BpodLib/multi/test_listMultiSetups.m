@@ -8,7 +8,7 @@ function setup(testCase)
     testCase.TestData.rootPath = rootPath;
     mkdir(testCase.TestData.rootPath)
 
-    mockBpod = BpodLib.BpodObject.MockBpodObject('COM13');
+    mockBpod = BpodTest.MockBpodObject('COM13');
     LocalDir = fullfile(rootPath, 'Bpod Local');
     mkdir(LocalDir)
     testCase.TestData.LocalDir = LocalDir;
@@ -30,7 +30,7 @@ function test_listing(testCase)
     % Build additional mock items
     comlist = {'COM5', 'COM14', 'COM15'};
     for idx = 1:numel(comlist)
-        mockedBpod = BpodLib.BpodObject.MockBpodObject(comlist{idx});
+        mockedBpod = BpodTest.MockBpodObject(comlist{idx});
         BpodLib.BpodObject.setup.updatePathAndSettings(mockedBpod, 'LocalDir', LocalDir);
     end
     % Test listing multi setups
