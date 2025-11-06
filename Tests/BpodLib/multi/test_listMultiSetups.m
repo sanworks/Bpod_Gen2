@@ -28,7 +28,9 @@ function test_listing(testCase)
     BpodLib.multi.createMultiSetup(mockBpod);
 
     % Build additional mock items
+    convert = @(x) BpodTest.nativePort(x, 'idformat', true);
     comlist = {'COM5', 'COM14', 'COM15'};
+
     for idx = 1:numel(comlist)
         mockedBpod = BpodTest.MockBpodObject(comlist{idx});
         BpodLib.BpodObject.setup.updatePathAndSettings(mockedBpod, 'LocalDir', LocalDir);
@@ -36,7 +38,7 @@ function test_listing(testCase)
     % Test listing multi setups
     configDir = fullfile(testCase.TestData.LocalDir, 'Config');
     setups = BpodLib.multi.listMultiSetups(configDir);
-    expectedSetups = strcat('Machine-', [{'COM13'}, comlist])';
+    expectedSetups = strcat('Machine-', [{convert('COM13')}, convert(comlist)])';
     testCase.verifyEqual(sort(setups), sort(expectedSetups), 'The listed multi setups do not match the expected setups.');
 end
 

@@ -34,8 +34,9 @@ function setup(testCase)
     mockBpod_multi.Path.LocalDir = folderPath;
     folderPath = fullfile(folderPath, 'Config');
     mkdir(folderPath);
-    mkdir(fullfile(folderPath, 'Machine-COM13'))
-    mkdir(fullfile(folderPath, 'Machine-COM5'))
+    for com = {'COM13', 'COM5'}
+        mkdir(fullfile(folderPath, sprintf('Machine-%s', BpodTest.nativePort(com{1}))))
+    end
     testCase.TestData.multiBpod = mockBpod_multi;
 end
 
@@ -50,7 +51,7 @@ function test_saveLocations(testCase)
     testCase.verifyTrue(isfile(fullfile(testCase.TestData.regularBpod.Path.LocalDir, 'Config/LiquidCalibration.json')))
 
     BpodLib.calibration.liquid.io.save(valveManager.createSaveData(), 'BpodSystem', testCase.TestData.multiBpod, 'type', 'statemachine');
-    testCase.verifyTrue(isfile(fullfile(testCase.TestData.multiBpod.Path.LocalDir, 'Config/Machine-COM13/LiquidCalibration.json')))
+    testCase.verifyTrue(isfile(fullfile(testCase.TestData.multiBpod.Path.LocalDir, 'Config', sprintf('Machine-%s', BpodTest.nativePort('COM13')), 'LiquidCalibration.json')))
 end
 
 function test_repeatedIO(testCase)

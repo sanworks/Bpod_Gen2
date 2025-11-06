@@ -17,7 +17,7 @@ function teardown(testCase)
 end
 
 function test_getCurrentCOM(testCase)
-    testCase.verifyEqual('COM13', BpodLib.utils.getCurrentCOM(testCase.TestData.mockBpod))
+    testCase.verifyEqual(BpodTest.nativePort('COM13'), BpodLib.utils.getCurrentCOM(testCase.TestData.mockBpod))
     
     mockEmulatorBpod = struct();
     mockEmulatorBpod.SerialPort = [];

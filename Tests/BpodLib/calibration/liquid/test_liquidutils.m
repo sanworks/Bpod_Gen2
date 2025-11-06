@@ -48,14 +48,14 @@ function test_checkCOM(testCase)
     LiquidCal.metadata = struct();
 
     % Create a mock LiquidCal with a matching COM port
-    LiquidCal.metadata.COM = 'COM13';
+    LiquidCal.metadata.COM = BpodTest.nativePort('COM13');
     mockBpod.CalibrationTables.LiquidCal = LiquidCal;
 
     matchingCOM = BpodLib.calibration.liquid.utils.checkCOM(mockBpod);
     testCase.verifyEqual(matchingCOM, 'yes');
 
     % Now change the COM port and check again
-    LiquidCal.metadata.COM = 'COM14';
+    LiquidCal.metadata.COM = BpodTest.nativePort('COM14');
     mockBpod.CalibrationTables.LiquidCal = LiquidCal;
 
     matchingCOM = BpodLib.calibration.liquid.utils.checkCOM(mockBpod);

@@ -42,7 +42,7 @@ function test_freshMultiSetup(testCase)
     % Check if the multi setup was created
     settingsPath = BpodLib.path.getPath('settings', BpodSystem, 'setuptype', 'multi');
     testCase.verifyTrue(strcmp(settingsPath, BpodLib.path.getPath('settings', BpodSystem, 'LocalDir', LocalDir, 'setuptype', 'multi')), "Settings path should match when LocalDir is given");
-    testCase.verifyTrue(strcmp(settingsPath, BpodLib.path.getPath('settings', 'LocalDir', LocalDir, 'com', 'COM13', 'setuptype', 'multi')), "Settings path should match when no BpodSystem is given");
+    testCase.verifyTrue(strcmp(settingsPath, BpodLib.path.getPath('settings', 'LocalDir', LocalDir, 'com', BpodTest.nativePort('COM13'), 'setuptype', 'multi')), "Settings path should match when no BpodSystem is given");
     testCase.verifyTrue(isfolder(settingsPath), 'Multi setup folder was not created.')
     
     % Check if the calibration files were created
@@ -66,22 +66,24 @@ function test_newMultiSetup(testCase)
     % On initialisation this should create a new multi
     NewBpodSystem = BpodTest.MockBpodObject('COM5');
     BpodLib.BpodObject.setup.updatePathAndSettings(NewBpodSystem, 'LocalDir', testCase.TestData.LocalDir);
-    testCase.verifyTrue(isfolder(fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM5')), 'Folder for new BpodSystem should exist.');
-    testCase.verifyTrue(isfolder(fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM13')), 'Folder for existing BpodSystem should still exist.');
+    com5ConfigPath = fullfile(testCase.TestData.LocalDir, 'Config', sprintf('Machine-%s', BpodTest.nativePort('COM5')));
+    com13ConfigPath = fullfile(testCase.TestData.LocalDir, 'Config', sprintf('Machine-%s', BpodTest.nativePort('COM13')));
+    testCase.verifyTrue(isfolder(com5ConfigPath), 'Folder for new BpodSystem should exist.');
+    testCase.verifyTrue(isfolder(com13ConfigPath), 'Folder for existing BpodSystem should still exist.');
 
-    testCase.verifyTrue(numel(dir(fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM5'))) == numel(dir(fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM13'))), ...
+    testCase.verifyTrue(numel(dir(com5ConfigPath)) == numel(dir(com13ConfigPath)), ...
         'New multi setup should have the same number of files as the existing one.');
 
     filelist = dir(fullfile(testCase.TestData.LocalDir, 'Config/'));
     filelist = filelist(~[filelist.isdir]);
     testCase.verifyTrue(numel(filelist) == 0, 'Settings folder should be empty of files after creating a new multi setup.');
 
-    % Test iquidcalibration paths are set correctly
-    testCase.verifyTrue(strcmp(BpodLib.path.getPath('calibration', BpodSystem), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM13')), 'Liquid calibration path should be set to the new multi setup location.');
-    testCase.verifyTrue(strcmp(BpodLib.path.getPath('calibration', NewBpodSystem), fullfile(testCase.TestData.LocalDir, 'Config/Machine-COM5')), 'Liquid calibration path should be set to the new multi setup location.');
+    % Test liquidcalibration paths are set correctly
+    testCase.verifyTrue(strcmp(BpodLib.path.getPath('calibration', BpodSystem), com13ConfigPath), 'Liquid calibration path should be set to the new multi setup location.');
+    testCase.verifyTrue(strcmp(BpodLib.path.getPath('calibration', NewBpodSystem), com5ConfigPath), 'Liquid calibration path should be set to the new multi setup location.');
 
     % Test settings files are moved
-    testCase.verifyTrue(isfile(fullfile(BpodLib.path.getPath('settings',NewBpodSystem), 'SyncConfig.mat')), 'Settings files should have been created.')
+    testCase.verifyTrue(isfile(fullfile(BpodLib.path.getPath('settings', NewBpodSystem), 'SyncConfig.mat')), 'Settings files should have been created.')
 end
 
 function test_emulatorBehaviour(testCase)
