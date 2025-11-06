@@ -41,8 +41,11 @@ else
     % check if linux
     if isunix && ~ispc
         % convert to windows style
-        comport = strrep(comport, '/dev/ttyUSB', 'COM');
-        comport = strrep(comport, '/dev/ttyACM', 'COM');
+        if ~startsWith(comport, '/dev/')
+            error('Unexpected COM port format on Linux: %s', comport);
+            % If this happens please report to Sanworks (forum/email/GitHub issue)
+        end
+        comport = erase(comport, '/dev/');
     end
 end
 
