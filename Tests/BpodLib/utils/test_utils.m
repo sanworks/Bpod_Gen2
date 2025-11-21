@@ -7,7 +7,7 @@ function setup(testCase)
     testCase.TestData.rootPath = rootPath;
     mkdir(testCase.TestData.rootPath)
     
-    mockBpod = BpodLib.BpodObject.MockBpodObject('COM13');
+    mockBpod = BpodTest.MockBpodObject('COM13');
     mockBpod.Path.LocalDir = testCase.TestData.rootPath;
     testCase.TestData.mockBpod = mockBpod;
 end
@@ -17,7 +17,7 @@ function teardown(testCase)
 end
 
 function test_getCurrentCOM(testCase)
-    testCase.verifyEqual('COM13', BpodLib.utils.getCurrentCOM(testCase.TestData.mockBpod))
+    testCase.verifyEqual(BpodTest.nativePort('COM13'), BpodLib.utils.getCurrentCOM(testCase.TestData.mockBpod))
     
     mockEmulatorBpod = struct();
     mockEmulatorBpod.SerialPort = [];

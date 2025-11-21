@@ -38,7 +38,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 p = inputParser();
-p.addOptional('BpodSystem', [], @(x) isempty(x) | isstruct(x) | isa(x, 'BpodObject') | isa(x, 'BpodLib.BpodObject.MockBpodObject'))
+p.addOptional('BpodSystem', [], @(x) isempty(x) | isstruct(x) | isa(x, 'BpodObject') | isa(x, 'BpodTest.MockBpodObject'))
 p.addParameter('LocalDir', '')
 p.parse(varargin{:})
 if ~isempty(p.Results.LocalDir)
@@ -50,19 +50,7 @@ else
     SettingsDir = fullfile(localDir, 'Config');
 end
 
-% Currently the only way to check is if multiple liquid calibration files exist.
-filelist = dir(fullfile(SettingsDir));
-validLogical = false(numel(filelist), 1);
-for idx = 1:numel(filelist)
-    if ~filelist(idx).isdir
-        continue
-    end
-    if numel(filelist(idx).name) < 11
-        continue
-    end
-    validLogical(idx) = ismember(filelist(idx).name(1:11), {'Machine-COM', 'Machine-EMU'});
-end
-
-result = any(validLogical);
+setupList = BpodLib.multi.listMultiSetups(SettingsDir);
+result = ~isempty(setupList);
 
 end

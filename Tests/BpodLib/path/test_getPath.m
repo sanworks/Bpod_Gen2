@@ -9,7 +9,7 @@ function setup(testCase)
     mkdir(localdir)
     testCase.TestData.localDir = localdir;
     
-    mockBpod = BpodLib.BpodObject.MockBpodObject('COM13');
+    mockBpod = BpodTest.MockBpodObject('COM13');
     BpodLib.BpodObject.setup.updatePathAndSettings(mockBpod, 'LocalDir', localdir)
     testCase.TestData.mockBpod = mockBpod;
     
@@ -31,8 +31,10 @@ function test_liquidcalibration(testCase)
     testCase.verifyEqual(BpodLib.path.getPath('calibration', 'LocalDir', mockBpod.Path.LocalDir, 'setuptype', 'single'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config'))
     
     % Test multi setup path
-    testCase.verifyEqual(BpodLib.path.getPath('calibration', mockBpod, 'setuptype', 'multi'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config/Machine-COM13'))
-    testCase.verifyEqual(BpodLib.path.getPath('calibration', 'LocalDir', mockBpod.Path.LocalDir, 'com', 'COM13', 'setuptype', 'multi'), fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config/Machine-COM13'))
+    machineID = BpodTest.nativePort('COM13');
+    configFolderPath = fullfile(testCase.TestData.mockBpod.Path.LocalDir, 'Config', sprintf('Machine-%s', machineID));
+    testCase.verifyEqual(BpodLib.path.getPath('calibration', mockBpod, 'setuptype', 'multi'), configFolderPath)
+    testCase.verifyEqual(BpodLib.path.getPath('calibration', 'LocalDir', mockBpod.Path.LocalDir, 'com', machineID, 'setuptype', 'multi'), configFolderPath)
 end
 
 function test_newCOM(testCase)
@@ -40,8 +42,10 @@ function test_newCOM(testCase)
     mockBpod = testCase.TestData.mockBpod;
     
     localfolder = BpodLib.path.getPath('calibration', mockBpod);
-    mkdir(fullfile(localfolder, 'Machine-COM3'))
-    mkdir(fullfile(localfolder, 'Machine-COM5'))
+    for com = {'COM3'; 'COM5'}
+        com = BpodTest.nativePort(com{1});
+        mkdir(fullfile(localfolder, sprintf('Machine-%s', com)))
+    end
     
     testCase.verifyWarning(@() BpodLib.path.verifyPathing(mockBpod, 'verbose', false), 'BpodLib:verifyPathing:PathingIncomplete', 'Should be confused.')
 end

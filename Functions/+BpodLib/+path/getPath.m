@@ -17,12 +17,12 @@ function path = getPath(target, varargin)
 %         - 'root': Path to the Bpod root directory
 %         - 'settings': Path to the settings folder
 % BpodSystem : BpodObject or struct
-%     Optional, if not provided you must specify 'LocalDir' keyword argument
+%     Optional, if not provided you must specify 'LocalDir' keyword argument (unless requesting 'root')
 %
 % Keyword Argument
 % ----------------
 % setuptype : char
-%     What kind of setup (single/multi) to find path for, defaults to auto-detecting
+%     What kind of setup ('single'/'multi') to find path for, defaults to auto-detecting
 % LocalDir : char
 %     The local directory to use, if not provided uses BpodSystem.Path.LocalDir. This overrides auto-detection of LocalDir from BpodSystem.
 % com : char
@@ -54,7 +54,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 p = inputParser();
-p.addOptional('BpodSystem', [], @(x) isempty(x) || isstruct(x) || isa(x, 'BpodObject') || isa(x, 'BpodLib.BpodObject.MockBpodObject'))
+p.addOptional('BpodSystem', [], @(x) isempty(x) || isstruct(x) || isa(x, 'BpodObject') || isa(x, 'BpodTest.MockBpodObject'))
 p.addParameter('setuptype', [], @(x) isempty(x) || ischar(x) || isstring(x))
 p.addParameter('LocalDir', [], @(x) isempty(x) || ischar(x) || isstring(x))
 p.addParameter('com', [], @(x) isempty(x) || ischar(x) || isstring(x))

@@ -49,7 +49,7 @@ methods
         if isEmulator
             obj.SerialPort = [];
         else
-            obj.SerialPort.PortName = p.Results.comport;
+            obj.SerialPort.PortName = BpodTest.nativePort(p.Results.comport, 'idformat', false);
         end
         obj.Modules = struct();
         obj.Status = struct();

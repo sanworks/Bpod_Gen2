@@ -1,18 +1,16 @@
-function comport = getCurrentCOM(BpodSystem)
-% Return the name of the current COM
-% comport = getCurrentCOM(BpodSystem)
-%
-% Will return 'EMU' if emulator mode, otherwise 'COMX'
-% Linux dev/ttyUSB is converted to COM
+function setupList = listMultiSetups(configDir)
+% List all multi setups available.
+% setupList = listMultiSetups(configDir)
 %
 % Arguments
 % ---------
-% BpodSystem : BpodObject
+% configDir : char
+%     Path to the Config/ directory containing multi setup folders (or not).
 %
 % Returns
 % -------
-% comport : char
-%     'COMX' or 'EMU'
+% setupList : cell array of char
+%     List of multi setup names found in the configDir. Is empty if no multi setups are found.
 
 %{
 ----------------------------------------------------------------------------
@@ -34,19 +32,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-if ~isprop(BpodSystem, 'SerialPort') || isempty(BpodSystem.SerialPort)
-    comport = 'EMU';
-else
-    comport = BpodSystem.SerialPort.PortName;
-    % check if linux
-    if isunix && ~ispc
-        % convert to windows style
-        if ~startsWith(comport, '/dev/')
-            error('Unexpected COM port format on Linux: %s', comport);
-            % If this happens please report to Sanworks (forum/email/GitHub issue)
-        end
-        comport = erase(comport, '/dev/');
-    end
-end
+filelist = dir(fullfile(configDir, 'Machine-*'));
+
+setupList = strcat({filelist.name}');
 
 end

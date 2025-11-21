@@ -18,7 +18,7 @@ function updatePathAndSettings(BpodSystem, varargin)
 % LocalDir : char (default='')
 %     Path to Bpod Local directory. If empty, uses default location.
 % verbose : logical (default=false)
-%     Whether to display progress messages.
+%     Whether to display progress messages and raise message boxes for user actions.
 
 %{
 ----------------------------------------------------------------------------
@@ -119,11 +119,7 @@ try
     BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'LocalDir', LocalDir, 'type', 'statemachine');
     if strcmp(BpodLib.calibration.liquid.utils.checkCOM(BpodSystem), 'no')
         if p.Results.verbose
-            warning('BpodLib:Calibration:Liquid:CheckCOM', 'Calibration file does not match the detected state machine''s USB serial port.');
-            msg = msgbox(sprintf("Detected state machine USB serial port (%s) does not match the port used to create the current liquid calibration: (%s).\nPlease either initialize a multi-machine setup or re-run calibration.", ...
-                BpodLib.utils.getCurrentCOM(BpodSystem), BpodSystem.CalibrationTables.LiquidCal.metadata.COM), ...
-                'Calibration USB Port mismatch', 'warn', 'modal');
-            uiwait(msg)
+            BpodLib.calibration.liquid.ui.VerifyCOMGUI(BpodSystem);
         end
     end
 catch err
