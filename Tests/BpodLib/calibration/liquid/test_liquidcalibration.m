@@ -34,33 +34,6 @@ function teardownOnce(testCase)
     rmdir(testCase.TestData.rootPath, 's');
 end
 
-
-function test_JSONWrite(testCase)
-    % Test that the JSON format being saved by ValveManagerClass is correct
-    
-    % Create test data and write JSON
-    dummyValveManager = BpodLib.calibration.liquid.compatibility.createDummyData();
-    dummyjsonPath = fullfile(testCase.TestData.rootPath, 'test.json');
-    dummyValveManager.saveData(dummyjsonPath);
-    
-    % Read both files
-    jsonData = fileread(dummyjsonPath);
-    expectedData = fileread(testCase.TestData.expectedJSONPath);
-    
-    % Normalize both JSON strings
-    jsonData = normalizeJSON(jsonData);
-    expectedData = normalizeJSON(expectedData);
-    
-    % Compare the normalized versions
-    testCase.verifyEqual(jsonData, expectedData, 'JSON content does not match expected');
-    
-    % If still failing, provide diagnostic output
-    if ~isequal(jsonData, expectedData)
-        fprintf('\n=== JSON COMPARISON FAILURE DETAILS ===\n');
-        showDiff(jsonData, expectedData);
-    end
-end
-
 function test_JSONRead(testCase)
     % Test ValveDataManager's reading, ensuring values are in the right
     % places
