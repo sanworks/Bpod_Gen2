@@ -120,7 +120,6 @@ try
     BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'LocalDir', LocalDir, 'type', 'statemachine');
     if strcmp(BpodLib.calibration.liquid.utils.checkCOM(BpodSystem), 'no')
         if p.Results.verbose
-            % if fresh setup skip because UI already said to check out the thing.
             BpodLib.calibration.liquid.ui.VerifyCOMGUI(BpodSystem);
         end
     end
