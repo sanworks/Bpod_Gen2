@@ -22,7 +22,6 @@ function setupOnce(testCase)
     OriginalLiquidCal(3).Coeffs = [0.0479777954004750,5.72402854877083,13.6002180808882];
 
     testCase.TestData.OriginalLiquidCal = OriginalLiquidCal;
-%     testCase.TestData.expectedJSONPath = fullfile('testData/ExpectedLiquidCalibration.json');
     [testFolder, ~, ~] = fileparts(mfilename('fullpath'));
     testDataFolder = fullfile(testFolder, 'testData');
     testCase.TestData.expectedJSONPath = fullfile(testDataFolder, 'ExpectedLiquidCalibration.json');
