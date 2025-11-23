@@ -40,6 +40,12 @@ if ~isfield(LiquidCal.metadata, 'COM')
     return
 end
 
+if strcmp(LiquidCal.metadata.COM, "example data")
+    % If the file's COM is example data, the liquid cal is just placeholder
+    % so we count that as "unknown"
+    return
+end
+
 if strcmp(LiquidCal.metadata.COM, BpodSystemCOM)
     matchingCOM = 'yes';
 else
