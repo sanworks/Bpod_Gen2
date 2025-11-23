@@ -1,6 +1,7 @@
 {
   "metadata": {
-    "modification_datetime": "2000-01-01T00:00:00"
+    "modification_datetime": "2000-01-01T00:00:00",
+    "COM": "example data"
   },
   "ValveDatas": [
     {
