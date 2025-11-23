@@ -103,7 +103,8 @@ end
 %% -- Calibration Files
 calFolder = BpodLib.path.getPath('calibration', BpodSystem, 'LocalDir', LocalDir);
 
-if ~isfile(fullfile(Path.SettingsDir, 'LiquidCalibration.json')) && ~BpodLib.path.compatibility.isLegacySettings(Path.LocalDir)
+freshSetup = ~isfile(fullfile(Path.SettingsDir, 'LiquidCalibration.json')) && ~BpodLib.path.compatibility.isLegacySettings(Path.LocalDir);
+if freshSetup
     fileNames = {'LiquidCalibration.json', 'SoundCalibration.mat', 'Readme.txt'};
     for idx = 1:numel(fileNames)
         fileName = fileNames{idx};
@@ -119,6 +120,7 @@ try
     BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'LocalDir', LocalDir, 'type', 'statemachine');
     if strcmp(BpodLib.calibration.liquid.utils.checkCOM(BpodSystem), 'no')
         if p.Results.verbose
+            % if fresh setup skip because UI already said to check out the thing.
             BpodLib.calibration.liquid.ui.VerifyCOMGUI(BpodSystem);
         end
     end
