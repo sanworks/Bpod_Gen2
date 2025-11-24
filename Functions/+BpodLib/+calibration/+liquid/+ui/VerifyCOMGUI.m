@@ -27,7 +27,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-assert(strcmp(BpodLib.calibration.liquid.utils.checkCOM(BpodSystem), 'no'))
 LiquidCal = BpodSystem.CalibrationTables.LiquidCal;  % the handle is extracted for convenience
 
 if BpodLib.multi.isMultiSetup(BpodSystem)
