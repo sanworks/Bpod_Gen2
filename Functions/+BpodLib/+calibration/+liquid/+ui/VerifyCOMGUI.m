@@ -27,7 +27,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-assert(strcmp(BpodLib.calibration.liquid.utils.checkCOM(BpodSystem), 'no'))
 LiquidCal = BpodSystem.CalibrationTables.LiquidCal;  % the handle is extracted for convenience
 
 if BpodLib.multi.isMultiSetup(BpodSystem)
@@ -35,13 +34,23 @@ if BpodLib.multi.isMultiSetup(BpodSystem)
 
     % Multi setup - ask user which machine to import from.
     prompt = {
-        sprintf('The Bpod COM port (%s) does not match the', BpodLib.utils.getCurrentCOM(BpodSystem));
+        sprintf('The Bpod COM port (%s) does not match', BpodLib.utils.getCurrentCOM(BpodSystem));
         sprintf('liquid calibration file''s COM port (%s).', LiquidCal.metadata.COM);
         'Please select which COM to copy in the liquid';
         'calibration file from:'
     };
     ignoreOption = 'I will remember to recalibrate. (ignore)';
-    options = [{ignoreOption}, availableMachines'];
+    machineNames = [{ignoreOption}, availableMachines'];
+    options = machineNames;
+
+    % Replace thisMachineName with '(current machine)' in the list
+    [~, thisMachineName] = fileparts(BpodLib.path.getPath('config', BpodSystem))
+    for i = 1:length(options)
+        if strcmp(options{i}, thisMachineName)
+            options{i} = sprintf('%s (use existing file)', thisMachineName);
+            break
+        end
+    end
 
     [selectionIdx, ok] = listdlg('PromptString', prompt, ...
         'SelectionMode', 'single', ...
@@ -52,7 +61,7 @@ if BpodLib.multi.isMultiSetup(BpodSystem)
         return
     end
 
-    selectedMachine = options{selectionIdx};
+    selectedMachine = machineNames{selectionIdx};
     if strcmp(selectedMachine, ignoreOption)
         return
     end
