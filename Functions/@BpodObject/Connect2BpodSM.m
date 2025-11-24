@@ -107,6 +107,9 @@ end
 if found
     obj.EmulatorMode = 0;
 else
+    obj.SerialPort = [];
+    % If no serial port is found, drop the field
+
     if sum(portsTried) > 0
         autoModeMessage = [];
         if autoMode
