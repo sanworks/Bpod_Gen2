@@ -56,3 +56,14 @@ function test_loadFailure(testCase)
     BpodLib.calibration.liquid.io.checkDefaultData([]);
     BpodLib.calibration.liquid.io.report([])
 end
+
+function test_load_fresh(testCase)
+    BpodSystem = BpodTest.MockBpodObject('EMU');
+    filepath = fullfile(BpodLib.path.getPath('root'), 'Examples/Example Calibration Files/LiquidCalibration.json');
+    LiquidCal = BpodLib.calibration.liquid.ValveDataManagerClass('filepath', filepath);
+    
+    BpodSystem.CalibrationTables.LiquidCal = LiquidCal;
+    LiquidCal.metadata.COM
+    BpodLib.calibration.liquid.utils.checkCOM(BpodSystem)
+    testCase.verifyTrue(strcmp('unknown', BpodLib.calibration.liquid.utils.checkCOM(BpodSystem)));
+end

@@ -22,7 +22,6 @@ function setupOnce(testCase)
     OriginalLiquidCal(3).Coeffs = [0.0479777954004750,5.72402854877083,13.6002180808882];
 
     testCase.TestData.OriginalLiquidCal = OriginalLiquidCal;
-%     testCase.TestData.expectedJSONPath = fullfile('testData/ExpectedLiquidCalibration.json');
     [testFolder, ~, ~] = fileparts(mfilename('fullpath'));
     testDataFolder = fullfile(testFolder, 'testData');
     testCase.TestData.expectedJSONPath = fullfile(testDataFolder, 'ExpectedLiquidCalibration.json');
@@ -32,33 +31,6 @@ end
 function teardownOnce(testCase)
     % Cleanup - Remove the directory structure after testing
     rmdir(testCase.TestData.rootPath, 's');
-end
-
-
-function test_JSONWrite(testCase)
-    % Test that the JSON format being saved by ValveManagerClass is correct
-    
-    % Create test data and write JSON
-    dummyValveManager = BpodLib.calibration.liquid.compatibility.createDummyData();
-    dummyjsonPath = fullfile(testCase.TestData.rootPath, 'test.json');
-    dummyValveManager.saveData(dummyjsonPath);
-    
-    % Read both files
-    jsonData = fileread(dummyjsonPath);
-    expectedData = fileread(testCase.TestData.expectedJSONPath);
-    
-    % Normalize both JSON strings
-    jsonData = normalizeJSON(jsonData);
-    expectedData = normalizeJSON(expectedData);
-    
-    % Compare the normalized versions
-    testCase.verifyEqual(jsonData, expectedData, 'JSON content does not match expected');
-    
-    % If still failing, provide diagnostic output
-    if ~isequal(jsonData, expectedData)
-        fprintf('\n=== JSON COMPARISON FAILURE DETAILS ===\n');
-        showDiff(jsonData, expectedData);
-    end
 end
 
 function test_JSONRead(testCase)

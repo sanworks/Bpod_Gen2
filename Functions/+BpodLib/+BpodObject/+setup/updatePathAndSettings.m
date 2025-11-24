@@ -103,7 +103,8 @@ end
 %% -- Calibration Files
 calFolder = BpodLib.path.getPath('calibration', BpodSystem, 'LocalDir', LocalDir);
 
-if ~isfile(fullfile(Path.SettingsDir, 'LiquidCalibration.json')) && ~BpodLib.path.compatibility.isLegacySettings(Path.LocalDir)
+freshSetup = ~isfile(fullfile(Path.SettingsDir, 'LiquidCalibration.json')) && ~BpodLib.path.compatibility.isLegacySettings(Path.LocalDir);
+if freshSetup
     fileNames = {'LiquidCalibration.json', 'SoundCalibration.mat', 'Readme.txt'};
     for idx = 1:numel(fileNames)
         fileName = fileNames{idx};
