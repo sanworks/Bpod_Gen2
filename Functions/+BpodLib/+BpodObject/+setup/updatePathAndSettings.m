@@ -117,11 +117,6 @@ end
 
 try
     BpodSystem.CalibrationTables.LiquidCal = BpodLib.calibration.liquid.io.load('BpodSystem', BpodSystem, 'LocalDir', LocalDir, 'type', 'statemachine');
-    if strcmp(BpodLib.calibration.liquid.utils.checkCOM(BpodSystem), 'no')
-        if p.Results.verbose
-            BpodLib.calibration.liquid.ui.VerifyCOMGUI(BpodSystem);
-        end
-    end
 catch err
     if strcmp(err.identifier, 'BpodLib:LiquidCalibrationLoad:FileNotFound')
         BpodSystem.CalibrationTables.LiquidCal = [];
@@ -226,5 +221,14 @@ if ~strcmp(BpodSystem.Path.SettingsDir, BpodLib.path.getPath('Settings', BpodSys
     warning('BpodLib:PathSetup:SettingsMatchFail','SettingsDir setup does not match BpodLib path. This will cause issues with loading settings.');
     % I don't see why this would happen, but if it does it's going to be a problem.
 end
+
+%% -- Final verifications
+% Functions that require BpodSystem to be fully setup can be called here.
+if strcmp(BpodLib.calibration.liquid.utils.checkCOM(BpodSystem), 'no')
+    if p.Results.verbose
+        BpodLib.calibration.liquid.ui.VerifyCOMGUI(BpodSystem);
+    end
+end
+
 
 end
