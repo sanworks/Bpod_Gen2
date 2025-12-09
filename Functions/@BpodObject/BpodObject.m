@@ -278,6 +278,8 @@ classdef BpodObject < handle
                 'BackgroundColor', [.8 .8 .8],...
                 'CData', ImportButtonGFX,...
                 'Callback', @(h,e)obj.folderSetupUIGet('Protocol'));
+            figure(obj.GUIHandles.FolderConfigFig);
+            drawnow;
         end
 
         function obj = folderSetupUIGet(obj, type)
@@ -329,6 +331,8 @@ classdef BpodObject < handle
             obj.SystemSettings.DataFolder = dataFolder;
             obj.SaveSettings;
             close(obj.GUIHandles.FolderConfigFig);
+            figure(obj.GUIHandles.MainFig);
+            drawnow;
         end
 
         function obj = Wiki(obj)
