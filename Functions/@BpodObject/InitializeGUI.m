@@ -207,7 +207,9 @@ for i = 1:nTabs
             DefaultBpodModule_Panel(obj.GUIHandles.OverridePanel(i), obj.Modules.Name{i-1});
         end
     end
-    drawnow;
+    if verLessThan('matlab', '25.1')
+        drawnow;
+    end
     set(obj.GUIHandles.OverridePanel(i), 'Visible', 'off');
 end
 set(obj.GUIHandles.PanelButton{1}, 'BackgroundColor', [0.45 0.45 0.45]); % Set first button active

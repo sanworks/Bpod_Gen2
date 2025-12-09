@@ -655,10 +655,12 @@ classdef BpodObject < handle
         function FixPushbuttons(obj)
             % Remove all the nasty borders around pushbuttons on platforms besides win7
             if isempty(strfind(obj.HostOS, 'Windows 7'))
-                warning off
-                handles = findjobj('class', 'pushbutton');
-                set(handles, 'border', []);
-                warning on
+                if verLessThan('matlab', '25.1')
+                    warning off
+                    handles = findjobj('class', 'pushbutton');
+                    set(handles, 'border', []);
+                    warning on
+                end
             end
         end
 
