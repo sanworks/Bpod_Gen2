@@ -37,15 +37,20 @@ for i = 1:BpodSystem.HW.n.Ports
     BpodSystem.GUIHandles.PortValveButton(i) = uicontrol('Parent', BpodSystem.GUIHandles.OverridePanel(1),...
         'Style', 'pushbutton', 'String', '', 'Position', [xPos yOffset 30 30],... 
         'Callback', ['ManualOverride(''OV'',' num2str(i) ');'], 'CData', BpodSystem.GUIData.OffButtonDark,... 
-        'TooltipString', ['Toggle port ' num2str(i) ' valve'], 'BackgroundColor', [.38 .38 .38]);
+        'TooltipString', ['Toggle port ' num2str(i) ' valve']);
     BpodSystem.GUIHandles.PortLEDButton(i) = uicontrol('Parent', BpodSystem.GUIHandles.OverridePanel(1),...
         'Style', 'pushbutton', 'String', '', 'Position', [xPos yOffset-45 30 30],... 
         'Callback', ['ManualOverride(''OP'',' num2str(i) ');'], 'CData', BpodSystem.GUIData.OffButtonDark,... 
-        'TooltipString', ['Toggle port ' num2str(i) ' LED'], 'BackgroundColor', [.38 .38 .38]);
+        'TooltipString', ['Toggle port ' num2str(i) ' LED']);
     BpodSystem.GUIHandles.PortvPokeButton(i) = uicontrol('Parent', BpodSystem.GUIHandles.OverridePanel(1),...
         'Style', 'pushbutton', 'String', '', 'Position', [xPos yOffset-90 30 30],... 
         'Callback', ['ManualOverride(''IP'',' num2str(i) ');'], 'CData', BpodSystem.GUIData.OffButtonDark,... 
-        'TooltipString', ['Port ' num2str(i) ' virtual photogate'], 'BackgroundColor', [.38 .38 .38]);
+        'TooltipString', ['Port ' num2str(i) ' virtual photogate']);
+    if ~verLessThan('matlab', '25.1')
+        set(BpodSystem.GUIHandles.PortValveButton(i), 'BackgroundColor', [.38 .38 .38]);
+        set(BpodSystem.GUIHandles.PortLEDButton(i), 'BackgroundColor', [.38 .38 .38]);
+        set(BpodSystem.GUIHandles.PortvPokeButton(i), 'BackgroundColor', [.38 .38 .38]);
+    end
     xPos = xPos + 41;
 end
 xPos = xOffset+10;
@@ -72,6 +77,9 @@ for i = 1:BpodSystem.HW.n.BNCInputs
         'Style', 'pushbutton', 'String', '', 'Position', [xPos yOffset 30 30],... 
         'Callback', ['ManualOverride(''IB'',' num2str(i) ');'], 'CData', BpodSystem.GUIData.OffButtonDark,... 
         'TooltipString', ['Spoof BNC input ' num2str(i)]);
+    if ~verLessThan('matlab', '25.1')
+        set(BpodSystem.GUIHandles.BNCInputButton(i), 'BackgroundColor', [.38 .38 .38]);
+    end
     xPos = xPos + 41;
 end
 xPos = xOffset+11;
@@ -91,6 +99,9 @@ for i = 1:BpodSystem.HW.n.BNCOutputs
         'Style', 'pushbutton', 'String', '', 'Position', [xPos yOffset 30 30],... 
         'Callback', ['ManualOverride(''OB'',' num2str(i) ');'], 'CData', BpodSystem.GUIData.OffButtonDark,... 
         'TooltipString', ['Toggle BNC output ' num2str(i)]);
+    if ~verLessThan('matlab', '25.1')
+        set(BpodSystem.GUIHandles.BNCOutputButton(i), 'BackgroundColor', [.38 .38 .38]);
+    end
     xPos = xPos + 41;
 end
 xPos = xOffset+11;
@@ -125,6 +136,9 @@ for i = 1:BpodSystem.HW.n.WireInputs
     if (i == 2)
         xPos = xOffset+12; yPos = yOffset - 15;
     end
+    if ~verLessThan('matlab', '25.1')
+        set(BpodSystem.GUIHandles.WireInputButton(i), 'BackgroundColor', [.38 .38 .38]);
+    end
 end
 
 % Outputs
@@ -138,6 +152,9 @@ for i = 1:2
         'Style', 'pushbutton', 'String', '', 'Position', [xPos ypos 30 30],... 
         'Callback', ['ManualOverride(''OW'',' num2str(i) ');'], 'CData', BpodSystem.GUIData.OffButtonDark,... 
         'TooltipString', ['Toggle Wire output ' num2str(i)]);
+    if ~verLessThan('matlab', '25.1')
+        set(BpodSystem.GUIHandles.WireOutputButton(i), 'BackgroundColor', [.38 .38 .38]);
+    end
     xPos = xPos + 41;
 end
 BpodSystem.GUIHandles.WireOutputButton(3) = uicontrol('Parent', BpodSystem.GUIHandles.OverridePanel(1),...
