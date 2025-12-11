@@ -35,15 +35,17 @@ if BpodSystem.MachineType < 4
     error('Error: Flex I/O configuration requires State Machine r2+ or newer.');
 end
 dropMenuHeight = 35;
+dropMenuYpos = 140;
 if verLessThan('matlab', '25.1')
     dropMenuHeight = 15;
+    dropMenuYpos = 160;
 end
 % Set background color to match UI theme
 bgColor = [.8 .8 .8];
 if IsMATLAB_DarkMode
     bgColor = [0.15 0.15 0.15];
 end
-BpodSystem.GUIHandles.FlexConfigFig = figure('Position',[600 400 500 200],'name','Flex I/O Config.',...
+BpodSystem.GUIHandles.FlexConfigFig = figure('Position',[600 400 500 260],'name','Flex I/O Config.',...
     'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
 fontName = 'Courier New';
 ha = axes('units','normalized', 'position',[0 0 1 1]);
@@ -51,19 +53,25 @@ uistack(ha,'bottom');
 bg = imread('InputChannelConfig2.bmp');
 image(bg); axis off;
 channelTypeStrings = {'Digital In', 'Digital Out', 'Analog In', 'Analog Out', 'Disabled'};
-BpodSystem.GUIHandles.FlexConfig1 = uicontrol('Style', 'popupmenu', 'String', channelTypeStrings, 'Position', [35 120 100 dropMenuHeight],... 
+% BpodSystem.GUIHandles.FlexConfig1Label = uicontrol('Style', 'text', 'String', 'Ch1', 'Position', [35 150 100 25],...
+%                                                    'BackgroundColor', bgColor, 'FontSize', 12);
+BpodSystem.GUIHandles.FlexConfig1 = uicontrol('Style', 'popupmenu', 'String', channelTypeStrings, 'Position', [35 dropMenuYpos 100 dropMenuHeight],... 
     'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', bgColor, 'FontSize', 12,... 
     'Value', BpodSystem.HW.FlexIO_ChannelTypes(1)+1);
-BpodSystem.GUIHandles.FlexConfig2 = uicontrol('Style', 'popupmenu', 'String', channelTypeStrings, 'Position', [145 120 100 dropMenuHeight],... 
+BpodSystem.GUIHandles.FlexConfig2 = uicontrol('Style', 'popupmenu', 'String', channelTypeStrings, 'Position', [145 dropMenuYpos 100 dropMenuHeight],... 
     'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', bgColor, 'FontSize', 12,... 
     'Value', BpodSystem.HW.FlexIO_ChannelTypes(2)+1);
-BpodSystem.GUIHandles.FlexConfig3 = uicontrol('Style', 'popupmenu', 'String', channelTypeStrings, 'Position', [255 120 100 dropMenuHeight],... 
+BpodSystem.GUIHandles.FlexConfig3 = uicontrol('Style', 'popupmenu', 'String', channelTypeStrings, 'Position', [255 dropMenuYpos 100 dropMenuHeight],... 
     'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', bgColor, 'FontSize', 12,... 
     'Value', BpodSystem.HW.FlexIO_ChannelTypes(3)+1);
-BpodSystem.GUIHandles.FlexConfig4 = uicontrol('Style', 'popupmenu', 'String', channelTypeStrings, 'Position', [365 120 100 dropMenuHeight],... 
+BpodSystem.GUIHandles.FlexConfig4 = uicontrol('Style', 'popupmenu', 'String', channelTypeStrings, 'Position', [365 dropMenuYpos 100 dropMenuHeight],... 
     'Callback', @UpdateFlexConfig,'TooltipString', 'Select Channel Type', 'BackgroundColor', bgColor, 'FontSize', 12,... 
     'Value', BpodSystem.HW.FlexIO_ChannelTypes(4)+1);
-text(130, 25, 'Flex I/O Config', 'FontName', fontName, 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
+text(130, 20, 'Flex I/O Config', 'FontName', fontName, 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
+text(55, 40, 'Ch1', 'FontName', fontName, 'FontSize', 12, 'Color', [0.8 0.8 0.8]);
+text(145, 40, 'Ch2', 'FontName', fontName, 'FontSize', 12, 'Color', [0.8 0.8 0.8]);
+text(232, 40, 'Ch3', 'FontName', fontName, 'FontSize', 12, 'Color', [0.8 0.8 0.8]);
+text(320, 40, 'Ch4', 'FontName', fontName, 'FontSize', 12, 'Color', [0.8 0.8 0.8]);
 
 function UpdateFlexConfig(~,~)
 global BpodSystem % Import the global BpodSystem object
