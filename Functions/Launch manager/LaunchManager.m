@@ -31,7 +31,7 @@ if isfield(BpodSystem.GUIHandles, 'LaunchManagerFig') && ~verLessThan('MATLAB', 
 end
 
 % Set colors if dark theme is active (r2025a or newer)
-listBGColor = [0.8 0.8 0.8];
+listBGColor = [0.9 0.9 0.9];
 if IsMATLAB_DarkMode
     listBGColor = [0.2 0.2 0.2];
 end
@@ -174,6 +174,7 @@ else
         % Reset to first item in list
         selectedProtocol = 1;
         set(BpodSystem.GUIHandles.ProtocolSelector, 'Value', selectedProtocol);
+        BpodSystem.GUIData.ProtocolSelectorLastValue = 1;
         return;
     end
 
@@ -198,6 +199,7 @@ else
     loadSettings(protocolName, BpodSystem.GUIData.DummySubjectString);
     update_datafile(protocolName, BpodSystem.GUIData.DummySubjectString);
     BpodSystem.GUIData.ProtocolSelectorLastValue = 1;
+    uicontrol(BpodSystem.GUIHandles.ProtocolSelector);
 end
 
 function ProtocolSelectorNavigate (a,b)

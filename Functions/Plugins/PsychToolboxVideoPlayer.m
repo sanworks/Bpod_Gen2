@@ -87,6 +87,11 @@ classdef PsychToolboxVideoPlayer < handle
                     warning('on');
                 end
             end
+            try
+                ptb_version = PsychtoolboxVersion;
+            catch
+                error('Psychtoolbox not found. Please ensure that Psychtoolbox is installed.')
+            end
             obj.AllFonts = listfonts;
             Screen('Preference','SkipSyncTests', 1);
             obj.Videos = cell(1,obj.MaxVideos);

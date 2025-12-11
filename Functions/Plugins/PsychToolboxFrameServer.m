@@ -44,6 +44,11 @@ classdef PsychToolboxFrameServer < handle
 
     methods  
         function obj = PsychToolboxFrameServer(varargin)
+            try
+                ptb_version = PsychtoolboxVersion;
+            catch
+                error('Psychtoolbox not found. Please ensure that Psychtoolbox is installed.')
+            end
             Screen('Preference','SkipSyncTests', 1);
             [obj.WindowSize(1), obj.WindowSize(2)]=Screen('WindowSize', 2);
             obj.Window = Screen('OpenWindow',2);
