@@ -104,6 +104,9 @@ switch op
             thisPanelParamNames = thisPanelParamNames(end:-1:1);
             nParams = length(thisPanelParamNames);
             thisPanelHeight = (40*nParams)+15;
+            if nParams < 3 && ~verLessThan('matlab', '25.1')
+                thisPanelHeight = (40*nParams)+25;
+            end
             uipanel('title', panelNames{p},'FontSize',12, 'FontWeight', 'Bold', 'BackgroundColor', bgColor,...
                 'Units', 'Pixels', 'Position',[hPos vPos 430 thisPanelHeight]);
             inPanelPos = 10;

@@ -58,5 +58,5 @@ waveParams.SamplingRate = uint32(samplingRate);
 waveParams.nSamplesPerClickPhase = uint8(nSamplesPerClickPhase);
 waveParams.ClickAmplitude = clickAmplitude; % Fraction of full scale output
 waveParams.NoiseMaskIntensity = maskIntensity; % Fraction of full scale output
-waveParams.LeftClickTimes = leftClickTimes; % Click times (in samples)
-waveParams.RightClickTimes = rightClickTimes;
+waveParams.LeftClickTimes = leftClickTimes/samplingRate; % Click times (seconds)
+waveParams.RightClickTimes = rightClickTimes/samplingRate;
