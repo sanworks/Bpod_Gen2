@@ -17,4 +17,4 @@ firmware.ValveModule = 2;
 firmware.RotaryEncoder = 6;
 firmware.EchoModule = 1;
 firmware.AmbientModule = 2;
-firmware.HiFi = 5;
+firmware.HiFi = 6;

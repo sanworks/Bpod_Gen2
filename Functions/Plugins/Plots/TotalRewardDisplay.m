@@ -34,16 +34,26 @@ end
 op = lower(op);
 switch op
     case 'init'
+        % Set background color to match UI theme
+        bgColor = [.6 .6 1];
+        if IsMATLAB_DarkMode
+            bgColor = [.2 .2 1];
+        end
+        if verLessThan('matlab', '25.1')
+            label = 'Total';
+        else
+            label = 'Total 💧';
+        end
         BpodSystem.PluginObjects.TotalRewardDelivered = 0;
         BpodSystem.ProtocolFigures.TotalRewardDisplay = figure('Position', [900 550 150 150],'name','Total Reward',...
-            'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'Color', [.6 .6 1]);
+            'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off', 'Color', bgColor);
         BpodSystem.GUIHandles.TotalRewardDisplay = struct;
-        BpodSystem.GUIHandles.TotalRewardDisplay.Label = uicontrol('Style', 'text', 'String', 'Total reward',... 
-            'units', 'normalized', 'Position', [.15 .7 .7 .15], 'FontWeight', 'bold', 'FontSize', 16,...
-            'FontName', 'Arial', 'BackgroundColor', [.7 .7 1]);
+        BpodSystem.GUIHandles.TotalRewardDisplay.Label = uicontrol('Style', 'text', 'String', label,... 
+            'units', 'normalized', 'Position', [.15 .7 .7 .2], 'FontWeight', 'bold', 'FontSize', 16,...
+            'FontName', 'Arial', 'BackgroundColor', bgColor);
         BpodSystem.GUIHandles.TotalRewardDisplay.Amount = uicontrol('Style', 'text', 'String', ['0 ' char(181) 'l'],... 
             'units', 'normalized', 'Position', [.1 .25 .8 .25], 'FontSize', 24, 'FontName', 'Arial',...
-            'BackgroundColor', [.7 .7 1]);
+            'BackgroundColor', bgColor);
         
     case 'add'
         BpodSystem.PluginObjects.TotalRewardDelivered = BpodSystem.PluginObjects.TotalRewardDelivered + amountToAdd;

@@ -377,18 +377,21 @@ classdef LoadBpodFirmware < handle
             if OK
                 bgColor(2) = 0.1;
                 try
-                    for i = 1:100
-                        bgColor(2) = bgColor(2) + (0.8/100);
-                        set(obj.gui.ConfirmModal, 'Color', bgColor);
-                        set(obj.gui.Msg1, 'BackgroundColor', bgColor);
-                        set(obj.gui.Msg2, 'BackgroundColor', bgColor);
-                        pause(.005);
-                        drawnow;
+                    if verLessThan('matlab', '25.1')
+                        for i = 1:100
+                            bgColor(2) = bgColor(2) + (0.8/100);
+                            set(obj.gui.ConfirmModal, 'Color', bgColor);
+                            set(obj.gui.Msg1, 'BackgroundColor', bgColor);
+                            set(obj.gui.Msg2, 'BackgroundColor', bgColor);
+                            pause(.005);
+                            drawnow;
+                        end
                     end
                     bgColor = [0.1 0.9 0.1];
                     set(obj.gui.ConfirmModal, 'Color', bgColor);
                     set(obj.gui.Msg1, 'BackgroundColor', bgColor);
                     set(obj.gui.Msg2, 'BackgroundColor', bgColor);
+                    figure(obj.gui.ConfirmModal);
                 catch
                 end
 

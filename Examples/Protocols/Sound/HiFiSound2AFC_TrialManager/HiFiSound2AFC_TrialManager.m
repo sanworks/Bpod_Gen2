@@ -146,7 +146,6 @@ for currentTrial = 1:maxTrials
         leftSound = GenerateSineWave(sf, S.GUI.SinWaveFreqLeft, S.GUI.SoundDuration); 
                                      % Sampling freq (hz), Sine frequency (hz), duration (s)
         rightSound = GenerateSineWave(sf, S.GUI.SinWaveFreqRight, S.GUI.SoundDuration);
-        pause(rand*0.75);
         H.load(1, leftSound);
         H.load(2, rightSound);
     end
