@@ -74,8 +74,9 @@ methods
         try
             valveData = obj.ValveDatas.(valveName);
         catch ME
-            if strcmp(ME.identifier, 'MATLAB:Containers:Map:NoKey')
-                error('BpodLib:ValveDataManagerClass:ValveNotFound', 'Valve %s not found in data. Use createValve to make new valve data.', valveName);
+            if strcmp(ME.identifier, 'MATLAB:Containers:Map:NoKey') || strcmp(ME.identifier, 'MATLAB:nonExistentField')
+                error('BpodLib:ValveDataManagerClass:ValveNotFound', ['Valve %s not found in calibration data.'... 
+                      newline 'Use the calibration tool to calibrate the valve and try again.'], valveName);
             else
                 rethrow(ME);
             end
