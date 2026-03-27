@@ -28,7 +28,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 if BpodLib.path.compatibility.isLegacySettings(BpodSystem.Path.LocalDir)
-    error('BpodLib:MultiSetup:LegacyIncompatible', 'Legacy setups must first be converted to modern setup with Config/ folder.')
+    error('BpodLib:MultiSetup:LegacyIncompatible', ['Legacy config setup detected. It must first be converted to the modern setup.'... 
+        newline 'Close Bpod, Rename your /Bpod Local/ folder to /Bpod Local Backup/, run Bpod and start any protocol.'...
+        newline 'Then close Bpod and copy your existing protocols and data from your backup to the new Bpod Local folder.'... 
+        newline 'You will need to re-configure any settings and re-run calibration. Then re-run BpodSystem.createMultiSetup'])
 end
 
 if BpodLib.multi.isMultiSetup(BpodSystem)
