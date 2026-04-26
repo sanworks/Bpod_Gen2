@@ -68,7 +68,13 @@ nStates = length(sma.StateNames); % Determine number of states
 
 % Check to make sure the Placeholder state was replaced
 if strcmp(sma.StateNames{1},'Placeholder')
-    error('Error: could not send an empty matrix. You must define at least one state first.')
+    error('Could not send an empty state machine description. You must define at least one state first.')
+end
+
+% Check to make sure implicit serial message programming was not used with
+% a separate call to LoadSerialMessages()
+if sma.SerialMessageMode == 1 && BpodSystem.Status.LoadSerialMessagesUsed
+    error(['LoadSerialMessages() cannot be used if serial messages are also programmed implicitly with AddState()' newline 'e.g. {''HiFi1'', [''P'' 0]}'])
 end
 
 % Check to make sure the state machine description doesn't have undefined states

@@ -132,6 +132,7 @@ switch Opstring
             % Set BpodSystem status, protocol and path fields for new session
             BpodSystem.Status.Live = 1;
             BpodSystem.Status.LastEvent = 0;
+            BpodSystem.Status.LoadSerialMessagesUsed = false;
             BpodSystem.GUIData.ProtocolName = protocolName;
             BpodSystem.GUIData.SubjectName = subjectName;
             BpodSystem.GUIData.SettingsFileName = settingsFileName;
@@ -192,6 +193,7 @@ switch Opstring
             % Set BpodSystem status flags
             BpodSystem.Status.BeingUsed = 1;
             BpodSystem.Status.SessionStartFlag = 1;
+            BpodSystem.Status.LoadSerialMessagesUsed = false;
 
             % Record session start time
             BpodSystem.ProtocolStartTime = now*100000;
@@ -231,6 +233,7 @@ switch Opstring
         warning on
         BpodSystem.Status.BeingUsed = 0;
         BpodSystem.Status.CurrentProtocolName = '';
+        BpodSystem.Status.LoadSerialMessagesUsed = false;
         BpodSystem.Path.Settings = '';
         BpodSystem.Status.Live = 0;
         if BpodSystem.EmulatorMode == 0
