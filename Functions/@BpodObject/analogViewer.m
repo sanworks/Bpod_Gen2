@@ -94,7 +94,7 @@ switch op
             scaleFontSize = 14;
             subTitleFontSize = 12;
             lineEdge = 0.25;
-            figHeight = 470;
+            figHeight = 500;
             dropFontSize = 8;
         else
             titleFontSize = 18;

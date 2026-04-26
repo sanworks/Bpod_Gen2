@@ -38,7 +38,7 @@ classdef MouseGate < handle
 
     properties
         openPosition = 45; % Motor position of the gate when open (degrees)
-        openCurrent = 150; % Max motor current when opening (mA)
+        openCurrent = 100; % Max motor current when opening (mA)
         closedPosition = 0; % Motor position of the gate when closed (degrees)
         closeCurrent = 50; % Max motor current when closing (mA). Keep this value low for safety.
     end

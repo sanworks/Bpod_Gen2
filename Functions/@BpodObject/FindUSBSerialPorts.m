@@ -26,9 +26,17 @@ function usbSerialPorts = FindUSBSerialPorts(obj)
 usbSerialPorts = {}; % Initialize empty cell array
 
 if exist('serialportlist','file')
-    portLocations = sort(serialportlist('available'));
+    if isunix
+        portLocations = sort(serialportlist());
+    else
+        portLocations = sort(serialportlist('available'));
+    end
 elseif exist('seriallist','file')
-    portLocations = sort(seriallist('available'));
+    if isunix
+        portLocations = sort(seriallist());
+    else
+        portLocations = sort(seriallist('available'));
+    end
 else % Likely MATLAB pre r2017a. Fall back to system call.
     % Get and split the system's list of available ports
     if ispc
