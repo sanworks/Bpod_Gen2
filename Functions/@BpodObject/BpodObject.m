@@ -628,7 +628,9 @@ classdef BpodObject < handle
             offPanels = 1:obj.HW.n.UartSerialChannels+1;
             offPanels = offPanels(offPanels~=panel);
             set(obj.GUIHandles.OverridePanel(panel), 'Visible', 'on');
-            uistack(obj.GUIHandles.OverridePanel(panel), 'top');
+            if verLessThan('matlab', '9.5.0')
+                uistack(obj.GUIHandles.OverridePanel(panel), 'top');
+            end
             for i = offPanels
                 % Button -> gray
                 set(obj.GUIHandles.PanelButton{i}, 'BackgroundColor', [0.37 0.37 0.37]);
@@ -693,7 +695,7 @@ classdef BpodObject < handle
             endPos = 87;
             StepSize = 5;
             if ~verLessThan('matlab', '9')
-                StepSize = 10;
+                StepSize = 20;
             end
             switch stage
                 case 1
@@ -736,16 +738,12 @@ classdef BpodObject < handle
                             'Resize', 'off'); axis off; drawnow;
                     end
                 case 5
-                    endPos = 726;
-                    while endPos < 886
-                        endPos = endPos + StepSize;
-                        img(540:548, startPos:endPos,1) = ones(9,(endPos-(startPos-1)),1)*200;
-                        img(540:548, startPos:endPos,2) = ones(9,(endPos-(startPos-1)),1)*30;
-                        img(540:548, startPos:endPos,3) = ones(9,(endPos-(startPos-1)),1)*30;
-                        imagesc(img); colormap('gray'); set(gcf,'name','Bpod','numbertitle','off', 'MenuBar', 'none',...
-                            'Resize', 'off'); axis off; drawnow;
-                    end
-                    pause(.5);
+                    img(540:548, startPos:886,1) = ones(9,(886-(startPos-1)),1)*200;
+                    img(540:548, startPos:886,2) = ones(9,(886-(startPos-1)),1)*30;
+                    img(540:548, startPos:886,3) = ones(9,(886-(startPos-1)),1)*30;
+                    imagesc(img); colormap('gray'); set(gcf,'name','Bpod','numbertitle','off', 'MenuBar', 'none',...
+                        'Resize', 'off'); axis off; drawnow;
+                    pause(.7);
             end
         end
     end
