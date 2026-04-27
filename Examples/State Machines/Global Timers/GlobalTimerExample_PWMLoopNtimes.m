@@ -3,7 +3,7 @@
 % It is triggered in the first state. Next, the state machine goes into a state
 % where it waits for two events:
 % 1. Port1In momentarily enters a state that stops the global timer. Port 2 will stop blinking.
-% 2. Exits the state machine.
+% 2. Port2In exits the state machine.
 % Requires: behavior ports or lickometers with visible LEDs connected to Ch1, Ch2 and Ch3
 
 sma = NewStateMachine;

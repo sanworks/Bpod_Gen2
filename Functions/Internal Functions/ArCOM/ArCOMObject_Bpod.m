@@ -36,7 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % To avoid time-costly arg parsing, all arguments must be provided, up to the highest one needed.
 % baudRate is in bps. This is ignored for microcontrollers with native USB support 
 % (e.g. 32-bit Arduino, Teensy 3.X-4.X).
-% Interface can be either [], 'Java', 'PsychToolbox'. [] defaults to Java for r2019b or newer, 
+% Interface can be either [], 'Builtin' or 'PsychToolbox'. [] defaults to Builtin for r2019b or newer, 
 % and Psychtoolbox on older versions.
 % TCPPort can be [], or a port on a remote computer if using the Ethernet interface.
 % InputBufferSize and OutputBufferSize must be in range 0-10M bytes
@@ -104,7 +104,10 @@ classdef ArCOMObject_Bpod < handle
             if nargin > 2
                 if ~isempty(varargin{2})
                     switch lower(varargin{2})
-                        case 'java'
+                        case 'builtin'
+                            obj.UsePsychToolbox = 0;
+                            obj.Interface = 0;
+                        case 'java' % For compatibility with old code
                             obj.UsePsychToolbox = 0;
                             obj.Interface = 0;
                         case 'psychtoolbox'

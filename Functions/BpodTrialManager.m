@@ -664,7 +664,11 @@ classdef BpodTrialManager < handle
             % Calls the current soft code handler function, passing it the SoftCode
             % received from the state machine
             global BpodSystem % Import the global BpodSystem object
-            eval([BpodSystem.SoftCodeHandlerFunction '(' num2str(softCode) ')'])
+            if isa(BpodSystem.SoftCodeHandlerFunction, 'function_handle')
+                feval(BpodSystem.SoftCodeHandlerFunction, softCode)
+            else
+                eval([BpodSystem.SoftCodeHandlerFunction '(' num2str(softCode) ')'])
+            end
         end
 
         function manualOverrideEvent = VirtualManualOverride(a,overrideMessage)

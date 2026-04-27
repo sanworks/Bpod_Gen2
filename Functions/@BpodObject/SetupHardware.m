@@ -39,6 +39,9 @@ if obj.EmulatorMode == 1 % Set up as Bpod 0.7
     obj.HW.Inputs = 'UUUXBBWWPPPPPPPP';
     obj.HW.n.Outputs = 25;
     obj.HW.Outputs = 'UUUXBBWWWPPPPPPPPVVVVVVVVGGG';
+    if length(obj.InputsEnabled) ~= obj.HW.n.Inputs
+        obj.InputsEnabled = BpodLib.BpodObject.setup.defineDefaultInputsEnabled(obj);
+    end
     try % If the emulator was launched from the GUI
         close(obj.GUIHandles.LaunchEmuFig);
     catch
@@ -91,7 +94,7 @@ else
     obj.HW.StateMachineModel = smName;
 
     % Confirm connection via message in command window
-    disp(['Bpod State Machine ' smName ' connected on port ' obj.SerialPort.PortName])
+    disp(['State Machine ' smName ' connected on port ' obj.SerialPort.PortName newline])
 
     % Firmware mismatch notices
     if obj.FirmwareVersion ~= obj.CurrentFirmware.StateMachine
@@ -210,18 +213,7 @@ else
     
     % Enable ports
     if length(obj.InputsEnabled) ~= obj.HW.n.Inputs
-        obj.InputsEnabled = zeros(1,obj.HW.n.Inputs);
-        portPos = find(obj.HW.Inputs == 'P');
-        if ~isempty(portPos)
-            obj.InputsEnabled(portPos(1:3)) = 1;
-        end
-        obj.InputsEnabled(obj.HW.Inputs == 'B') = 1;
-        if obj.MachineType > 1 % v0.7+ uses optoisolators on wire channels; OK to enable by default
-            obj.InputsEnabled(obj.HW.Inputs == 'W') = 1;
-        end
-        if obj.MachineType == 4
-            obj.InputsEnabled(obj.HW.Inputs == 'F') = 1; % Enable all flex inputs (for testing)
-        end
+        obj.InputsEnabled = BpodLib.BpodObject.setup.defineDefaultInputsEnabled(obj);
     end
     obj.SerialPort.write(['E' obj.InputsEnabled], 'uint8');
     confirmed = obj.SerialPort.read(1, 'uint8');
@@ -364,7 +356,9 @@ obj.LoadModules;
 obj.SetupStateMachine;
 
 % Advance splash screen
-obj.BpodSplashScreen(3);
+if obj.Status.Verbose
+    obj.BpodSplashScreen(3);
+end
 
 % Set flexIO config (if equipped)
 if obj.MachineType == 4
@@ -396,7 +390,9 @@ if obj.MachineType == 4
 end
 
 % Advance splash screen
-obj.BpodSplashScreen(4);
+if obj.Status.Verbose
+    obj.BpodSplashScreen(4);
+end
 
 % Automatically connect to legacy Bonsai TCP/IP port if auto-connect is configured in settings
 if isfield(obj.SystemSettings, 'BonsaiAutoConnect')
@@ -413,6 +409,8 @@ if isfield(obj.SystemSettings, 'BonsaiAutoConnect')
 end
 
 % Final tasks
-obj.BpodSplashScreen(5);
-close(obj.GUIHandles.SplashFig);
+if obj.Status.Verbose
+    obj.BpodSplashScreen(5);
+    close(obj.GUIHandles.SplashFig);
+end
 end

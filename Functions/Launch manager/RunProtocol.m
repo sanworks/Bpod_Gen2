@@ -132,6 +132,7 @@ switch Opstring
             % Set BpodSystem status, protocol and path fields for new session
             BpodSystem.Status.Live = 1;
             BpodSystem.Status.LastEvent = 0;
+            BpodSystem.Status.LoadSerialMessagesUsed = false;
             BpodSystem.GUIData.ProtocolName = protocolName;
             BpodSystem.GUIData.SubjectName = subjectName;
             BpodSystem.GUIData.SettingsFileName = settingsFileName;
@@ -177,12 +178,6 @@ switch Opstring
 
             % Set console GUI run button
             set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
-            
-            % Send metadata to Bpod Phone Home program (disabled pending a more stable server)
-            % isOnline = BpodSystem.check4Internet();
-            % if (isOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
-                %BpodSystem.BpodPhoneHome(1); % Disabled until server migration. -JS July 2018
-            % end
 
             % Disable analog viewer record button (fixed for session)
             if BpodSystem.Status.AnalogViewer
@@ -198,6 +193,7 @@ switch Opstring
             % Set BpodSystem status flags
             BpodSystem.Status.BeingUsed = 1;
             BpodSystem.Status.SessionStartFlag = 1;
+            BpodSystem.Status.LoadSerialMessagesUsed = false;
 
             % Record session start time
             BpodSystem.ProtocolStartTime = now*100000;
@@ -237,6 +233,7 @@ switch Opstring
         warning on
         BpodSystem.Status.BeingUsed = 0;
         BpodSystem.Status.CurrentProtocolName = '';
+        BpodSystem.Status.LoadSerialMessagesUsed = false;
         BpodSystem.Path.Settings = '';
         BpodSystem.Status.Live = 0;
         if BpodSystem.EmulatorMode == 0

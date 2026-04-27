@@ -240,18 +240,27 @@ classdef LoadBpodFirmware < handle
             bgAxes = axes('units','normalized', 'position',[0 0 1 1]);
             uistack(bgAxes,'bottom');
             image(bg); axis off;
+            devicesPos = [25 80 320 30];
+            dropdownYPos = 80;
+            uiType = 'popup';
+            if ~verLessThan('matlab', '25.1')
+                devicesPos = [25 20 320 110];
+                dropdownYPos = 100;
+                uiType = 'listbox';
+            end
+
             uicontrol('Style', 'text', 'Position', [18+labelOffset 150 120 30], 'String', 'Firmware', 'FontSize', labelFontSize,...
                 'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
-            obj.gui.Devices = uicontrol('Style', 'popup', 'Position', [25 80 320 30], 'String', firmwareNames, 'FontSize', dropMenuFontSize,...
+            obj.gui.Devices = uicontrol('Style', uiType, 'Position', devicesPos, 'String', firmwareNames, 'FontSize', dropMenuFontSize,...
                 'FontWeight', 'bold','Callback', @(h,e)obj.update_versions(), 'BackgroundColor', [0.05 0.1 0.05],... 
                 'ForegroundColor', [0.1 1 0.1]);
             uicontrol('Style', 'text', 'Position', [375+labelOffset 150 105 30], 'String', 'Version', 'FontSize', labelFontSize,...
                 'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
-            obj.gui.Versions = uicontrol('Style', 'popup', 'Position', [385 80 80 30], 'String', obj.FirmwareVersions{1},... 
+            obj.gui.Versions = uicontrol('Style', 'popup', 'Position', [385 dropdownYPos 80 30], 'String', obj.FirmwareVersions{1},... 
                 'FontSize', dropMenuFontSize,'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
             uicontrol('Style', 'text', 'Position', [490 150 65 30], 'String', 'Port', 'FontSize', labelFontSize,...
                 'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
-            obj.gui.Ports = uicontrol('Style', 'popup', 'Position', [500 80 180 30], 'String', allPorts, 'FontSize', dropMenuFontSize,...
+            obj.gui.Ports = uicontrol('Style', 'popup', 'Position', [500 dropdownYPos 180 30], 'String', allPorts, 'FontSize', dropMenuFontSize,...
                 'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1]);
             obj.gui.smButton = uicontrol('Style', 'pushbutton', 'Position', [730 75 100 50], 'String', 'Load', 'FontSize', 14,...
                 'FontWeight', 'bold', 'Enable', 'on','Callback', @(h,e)obj.update_firmware(), 'BackgroundColor', [0.05 0.1 0.05],... 
@@ -353,32 +362,36 @@ classdef LoadBpodFirmware < handle
                 disp('Console output:')
                 disp(msg)
             end
+
             obj.gui.ConfirmModal  = figure('name','Firmware Update', 'position',[335,120,280,200],...
                 'numbertitle','off', 'MenuBar', 'none', 'Resize', 'off',...
                 'Color',bgColor);
             
             obj.gui.Msg1 = uicontrol('Style', 'text', 'Position', [25 140 220 30], 'String', msg1, 'FontSize', fontSize,...
-                'FontWeight', 'bold', 'BackgroundColor', bgColor);
+                'FontWeight', 'bold', 'BackgroundColor', bgColor, 'ForegroundColor', [0,0,0]);
             obj.gui.Msg2 = uicontrol('Style', 'text', 'Position', [15 90 250 30], 'String', msg2, 'FontSize', fontSize,...
-                'FontWeight', 'bold', 'BackgroundColor', bgColor);
+                'FontWeight', 'bold', 'BackgroundColor', bgColor, 'ForegroundColor', [0,0,0]);
             uicontrol('Style', 'pushbutton', 'Position', [90 20 100 40], 'String', 'Ok', 'FontSize', 14,...
                 'FontWeight', 'bold', 'BackgroundColor', [0.05 0.1 0.05], 'ForegroundColor', [0.1 1 0.1], 'Callback',... 
                 @(h,e)obj.close_modal());
             if OK
                 bgColor(2) = 0.1;
                 try
-                    for i = 1:100
-                        bgColor(2) = bgColor(2) + (0.8/100);
-                        set(obj.gui.ConfirmModal, 'Color', bgColor);
-                        set(obj.gui.Msg1, 'BackgroundColor', bgColor);
-                        set(obj.gui.Msg2, 'BackgroundColor', bgColor);
-                        pause(.005);
-                        drawnow;
+                    if verLessThan('matlab', '25.1')
+                        for i = 1:100
+                            bgColor(2) = bgColor(2) + (0.8/100);
+                            set(obj.gui.ConfirmModal, 'Color', bgColor);
+                            set(obj.gui.Msg1, 'BackgroundColor', bgColor);
+                            set(obj.gui.Msg2, 'BackgroundColor', bgColor);
+                            pause(.005);
+                            drawnow;
+                        end
                     end
                     bgColor = [0.1 0.9 0.1];
                     set(obj.gui.ConfirmModal, 'Color', bgColor);
                     set(obj.gui.Msg1, 'BackgroundColor', bgColor);
                     set(obj.gui.Msg2, 'BackgroundColor', bgColor);
+                    figure(obj.gui.ConfirmModal);
                 catch
                 end
 
@@ -425,6 +438,7 @@ classdef LoadBpodFirmware < handle
             try
                 bpodPath = fileparts(which('Bpod'));
                 parentDir = fileparts(bpodPath);
+                % todo: fix this pathing reference
                 settingsDir = fullfile(parentDir, 'Bpod Local', 'Settings');
                 data = load(fullfile(settingsDir, 'ModuleUSBConfig.mat'));
                 moduleUSBConfig = data.ModuleUSBConfig(1);

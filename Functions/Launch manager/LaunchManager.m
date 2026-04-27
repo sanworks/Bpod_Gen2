@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 function LaunchManager
 
-global BpodSystem% Import the global BpodSystem object
+global BpodSystem % Import the global BpodSystem object
 
 drawFig = 1;
 if isfield(BpodSystem.GUIHandles, 'LaunchManagerFig') && ~verLessThan('MATLAB', '8.4')
@@ -28,6 +28,12 @@ if isfield(BpodSystem.GUIHandles, 'LaunchManagerFig') && ~verLessThan('MATLAB', 
         figure(BpodSystem.GUIHandles.LaunchManagerFig);
         drawFig = 0;
     end
+end
+
+% Set colors if dark theme is active (r2025a or newer)
+listBGColor = [0.9 0.9 0.9];
+if IsMATLAB_DarkMode
+    listBGColor = [0.2 0.2 0.2];
 end
 
 % Build UI
@@ -52,13 +58,13 @@ text(lmYpos, 45,'Protocol Launch Manager', 'FontName', fontName, 'FontSize', 20,
 line([10 590], [80 80], 'Color', [0.8 0.8 0.8], 'LineWidth', 1);
 BpodSystem.GUIHandles.ProtocolSelector = uicontrol('Style', 'listbox','Position', [25 95 200 390],... 
                                          'String', 'Folder not found', 'Callback', @ProtocolSelectorNavigate, 'FontWeight', 'bold',... 
-                                         'FontSize', selectorFontSize, 'BackgroundColor', [.8 .8 .8]);
+                                         'FontSize', selectorFontSize, 'BackgroundColor', listBGColor);
 BpodSystem.GUIHandles.SubjectSelector = uicontrol('Style', 'listbox','Position', [265 95 200 390],... 
                                          'String', 'Folder not found', 'Callback', @subject_selector_navigate, 'FontWeight', 'bold',... 
-                                         'FontSize', selectorFontSize, 'BackgroundColor', [.8 .8 .8]);
+                                         'FontSize', selectorFontSize, 'BackgroundColor', listBGColor);
 BpodSystem.GUIHandles.SettingsSelector = uicontrol('Style', 'listbox','Position', [505 95 200 390],... 
                                          'String', 'Folder not found', 'FontWeight', 'bold', 'FontSize', selectorFontSize,... 
-                                         'BackgroundColor', [.8 .8 .8]);
+                                         'BackgroundColor', listBGColor);
 text(20, 120,'Protocol', 'FontName', fontName, 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
 text(212, 120,'Subject', 'FontName', fontName, 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
 text(405, 120,'Settings', 'FontName', fontName, 'FontSize', 16, 'Color', [0.8 0.8 0.8]);
@@ -168,6 +174,7 @@ else
         % Reset to first item in list
         selectedProtocol = 1;
         set(BpodSystem.GUIHandles.ProtocolSelector, 'Value', selectedProtocol);
+        BpodSystem.GUIData.ProtocolSelectorLastValue = 1;
         return;
     end
 
@@ -192,6 +199,7 @@ else
     loadSettings(protocolName, BpodSystem.GUIData.DummySubjectString);
     update_datafile(protocolName, BpodSystem.GUIData.DummySubjectString);
     BpodSystem.GUIData.ProtocolSelectorLastValue = 1;
+    uicontrol(BpodSystem.GUIHandles.ProtocolSelector);
 end
 
 function ProtocolSelectorNavigate (a,b)
@@ -780,6 +788,7 @@ end
 
 BpodSystem.Status.Live = 1;
 BpodSystem.Status.LastEvent = 0;
+BpodSystem.Status.LoadSerialMessagesUsed = false;
 BpodSystem.GUIData.ProtocolName = protocolName;
 BpodSystem.GUIData.SubjectName = subjectName;
 BpodSystem.GUIData.SettingsFileName = settingsFileName;
@@ -814,12 +823,6 @@ protocolFolderPath = fullfile(BpodSystem.Path.ProtocolFolder,protocolName);
 protocolPath = fullfile(BpodSystem.Path.ProtocolFolder,protocolName,[protocolName '.m']);
 addpath(protocolFolderPath);
 set(BpodSystem.GUIHandles.RunButton, 'cdata', BpodSystem.GUIData.PauseButton, 'TooltipString', 'Press to pause session');
-
-% % Send metadata to Bpod Phone Home program (disabled pending a more stable server)
-% isOnline = BpodSystem.check4Internet();
-% if (isOnline == 1) && (BpodSystem.SystemSettings.PhoneHome == 1)
-%     BpodSystem.BpodPhoneHome(1);
-% end
 
 if BpodSystem.Status.AnalogViewer
     set(BpodSystem.GUIHandles.RecordButton, 'Enable', 'off')

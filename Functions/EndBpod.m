@@ -41,7 +41,7 @@ if ~isempty(BpodSystem)
         end
         clear figureList i
 
-        % Close liquid calibration figures
+        % Close legacy liquid calibration figures
         if isfield(BpodSystem.GUIHandles, 'LiquidCalibrator')
             liquidCalFigList = {'MainFig', 'ValueEntryFig', 'RunMeasurementsFig', 'TestSpecificAmtFig', 'RecommendedMeasureFig'};
             calUIHandles = BpodSystem.GUIHandles.LiquidCalibrator;
@@ -51,6 +51,16 @@ if ~isempty(BpodSystem)
                 catch
                 end
             end
+        end
+
+        % Close current liquid calibration figures
+        try
+            close(findobj('Tag', 'BpodLiquidCal-Main'));
+            close(findobj('Tag', 'BpodLiquidCal-EnterPending'));
+            close(findobj('Tag', 'BpodLiquidCal-SuggestPoints'));
+            close(findobj('Tag', 'BpodLiquidCal-TestAmount'));
+            close(findobj('Tag', 'BpodLiquidCal-EnterValue'));
+        catch
         end
     end
 

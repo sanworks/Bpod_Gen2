@@ -1,3 +1,7 @@
+function obj = InitializeGUI(obj)
+% BpodObject.InitializeGUI() initializes the Bpod Console GUI.
+% InitializeGUI() is called on startup in Bpod.m
+
 %{
 ----------------------------------------------------------------------------
 
@@ -17,11 +21,6 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
-
-% BpodObject.InitializeGUI() initializes the Bpod Console GUI.
-% InitializeGUI() is called on startup in Bpod.m
-
-function obj = InitializeGUI(obj)
 
 % Setup figure label
 labelFontColor = [0.8 0.8 0.8];
@@ -68,6 +67,11 @@ obj.GUIHandles.EndButton = uicontrol('Style', 'pushbutton',...
     'Callback', 'RunProtocol(''Stop'')',...
     'CData', obj.GUIData.StopButton,...
     'TooltipString', 'End session');
+
+if ~verLessThan('matlab', '25.1')
+    set(obj.GUIHandles.RunButton, 'BackgroundColor', [.38 .38 .38]);
+    set(obj.GUIHandles.EndButton, 'BackgroundColor', [.38 .38 .38]);
+end
 
 obj.GUIData.OffButton = imread('ButtonOff.bmp');
 obj.GUIData.OffButtonDark = imread('ButtonOff_dark.bmp');
@@ -131,8 +135,8 @@ pluginPanelWidth = 575;
 pluginPanelOffset = 145;
 nTabs = obj.HW.n.UartSerialChannels+1;
 tabWidth = (pluginPanelWidth)/nTabs;
-obj.GUIHandles.PanelButton = zeros(1,nTabs);
-moduleNames = {'<html>&nbsp;State<br>Machine', 'Serial 1', 'Serial 2', 'Serial 3', 'Serial 4', 'Serial 5'};
+moduleNames = {BpodLib.BpodObject.ui.formatPanelDisplayName('State Machine'), 'Serial 1', 'Serial 2', 'Serial 3', 'Serial 4', 'Serial 5'};
+obj.GUIHandles.PanelButton = cell(1, nTabs);
 formattedModuleNames = moduleNames;
 tabPos = pluginPanelOffset;
 obj.GUIData.DefaultPanel = ones(1,nTabs);
@@ -145,29 +149,13 @@ for i = 1:nTabs
     if i > 1
         if obj.Modules.Connected(i-1)
             thisModuleName = obj.Modules.Name{i-1};
-            uCase = (thisModuleName > 64 & thisModuleName < 91);
-            lCase = (thisModuleName > 96 & thisModuleName < 123);
-            if sum(uCase) == 2 && length(uCase) > 5 && sum(lCase) > 0
-                capPos = find(uCase);
-                namePart1 = thisModuleName(1:capPos(2)-1);
-                namePart2 = thisModuleName(capPos(2):end);
-                bufferLength = 5-length(namePart2);
-                if bufferLength < 1
-                    bufferLength = 0;
-                end
-                buffer = ['<html>' repmat('&nbsp;', 1, bufferLength)];
-                namePart2 = [buffer namePart2(1:end-1) ' ' namePart2(end)];
-                formattedModuleNames{i} = ['<html>&nbsp;' namePart1 '<br>' namePart2];
-            else
-                thisModuleName = [thisModuleName(1:end-1) ' ' thisModuleName(end)];
-                formattedModuleNames{i} = thisModuleName;
-            end
+            formattedModuleNames{i} = BpodLib.BpodObject.ui.formatPanelDisplayName(thisModuleName);
         else
             thisModuleName = 'None';
         end
     end
     % Draw tab
-    obj.GUIHandles.PanelButton(i) = uicontrol('Style', 'pushbutton',...
+    obj.GUIHandles.PanelButton{i} = uicontrol('Style', 'pushbutton',...
         'String', formattedModuleNames{i},...
         'Callback', @(h,e)obj.SwitchPanels(i),...
         'BackgroundColor', [0.37 0.37 0.37],...
@@ -177,7 +165,7 @@ for i = 1:nTabs
         'FontName', buttonFont);
     tabPos = tabPos + tabWidth;
     if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
-        jButton = findjobj(obj.GUIHandles.PanelButton(i));
+        jButton = findjobj(obj.GUIHandles.PanelButton{i});
         jButton.setBorderPainted(false);
     end
     % Draw panel
@@ -224,10 +212,12 @@ for i = 1:nTabs
             DefaultBpodModule_Panel(obj.GUIHandles.OverridePanel(i), obj.Modules.Name{i-1});
         end
     end
-    drawnow;
+    if verLessThan('matlab', '25.1')
+        drawnow;
+    end
     set(obj.GUIHandles.OverridePanel(i), 'Visible', 'off');
 end
-set (obj.GUIHandles.PanelButton(1), 'BackgroundColor', [0.45 0.45 0.45]); % Set first button active
+set(obj.GUIHandles.PanelButton{1}, 'BackgroundColor', [0.45 0.45 0.45]); % Set first button active
 set(obj.GUIHandles.OverridePanel(1), 'Visible', 'on');
 obj.GUIData.CurrentPanel = 1;
 axes(obj.GUIHandles.Console);
@@ -241,7 +231,7 @@ if isempty(strfind(obj.HostOS, 'Linux'))
     end
     if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
         for i = 1:obj.HW.n.UartSerialChannels+1
-            jButton = findjobj(obj.GUIHandles.PanelButton(i));
+            jButton = findjobj(obj.GUIHandles.PanelButton{i});
             jButton.setBorderPainted(false);
         end
     end
@@ -262,28 +252,38 @@ else
     portString = obj.SerialPort.PortName;
 end
 
+% Set background color to match UI theme
+bgColor = [.8 .8 .8];
+if IsMATLAB_DarkMode
+    bgColor = [0.2 0.2 0.2];
+end
+
 obj.GUIHandles.CurrentStateDisplay = uicontrol('Style', 'text',...
     'String', '---',...
     'Position', [xPos yPos infoDispBoxWidth infoDispBoxHeight],...
     'FontWeight', 'bold',...
+    'BackgroundColor', bgColor,...
     'FontSize', infoDispFontSize);
 yPos = yPos - 51;
 obj.GUIHandles.PreviousStateDisplay = uicontrol('Style', 'text',...
     'String', '---',...
     'Position', [xPos yPos infoDispBoxWidth infoDispBoxHeight],...
     'FontWeight', 'bold',...
+    'BackgroundColor', bgColor,...
     'FontSize', infoDispFontSize);
 yPos = yPos - 51;
 obj.GUIHandles.LastEventDisplay = uicontrol('Style', 'text',...
     'String', '---',...
     'Position', [xPos yPos infoDispBoxWidth infoDispBoxHeight],...
     'FontWeight', 'bold',...
+    'BackgroundColor', bgColor,...
     'FontSize', infoDispFontSize);
 yPos = yPos - 51;
 obj.GUIHandles.TimeDisplay = uicontrol('Style', 'text',...
     'String', '0:00:00',...
     'Position', [xPos yPos infoDispBoxWidth infoDispBoxHeight],...
     'FontWeight', 'bold',...
+    'BackgroundColor', bgColor,...
     'FontSize', infoDispFontSize,...
     'TooltipString', 'Time in session, updated on each trial start');
 yPos = yPos - 51;
@@ -291,6 +291,7 @@ obj.GUIHandles.USBPortDisplay = uicontrol('Style', 'text',...
     'String', portString,...
     'Position', [xPos yPos infoDispBoxWidth portDispBoxHeight],...
     'FontWeight', 'bold',...
+    'BackgroundColor', bgColor,...
     'FontSize', infoDispFontSize,...
     'TooltipString', 'The Bpod State Machine''s primary USB serial port');
 obj.FixPushbuttons; % Removes button borders
@@ -308,16 +309,5 @@ line([10 130], [79 79], 'Color', labelFontColor, 'LineWidth', 2);
 ver = BpodSoftwareVersion_Semantic;
 text(10, 376,['Console v' ver], 'FontName', fontName, 'FontSize', vsm, 'Color', [0.8 0.8 0.8]);
 drawnow;
-if obj.IsOnline == 1
-    if isfield(obj.SystemSettings, 'PhoneHome')
-        if obj.SystemSettings.PhoneHome == 1 % Note: You are opted out by default
-            %obj.BpodPhoneHome(0);
-            % Sends installation metadata to the Sanworks secure server on load (see comments in BpodPhoneHome fcn below)
-            % Disabled until server migration. -JS July 2018
-        end
-    else
-        obj.PhoneHomeOpt_In_Out();
-    end
-end
 set(obj.GUIHandles.MainFig, 'HandleVisibility', 'callback');
 end

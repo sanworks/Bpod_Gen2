@@ -84,8 +84,8 @@ for x = 2:2:length(stateChangeConditions)
             sma.StatesDefined(newStateNumber) = 0;
         end
     else
-        if opCode == 65538 % True if '>back' is used. 
-                           % Then, only 254 states are allowed and "state 255" is interpreted as a "back" signal
+        if opCode == 65538 % True if '>back' is used.
+            % Then, only 254 states are allowed and "state 255" is interpreted as a "back" signal
             sma.meta.use255BackSignal = 1;
         end
     end
@@ -171,7 +171,7 @@ end
 
 %% Add output actions
 outputChannelNames = BpodSystem.StateMachineInfo.OutputChannelNames;
-metaActions = {'ValveState', 'LED', 'LEDState', 'BNCState', 'WireState', 'Valve'}; 
+metaActions = {'ValveState', 'LED', 'LEDState', 'BNCState', 'WireState', 'Valve'};
 % ValveState is a byte whose bits control an array of valves
 % LED is an alternate syntax for PWM1-8,specifying one LED to set to max brightness (1-8)
 % LEDState is an alternate syntax for PWM1-8. A byte coding for binary sets which LEDs are at max brightness
@@ -202,7 +202,7 @@ for x = 1:2:length(outputActions)
                 valveLogic = valveLogic(end:-1:1);
                 nValvesAddressed = length(valveLogic);
                 if nValvesAddressed > BpodSystem.HW.n.Valves
-                    error(['Error: tried to access valve# ' num2str(nValvesAddressed) ' but only '... 
+                    error(['Error: tried to access valve# ' num2str(nValvesAddressed) ' but only '...
                         num2str(BpodSystem.HW.n.Valves) ' valves exist on the connected state machine.'])
                 else
                     valveLogic = [valveLogic zeros(1,BpodSystem.HW.n.Valves-length(valveLogic))];
@@ -230,62 +230,53 @@ for x = 1:2:length(outputActions)
                 end
         end
     else
-        targetEventCode = find(strcmp(outputActions{x}, outputChannelNames));
-        if ~isempty(targetEventCode)
+        targetOutputChannel = find(strcmp(outputActions{x}, outputChannelNames));
+        if ~isempty(targetOutputChannel)
             value = outputActions{x+1};
-            vLength = length(value);
-            if vLength == 1
-                if (targetEventCode == BpodSystem.HW.Pos.GlobalTimerTrig) || (targetEventCode == BpodSystem.HW.Pos.GlobalTimerCancel)
-                    % For backwards compatability, integers specifying
-                    % global timers convert to equivalent binary decimals. To
-                    % specify binary, use a string of bits.
-                    value = 2^(value-1);
-                elseif BpodSystem.MachineType == 4
-                    if (targetEventCode >= BpodSystem.HW.Pos.Output_FlexIO) && (targetEventCode < BpodSystem.HW.Pos.Output_BNC)
-                    % If FlexIO channel is analog output, convert volts to bits
-                        targetFlexIOChannel = targetEventCode - (BpodSystem.HW.Pos.Output_FlexIO-1);
-                        if BpodSystem.HW.FlexIO_ChannelTypes(targetFlexIOChannel) == 3
-                            maxFlexIOVoltage = 5;
-                            if (value > maxFlexIOVoltage) || (value < 0)
-                                error('Error: Flex I/O channel voltages must be in range [0, 5]');
+            implicitMessageAdded = false;
+            if targetOutputChannel <= BpodSystem.HW.n.Outputs
+                if BpodSystem.HW.Outputs(targetOutputChannel) == 'U'
+                    if length(value) > 1 || ischar(value)
+                        [sma, value] = addImplicitSerialMessage(sma, targetOutputChannel, value);
+                        implicitMessageAdded = true;
+                    end
+                end
+            end
+            if ~implicitMessageAdded
+                vLength = length(value);
+                if vLength == 1
+                    if (targetOutputChannel == BpodSystem.HW.Pos.GlobalTimerTrig) || (targetOutputChannel == BpodSystem.HW.Pos.GlobalTimerCancel)
+                        % For backwards compatability, integers specifying
+                        % global timers convert to equivalent binary decimals. To
+                        % specify binary, use a string of bits.
+                        value = 2^(value-1);
+                    elseif BpodSystem.MachineType == 4
+                        if (targetOutputChannel >= BpodSystem.HW.Pos.Output_FlexIO) && (targetOutputChannel < BpodSystem.HW.Pos.Output_BNC)
+                            % If FlexIO channel is analog output, convert volts to bits
+                            targetFlexIOChannel = targetOutputChannel - (BpodSystem.HW.Pos.Output_FlexIO-1);
+                            if BpodSystem.HW.FlexIO_ChannelTypes(targetFlexIOChannel) == 3
+                                maxFlexIOVoltage = 5;
+                                if (value > maxFlexIOVoltage) || (value < 0)
+                                    error('Error: Flex I/O channel voltages must be in range [0, 5]');
+                                end
+                                value = uint16((value/maxFlexIOVoltage)*4095);
+                            else
+                                value = uint16(value);
                             end
-                            value = uint16((value/maxFlexIOVoltage)*4095);
                         else
                             value = uint16(value);
                         end
                     else
-                        value = uint16(value);
-                    end
-                else
                         value = uint8(value);
-                end
-            else
-                if ischar(value) && ((sum(value == '0') + sum(value == '1')) == length(value)) % Assume binary string, convert to decimal
-                        value = bin2dec(value);
-                else % Implicit programming of serial message library
-                    sma.SerialMessageMode = 1;
-                    messageIndex = 0;
-                    for i = 1:sma.nSerialMessages(targetEventCode)
-                        thisMessage = sma.SerialMessages{i};
-                        if length(thisMessage) == vLength
-                            if sum(thisMessage == value) == vLength
-                                messageIndex = i;
-                            end
-                        end
                     end
-                    if messageIndex > 0
-                        value = messageIndex;
-                    else
-                        sma.nSerialMessages(targetEventCode) = sma.nSerialMessages(targetEventCode) + 1;
-                        thisMessageIndex = sma.nSerialMessages(targetEventCode);
-                        sma.SerialMessages{targetEventCode,thisMessageIndex} = uint8(value);
-                        value = thisMessageIndex;
-                    end
+                elseif ischar(value) && ((sum(value == '0') + sum(value == '1')) == length(value))
+                    % Assume binary string, convert to decimal
+                    value = bin2dec(value);
                 end
             end
-            sma.OutputMatrix(currentState,targetEventCode) = value;
+            sma.OutputMatrix(currentState,targetOutputChannel) = value;
         else
-            error(['Unknown output action found: ''' outputActions{x} ''' in state: ''' stateName '''.' char(10)... 
+            error(['Unknown output action found: ''' outputActions{x} ''' in state: ''' stateName '''.' char(10)...
                 'A list of registered output action names is given <a href="matlab:BpodSystemInfo;">here</a>.']);
         end
     end
@@ -300,8 +291,8 @@ sma_out = sma;
 %%%%%%%%%%%%%% End AddState(). Accessory functions below. %%%%%%%%%%%%%%
 
 function event_not_found_message(thisEventName, thisStateName)
-error(['Unknown event found: ''' thisEventName ''' in state: ''' thisStateName '''.' char(10)... 
-                'A list of registered event names is given <a href="matlab:BpodSystemInfo;">here</a>.']);
+error(['Unknown event found: ''' thisEventName ''' in state: ''' thisStateName '''.' char(10)...
+    'A list of registered event names is given <a href="matlab:BpodSystemInfo;">here</a>.']);
 
 function [isOp, opCode] = find_op_name(thisStateName)
 isOp = false; opCode = 0;

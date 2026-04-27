@@ -46,6 +46,11 @@ for i = 1:BpodSystem.HW.n.Ports
         'Style', 'pushbutton', 'String', '', 'Position', [xPos yOffset-104 30 30],... 
         'Callback', ['ManualOverride(''IP'',' num2str(i) ');'], 'CData', BpodSystem.GUIData.OffButtonDark,... 
         'TooltipString', ['Port ' num2str(i) ' virtual photogate']);
+    if ~verLessThan('matlab', '25.1')
+        set(BpodSystem.GUIHandles.PortValveButton(i), 'BackgroundColor', [.38 .38 .38]);
+        set(BpodSystem.GUIHandles.PortLEDButton(i), 'BackgroundColor', [.38 .38 .38]);
+        set(BpodSystem.GUIHandles.PortvPokeButton(i), 'BackgroundColor', [.38 .38 .38]);
+    end
     xPos = xPos + 44;
 end
 if ispc
@@ -93,6 +98,9 @@ for i = 1:BpodSystem.HW.n.BNCInputs
         'Style', 'pushbutton', 'String', '', 'Position', [xPos yOffset 30 30],... 
         'Callback', ['ManualOverride(''IB'',' num2str(i) ');'], 'CData', BpodSystem.GUIData.OffButtonDark,... 
         'TooltipString', ['Spoof BNC input ' num2str(i)]);
+    if ~verLessThan('matlab', '25.1')
+        set(BpodSystem.GUIHandles.BNCInputButton(i), 'BackgroundColor', [.38 .38 .38]);
+    end
     xPos = xPos + 41;
 end
 xPos = xOffset+11;
@@ -112,6 +120,9 @@ for i = 1:BpodSystem.HW.n.BNCOutputs
         'Style', 'pushbutton', 'String', '', 'Position', [xPos yOffset 30 30],... 
         'Callback', ['ManualOverride(''OB'',' num2str(i) ');'], 'CData', BpodSystem.GUIData.OffButtonDark,... 
         'TooltipString', ['Toggle BNC output ' num2str(i)]);
+    if ~verLessThan('matlab', '25.1')
+        set(BpodSystem.GUIHandles.BNCOutputButton(i), 'BackgroundColor', [.38 .38 .38]);
+    end
     xPos = xPos + 41;
 end
 xPos = xOffset+11;
@@ -149,6 +160,9 @@ for i = 1:1:BpodSystem.HW.n.WireInputs
     if i > 2
         set(BpodSystem.GUIHandles.WireInputButton(i), 'Enable', 'off');
     end
+    if ~verLessThan('matlab', '25.1')
+        set(BpodSystem.GUIHandles.WireInputButton(i), 'BackgroundColor', [.38 .38 .38]);
+    end
 end
 xPos = xOffset+12;
 yPos = yOffset+42;
@@ -179,6 +193,9 @@ for i = 1:BpodSystem.HW.n.WireOutputs/2
         'Style', 'pushbutton', 'String', '', 'Position', [xPos ypos 30 30],... 
         'Callback', ['ManualOverride(''OW'',' num2str(i) ');'], 'CData', BpodSystem.GUIData.OffButtonDark,... 
         'TooltipString', ['Toggle Wire output ' num2str(i)]);
+    if ~verLessThan('matlab', '25.1')
+        set(BpodSystem.GUIHandles.WireOutputButton(i), 'BackgroundColor', [.38 .38 .38]);
+    end
     xPos = xPos + 41;
 end
 if BpodSystem.HW.n.WireOutputs > 2

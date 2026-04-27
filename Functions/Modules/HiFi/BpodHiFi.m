@@ -98,15 +98,52 @@ classdef BpodHiFi < handle
                 warning(['HiFi Module data transfer may be unstable unless PsychToolbox is installed. ' ...
                          'Please install PsychToolbox for optimal performance.']);
             end
+            % Get Hardware and Firmware version
+            obj.Info = struct;
+            obj.Info.hardwareVersion = NaN;
+            obj.Info.firmwareVersion = 0;
+            obj.Port.write('V', 'uint8');
+            tic
+            found = false;
+            while toc < 1 && found == false
+                if obj.Port.bytesAvailable > 0
+                    msg = obj.Port.read(2, 'uint32');
+                    obj.Info.hardwareVersion = msg(1);
+                    obj.Info.firmwareVersion = msg(2);
+                    found = true;
+                end
+            end
+
+            % Check microSD
+            if obj.Info.firmwareVersion > 5
+                obj.Port.write('$', 'uint8');
+                mountOK = obj.Port.read(1, 'uint8');
+                allocateOK = obj.Port.read(1, 'uint8');
+                if ~mountOK
+                    error('HiFi module MicroSD card not detected! Please ensure that a working microSD card is present in the device.')
+                end
+                if ~allocateOK
+                    disp('***Warning*** HiFi module microSD card failed to preallocate space. Attempting to reformat the card.')
+                    success = obj.formatCard();
+                    if ~success
+                        error('Failed to reformat microSD card. The HiFi module will not be usable until a formatted card is detected.')
+                    end
+                    disp('***Format complete*** Space preallocated successfully. Continuing HiFi module startup.')
+                end
+            else
+                disp('**Alert** HiFi module microSD Card Checks Skipped. Please upgrade to firmware v6 or newer.')
+            end
+
+            % Get parameters
             obj.Port.write('I', 'uint8');
             infoParams8Bit = obj.Port.read(4, 'uint8');
             infoParams32Bit = obj.Port.read(3, 'uint32');
-            obj.SamplingRate = double(infoParams32Bit(1));
             obj.isHD = infoParams8Bit(1);
             obj.bitDepth = infoParams8Bit(2);
             obj.maxWaves = infoParams8Bit(3);
             digitalAttBits = infoParams8Bit(4);
             obj.DigitalAttenuation_dB = double(digitalAttBits)*-0.5;
+            obj.SamplingRate = double(infoParams32Bit(1));
             obj.maxSamplesPerWaveform = infoParams32Bit(2)*192000;
             obj.maxEnvelopeSamples = infoParams32Bit(3);
             obj.HeadphoneAmpEnabled = false;
@@ -116,7 +153,6 @@ classdef BpodHiFi < handle
             obj.SynthWaveform = 'WhiteNoise';
             obj.SynthAmplitudeFade = 0;
             obj.AMenvelope = [];
-            obj.Info = struct;
             obj.Info.isHD = obj.isHD;
             obj.Info.bitDepth = obj.bitDepth;
             obj.Info.maxSounds = obj.maxWaves;
@@ -422,6 +458,43 @@ classdef BpodHiFi < handle
             end
             obj.Port.write(['&' state], 'uint8');
             obj.confirmTransmission('setting state of scan during USB transfer');
+        end
+
+        function success = formatCard(obj)
+            if obj.Info.firmwareVersion < 6
+                error('HiFi Module: formatCard() requires firmware v6 or newer.')
+            end
+            success = false;
+            obj.Port.write('+', 'uint8');
+            tic;
+            msg = [];
+            flagsFound = false;
+            while toc < 30 && flagsFound == false
+                if obj.Port.bytesAvailable > 0
+                    msg = [msg obj.Port.read(obj.Port.bytesAvailable, 'uint8')];
+                end
+                if sum(msg == '!') > 0
+                    msgEnd = find(msg == '!');
+                    if length(msg) == msgEnd + 4
+                        flagsFound = true;
+                    end
+                end
+                pause(.01);
+            end
+            disp(char(msg(1:end-4)));
+            if flagsFound
+                formatOK = msg(end-1);
+                allocateOK = msg(end);
+                if ~formatOK
+                    error('Format operation failed.')
+                end
+                if ~allocateOK
+                    error('Format operation succeeded but file allocation failed.')
+                end
+                success = true;
+            else
+                disp('Error: format operation timed out.')
+            end
         end
 
         function delete(obj)

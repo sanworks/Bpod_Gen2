@@ -78,12 +78,16 @@ classdef BpodObject < handle
     end
 
     methods
-        function obj = BpodObject
+        function obj = BpodObject(varargin)
             % Constructor, run when creating an instance of BpodObject
 
+            p = inputParser();
+            p.addParameter('verbose', true)
+            p.parse(varargin{:});
             % Notify the user of the installed software version
-            ver = BpodSoftwareVersion_Semantic;
-            disp(['Starting Bpod Console v' ver])
+            if p.Results.verbose
+                disp(BpodLib.utils.log.startupMessage())
+            end
 
             % Check path for duplicate Bpod installations
             matlabPath = path;
@@ -98,7 +102,7 @@ classdef BpodObject < handle
             addpath(genpath(fullfile(bpodPath, 'Assets')));
             rmpath(genpath(fullfile(bpodPath, 'Assets', 'BControlPatch', 'ExperPort')));
             addpath(genpath(fullfile(bpodPath, 'Examples', 'State Machines')));
-            load BpodSplashData;
+            load(fullfile(bpodPath, 'Assets', 'BpodSplashData.mat'));
             if exist('rng','file') == 2
                 rng('shuffle', 'twister'); % Seed the random number generator by CPU clock
             else
@@ -109,7 +113,7 @@ classdef BpodObject < handle
             obj.IsOnline = obj.check4Internet();
 
             % Validate software version
-            if obj.IsOnline
+            if obj.IsOnline && p.Results.verbose
                 obj.ValidateSoftwareVersion();
             end
 
@@ -119,6 +123,7 @@ classdef BpodObject < handle
             obj.Status.BpodStartTime = now;
             obj.Status = struct;
             obj.Status.Initialized = false;
+            obj.Status.Verbose = p.Results.verbose;
             obj.Status.LastTimestamp = 0;
             obj.Status.CurrentStateCode = 0;
             obj.Status.LastStateCode = 0;
@@ -138,21 +143,7 @@ classdef BpodObject < handle
             obj.Status.AnalogViewer = 0;
             obj.Status.nAnalogSamples = 0;
             obj.Status.RecordAnalog = 1;
-
-            % Initialize paths
-            obj.Path = struct;
-            obj.Path.BpodRoot = bpodPath;
-            obj.Path.ParentDir = fileparts(bpodPath);
-            obj.Path.LocalDir = fullfile(obj.Path.ParentDir, 'Bpod Local');
-            obj.Path.SettingsDir = fullfile(obj.Path.LocalDir, 'Settings');
-            obj.Path.Settings = '';
-            obj.Path.DataFolder = '';
-            obj.Path.CurrentDataFile = '';
-            obj.Path.CurrentProtocol= '';
-            obj.Path.InputConfig = fullfile(obj.Path.SettingsDir, 'InputConfig.mat');
-            obj.Path.FlexConfig = fullfile(obj.Path.SettingsDir, 'FlexConfig.mat');
-            obj.Path.SyncConfig = fullfile(obj.Path.SettingsDir, 'SyncConfig.mat');
-            obj.Path.ModuleUSBConfig = fullfile(obj.Path.SettingsDir, 'ModuleUSBConfig.mat');
+            obj.Status.LoadSerialMessagesUsed = false;
 
             % Initialize state machine info, to be populated in SetupStateMachine()
             obj.StateMachineInfo = struct;
@@ -162,100 +153,6 @@ classdef BpodObject < handle
             obj.StateMachineInfo.nOutputChannels = 0; % Number of output channels
             obj.StateMachineInfo.OutputChannelNames = 0; % Cell array of strings with output channel names
             obj.StateMachineInfo.MaxStates = 0; % Maximum number of states the attached Bpod can store
-
-            % Ensure that settings, data, protocol and calibration folders exist
-            if ~exist(obj.Path.LocalDir)
-                mkdir(obj.Path.LocalDir);
-            end
-            if ~exist(obj.Path.SettingsDir)
-                mkdir(obj.Path.SettingsDir);
-            end
-            addpath(genpath(obj.Path.SettingsDir));
-            if exist('BpodSettings.mat') > 0
-                load BpodSettings;
-                obj.SystemSettings = BpodSettings;
-            else
-                obj.SystemSettings = struct;
-            end
-            obj.Path.ProtocolFolder = '';
-            if isfield(obj.SystemSettings, 'ProtocolFolder')
-                if exist(obj.SystemSettings.ProtocolFolder)
-                    obj.Path.ProtocolFolder = obj.SystemSettings.ProtocolFolder;
-                end
-            end
-            obj.Path.DataFolder = '';
-            if isfield(obj.SystemSettings, 'DataFolder')
-                if exist(obj.SystemSettings.DataFolder)
-                    obj.Path.DataFolder = obj.SystemSettings.DataFolder;
-                end
-            end
-            obj.Path.BcontrolRootFolder = '';
-            if isfield(obj.SystemSettings, 'BcontrolRootFolder')
-                if exist(obj.SystemSettings.BcontrolRootFolder) == 7
-                    obj.Path.BcontrolRootFolder = obj.SystemSettings.BcontrolRootFolder;
-                    ExperPortFolder = fullfile(obj.Path.BcontrolRootFolder, 'ExperPort');
-                    if exist(ExperPortFolder) == 7
-                        addpath(ExperPortFolder);
-                    end
-                end
-            end
-
-            % Get info about the PC
-            obj.HostOS = system_dependent('getos');
-            if ~isempty(strfind(obj.HostOS, 'Windows 7'))
-                disp(['Bpod Startup: Windows 7 detected.' char(10)...
-                    'Please consider updating to Windows 10 or 11 for improved stability.' char(10)])
-            end
-
-            % Verify calibration folder and copy example calibration if none exist
-            % (so that users can validate the system and develop protocols before running calibration)
-            calFolder = fullfile(obj.Path.LocalDir,'Calibration Files');
-            if ~exist(calFolder)
-                mkdir(calFolder);
-                copyfile(fullfile(obj.Path.BpodRoot, 'Examples', 'Example Calibration Files'), calFolder);
-                questdlg('Calibration folder created in /BpodLocal/. Replace example calibration files soon.', ...
-                    'Calibration folder not found', ...
-                    'Ok', 'Ok');
-            end
-
-            % Load liquid calibration
-            try
-                liquidCalibrationFilePath = fullfile(obj.Path.LocalDir, 'Calibration Files', 'LiquidCalibration.mat');
-                load(liquidCalibrationFilePath);
-                obj.CalibrationTables.LiquidCal = LiquidCal;
-            catch
-                obj.CalibrationTables.LiquidCal = [];
-            end
-
-            % Load sound calibration
-            try
-                soundCalibrationFilePath = fullfile(obj.Path.LocalDir, 'Calibration Files', 'SoundCalibration.mat');
-                load(soundCalibrationFilePath);
-                obj.CalibrationTables.SoundCal = SoundCal;
-            catch
-                obj.CalibrationTables.SoundCal = [];
-            end
-
-            % Load input channel settings
-            if ~exist(obj.Path.InputConfig)
-                copyfile(fullfile(obj.Path.BpodRoot, 'Examples', 'Example Settings Files', 'InputConfig.mat'), obj.Path.InputConfig);
-            end
-            load(obj.Path.InputConfig);
-            obj.InputsEnabled = BpodInputConfig;
-
-            % Load sync settings
-            if ~exist(obj.Path.SyncConfig)
-                copyfile(fullfile(obj.Path.BpodRoot, 'Examples',...
-                    'Example Settings Files', 'SyncConfig.mat'), obj.Path.SyncConfig);
-            end
-            load(obj.Path.SyncConfig);
-            obj.SyncConfig = BpodSyncConfig;
-
-            % Create module USB port config file (if not present)
-            if ~exist(obj.Path.ModuleUSBConfig)
-                copyfile(fullfile(obj.Path.BpodRoot, 'Examples',...
-                    'Example Settings Files', 'ModuleUSBConfig.mat'), obj.Path.ModuleUSBConfig);
-            end
 
             % Load list of current firmware versions
             cf = CurrentFirmwareList; % Located in /Functions/Internal Functions/, returns list of current firmware
@@ -267,7 +164,22 @@ classdef BpodObject < handle
                 'ExecutionMode', 'fixedRate', 'Period', 0.1);
             obj.Timers.AnalogTimer = timer('TimerFcn',@(h,e)obj.ProcessAnalogSamples(),...
                 'ExecutionMode', 'fixedRate', 'Period', 0.1);
-            obj.BpodSplashScreen(1);
+
+            % Get info about the PC
+            obj.HostOS = system_dependent('getos');
+            if ~isempty(strfind(obj.HostOS, 'Windows 7'))
+                disp(['Bpod Startup: Windows 7 detected.' char(10)...
+                    'Please consider updating to Windows 10 or 11 for improved stability.' char(10)])
+            end
+            
+            % Initialize paths
+            obj.Path.BpodRoot = BpodLib.path.getPath('root');
+            obj.Path.LocalDir = fullfile(fileparts(obj.Path.BpodRoot), 'Bpod Local');
+            % BpodLib.BpodObject.setup.updatePathAndSettings(obj, 'verbose', p.Results.verbose);
+
+            if p.Results.verbose
+                obj.BpodSplashScreen(1);
+            end
         end
 
         function obj = resetSessionClock(obj)
@@ -297,14 +209,19 @@ classdef BpodObject < handle
             else
                 FigHeight = 150; Label1Ypos = 38; Label2Ypos = 75;
             end
+            % Set background color to match UI theme
+            bgColor = [.8 .8 .8];
+            if IsMATLAB_DarkMode
+                bgColor = [0.15 0.15 0.15];
+            end
             obj.GUIHandles.FolderConfigFig = figure('Position', [350 480 600 FigHeight],...
                 'name', 'Setup folders', 'numbertitle', 'off', 'MenuBar', 'none', 'Resize', 'off');
             ha = axes('units','normalized', 'position',[0 0 1 1]);
             uistack(ha,'bottom');
             BG = imread('SettingsMenuBG2.bmp');
             imagesc(BG); axis off; drawnow;
-            text(10, Label1Ypos,'Protocols','Parent', ha , 'FontName', 'OCRAStd', 'FontSize', 13, 'Color', [0.8 0.8 0.8]);
-            text(10, Label2Ypos,'Data Root','Parent', ha , 'FontName', 'OCRAStd', 'FontSize', 13, 'Color', [0.8 0.8 0.8]);
+            text(10, Label1Ypos,'Protocols','Parent', ha , 'FontName', 'Courier New', 'FontSize', 13, 'Color', [0.8 0.8 0.8]);
+            text(10, Label2Ypos,'Data Root','Parent', ha , 'FontName', 'Courier New', 'FontSize', 13, 'Color', [0.8 0.8 0.8]);
             if isfield(obj.SystemSettings, 'ProtocolFolder')
                 if isempty(obj.SystemSettings.ProtocolFolder)
                     protocolPath = fullfile(obj.Path.LocalDir, 'Protocols',filesep);
@@ -327,6 +244,7 @@ classdef BpodObject < handle
             obj.GUIHandles.setupFoldersButton = uicontrol(obj.GUIHandles.FolderConfigFig,...
                 'Style', 'pushbutton',...
                 'String', 'Ok',...
+                'FontName', 'Courier New',...
                 'Position', [270 10 60 25],...
                 'Callback', @(h,e)obj.setFolders(),...
                 'BackgroundColor', [.4 .4 .4],...
@@ -336,7 +254,7 @@ classdef BpodObject < handle
                 'String', dataPath,...
                 'Position', [140 50 410 25],...
                 'HorizontalAlignment', 'Left',...
-                'BackgroundColor', [.8 .8 .8],...
+                'BackgroundColor', bgColor,...
                 'FontSize', 10,...
                 'FontName', 'Arial');
             obj.GUIHandles.dataFolderNav = uicontrol(obj.GUIHandles.FolderConfigFig,...
@@ -351,7 +269,7 @@ classdef BpodObject < handle
                 'String', protocolPath,...
                 'Position', [140 90 410 25],...
                 'HorizontalAlignment', 'Left',...
-                'BackgroundColor', [.8 .8 .8],...
+                'BackgroundColor', bgColor,...
                 'FontSize', 10,...
                 'FontName', 'Arial');
             obj.GUIHandles.protocolFolderNav = uicontrol(obj.GUIHandles.FolderConfigFig,...
@@ -361,6 +279,8 @@ classdef BpodObject < handle
                 'BackgroundColor', [.8 .8 .8],...
                 'CData', ImportButtonGFX,...
                 'Callback', @(h,e)obj.folderSetupUIGet('Protocol'));
+            figure(obj.GUIHandles.FolderConfigFig);
+            drawnow;
         end
 
         function obj = folderSetupUIGet(obj, type)
@@ -412,6 +332,8 @@ classdef BpodObject < handle
             obj.SystemSettings.DataFolder = dataFolder;
             obj.SaveSettings;
             close(obj.GUIHandles.FolderConfigFig);
+            figure(obj.GUIHandles.MainFig);
+            drawnow;
         end
 
         function obj = Wiki(obj)
@@ -429,7 +351,7 @@ classdef BpodObject < handle
         function obj = SaveSettings(obj)
             % Saves the BpodObject.SystemSettings struct to the Bpod settings file
             BpodSettings = obj.SystemSettings;
-            save(fullfile(obj.Path.LocalDir, 'Settings', 'BpodSettings.mat'), 'BpodSettings');
+            save(fullfile(obj.Path.SettingsDir, 'BpodSettings.mat'), 'BpodSettings');
         end
 
         function obj = BeingUsed(obj)
@@ -648,33 +570,6 @@ classdef BpodObject < handle
             obj.FlexIOConfig = config;
         end
 
-        function PhoneHomeOpt_In_Out(obj)
-            % Launches a GUI for registration with the Bpod Phone Home program
-            obj.GUIHandles.BpodPhoneHomeFig = figure('Position', [550 180 400 350],...
-                'name','Bpod Phone Home','numbertitle','off', 'MenuBar', 'none', 'Resize', 'off');
-            ha = axes('units','normalized', 'position',[0 0 1 1]);
-            uistack(ha,'bottom');
-            bg = imread('PhoneHomeBG.bmp');
-            image(bg); axis off; drawnow;
-            text(20, 40,'Bpod PhoneHome Program', 'FontName', 'Courier New', 'FontSize', 16, 'Color', [1 1 1]);
-            Pos = 80; Step = 25;
-            text(20, Pos,'Bpod PhoneHome is an opt-in', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'program to send anonymous data', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'about your Bpod software setup', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'to Sanworks LLC on Bpod start.', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'This will help us understand', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'which MATLAB versions and OS', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'flavors typically run Bpod', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            text(20, Pos,'+ how many rigs are out there.', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step+5;
-            text(140, Pos,'See BpodPhoneHome.m', 'FontName', 'Courier New', 'FontSize', 12, 'Color', [1 1 1]); Pos = Pos + Step;
-            BpodSystem.GUIHandles.PhoneHomeAcceptBtn = uicontrol('Style', 'pushbutton', 'String', 'Ok',...
-                'Position', [130 15 120 40], 'Callback', @(h,e)obj.phoneHomeRegister(1),...
-                'FontSize', 12,'Backgroundcolor',[0.29 0.29 0.43],'Foregroundcolor',[0.9 0.9 0.9], 'FontName', 'Courier New');
-            BpodSystem.GUIHandles.PhoneHomeAcceptBtn = uicontrol('Style', 'pushbutton', 'String', 'Decline',...
-                'Position', [260 15 120 40], 'Callback', @(h,e)obj.phoneHomeRegister(0),...
-                'FontSize', 12,'Backgroundcolor',[0.29 0.29 0.43],'Foregroundcolor',[0.9 0.9 0.9], 'FontName', 'Courier New');
-        end
-
         function onlineStatus = check4Internet(obj)
             % Check for Internet connectivity
             % Returns: onlineStatus (double) = 1 if online, 0 if not
@@ -698,6 +593,23 @@ classdef BpodObject < handle
             obj.analogViewer('init', []);
         end
 
+        function createMultiSetup(obj)
+            disp('** Multi Setup **')
+            disp(['This will configure the PC for multiple Bpod systems' newline...
+                  'which must run in separate instances of MATLAB.' newline ...
+                  'Start each with Bpod(''COMX''); % COMX is the target machine.' newline...
+                  'This can only be undone by manually, removing /Bpod Local/.'])
+            disp(' ');
+            reply = input('Proceed? (y/n) >', 's');
+            if strcmpi(reply, 'y')
+                BpodLib.multi.createMultiSetup(obj)
+                disp(['Multi setup complete! Each state machine will have its own' newline...
+                      'settings and calibration folder in /Bpod Local/Config/'])
+            else
+                disp('Multi Setup creation canceled. No changes were made.')
+            end
+        end
+
         function delete(obj)
             % Destructor
             obj.SerialPort = []; % Trigger the ArCOM port's destructor function (closes and releases port)
@@ -708,23 +620,6 @@ classdef BpodObject < handle
     end
 
     methods (Access = private)
-        function phoneHomeRegister(obj, state)
-            % Callback from pushbutton of PhoneHomeOpt_In_Out() GUI
-            % Registers user with the Bpod Phone Home program
-            if ~isfield(obj.SystemSettings, 'PhoneHomeRigID')
-                obj.SystemSettings.PhoneHomeRigID = char(floor(rand(1,16)*25)+65);
-            end
-            switch state
-                case 0
-                    obj.SystemSettings.PhoneHome = 0;
-                    obj.BpodPhoneHome('Opt_Out');
-                case 1
-                    obj.SystemSettings.PhoneHome = 1;
-                    obj.BpodPhoneHome(0);
-            end
-            obj.SaveSettings;
-            close(obj.GUIHandles.BpodPhoneHomeFig);
-        end
 
         function SwitchPanels(obj, panel)
             % Callback triggered when switching between module tabs on the Bpod Console GUI
@@ -733,16 +628,18 @@ classdef BpodObject < handle
             offPanels = 1:obj.HW.n.UartSerialChannels+1;
             offPanels = offPanels(offPanels~=panel);
             set(obj.GUIHandles.OverridePanel(panel), 'Visible', 'on');
-            uistack(obj.GUIHandles.OverridePanel(panel), 'top');
+            if verLessThan('matlab', '9.5.0')
+                uistack(obj.GUIHandles.OverridePanel(panel), 'top');
+            end
             for i = offPanels
                 % Button -> gray
-                set(obj.GUIHandles.PanelButton(i), 'BackgroundColor', [0.37 0.37 0.37]);
+                set(obj.GUIHandles.PanelButton{i}, 'BackgroundColor', [0.37 0.37 0.37]);
                 set(obj.GUIHandles.OverridePanel(i), 'Visible', 'off');
             end
-            set(obj.GUIHandles.PanelButton(panel), 'BackgroundColor', [0.45 0.45 0.45]);
+            set(obj.GUIHandles.PanelButton{panel}, 'BackgroundColor', [0.45 0.45 0.45]);
             if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
                 for i = 1:obj.HW.n.UartSerialChannels+1
-                    jButton = findjobj(obj.GUIHandles.PanelButton(i));
+                    jButton = findjobj(obj.GUIHandles.PanelButton{i});
                     jButton.setBorderPainted(false);
                 end
             end
@@ -765,10 +662,12 @@ classdef BpodObject < handle
         function FixPushbuttons(obj)
             % Remove all the nasty borders around pushbuttons on platforms besides win7
             if isempty(strfind(obj.HostOS, 'Windows 7'))
-                warning off
-                handles = findjobj('class', 'pushbutton');
-                set(handles, 'border', []);
-                warning on
+                if verLessThan('matlab', '25.1')
+                    warning off
+                    handles = findjobj('class', 'pushbutton');
+                    set(handles, 'border', []);
+                    warning on
+                end
             end
         end
 
@@ -796,7 +695,7 @@ classdef BpodObject < handle
             endPos = 87;
             StepSize = 5;
             if ~verLessThan('matlab', '9')
-                StepSize = 10;
+                StepSize = 20;
             end
             switch stage
                 case 1
@@ -839,16 +738,12 @@ classdef BpodObject < handle
                             'Resize', 'off'); axis off; drawnow;
                     end
                 case 5
-                    endPos = 726;
-                    while endPos < 886
-                        endPos = endPos + StepSize;
-                        img(540:548, startPos:endPos,1) = ones(9,(endPos-(startPos-1)),1)*200;
-                        img(540:548, startPos:endPos,2) = ones(9,(endPos-(startPos-1)),1)*30;
-                        img(540:548, startPos:endPos,3) = ones(9,(endPos-(startPos-1)),1)*30;
-                        imagesc(img); colormap('gray'); set(gcf,'name','Bpod','numbertitle','off', 'MenuBar', 'none',...
-                            'Resize', 'off'); axis off; drawnow;
-                    end
-                    pause(.5);
+                    img(540:548, startPos:886,1) = ones(9,(886-(startPos-1)),1)*200;
+                    img(540:548, startPos:886,2) = ones(9,(886-(startPos-1)),1)*30;
+                    img(540:548, startPos:886,3) = ones(9,(886-(startPos-1)),1)*30;
+                    imagesc(img); colormap('gray'); set(gcf,'name','Bpod','numbertitle','off', 'MenuBar', 'none',...
+                        'Resize', 'off'); axis off; drawnow;
+                    pause(.7);
             end
         end
     end

@@ -101,7 +101,7 @@ BpodSystem.PluginObjects.Sound.load(3, errorSound);
 BpodSystem.PluginObjects.Sound.load(4, earlyWithdrawalSound);
 
 % Set soft code handler to trigger sounds
-BpodSystem.SoftCodeHandlerFunction = 'SoftCodeHandler_PlaySound';
+BpodSystem.SoftCodeHandlerFunction = @SoftCodeHandler_PlaySound;
 
 %% Main trial loop
 for currentTrial = 1:maxTrials

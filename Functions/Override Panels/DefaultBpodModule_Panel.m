@@ -68,7 +68,7 @@ BpodSystem.GUIHandles.SerialTerminalInput(moduleNumber) = uicontrol('Parent', pa
     'FontName', 'Arial', 'FontSize', BpodSystem.GUIData.InstructionFontSize,...
     'Position', [xPos-30 yOffset 275 30], 'ForegroundColor', [.5 .5 .5],...
     'HorizontalAlignment', 'left', 'Enable', 'inactive',...
-    'KeyPressFcn',@(src,event)check_for_return(moduleNumber, moduleName), ...
+    'KeyReleaseFcn',@(src,event)check_for_return(moduleNumber, moduleName), ...
     'ButtonDownFcn',@(src,event)clear_instructions(moduleNumber));
 BpodSystem.GUIHandles.SerialTerminalOutput(moduleNumber) = uicontrol('Parent', panelHandle,'Style', 'edit',...
     'String', '', 'Position', [xPos-30 yOffset-100 275 90],...
@@ -107,12 +107,6 @@ global BpodSystem
 character = get(BpodSystem.GUIHandles.MainFig,'CurrentKey');
 % if the 'return' key is pressed, send the message
 if strcmp(character,'return')
-    import java.awt.Robot;
-    import java.awt.event.KeyEvent;
-    robot=Robot;
-    robot.keyPress(KeyEvent.VK_ENTER);
-    pause(0.03)
-    robot.keyRelease(KeyEvent.VK_ENTER);
     send_message(ModuleNumber,ModuleName);
 end
 
@@ -153,7 +147,7 @@ set(BpodSystem.GUIHandles.SerialTerminalBytesSelect(moduleNumber), 'Value', 1);
 set(BpodSystem.GUIHandles.SerialTerminalMessageSelect(moduleNumber), 'Value', 0);
 set(BpodSystem.GUIHandles.SerialTerminalCharSelect(moduleNumber), 'Value', 0);
 set(BpodSystem.GUIHandles.SerialTerminalInput(moduleNumber), 'String', modeInstructions{1},...
-    'ForegroundColor', [.5 .5 .5], 'FontSize', BpodSystem.GUIData.InstructionFontSize, 'Enable', 'off');
+    'ForegroundColor', [.5 .5 .5], 'FontSize', BpodSystem.GUIData.InstructionFontSize, 'Enable', 'inactive');
 BpodSystem.GUIData.SelectedTermDisplayMode = 2;
 clear_terminal(moduleNumber)
 
@@ -164,7 +158,7 @@ set(BpodSystem.GUIHandles.SerialTerminalBytesSelect(moduleNumber), 'Value', 0);
 set(BpodSystem.GUIHandles.SerialTerminalMessageSelect(moduleNumber), 'Value', 0);
 set(BpodSystem.GUIHandles.SerialTerminalCharSelect(moduleNumber), 'Value', 1);
 set(BpodSystem.GUIHandles.SerialTerminalInput(moduleNumber), 'String', modeInstructions{2},...
-    'FontSize', BpodSystem.GUIData.InstructionFontSize, 'ForegroundColor', [.5 .5 .5], 'Enable', 'off');
+    'FontSize', BpodSystem.GUIData.InstructionFontSize, 'ForegroundColor', [.5 .5 .5], 'Enable', 'inactive');
 BpodSystem.GUIData.SelectedTermDisplayMode = 1;
 clear_terminal(moduleNumber)
 
@@ -175,16 +169,20 @@ set(BpodSystem.GUIHandles.SerialTerminalBytesSelect(moduleNumber), 'Value', 0);
 set(BpodSystem.GUIHandles.SerialTerminalMessageSelect(moduleNumber), 'Value', 1);
 set(BpodSystem.GUIHandles.SerialTerminalCharSelect(moduleNumber), 'Value', 0);
 set(BpodSystem.GUIHandles.SerialTerminalInput(moduleNumber), 'String', modeInstructions{3},...
-    'ForegroundColor', [.5 .5 .5], 'FontSize', BpodSystem.GUIData.InstructionFontSize, 'Enable', 'off');
+    'ForegroundColor', [.5 .5 .5], 'FontSize', BpodSystem.GUIData.InstructionFontSize, 'Enable', 'inactive');
 BpodSystem.GUIData.SelectedTermDisplayMode = 3;
 clear_terminal(moduleNumber)
 
 function clear_instructions(moduleNumber)
 global BpodSystem
+fgColor = [0 0 0];
+if IsMATLAB_DarkMode
+    fgColor = [1 1 1];
+end
 currentString = get(BpodSystem.GUIHandles.SerialTerminalInput(moduleNumber), 'String');
 modeInstructions = get(BpodSystem.GUIHandles.SerialTerminalInput(moduleNumber), 'UserData');
 if sum(strcmp(currentString, modeInstructions)) > 0
     set(BpodSystem.GUIHandles.SerialTerminalInput(moduleNumber), 'Enable', 'on', 'String', '',...
-        'ForegroundColor', [0 0 0], 'FontSize', BpodSystem.GUIData.InputFontSize);
+        'ForegroundColor', fgColor, 'FontSize', BpodSystem.GUIData.InputFontSize);
     uicontrol(BpodSystem.GUIHandles.SerialTerminalInput(moduleNumber));
 end

@@ -45,7 +45,7 @@ if verLessThan('MATLAB', '8.4') % Earlier versions of MATLAB did not support uni
 else
     upButtonChar = char(9650);
     downButtonChar = char(9660);
-    recButtonChar = char(9210);
+    recButtonChar = char(9679);
     zeroButtonChar = char(8767);
     restoreDCChar = char(9107);
     stopButtonChar = char(9632);
@@ -94,7 +94,7 @@ switch op
             scaleFontSize = 14;
             subTitleFontSize = 12;
             lineEdge = 0.25;
-            figHeight = 470;
+            figHeight = 500;
             dropFontSize = 8;
         else
             titleFontSize = 18;
@@ -104,8 +104,15 @@ switch op
             figHeight = 500;
             dropFontSize = 10;
         end
+        recFontSize = titleFontSize;
+        if ~verLessThan('matlab', '25.1')
+            titleFontSize = titleFontSize + 4;
+            recFontSize = titleFontSize + 5;
+        end
 
         % Setup GUI elements
+        bgColor = [0.7 0.7 0.7];
+        fgColor_Btn = [0 0 0];
         obj.GUIHandles.OscopeFig_Builtin = figure('Name','Flex I/O Analog Viewer',...
             'NumberTitle','off',...
             'MenuBar','none',...
@@ -117,29 +124,29 @@ switch op
         set(gca, 'xlim', [0 obj.GUIHandles.OSC.nXDivisions], 'ylim', [-0.4 obj.GUIHandles.OSC.nYDivisions], 'ytick', [], 'xtick', []);
 
         obj.GUIHandles.VoltScaleUpButton = uicontrol('Style', 'pushbutton', 'String', upButtonChar, 'Position', [661 69 50 50],...
-            'Callback',@(h,e)obj.analogViewer('stepVoltsPerDiv', 1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', titleFontSize,...
-            'FontWeight', 'bold', 'TooltipString', 'Increase Volts/div');
+            'Callback',@(h,e)obj.analogViewer('stepVoltsPerDiv', 1), 'BackgroundColor', bgColor, 'FontSize', titleFontSize,...
+            'FontWeight', 'bold', 'TooltipString', 'Increase Volts/div', 'ForegroundColor', fgColor_Btn);
         obj.GUIHandles.VoltScaleDnButton = uicontrol('Style', 'pushbutton', 'String', downButtonChar, 'Position', [661 9 50 50],...
-            'Callback',@(h,e)obj.analogViewer('stepVoltsPerDiv', -1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', titleFontSize,...
-            'FontWeight', 'bold', 'TooltipString', 'Decrease Volts/div');
+            'Callback',@(h,e)obj.analogViewer('stepVoltsPerDiv', -1), 'BackgroundColor', bgColor, 'FontSize', titleFontSize,...
+            'FontWeight', 'bold', 'TooltipString', 'Decrease Volts/div', 'ForegroundColor', fgColor_Btn);
         annotation('textbox',[.91 .1 .1 .2],'String','V/Div','EdgeColor','none', 'FontSize', 14, 'FontWeight', 'Bold');
 
         obj.GUIHandles.TimeScaleUpButton = uicontrol('Style', 'pushbutton', 'String', upButtonChar, 'Position', [661 224 50 50],...
-            'Callback',@(h,e)obj.analogViewer('stepTimePerDiv', 1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', titleFontSize,...
-            'FontWeight', 'bold', 'TooltipString', 'Increase time/div');
+            'Callback',@(h,e)obj.analogViewer('stepTimePerDiv', 1), 'BackgroundColor', bgColor, 'FontSize', titleFontSize,...
+            'FontWeight', 'bold', 'TooltipString', 'Increase time/div', 'ForegroundColor', fgColor_Btn);
         obj.GUIHandles.TimeScaleDnButton = uicontrol('Style', 'pushbutton', 'String', downButtonChar, 'Position', [661 164 50 50],...
-            'Callback',@(h,e)obj.analogViewer('stepTimePerDiv', -1), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', titleFontSize,...
-            'FontWeight', 'bold', 'TooltipString', 'Decrease time/div');
+            'Callback',@(h,e)obj.analogViewer('stepTimePerDiv', -1), 'BackgroundColor', bgColor, 'FontSize', titleFontSize,...
+            'FontWeight', 'bold', 'TooltipString', 'Decrease time/div', 'ForegroundColor', fgColor_Btn);
         annotation('textbox',[.91 .41 .1 .2],'String','s/Div','EdgeColor','none', 'FontSize', 14, 'FontWeight', 'Bold');
 
         obj.GUIHandles.RecordButton = uicontrol('Style', 'pushbutton', 'String', recButtonChar, 'Position', [661 415 50 50],...
-            'Callback',@(h,e)obj.analogViewer('logStartStop', 0), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', titleFontSize,...
-            'FontWeight', 'bold', 'ForegroundColor', [.7 0 0], 'TooltipString', 'Record to data file');
+            'Callback',@(h,e)obj.analogViewer('logStartStop', 0), 'BackgroundColor', bgColor, 'FontSize', recFontSize,...
+            'FontWeight', 'bold', 'TooltipString', 'Record to data file', 'ForegroundColor', [0.7 0 0]);
         annotation('textbox',[.915 .79 .1 .2],'String','Rec','EdgeColor','none', 'FontSize', 14, 'FontWeight', 'Bold');
 
         obj.GUIHandles.ZeroButton = uicontrol('Style', 'pushbutton', 'String', zeroButtonChar, 'Position', [661 322 50 50],...
-            'Callback',@(h,e)obj.analogViewer('setDC', 0), 'BackgroundColor', [0.7 0.7 0.7], 'FontSize', 30,...
-            'FontWeight', 'bold', 'ForegroundColor', [0 0 0], 'TooltipString', 'Subtract DC (in viewer only)');
+            'Callback',@(h,e)obj.analogViewer('setDC', 0), 'BackgroundColor', bgColor, 'FontSize', 30,...
+            'FontWeight', 'bold', 'ForegroundColor', fgColor_Btn, 'TooltipString', 'Subtract DC (in viewer only)');
         annotation('textbox',[.922 .6 .1 .2],'String','DC','EdgeColor','none', 'FontSize', 14, 'FontWeight', 'Bold');
 
         % Setup data containers
@@ -180,7 +187,7 @@ switch op
         obj.GUIHandles.OSC.nUpdates = 0;
         if obj.Status.RecordAnalog
             set(obj.GUIHandles.OSC.RecStatText, 'String', 'Recording');
-            set(obj.GUIHandles.RecordButton, 'String', stopButtonChar, 'ForegroundColor', [0 0 0]);
+            set(obj.GUIHandles.RecordButton, 'String', stopButtonChar, 'ForegroundColor', fgColor_Btn);
         end
 
         % Final tasks

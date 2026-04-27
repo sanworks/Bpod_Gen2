@@ -1,3 +1,7 @@
+function obj = refreshGUIPanels(obj)
+% BpodObject.refreshGUIPanels() is called by BpodObject.LoadModules() to
+% update the console GUI tabs with the names of the connected modules
+
 %{
 ----------------------------------------------------------------------------
 
@@ -18,14 +22,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% BpodObject.refreshGUIPanels() is called by BpodObject.LoadModules() to
-% update the console GUI tabs with the names of the connected modules
-
-function obj = refreshGUIPanels(obj)
 if obj.Status.BeingUsed == 0
 
     % Set default tab names
-    moduleNames = {'<html>&nbsp;State<br>Machine', 'Serial 1', 'Serial 2', 'Serial 3', 'Serial 4', 'Serial 5'};
+    moduleNames = {BpodLib.BpodObject.ui.formatPanelDisplayName('State Machine'), 'Serial 1', 'Serial 2', 'Serial 3', 'Serial 4', 'Serial 5'};
 
     % Format module names for display on tab buttons
     formattedModuleNames = moduleNames;
@@ -34,28 +34,13 @@ if obj.Status.BeingUsed == 0
     for i = 2:nTabs
         if obj.Modules.Connected(i-1)
             thisModuleName = obj.Modules.Name{i-1};
-            uCase = (thisModuleName > 64 & thisModuleName < 91);
-            if sum(uCase) == 2 && length(uCase) > 5
-                capPos = find(uCase);
-                namePart1 = thisModuleName(1:capPos(2)-1);
-                namePart2 = thisModuleName(capPos(2):end);
-                bufferLength = 5-length(namePart2);
-                if bufferLength < 1
-                    bufferLength = 0;
-                end
-                buffer = ['<html>' repmat('&nbsp;', 1, bufferLength)];
-                namePart2 = [buffer namePart2(1:end-1) ' ' namePart2(end)];
-                formattedModuleNames{i} = ['<html>&nbsp;' namePart1 '<br>' namePart2];
-            else
-                thisModuleName = [thisModuleName(1:end-1) ' ' thisModuleName(end)];
-                formattedModuleNames{i} = thisModuleName;
-            end
+            formattedModuleNames{i} = BpodLib.BpodObject.ui.formatPanelDisplayName(thisModuleName);
         else
             thisModuleName = 'None';
         end
 
         % Update tab
-        set(obj.GUIHandles.PanelButton(i), 'String', formattedModuleNames{i});
+        set(obj.GUIHandles.PanelButton{i}, 'String', formattedModuleNames{i});
 
         % Clear panel contents
         set(obj.GUIHandles.OverridePanel(i), 'Visible', 'on');
@@ -101,11 +86,11 @@ if obj.Status.BeingUsed == 0
     end
 
     for i = 2:nTabs
-        set(obj.GUIHandles.PanelButton(i), 'BackgroundColor', [0.37 0.37 0.37]);
+        set(obj.GUIHandles.PanelButton{i}, 'BackgroundColor', [0.37 0.37 0.37]);
     end
 
     % Final formatting tasks
-    set (obj.GUIHandles.PanelButton(1), 'BackgroundColor', [0.45 0.45 0.45]); % Set first button active
+    set(obj.GUIHandles.PanelButton{1}, 'BackgroundColor', [0.45 0.45 0.45]); % Set first button active
     set(obj.GUIHandles.OverridePanel(1), 'Visible', 'on');
     uistack(obj.GUIHandles.OverridePanel(1),'top');
     axes(obj.GUIHandles.Console);
@@ -114,7 +99,7 @@ if obj.Status.BeingUsed == 0
     % Clear button borders
     if isempty(strfind(obj.HostOS, 'Linux')) && ~verLessThan('matlab', '8.0.0') && verLessThan('matlab', '9.5.0')
         for i = 1:nTabs
-            jButton = findjobj(obj.GUIHandles.PanelButton(i));
+            jButton = findjobj(obj.GUIHandles.PanelButton{i});
             jButton.setBorderPainted(false);
         end
     end

@@ -97,6 +97,7 @@ if BpodSystem.EmulatorMode == 0
     if isempty(ack)
         ack = 0;
     end
+    BpodSystem.Status.LoadSerialMessagesUsed = true;
 else
     ack = 1;
 end

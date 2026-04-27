@@ -583,8 +583,12 @@ classdef RotaryEncoderModule < handle
                 error('Error: The Rotary Encoder Module is logging to microSD. Turn off logging with stopLogging() to enable USB streaming.')
             end
             if obj.uiStreaming == 0
+                % Set background color to match UI theme
+                bgColor = [.8 .8 .8];
+                if IsMATLAB_DarkMode
+                    bgColor = [0.2 0.2 0.2];
+                end
                 obj.uiStreaming = 1;
-                bgColor = [0.8 0.8 0.8];
                 thresholdColors = {[0 0 1], [1 0 0], [0 1 0], [1 1 0], [0 1 1],...
                     [1 0 1], [0.5 0 0], [0 0.5 0]}; 
                 obj.displayPositions = nan(1,obj.nDisplaySamples);
@@ -606,13 +610,13 @@ classdef RotaryEncoderModule < handle
                     set(gca, 'ytick', [-180 0 180], 'ylim', [-180 180]);
                 end
                 xData = nan(1,obj.nDisplaySamples); yData = nan(1,obj.nDisplaySamples);
+                obj.gui.OscopeDataLine = line([xData,xData],[yData,yData]);
                 obj.gui.StartLine = line([0,obj.maxDisplayTime],[0,0], 'Color', [.5 .5 .5]);
                 nThresholds = length(obj.thresholds);
                 obj.gui.ThreshLine = cell(1,nThresholds);
                 for i = 1:nThresholds
                     obj.gui.ThreshLine{i} = line([0,obj.maxDisplayTime],[NaN NaN], 'Color', thresholdColors{i}, 'LineStyle', ':');
                 end
-                obj.gui.OscopeDataLine = line([xData,xData],[yData,yData]);
                 yPos = 445;
                 uicontrol('Style', 'text', 'Position', [600 yPos 170 30], 'String', 'Threshold Events', 'FontSize', 14,...
                     'FontWeight', 'bold', 'BackgroundColor', bgColor); yPos = yPos - 30;

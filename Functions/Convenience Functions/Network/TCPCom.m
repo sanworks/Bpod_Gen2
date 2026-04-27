@@ -18,9 +18,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-% TCPCom wraps the PsychToolbox PNET class for communication with processes
-% on the same machine, or on the local network. It shares read/write syntax
-% from the Sanworks ArCOM class: https://github.com/sanworks/ArCOM
+% TCPCom wraps the PsychToolbox PNET class (or MATLAB's native Java) for 
+% communication with processes on the same machine, or on the local network. 
+% It shares read/write syntax from the Sanworks ArCOM class: 
+% https://github.com/sanworks/ArCOM
 %
 % Usage:
 % T = TCPCom(Port); % Initialize a tcp SERVER on local port 'Port'. T is returned
@@ -60,9 +61,20 @@ classdef TCPCom < handle
         Timeout = 3;
         IPaddress
         currentPort
+        
+        % Added for Java Fallback Integration
+        usePnet
+        JServerSocket
+        JInputStream
+        JOutputStream
+        JChannel % NIO Channel for fast chunk reading
     end
     methods
         function obj = TCPCom(varargin)
+            % Detect if PsychToolbox pnet is installed
+            %obj.usePnet = exist('pnet', 'file') == 3;
+            obj.usePnet = false;
+            
             IP = 'localhost';
             obj.Socket = -1;
             switch nargin
@@ -78,37 +90,88 @@ classdef TCPCom < handle
             obj.InBuffer = [];
             obj.InBufferBytesAvailable = 0;
             obj.validDataTypes = {'char', 'uint8', 'uint16', 'uint32', 'uint64', 'int8', 'int16', 'int32', 'int64', 'single', 'double'};
-            switch obj.NetworkRole
-                case 'Client'
-                    obj.TCPobj = pnet('tcpconnect',IP,Port);
-                case 'Server'
-                    obj.Socket=pnet('tcpsocket',Port);
-                    if obj.Socket == -1
-                        error('TCPCom: Error creating socket on localhost.');
-                    else
-                        disp(['TCPCom: Created a socket on port ' num2str(Port) '. Waiting ' num2str(obj.Time2WaitForClient) 's for client connection...']);
-                        pnet(obj.Socket,'setreadtimeout', obj.Time2WaitForClient);
-                        obj.TCPobj=pnet(obj.Socket,'tcplisten');
-                    end
-            end
-            if obj.TCPobj == -1
-                if strcmp(obj.NetworkRole, 'Server')
-                    pnet(obj.Socket, 'close');
+            
+            if obj.usePnet
+                % --- ORIGINAL PNET INITIALIZATION ---
+                switch obj.NetworkRole
+                    case 'Client'
+                        obj.TCPobj = pnet('tcpconnect',IP,Port);
+                    case 'Server'
+                        obj.Socket=pnet('tcpsocket',Port);
+                        if obj.Socket == -1
+                            error('TCPCom: Error creating socket on localhost.');
+                        else
+                            disp(['TCPCom: Created a socket on port ' num2str(Port) '. Waiting ' num2str(obj.Time2WaitForClient) 's for client connection...']);
+                            pnet(obj.Socket,'setreadtimeout', obj.Time2WaitForClient);
+                            obj.TCPobj=pnet(obj.Socket,'tcplisten');
+                        end
                 end
-                error(['TCPCom: Could not connect to server at ' IP ' on port ' num2str(Port)])
+                if obj.TCPobj == -1
+                    if strcmp(obj.NetworkRole, 'Server')
+                        pnet(obj.Socket, 'close');
+                    end
+                    error(['TCPCom: Could not connect to server at ' IP ' on port ' num2str(Port)])
+                else
+                    disp(['TCPCom: Connection established on port ' num2str(Port)])
+                end
+                pause(.1);
+                pnet(obj.TCPobj,'setwritetimeout',obj.Timeout);
+                pnet(obj.TCPobj,'setreadtimeout',obj.Timeout);
+                
             else
+                % --- JAVA NATIVE INITIALIZATION ---
+                switch obj.NetworkRole
+                    case 'Client'
+                        try
+                            obj.TCPobj = java.net.Socket();
+                            obj.TCPobj.connect(java.net.InetSocketAddress(IP, Port), obj.Timeout * 1000);
+                        catch
+                            error(['TCPCom: Could not connect to server at ' IP ' on port ' num2str(Port)])
+                        end
+                    case 'Server'
+                        try
+                            obj.JServerSocket = java.net.ServerSocket(Port);
+                            obj.JServerSocket.setSoTimeout(obj.Time2WaitForClient * 1000);
+                            disp(['TCPCom: Created a socket on port ' num2str(Port) '. Waiting ' num2str(obj.Time2WaitForClient) 's for client connection...']);
+                            obj.TCPobj = obj.JServerSocket.accept();
+                        catch ME
+                            if ~isempty(obj.JServerSocket)
+                                obj.JServerSocket.close();
+                            end
+                            error(['TCPCom: Could not connect to client on port ' num2str(Port) '. ' ME.message]);
+                        end
+                end
                 disp(['TCPCom: Connection established on port ' num2str(Port)])
+                pause(.1);
+                obj.TCPobj.setSoTimeout(obj.Timeout * 1000);
+                obj.JInputStream = obj.TCPobj.getInputStream();
+                obj.JOutputStream = obj.TCPobj.getOutputStream();
+                obj.JChannel = java.nio.channels.Channels.newChannel(obj.JInputStream);
             end
-            pause(.1);
-            pnet(obj.TCPobj,'setwritetimeout',obj.Timeout);
-            pnet(obj.TCPobj,'setreadtimeout',obj.Timeout);
+            
             obj.IPAddress = IP;
             obj.Port = Port;
         end
 
         function bytesAvailable = bytesAvailable(obj)
             obj.assertConn; % Assert that connection is still active, and attempt to renew if not
-            bytesAvailable = length(pnet(obj.TCPobj,'read', 65536, 'uint8', 'native','view', 'noblock')) + obj.InBufferBytesAvailable;
+            if obj.usePnet
+                bytesAvailable = length(pnet(obj.TCPobj,'read', 65536, 'uint8', 'native','view', 'noblock')) + obj.InBufferBytesAvailable;
+            else
+                % Fast chunk read using Java NIO ByteBuffer
+                avail = obj.JInputStream.available();
+                if avail > 0
+                    buffer = java.nio.ByteBuffer.allocate(avail);
+                    bytesRead = obj.JChannel.read(buffer);
+                    if bytesRead > 0
+                        % Fetch array natively and reshape to ensure it joins nicely as a row vector
+                        newBytes = typecast(buffer.array(), 'uint8');
+                        obj.InBuffer = [obj.InBuffer, reshape(newBytes(1:bytesRead), 1, [])];
+                        obj.InBufferBytesAvailable = length(obj.InBuffer);
+                    end
+                end
+                bytesAvailable = obj.InBufferBytesAvailable;
+            end
         end
 
         function write(obj, varargin)
@@ -178,7 +241,15 @@ classdef TCPCom < handle
                 end
                 byteStringPos = byteStringPos + dataLength(i);
             end
-            pnet(obj.TCPobj,'write', byteString);
+            
+            % Send via Engine
+            if obj.usePnet
+                pnet(obj.TCPobj,'write', byteString);
+            else
+                % Write is naturally fast in MATLAB
+                obj.JOutputStream.write(typecast(byteString, 'int8'));
+                obj.JOutputStream.flush();
+            end
         end
 
         function varargout = read(obj, varargin)
@@ -206,18 +277,35 @@ classdef TCPCom < handle
                         nTotalBytes = nTotalBytes + nValues(i)*8;
                 end
             end
+            
             startTime = now*100000;
             while nTotalBytes > obj.InBufferBytesAvailable && ((now*100000)-startTime < obj.Timeout)
-                nBytesAvailable = length(pnet(obj.TCPobj,'read', 65536, 'uint8', 'native','view', 'noblock'));
-                if nBytesAvailable > 0
-                    obj.InBuffer = [obj.InBuffer uint8(pnet(obj.TCPobj,'read', nBytesAvailable, 'uint8'))];
+                if obj.usePnet
+                    nBytesAvailable = length(pnet(obj.TCPobj,'read', 65536, 'uint8', 'native','view', 'noblock'));
+                    if nBytesAvailable > 0
+                        obj.InBuffer = [obj.InBuffer uint8(pnet(obj.TCPobj,'read', nBytesAvailable, 'uint8'))];
+                        obj.InBufferBytesAvailable = length(obj.InBuffer);
+                    end
+                else
+                    avail = obj.JInputStream.available();
+                    if avail > 0
+                        buffer = java.nio.ByteBuffer.allocate(avail);
+                        bytesRead = obj.JChannel.read(buffer);
+                        if bytesRead > 0
+                            newBytes = typecast(buffer.array(), 'uint8');
+                            obj.InBuffer = [obj.InBuffer, reshape(newBytes(1:bytesRead), 1, [])];
+                            obj.InBufferBytesAvailable = length(obj.InBuffer);
+                        end
+                    else
+                        pause(0.002); % Prevent locking the CPU 
+                    end
                 end
-                obj.InBufferBytesAvailable = obj.InBufferBytesAvailable + nBytesAvailable;
             end
 
             if nTotalBytes > obj.InBufferBytesAvailable
                 error('Error: The TCP port did not return the requested number of bytes.')
             end
+            
             pos = 1;
             varargout = cell(1,nArrays);
             for i = 1:nArrays
@@ -263,49 +351,100 @@ classdef TCPCom < handle
         end
 
         function renew(obj) % Disconnect and renew connection
-            if obj.TCPobj ~= -1
-                pnet(obj.TCPobj,'close');
-            end
-            switch obj.NetworkRole
-                case 'Server'
-                    disp('Connection to client dropped. Attempting to reconnect...');
-                    try
-                        status = pnet(obj.Socket, 'status');
-                    catch
-                        obj.Socket=pnet('tcpsocket',obj.Port);
-                        if obj.Socket == -1
-                            error('TCPCom: Error creating socket on localhost.');
+            if obj.usePnet
+                if obj.TCPobj ~= -1
+                    pnet(obj.TCPobj,'close');
+                end
+                switch obj.NetworkRole
+                    case 'Server'
+                        disp('Connection to client dropped. Attempting to reconnect...');
+                        try
+                            status = pnet(obj.Socket, 'status');
+                        catch
+                            obj.Socket=pnet('tcpsocket',obj.Port);
+                            if obj.Socket == -1
+                                error('TCPCom: Error creating socket on localhost.');
+                            end
                         end
-                    end
-                    obj.TCPobj=pnet(obj.Socket,'tcplisten');
-                    if obj.TCPobj == -1
-                        pnet(obj.Socket, 'close');
-                        error(['TCPCom: Could not connect to client on port ' num2str(obj.Port)])
-                    end
-                case 'Client'
-                    obj.TCPobj = pnet('tcpconnect',obj.IPAddress,obj.Port);
-                    if obj.TCPobj == -1
-                        error(['TCPCom: Could not connect to server at ' obj.IPAddress ' on port ' num2str(obj.Port)])
-                    end
+                        obj.TCPobj=pnet(obj.Socket,'tcplisten');
+                        if obj.TCPobj == -1
+                            pnet(obj.Socket, 'close');
+                            error(['TCPCom: Could not connect to client on port ' num2str(obj.Port)])
+                        end
+                    case 'Client'
+                        obj.TCPobj = pnet('tcpconnect',obj.IPAddress,obj.Port);
+                        if obj.TCPobj == -1
+                            error(['TCPCom: Could not connect to server at ' obj.IPAddress ' on port ' num2str(obj.Port)])
+                        end
+                end
+                pnet(obj.TCPobj,'setwritetimeout',obj.Timeout);
+                pnet(obj.TCPobj,'setreadtimeout',obj.Timeout);
+            else
+                % --- JAVA RENEW ---
+                if ~isempty(obj.TCPobj)
+                    try obj.TCPobj.close(); catch; end
+                end
+                switch obj.NetworkRole
+                    case 'Server'
+                        disp('Connection to client dropped. Attempting to reconnect...');
+                        if isempty(obj.JServerSocket) || obj.JServerSocket.isClosed()
+                            obj.JServerSocket = java.net.ServerSocket(obj.Port);
+                        end
+                        obj.JServerSocket.setSoTimeout(obj.Time2WaitForClient * 1000);
+                        try
+                            obj.TCPobj = obj.JServerSocket.accept();
+                            obj.TCPobj.setSoTimeout(obj.Timeout * 1000);
+                            obj.JInputStream = obj.TCPobj.getInputStream();
+                            obj.JOutputStream = obj.TCPobj.getOutputStream();
+                            obj.JChannel = java.nio.channels.Channels.newChannel(obj.JInputStream);
+                        catch
+                            error(['TCPCom: Could not connect to client on port ' num2str(obj.Port)])
+                        end
+                    case 'Client'
+                        try
+                            obj.TCPobj = java.net.Socket();
+                            obj.TCPobj.connect(java.net.InetSocketAddress(obj.IPAddress, obj.Port), obj.Timeout * 1000);
+                            obj.TCPobj.setSoTimeout(obj.Timeout * 1000);
+                            obj.JInputStream = obj.TCPobj.getInputStream();
+                            obj.JOutputStream = obj.TCPobj.getOutputStream();
+                            obj.JChannel = java.nio.channels.Channels.newChannel(obj.JInputStream);
+                        catch
+                            error(['TCPCom: Could not connect to server at ' obj.IPAddress ' on port ' num2str(obj.Port)])
+                        end
+                end
             end
-            pnet(obj.TCPobj,'setwritetimeout',obj.Timeout);
-            pnet(obj.TCPobj,'setreadtimeout',obj.Timeout);
             disp('REMOTE HOST RECONNECTED');
         end
 
         function assertConn(obj)
-            pnet(obj.TCPobj,'read', 1, 'uint8', 'native','view', 'noblock'); % Peek at first byte available. If connection is broken, this updates pnet 'status'
-            status = pnet(obj.TCPobj, 'status');
-            if status < 1
-                obj.renew;
+            if obj.usePnet
+                pnet(obj.TCPobj,'read', 1, 'uint8', 'native','view', 'noblock'); % Peek at first byte available. If connection is broken, this updates pnet 'status'
+                status = pnet(obj.TCPobj, 'status');
+                if status < 1
+                    obj.renew;
+                end
+            else
+                % Check Java Socket state
+                if isempty(obj.TCPobj) || obj.TCPobj.isClosed() || ~obj.TCPobj.isConnected()
+                    obj.renew;
+                end
             end
         end
 
         function delete(obj)
-            if obj.TCPobj ~= -1
-                pnet(obj.TCPobj,'close');
-                if obj.Socket > -1
-                    pnet(obj.Socket, 'close');
+            if obj.usePnet
+                if obj.TCPobj ~= -1
+                    pnet(obj.TCPobj,'close');
+                    if obj.Socket > -1
+                        pnet(obj.Socket, 'close');
+                    end
+                end
+            else
+                if ~isempty(obj.TCPobj)
+                    try obj.TCPobj.close(); catch; end
+                end
+                if strcmp(obj.NetworkRole, 'Server') && ~isempty(obj.JServerSocket)
+                    try obj.JServerSocket.close(); catch; end
                 end
             end
         end

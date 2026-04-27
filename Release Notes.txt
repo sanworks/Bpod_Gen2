@@ -1,3 +1,31 @@
+---v1.9.0---
+-!IMPORTANT! Beginning with 1.9.0, Bpod_Gen2 requires MATLAB r2019b or newer
+-Major GUI fixes for MATLAB r2025a and newer
+-Improved settings and calibration to fully support multiple state machines per PC
+-Added BpodSystem.createMultiSetup() to initialize file/folder setup for multiple state machines per PC
+-Liquid calibration: Added support for Port Array Modules
+-Liquid calibration: Improved data file format for new installations
+-HiFi Module: Firmware and software fixes to address microSD card detection, file access detection and automatic card repair
+-Port Array Module: Added support for hardware v2 (8-channel port array)
+-SetGlobalTimer: Added support for implicit serial messages as on and off events (no longer requires use of LoadSerialMessages)
+-SendStateMachine: Added error if both LoadSerialMessages() and implicit serial message programming were used
+-GUI support for MATLAB "Dark" desktop theme on r2025a or newer
+-AddState: Added check to ensure that implicit serial messages do not exceed the supported number of bytes
+-LaunchManager: Fixed crash if only folder(s) of protocols are present in the protocol root folder
+-Smart Servo: Error out if current-limited position mode is selected on motors that do not support it.
+-Smart Servo: Added MouseGate, a control class that wraps SmartServoModule for simplified control of the Bpod Mouse Gate (beta)
+-TCPCom: Added support for MATLAB's Java TCP interface, PsychToolbox no longer required.
+-AddFlexIOAnalogData: Fix indexing for compatibility with r2024b and newer
+-AddTrialEvents: Added state machine setup metadata and calibration tables to session data struct
+-Fixes for USB port detection and UI display on Linux
+-Added BpodLib, a namespace for internal Bpod functions. Used in this release across settings, calibration and data management.
+-Removed support for PhoneHome data collection program
+
+Special thanks to Dr. George Stuyt (Melbourne, Australia) for MAJOR contributions to this release!
+Release 1.9.0 features code and doc contributions from:
+Dr. George Stuyt (Melbourne, Australia)
+Austin Pauley @ Florida State Univ.
+
 ---v1.8.1---
 -Added support for Smart Servo Module
 -Bpod now reallocates events from valve driver module (which does not generate events) if necessary
@@ -41,7 +69,7 @@
 -Updated copyright notices
 
 ---v1.77---
--EndBpod: Fixed bug introduced in v1.76 affecting MATLAB r2016a or older that could cause a crash on application close. 
+-EndBpod: Fixed bug introduced in v1.76 affecting MATLAB r2016a or older that could cause a crash on application close.
 -Splash Screen: Improved display on MATLAB v8 and older
 -PsychToolboxAudio: fixed performance with Bpod emulator (contributed by github/ogeesan)
 -Moved Python module classes to github.com/sanworks/PyBpod2
@@ -51,18 +79,18 @@
 ---v1.76---
 -BControl: Updated patch to work with firmware v23
 -Bonsai: Added example code for direct USB transactions with state machine via its APP port
--Bonsai: Improved example code setup comments 
--BpodWavePlayer: Fixed error message format 
+-Bonsai: Improved example code setup comments
+-BpodWavePlayer: Fixed error message format
 -Console GUI: Fixed display of state machine r2.5 (previously showed 2.0 even if using 2.5)
--Console GUI: Fixed bug where Console would fail to close after USB disconnect 
+-Console GUI: Fixed bug where Console would fail to close after USB disconnect
 -Console GUI: Updated '?' link to point to new Bpod wiki
 -Console GUI: Fixed 'last event' display (previously did not clear on starting a new session)
 -BpodTrialManager: Fixed last event display update routine (previously lagged by one event)
 -Performance Plot: Fixed a bug in legend
 -RotaryEncoderModule: Added capability to retrieve current position during USB streaming
--Bpod Emulator: Fixed handling of conditions when attached to global timer run state  
+-Bpod Emulator: Fixed handling of conditions when attached to global timer run state
 -Bpod Emulator: Fixed handling of soft codes
--Launch Manager: Fixed error if protocol folder is empty 
+-Launch Manager: Fixed error if protocol folder is empty
 -Splash Screen: Updated splash screen graphics
 -Fixed a bug where last event display was not cleared on starting a new session
 -Added CONTRIBUTING README text doc with guidance for pull requests
@@ -135,11 +163,11 @@ Hatem Oraby @ Humboldt Univ. Berlin
 -Improved error messages for AddState() and Bpod()
 -Limited console GUI refreshes when USB data is backlogged in buffer. Improves handling of high frequency events.
 -Updated EndBpod to automatically close any Bpod GUI windows
--LoadBpodFirmware: Added pre-configuration to replace UpdateBpodFirmware for routine updates. 
+-LoadBpodFirmware: Added pre-configuration to replace UpdateBpodFirmware for routine updates.
 -LoadBpodFirmware: Added support for multiple firmware versions for each device (e.g. to roll back a firmware update)
 -LoadBpodFirmware: Added support Teensy RawHID devices (i.e. on first load)
 -Audio: Added GenerateSineChord, a convenience function for making audio chords for use with HiFi module and PsychToolboxAudio class
--Audio: Added GenerateSineSweep, a convenience function for making pure tone sweeps for use with HiFi module + PsychToolboxAudio 
+-Audio: Added GenerateSineSweep, a convenience function for making pure tone sweeps for use with HiFi module + PsychToolboxAudio
 -Audio: Added SoundCalibration_Manual(), a function to generate audio calibration curves manually using a hand-held dB meter
 -Video: Added PsychToolboxVideoPlayer, a new class to play video on a secondary display. Depricated PsychToolboxVideoServer.
 -Python integration: Added TCPCom.py, a Python class for Python applications to exchange bytes with Bpod's TCPCom class
@@ -207,7 +235,7 @@ Hatem Oraby @ Humboldt Univ. Berlin
 ---v1.59---
 -Added UI fixes for MATLAB r2018b and Ubuntu 18
 -Added new PsychToolboxAudio plugin, to improve on PsychToolboxSoundServer with an improved interface. PsychToolboxSoundServer is still supported.
--Updated PsychToolboxAudio and PsychToolboxSoundServer plugins to support HTOmega FENIX and ASUS Xonar AE sound cards 
+-Updated PsychToolboxAudio and PsychToolboxSoundServer plugins to support HTOmega FENIX and ASUS Xonar AE sound cards
 -Updated PsychToolboxAudio and PsychToolboxSoundServer plugins to support WASAPI interface (ASIO is used by default if it is detected)
 -Added implicit programming of serial messages, e.g. in OutputActions, {'MyModule', ['P' 4 2]} is now valid (though not if used with TrialManager)
 -Changed saving option from -v6 to standard (this is actually faster in MATLAB r2018+ and similar in r2013-2018)

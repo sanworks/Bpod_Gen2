@@ -45,14 +45,20 @@ else
     text(80, 25, 'Sync channel config', 'FontName', fontName, 'FontSize', 15, 'Color', [0.8 0.8 0.8]);
     text(50, 65, 'Channel', 'FontName', fontName, 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
     text(210, 65, 'Signal type', 'FontName', fontName, 'FontSize', 14, 'Color', [0.8 0.8 0.8]);
-    BpodSystem.GUIHandles.SyncConfigChannel = uicontrol('Position', [55 35 80 20], 'Style', 'popupmenu',... 
+    dropMenuWidth = 90;
+    dropMenuHeight = 25;
+    if verLessThan('matlab', '25.1')
+        dropMenuWidth = 80;
+        dropMenuHeight = 20;
+    end
+    BpodSystem.GUIHandles.SyncConfigChannel = uicontrol('Position', [55 35 dropMenuWidth dropMenuHeight], 'Style', 'popupmenu',... 
         'Callback', @update_sync_config, 'FontSize', 12);
     if BpodSystem.FirmwareVersion >= 23
         syncMenu = {'Each_Trial', 'Each_State', '10Hz_SqWave'};
     else
         syncMenu = {'Each_Trial', 'Each_State'};
     end
-    BpodSystem.GUIHandles.SyncConfigType = uicontrol('Position', [220 35 120 20], 'Style', 'popupmenu',... 
+    BpodSystem.GUIHandles.SyncConfigType = uicontrol('Position', [220 35 120 dropMenuHeight], 'Style', 'popupmenu',... 
         'String', syncMenu, 'Callback', @update_sync_config, 'FontSize', 12);
     
     % Populate menus

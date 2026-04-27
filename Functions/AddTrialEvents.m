@@ -1,23 +1,3 @@
-%{
-----------------------------------------------------------------------------
-
-This file is part of the Sanworks Bpod repository
-Copyright (C) Sanworks LLC, Rochester, New York, USA
-
-----------------------------------------------------------------------------
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, version 3.
-
-This program is distributed  WITHOUT ANY WARRANTY and without even the 
-implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-%}
-
 % AddTrialEvents formats trial events returned by RunStateMachine() or BpodTrialManager() 
 % and adds them to a human-readable session data struct. 
 % 
@@ -46,6 +26,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % Example usage: sd = AddTrialEvents(sd, rawTrialEvents);
 % Note: If BpodSystem.Data is passed as sd, it can be saved to the current data file with SaveBpodSessionData();
 % BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents);
+
+%{
+----------------------------------------------------------------------------
+
+This file is part of the Sanworks Bpod repository
+Copyright (C) Sanworks LLC, Rochester, New York, USA
+
+----------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3.
+
+This program is distributed  WITHOUT ANY WARRANTY and without even the 
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%}
 
 function updatedSD = AddTrialEvents(sd, rawTrialEvents)
 
@@ -81,9 +81,30 @@ else
         end
         sd.Info.Modules = BpodSystem.Modules;
     end
+    % Add PC info
     sd.Info.PCsetup = struct;
     sd.Info.PCsetup.OS = BpodSystem.HostOS;
     sd.Info.PCsetup.MATLABver = version('-release');
+
+    % Add State Machine configuration info
+    sd.Info.FSMsetup = struct;
+    sd.Info.FSMsetup.CycleFrequency_Hz = BpodSystem.HW.CycleFrequency;
+    sd.Info.FSMsetup.StateMachineInfo = BpodSystem.StateMachineInfo;
+    sd.Info.FSMsetup.StateMachineInfo.Inputs = BpodSystem.HW.Inputs;
+    sd.Info.FSMsetup.StateMachineInfo.Outputs = BpodSystem.HW.Outputs;
+    sd.Info.FSMsetup.StateMachineInfo.ChannelKey = BpodSystem.HW.ChannelKey;
+    sd.Info.FSMsetup.FlexIOConfig = BpodSystem.FlexIOConfig;
+    
+    % Add calibration info
+    sd.Info.Calibration = struct;
+    LiquidCal = BpodSystem.CalibrationTables.LiquidCal;
+    if isa(LiquidCal, 'BpodLib.calibration.liquid.ValveDataManagerClass')
+        LiquidCal = LiquidCal.createSaveData();
+    end
+    sd.Info.Calibration.Liquid = LiquidCal;
+    sd.Info.Calibration.Sound = BpodSystem.CalibrationTables.SoundCal;
+
+    % Add session start time
     sd.Info.SessionDate = datestr(now, 1);
     if ~isempty(BpodSystem.ProtocolStartTime)
         theTime = BpodSystem.ProtocolStartTime/100000;

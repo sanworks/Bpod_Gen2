@@ -25,8 +25,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % portString: the name of the USB serial port as known to the operating system.
 %             On Windows this looks like 'COM3' and on Linux '/dev/ttyACM0'
 %             use 'AUTO' to auto-discover the Bpod State Machine's port
-% forceJava:  (optional, char array) if supplied, Bpod uses MATLAB's native
-%             serial interface instead of PsychToolbox IOPort if installed
+% forceJava:  (optional, char array) depricated argument that forced use of MATLAB's
+% built-in serial interface if Psychtoolbox IOPort was installed. IOPort is
+% no longer supported so the forceJava argument is ignored if provided by the user.
 
 function obj = Connect2BpodSM(obj, portString, varargin)
 
@@ -52,27 +53,15 @@ nPorts = length(Ports);
 portsTried = [];
 found = 0;
 iPort = 1;
-if nargin > 2
-    forceJava = 1;
-else
-    forceJava = 0;
-end
+forceJava = 0;
 while (found == 0) && (iPort <= nPorts)
     thisPort = Ports{iPort};
     portsTried = [portsTried thisPort ' '];
     connected = 0;
-    if forceJava
-        try
-            obj.SerialPort = ArCOMObject_Bpod(thisPort, 12000000, 'Java');
-            connected = 1;
-        catch
-        end
-    else
-        try
-            obj.SerialPort = ArCOMObject_Bpod(thisPort, 12000000);
-            connected = 1;
-        catch
-        end
+    try
+        obj.SerialPort = ArCOMObject_Bpod(thisPort, 12000000);
+        connected = 1;
+    catch
     end
     if connected
         if skipDiscovery
@@ -118,6 +107,9 @@ end
 if found
     obj.EmulatorMode = 0;
 else
+    obj.SerialPort = [];
+    % If no serial port is found, drop the field
+
     if sum(portsTried) > 0
         autoModeMessage = [];
         if autoMode
@@ -131,18 +123,11 @@ else
     end
 end
 
-% For MATLAB predating the builtin serialport() class (2019b), recommend PsychToolbox
-if obj.SerialPort.UsePsychToolbox == 0 && verLessThan('matlab', '9.7')
-    disp('###########################################################################')
-    disp('# NOTICE: Bpod is running without Psychtoolbox installed.                 #')
-    disp('# PsychToolbox integration greatly improves USB transfer speed + latency. #')
-    disp('# See http://psychtoolbox.org/download.html for installation instructions.#')
-    disp('###########################################################################')
-end
-
 % Finish setup
-obj.SystemSettings.LastCOMPort = Ports{thisPortIndex};
-obj.SaveSettings;
+% obj.SystemSettings.LastCOMPort = Ports{thisPortIndex};
+% obj.SaveSettings;
 obj.EmulatorMode = 0;
-obj.BpodSplashScreen(2);
+if obj.Status.Verbose
+    obj.BpodSplashScreen(2);
+end
 end

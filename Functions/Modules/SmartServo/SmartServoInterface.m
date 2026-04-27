@@ -32,6 +32,7 @@ classdef SmartServoInterface < handle
         opMenuByte = 212; % Byte code to access op menu via USB
         controlModeRanges = {[0 360], [-91800 91800], [0, 360], [0, 0], [-91800 91800]}
         selectedModeRange = [];
+        hasCurrentLimitedPosition = true; % The XL430 and XC430 series lack current-limited position mode
         ctrlTable % Control table listing addresses of registers in motor controller
         liveInstance % If true, this instance is initialized as a placeholder, functions will error out
     end
@@ -59,6 +60,9 @@ classdef SmartServoInterface < handle
                     obj.setMaxVelocity(0); % Reset velocity to motor default (max)
                     obj.setMaxAcceleration(0); % Reset acceleration to motor default (max)
                     obj.info.firmwareVersion = obj.readControlTable(obj.ctrlTable.FIRMWARE_VERSION);
+                    if contains(modelName, 'XL430') || contains(modelName, 'XC430')
+                        obj.hasCurrentLimitedPosition = false;
+                    end
                 end
                 
             end
@@ -71,6 +75,9 @@ classdef SmartServoInterface < handle
             obj.assertLiveInstance;
             if sum(1:5 == newMode) == 0
                 error('Invalid control mode. Valid modes are integers in range 1-5.')
+            end
+            if newMode == 3 && ~obj.hasCurrentLimitedPosition
+                error('Current-limited position mode is not available on XL430 and XC430 series motors.')
             end
             obj.port.write([obj.opMenuByte 'M' obj.channel obj.address newMode], 'uint8');
             obj.confirmTransmission('setting mode');

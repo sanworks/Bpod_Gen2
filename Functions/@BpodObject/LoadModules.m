@@ -132,13 +132,18 @@ if messageLength > 1
             end
             pos = nModules;
             while nToReassign > 0
-                if obj.Modules.nSerialEvents(pos) > 0 && (obj.Modules.Connected(pos) == 0 ... 
-                                                          || ~isempty(strfind(obj.Modules.Name{pos}, 'ValveModule')))
-                    if obj.Modules.nSerialEvents(pos) >= nToReassign
+                nFreeEvents = 0;
+                if obj.Modules.Connected(pos) == 0 || ~isempty(strfind(obj.Modules.Name{pos}, 'ValveModule'))
+                    nFreeEvents = obj.Modules.nSerialEvents(pos);
+                elseif moduleEventsRequested(pos) > 0
+                    nFreeEvents = obj.Modules.nSerialEvents(pos) - moduleEventsRequested(pos);
+                end
+                if nFreeEvents > 0
+                    if nFreeEvents >= nToReassign
                         obj.Modules.nSerialEvents(pos) = obj.Modules.nSerialEvents(pos) - nToReassign;
                         nToReassign = 0;
                     else
-                        nToReassign = nToReassign - obj.Modules.nSerialEvents(pos);
+                        nToReassign = nToReassign - nFreeEvents;
                         obj.Modules.nSerialEvents(pos) = 0;
                     end
                 end

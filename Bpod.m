@@ -28,9 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 % It is necessary to connect separate instances of MATLAB to separate machines.
 % Note: To launch directly into emulator mode, use port name EMU.
 %
-% Java: On MATLAB pre-r2019a, adding a second argument 'Java' forces usage 
-% of MATLAB's legacy Java serial interface, even with PsychToolbox installed.
-%
 % Example usage
 % Bpod();       % Start Bpod and auto-detect the state machine serial port
 % Bpod('COM3'); % Start Bpod with a state machine on port COM3
@@ -70,6 +67,14 @@ end
 bpodPath = fileparts(which('Bpod'));
 addpath(genpath(fullfile(bpodPath, 'Functions')));
 
+% Check for minimum MATLAB version
+[Ver, VerName] = BpodMinimumMATLABVersion;
+if verLessThan('matlab', Ver)
+    error(['Bpod v' BpodSoftwareVersion_Semantic ' requires MATLAB ' VerName ' or newer.'...
+            char(10) 'If you must use previous MATLAB versions, please consider using Bpod v1.8.1 '... 
+            '<a href="matlab:web(''https://github.com/sanworks/Bpod_Gen2/tree/9be6bea107dba96e8b4e38aa1c5617339d4efc50'',''-browser'')">(Click Here)</a>'])
+end
+
 % Initialize BpodSystem. The BpodSystem class is used for system config.
 BpodSystem = BpodObject;
 
@@ -78,12 +83,7 @@ if nargin > 0
     if strcmp(varargin{1}, 'EMU')
         emulator_setup;
     else
-        if nargin > 1
-            forceJava = varargin{2};
-            BpodSystem.Connect2BpodSM(varargin{1}, forceJava);
-        else
-            BpodSystem.Connect2BpodSM(varargin{1});
-        end
+        BpodSystem.Connect2BpodSM(varargin{1});
         bpod_setup;
     end
 else
@@ -113,10 +113,17 @@ bpod_setup;
 function bpod_setup
 % Runs BpodSystem's hardware and GUI setup methods.
 global BpodSystem
+BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'verbose', true)
 BpodSystem.SetupHardware();
 BpodSystem.InitializeGUI();
 BpodSystem.Status.Initialized = true;
 evalin('base', 'global BpodSystem')
+
+% Todo: Add a system setting to enable calibration reports on startup.
+% If enabled, run the following line:
+% BpodLib.calibration.liquid.io.report(BpodSystem.CalibrationTables.LiquidCal)
+
+BpodLib.path.verifyPathing(BpodSystem);
 
 function emulator_dialog
 % Launches a GUI indicating that hardware connection has failed.
