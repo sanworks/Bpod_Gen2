@@ -1,4 +1,4 @@
-function results = runbpodtests(varargin)
+function results = runBpodTests(varargin)
 % RUNBPODTESTS Run all unit tests in the Tests directory and display results
 import matlab.unittest.TestSuite
 import matlab.unittest.TestRunner

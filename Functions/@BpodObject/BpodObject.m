@@ -143,6 +143,7 @@ classdef BpodObject < handle
             obj.Status.AnalogViewer = 0;
             obj.Status.nAnalogSamples = 0;
             obj.Status.RecordAnalog = 1;
+            obj.Status.LoadSerialMessagesUsed = false;
 
             % Initialize state machine info, to be populated in SetupStateMachine()
             obj.StateMachineInfo = struct;

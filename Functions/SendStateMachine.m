@@ -74,7 +74,8 @@ end
 % Check to make sure implicit serial message programming was not used with
 % a separate call to LoadSerialMessages()
 if sma.SerialMessageMode == 1 && BpodSystem.Status.LoadSerialMessagesUsed
-    error(['LoadSerialMessages() cannot be used if serial messages are also programmed implicitly with AddState()' newline 'e.g. {''HiFi1'', [''P'' 0]}'])
+    error(['LoadSerialMessages() cannot be used if serial messages are also programmed implicitly with AddState() or SetGlobalTimer()'... 
+           newline 'e.g. {''HiFi1'', [''P'' 0]} in AddState, or ...,''OnMessage'', [''P'' 0], ... in SetGlobalTimer'])
 end
 
 % Check to make sure the state machine description doesn't have undefined states

@@ -120,7 +120,16 @@ maxFlexIOVoltage = 5;
 % Set onMessage to send to linked channel when timer starts
 if nargin > 10
     onMessage = varargin{9};
-    if BpodSystem.MachineType == 4
+    implicitMessageAdded = false;
+    if outputChannelIndex <= BpodSystem.HW.n.Outputs
+        if BpodSystem.HW.Outputs(outputChannelIndex) == 'U'
+            if length(onMessage) > 1 || ischar(onMessage)
+                [sma, onMessage] = addImplicitSerialMessage(sma, outputChannelIndex, onMessage);
+                implicitMessageAdded = true;
+            end
+        end
+    end
+    if ~implicitMessageAdded && BpodSystem.MachineType == 4
         if (outputChannelIndex >= BpodSystem.HW.Pos.Output_FlexIO) && (outputChannelIndex < BpodSystem.HW.Pos.Output_BNC)
             targetFlexIOChannel = outputChannelIndex - (BpodSystem.HW.Pos.Output_FlexIO-1);
             if BpodSystem.HW.FlexIO_ChannelTypes(targetFlexIOChannel) == 3
@@ -136,7 +145,16 @@ end
 % Set offMessage to send to linked channel when timer ends
 if nargin > 12
     offMessage = varargin{11};
-    if BpodSystem.MachineType == 4
+    implicitMessageAdded = false;
+    if outputChannelIndex <= BpodSystem.HW.n.Outputs
+        if BpodSystem.HW.Outputs(outputChannelIndex) == 'U'
+            if length(offMessage) > 1 || ischar(offMessage)
+                [sma, offMessage] = addImplicitSerialMessage(sma, outputChannelIndex, offMessage);
+                implicitMessageAdded = true;
+            end
+        end
+    end
+    if ~implicitMessageAdded && BpodSystem.MachineType == 4
         if (outputChannelIndex >= BpodSystem.HW.Pos.Output_FlexIO) && (outputChannelIndex < BpodSystem.HW.Pos.Output_BNC)
             targetFlexIOChannel = outputChannelIndex - (BpodSystem.HW.Pos.Output_FlexIO-1);
             if BpodSystem.HW.FlexIO_ChannelTypes(targetFlexIOChannel) == 3
