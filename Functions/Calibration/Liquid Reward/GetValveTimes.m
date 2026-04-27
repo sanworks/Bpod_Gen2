@@ -10,6 +10,10 @@ function ValveTimes_s = GetValveTimes(LiquidAmount_uL, TargetValves, varargin)
 % :type TargetValves: int or array
 % :param PortArray: PortArrayModule's indentity, integer
 % :type PortArray: double
+%
+% Examples:
+% vt = GetValveTimes(5, [1 3]); % Return valve times for 5ul of liquid for behavior ports 1 and 3 on the state machine
+% vt = GetValveTimes(7, 2, 'PortArray', 1); % Return the valve time for 7ul from behavior port 2 on port array #1
 
 p = inputParser();
 p.addParameter('BpodSystem', [])
