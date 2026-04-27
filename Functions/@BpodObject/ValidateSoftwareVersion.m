@@ -31,10 +31,8 @@ latestVersion = [];
 % Get the remote version
 [reply, ~] =... 
 urlread('https://raw.githubusercontent.com/sanworks/Bpod_Gen2/master/Functions/Internal%20Functions/BpodSoftwareVersion_Semantic.m');
-verPos = find(reply == '=');
-if ~isempty(verPos)
-    latestVersion = strtrim(reply(verPos(end)+2:end-2));
-end
+tokens = regexp(reply, '''([^'']*)''', 'tokens');
+latestVersion = char([tokens{:}]);
 
 % Compare and display update notice if necessary
 if ~isempty(latestVersion)
@@ -44,7 +42,7 @@ if ~isempty(latestVersion)
         disp(['UPDATE NOTICE: Bpod Console v' latestVersion ' is available to download!'])
         disp(['                 View release notes '...
               '<a href="matlab:web(''https://github.com/sanworks/Bpod_Gen2/blob/master/Release%20Notes.txt'',''-browser'')">here</a>'])
-        disp(['To update run UpdateBpodSoftware() OR see instructions'... 
+        disp(['To update run UpdateBpodSoftware() OR see instructions '... 
              '<a href="matlab:web(''https://sanworks.github.io/Bpod_Wiki/install-and-update/software-update/'',''-browser'')">here</a>'])
         disp( '***********************************************************')
     elseif verDiff > 0
