@@ -83,6 +83,7 @@ classdef SmartServoModule < handle
                           % 2 = Stop Target Program, 3 = Emergency Stop-All
         dioDebounce       % Debounce interval for DIO channels 
                           % (adjust if required for mechanical pushbuttons)
+        dioMode           % 0 = Input (Pullup), 1 = Input (Pulldown), 2 = Reserved, 3 = Output for power (always high / 3.3V)
         motor             % An array of SmartServoInterface objects to control each motor
     end
 
@@ -138,6 +139,7 @@ classdef SmartServoModule < handle
             obj.dioFallingEdgeOp = [0 0 0];
             obj.dioRisingEdgeOp = [0 0 0];
             obj.dioDebounce = [0.01 0.01 0.01];
+            obj.dioMode = [0 0 0];
         end
 
         function STOP(obj)
@@ -200,6 +202,15 @@ classdef SmartServoModule < handle
             obj.port.write([obj.opMenuByte '~'], 'uint8', newDebounce*10000, 'uint32');
             obj.confirmTransmission('setting debounce intervals');
             obj.dioDebounce = newDebounce;
+        end
+
+        function set.dioMode(obj, newModes)
+            if length(newModes) ~= 3 || min(newModes) < 0 || max(newModes) > 3
+                error('newModes must be a 1x3 array of dio modes in range 0-2')
+            end
+            obj.port.write([obj.opMenuByte '|' newModes], 'uint8');
+            obj.confirmTransmission('setting DIO mode');
+            obj.dioMode = newModes;
         end
 
         function newSmartServo = smartServo(obj, channel, address)
