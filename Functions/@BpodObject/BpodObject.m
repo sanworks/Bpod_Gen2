@@ -486,7 +486,7 @@ classdef BpodObject < handle
                 error('FlexIO threshold2 must be in range [0, 5] Volts')
             end
             thresholdBits1 = (config.threshold1/5)*4095;
-            thresholdBits2 = (config.threshold1/5)*4095;
+            thresholdBits2 = (config.threshold2/5)*4095;
             configMessage = uint8([configMessage 't' typecast(uint16([thresholdBits1 thresholdBits2]), 'uint8')]);
             nAcks = nAcks + 1;
 
