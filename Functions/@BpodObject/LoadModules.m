@@ -32,6 +32,7 @@ end
 % Ensure that no session is running
 if obj.Status.BeingUsed == 1
     BpodErrorDlg(['Cannot refresh modules.' char(10) 'Stop the session first.'], 0); %#ok
+    return
 end
 
 % If emulator mode, return (no hardware is connected)

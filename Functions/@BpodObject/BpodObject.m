@@ -406,7 +406,7 @@ classdef BpodObject < handle
         function StopModuleRelay(obj, varargin)
             % Stops the active module relay
             for i = 1:length(obj.Modules.RelayActive)
-                obj.SerialPort.write(['J' i 0], 'uint8');
+                obj.SerialPort.write(['J' i-1 0], 'uint8'); % Module indexes are zero-based on the state machine
             end
             runningState = get(obj.Timers.PortRelayTimer, 'Running');
             if strcmp(runningState, 'on')
@@ -468,6 +468,13 @@ classdef BpodObject < handle
             if nCyclesPerSample < 10 || nCyclesPerSample > (obj.HW.CycleFrequency/10)
                 error('Error configuring FlexIO analog input sampling rate: Rate must be in range [1, 1000]');
             end
+            % A sample is taken every nCyclesPerSample cycles, so the rate must divide the cycle frequency evenly.
+            % Otherwise the actual rate would differ from the rate recorded with the data.
+            if nCyclesPerSample ~= round(nCyclesPerSample)
+                error(['Error configuring FlexIO analog input sampling rate: ' num2str(config.analogSamplingRate)...
+                    ' Hz does not evenly divide the ' num2str(obj.HW.CycleFrequency) ' Hz state machine cycle frequency.'...
+                    ' Valid rates include 1000, 500, 250, 200 and 100 Hz.']);
+            end
             configMessage = uint8([configMessage '^' typecast(uint32(nCyclesPerSample), 'uint8')]);
             nAcks = nAcks + 1;
 
@@ -520,7 +527,6 @@ classdef BpodObject < handle
             % Update registries of behavior events and outputs
             if sum(obj.HW.FlexIO_ChannelTypes == config.channelTypes) < obj.HW.n.FlexIO
                 obj.HW.FlexIO_ChannelTypes = config.channelTypes;
-                obj.HW.FlexIO_SamplingRate = config.analogSamplingRate;
                 inputChannelNames = cell(1,obj.HW.n.FlexIO);
                 outputChannelNames = cell(1,obj.HW.n.FlexIO);
                 flexEventPos = obj.HW.Pos.Event_FlexIO;
@@ -563,9 +569,16 @@ classdef BpodObject < handle
                 obj.StateMachineInfo.InputChannelNames(flexInputPos:flexInputPos+obj.HW.n.FlexIO-1) = inputChannelNames;
                 obj.StateMachineInfo.OutputChannelNames(flexOutputPos:flexOutputPos+obj.HW.n.FlexIO-1) = outputChannelNames;
             end
+            obj.HW.FlexIO_SamplingRate = config.analogSamplingRate;
+
+            % Update the current session's analog data description
             if isfield (obj.Data, 'Analog')
                 obj.Data.Analog.nChannels = sum(config.channelTypes == 2);
                 obj.Data.Analog.channelNumbers = find(config.channelTypes == 2);
+                obj.Data.Analog.SamplingRate = config.analogSamplingRate;
+            elseif obj.Status.BeingUsed && obj.Status.SessionStartFlag && sum(config.channelTypes == 2) > 0
+                % Analog inputs were enabled after launch, before the first trial starts acquisition
+                obj.setupAnalogRecording;
             end
             obj.FlexIOConfig = config;
         end
@@ -644,16 +657,15 @@ classdef BpodObject < handle
                 end
             end
             obj.GUIData.CurrentPanel = panel;
-            if obj.EmulatorMode == 0
-                % Set module byte stream relay to current module
+            % Set module byte stream relay to current module. Relays are not used during a session,
+            % and StopModuleRelay() would discard trial data in the serial buffer.
+            if obj.EmulatorMode == 0 && obj.Status.BeingUsed == 0
                 obj.StopModuleRelay;
-                if panel > 1
-                    if obj.Status.BeingUsed == 0 && obj.GUIData.DefaultPanel(panel) == 1
-                        obj.SerialPort.write(['J' panel-2 1], 'uint8');
-                        obj.Modules.RelayActive(panel-1) = 1;
-                        % Start timer to scan port
-                        start(obj.Timers.PortRelayTimer);
-                    end
+                if panel > 1 && obj.GUIData.DefaultPanel(panel) == 1
+                    obj.SerialPort.write(['J' panel-2 1], 'uint8');
+                    obj.Modules.RelayActive(panel-1) = 1;
+                    % Start timer to scan port
+                    start(obj.Timers.PortRelayTimer);
                 end
             end
             obj.FixPushbuttons;
@@ -669,6 +681,37 @@ classdef BpodObject < handle
                     warning on
                 end
             end
+        end
+
+        function setupAnalogRecording(obj)
+            % Opens the current session's analog data file and adds a description of the analog data to
+            % BpodObject.Data. The launch manager does this at launch if analog inputs are already enabled;
+            % set.FlexIOConfig calls this if a protocol enables them later, before its first trial.
+            analogFilename = [obj.Path.CurrentDataFile(1:end-4) '_ANLG.dat'];
+            if obj.Status.RecordAnalog == 1
+                obj.AnalogDataFile = fopen(analogFilename,'w');
+                if obj.AnalogDataFile == -1
+                    error(['Error: Could not open the analog data file: ' analogFilename])
+                end
+            end
+            obj.Status.nAnalogSamples = 0;
+            obj.Data.Analog = struct;
+            obj.Data.Analog.info = struct;
+            obj.Data.Analog.FileName = analogFilename;
+            obj.Data.Analog.nChannels = sum(obj.HW.FlexIO_ChannelTypes == 2);
+            obj.Data.Analog.channelNumbers = find(obj.HW.FlexIO_ChannelTypes == 2);
+            obj.Data.Analog.SamplingRate = obj.HW.FlexIO_SamplingRate;
+            obj.Data.Analog.nSamples = 0;
+            % Add human-readable info about data fields to 'info struct
+            obj.Data.Analog.info.FileName = 'Complete path and filename of the binary file to which the raw data was logged';
+            obj.Data.Analog.info.nChannels = 'The number of Flex I/O channels configured as analog input';
+            obj.Data.Analog.info.channelNumbers = 'The indexes of Flex I/O channels configured as analog input';
+            obj.Data.Analog.info.SamplingRate = 'The sampling rate of the analog data. Units = Hz';
+            obj.Data.Analog.info.nSamples = 'The total number of analog samples captured during the behavior session';
+            obj.Data.Analog.info.Samples = 'Analog measurements captured. Rows are separate analog input channels. Units = Volts';
+            obj.Data.Analog.info.Timestamps = 'Time of each sample (computed from sample index and sampling rate)';
+            obj.Data.Analog.info.TrialNumber = 'Experimental trial during which each analog sample was captured';
+            obj.Data.Analog.info.TrialData = 'A cell array of Samples. Each cell contains samples captured during a single trial.';
         end
 
         function BpodSplashScreen(obj, stage)
