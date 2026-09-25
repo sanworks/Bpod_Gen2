@@ -42,4 +42,8 @@ end
 movefile(BpodLib.path.getPath('settings', BpodSystem, 'setuptype', 'single'), ...
     BpodLib.path.getPath('settings', BpodSystem, 'setuptype', 'multi'))
 
+% Point BpodSystem's paths and loaded settings at the new location, so settings saved before Bpod
+% restarts are not written to the old one
+BpodLib.BpodObject.setup.updatePathAndSettings(BpodSystem, 'LocalDir', BpodSystem.Path.LocalDir);
+
 end

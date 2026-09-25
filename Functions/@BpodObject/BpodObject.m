@@ -388,18 +388,24 @@ classdef BpodObject < handle
             %
             % Arguments: module, the module index (int) or name (char array). Module names are given in BpodObject.Modules.Name
 
-            if ischar(module)
+            nModules = length(obj.Modules.Connected);
+            if ischar(module) || isstring(module)
                 moduleNum = find(strcmp(module, obj.Modules.Name));
-            end
-            if ~isempty(moduleNum)
-                if (moduleNum <= length(obj.Modules.Connected))
-                    if (sum(obj.Modules.RelayActive)) == 0
-                        obj.SerialPort.write(['J' moduleNum-1 1], 'uint8');
-                        obj.Modules.RelayActive(moduleNum) = 1;
-                    else
-                        error('Error: You must stop the active module relay with StopModuleRelay() before starting another one.')
-                    end
+                if isempty(moduleNum)
+                    error(['Error: No module named ' char(module) '. Module names are listed in BpodSystem.Modules.Name'])
                 end
+            else
+                moduleNum = module;
+                if ~isnumeric(moduleNum) || ~isscalar(moduleNum) || moduleNum < 1 || moduleNum > nModules ||...
+                        moduleNum ~= round(moduleNum)
+                    error(['Error: The module index must be an integer in range [1, ' num2str(nModules) ']'])
+                end
+            end
+            if (sum(obj.Modules.RelayActive)) == 0
+                obj.SerialPort.write(['J' moduleNum-1 1], 'uint8');
+                obj.Modules.RelayActive(moduleNum) = 1;
+            else
+                error('Error: You must stop the active module relay with StopModuleRelay() before starting another one.')
             end
         end
 
@@ -462,6 +468,16 @@ classdef BpodObject < handle
             end
             configMessage = uint8([configMessage 'Q' config.channelTypes]);
             nAcks = nAcks + 1;
+
+            % Ensure one value per channel for the remaining per-channel settings. The state machine reads a fixed
+            % number of bytes for each setting, so a vector of the wrong length would misalign the rest of the message.
+            perChannelFields = {'threshold1', 'threshold2', 'polarity1', 'polarity2', 'thresholdMode'};
+            for i = 1:length(perChannelFields)
+                if length(config.(perChannelFields{i})) ~= obj.HW.n.FlexIO
+                    error(['Error setting FlexIOConfig: ' perChannelFields{i} ' must specify one value for each of the '...
+                        num2str(obj.HW.n.FlexIO) ' FlexIO channels.']);
+                end
+            end
 
             % Set FlexIO analog input sampling rate (Hz). Permitted range = [1, 1000]
             nCyclesPerSample = obj.HW.CycleFrequency/config.analogSamplingRate; % state machine cycles per analog sample
