@@ -31,13 +31,14 @@ if channel <= BpodSystem.HW.n.Outputs
         % Verify message length
         messageLength = length(message);
         if messageLength > BpodSystem.HW.n.MaxBytesPerSerialMsg
-            error(['State ' stateName ' contains a ' num2str(messageLength) '-byte serial message.' ...
-                newline 'The maximum message length supported by your state machine firmware is ' ...
+            error(['Error: A ' num2str(messageLength) '-byte serial message was specified for '...
+                BpodSystem.StateMachineInfo.OutputChannelNames{channel} '.' newline ...
+                'The maximum message length supported by your state machine firmware is ' ...
                 num2str(BpodSystem.HW.n.MaxBytesPerSerialMsg) ' bytes.'])
         end
         messageIndex = 0;
         for i = 1:sma.nSerialMessages(channel)
-            thisMessage = sma.SerialMessages{i};
+            thisMessage = sma.SerialMessages{channel, i};
             if length(thisMessage) == messageLength
                 if sum(thisMessage == message) == messageLength
                     messageIndex = i;

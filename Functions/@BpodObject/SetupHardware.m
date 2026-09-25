@@ -29,6 +29,7 @@ function obj = SetupHardware(obj)
 if obj.EmulatorMode == 1 % Set up as Bpod 0.7
     obj.StateMachineInfo.MaxStates = 256;
     obj.HW.n.MaxSerialEvents = 60;
+    obj.HW.n.MaxBytesPerSerialMsg = 3; % As reported by state machine r0.7-1.0 firmware
     obj.HW.CyclePeriod = 100;
     obj.HW.CycleFrequency = 10000;
     obj.HW.ValveType = 'SPI';

@@ -119,7 +119,7 @@ switch Opstring
             % On Bpod r2+, if FlexIO channels are configured as analog, setup data file
             nAnalogChannels = sum(BpodSystem.HW.FlexIO_ChannelTypes == 2);
             if nAnalogChannels > 0
-                analogFilename = [subjectName '_' protocolName '_' dateInfo '_ANLG.dat'];
+                analogFilename = fullfile(dataFolder, [subjectName '_' protocolName '_' dateInfo '_ANLG.dat']);
                 if BpodSystem.Status.RecordAnalog == 1
                     BpodSystem.AnalogDataFile = fopen(analogFilename,'w');
                     if BpodSystem.AnalogDataFile == -1
@@ -197,6 +197,13 @@ switch Opstring
 
             % Record session start time
             BpodSystem.ProtocolStartTime = now*100000;
+
+            % Reset the state machine's session clock and trial counter, as the launch manager does.
+            % On state machine 2+, this also re-arms Flex I/O analog acquisition.
+            if BpodSystem.EmulatorMode == 0
+                BpodSystem.StopModuleRelay; % Clears stray bytes before the reset is acknowledged
+            end
+            BpodSystem.resetSessionClock();
 
             % Push console GUI to top and run protocol file
             figure(BpodSystem.GUIHandles.MainFig);

@@ -84,19 +84,18 @@ else
         end
     end
     digitalChannelStrings = digitalChannelStrings(1:nChan);
-    if BpodSystem.SyncConfig.Channel == 255
-        channelListboxValue = 1;
-    else
-        channelListboxValue = BpodSystem.SyncConfig.Channel-BpodSystem.HW.Pos.Output_BNC+3;
-    end
-    
     set(BpodSystem.GUIHandles.SyncConfigChannel, 'string',digitalChannelStrings);
-    set(BpodSystem.GUIHandles.SyncConfigChannel, 'value', channelListboxValue);
-    set(BpodSystem.GUIHandles.SyncConfigType, 'value', BpodSystem.SyncConfig.SignalType+1);
+    show_current_sync_config;
 end
 
 function update_sync_config(~,~)
 global BpodSystem % Import the global BpodSystem object
+% Sync cannot be reconfigured during a session: the state machine's acknowledgement would be read as trial data
+if BpodSystem.Status.BeingUsed == 1
+    show_current_sync_config; % Undo the menu selection
+    BpodErrorDlg(['Cannot change sync config.' char(10) 'Stop the session first.'], 0); %#ok
+    return
+end
 ch = get(BpodSystem.GUIHandles.SyncConfigChannel, 'Value') - 1;
 type = get(BpodSystem.GUIHandles.SyncConfigType, 'Value') - 1;
 if ch > 0
@@ -116,3 +115,14 @@ BpodSystem.SyncConfig.Channel = syncHWChannel;
 BpodSystem.SyncConfig.SignalType = type;
 BpodSyncConfig = BpodSystem.SyncConfig;
 save(BpodSystem.Path.SyncConfig, 'BpodSyncConfig');
+
+function show_current_sync_config
+% Sets the channel and signal type menus to the current sync configuration
+global BpodSystem % Import the global BpodSystem object
+if BpodSystem.SyncConfig.Channel == 255
+    channelListboxValue = 1;
+else
+    channelListboxValue = BpodSystem.SyncConfig.Channel-BpodSystem.HW.Pos.Output_BNC+3;
+end
+set(BpodSystem.GUIHandles.SyncConfigChannel, 'value', channelListboxValue);
+set(BpodSystem.GUIHandles.SyncConfigType, 'value', BpodSystem.SyncConfig.SignalType+1);

@@ -99,8 +99,14 @@ if BpodSystem.MachineType == 1
     end
 end
 
-function UpdatePortConfig(~,~)
+function UpdatePortConfig(src,~)
 global BpodSystem
+% Inputs cannot be reconfigured during a session: the state machine's acknowledgement would be read as trial data
+if BpodSystem.Status.BeingUsed == 1
+    set(src, 'Value', 1-get(src, 'Value')); % Undo the click
+    BpodErrorDlg(['Cannot change port config.' char(10) 'Stop the session first.'], 0); %#ok
+    return
+end
 portChannels = find(BpodSystem.HW.Inputs == 'P');
 for x = portChannels
     eval(['BpodSystem.InputsEnabled(' num2str(x) ') = get(BpodSystem.GUIHandles.PortConfigPort'... 
