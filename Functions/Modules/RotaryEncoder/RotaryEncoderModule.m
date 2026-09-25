@@ -585,8 +585,10 @@ classdef RotaryEncoderModule < handle
             if obj.uiStreaming == 0
                 % Set background color to match UI theme
                 bgColor = [.8 .8 .8];
-                if IsMATLAB_DarkMode
-                    bgColor = [0.2 0.2 0.2];
+                if ~verLessThan('matlab', '25.1')
+                    if strcmp(settings().matlab.appearance.MATLABTheme.ActiveValue, 'Dark')
+                        bgColor = [0.2 0.2 0.2];
+                    end
                 end
                 obj.uiStreaming = 1;
                 thresholdColors = {[0 0 1], [1 0 0], [0 1 0], [1 1 0], [0 1 1],...
